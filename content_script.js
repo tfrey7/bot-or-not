@@ -144,16 +144,13 @@
     checkBtn.textContent = "🔍";
 
     checkBtn.addEventListener("click", () => {
-      [
-        `https://www.reddit.com/r/BotBouncer/search/?q=${encodeURIComponent(username)}&restrict_sr=true`,
-        `https://redditmetis.com/user/${encodeURIComponent(username)}`,
-        `https://profileprobe.com/botornot/?u=${encodeURIComponent(username)}`,
-      ].forEach((url) => {
-        const a = document.createElement("a");
-        a.href = url;
-        a.target = "_blank";
-        a.rel = "noopener noreferrer";
-        a.click();
+      browser.runtime.sendMessage({
+        type: "open-tabs",
+        urls: [
+          `https://www.reddit.com/r/BotBouncer/search/?q=${encodeURIComponent(username)}&restrict_sr=true`,
+          `https://redditmetis.com/user/${encodeURIComponent(username)}`,
+          `https://profileprobe.com/botornot/?u=${encodeURIComponent(username)}`,
+        ],
       });
     });
 

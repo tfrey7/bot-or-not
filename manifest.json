@@ -8,7 +8,10 @@
       "id": "bot-or-not@timothyfrey"
     }
   },
-  "permissions": ["storage"],
+  "background": {
+    "scripts": ["background.js"]
+  },
+  "permissions": ["storage", "tabs"],
   "content_scripts": [
     {
       "matches": ["*://reddit.com/*", "*://old.reddit.com/*", "*://www.reddit.com/*"],
