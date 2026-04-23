@@ -2,6 +2,11 @@
   const { version } = browser.runtime.getManifest();
   console.log(`[Bot or Not] v${version} loaded`);
 
+  const ICONS = {
+    "not-bot": browser.runtime.getURL("icon-not-bot.svg"),
+    bot: browser.runtime.getURL("icon-bot.svg"),
+  };
+
   // --- Report tracking (all Reddit pages) ---
 
   let pendingReportUsername = null;
@@ -45,10 +50,7 @@
             reports[pendingReportUsername] =
               (reports[pendingReportUsername] || 0) + 1;
             browser.storage.local.set({ reports });
-            updateReportIndicator(
-              pendingReportUsername,
-              reports[pendingReportUsername]
-            );
+            updateBadge(pendingReportUsername, reports[pendingReportUsername]);
           });
         }
       },
@@ -56,9 +58,20 @@
     );
   }
 
-  function updateReportIndicator(reportedUsername, count) {
+  function updateBadge(reportedUsername, count) {
+    const container = document.getElementById("bon-badge-container");
+    if (!container || container.dataset.username !== reportedUsername) {
+      return;
+    }
+    const badge = document.getElementById("bon-badge");
+    if (badge) {
+      badge.src = ICONS.bot;
+      badge.alt = "bot";
+      badge.title = `${reportedUsername}: bot`;
+      badge.className = "bon-badge bon-badge--bot";
+    }
     const indicator = document.getElementById("bon-report-count");
-    if (indicator && reportedUsername === username) {
+    if (indicator) {
       indicator.textContent = count;
       indicator.hidden = false;
     }
@@ -66,32 +79,31 @@
 
   listenForReports();
 
-  // --- Badge injection (profile pages only) ---
-
-  const profileMatch = window.location.pathname.match(
-    /^\/(?:user|u)\/([^/?#]+)/i
-  );
-  if (!profileMatch) {
-    return;
-  }
-
-  const username = profileMatch[1];
-  const STATES = {
-    "not-bot": {
-      icon: browser.runtime.getURL("icon-not-bot.svg"),
-      title: `${username}: not a bot — click to mark as bot`,
-      next: "bot",
-    },
-    bot: {
-      icon: browser.runtime.getURL("icon-bot.svg"),
-      title: `${username}: bot — click to mark as not a bot`,
-      next: "not-bot",
-    },
-  };
+  // --- Badge injection (profile pages only, SPA-aware) ---
 
   function injectBadge() {
-    if (document.getElementById("bon-badge-container")) {
+    const profileMatch = window.location.pathname.match(
+      /^\/(?:user|u)\/([^/?#]+)/i
+    );
+
+    // Not on a profile page — remove badge if present
+    if (!profileMatch) {
+      const existing = document.getElementById("bon-badge-container");
+      if (existing) {
+        existing.remove();
+      }
       return;
+    }
+
+    const username = profileMatch[1];
+
+    // Already injected for this user
+    const existing = document.getElementById("bon-badge-container");
+    if (existing) {
+      if (existing.dataset.username === username) {
+        return;
+      }
+      existing.remove();
     }
 
     const h1 = document.querySelector("h1");
@@ -99,39 +111,30 @@
       return;
     }
 
-    let state = "not-bot";
-
     const badge = document.createElement("img");
     badge.id = "bon-badge";
-    badge.className = `bon-badge bon-badge--${state}`;
-    badge.src = STATES[state].icon;
-    badge.alt = state;
-    badge.title = STATES[state].title;
+    badge.src = ICONS["not-bot"];
+    badge.alt = "not-bot";
+    badge.title = `${username}: not a bot`;
+    badge.className = "bon-badge bon-badge--not-bot";
 
-    function applyState(newState) {
-      state = newState;
-      badge.src = STATES[state].icon;
-      badge.alt = state;
-      badge.title = STATES[state].title;
+    const reportCount = document.createElement("span");
+    reportCount.id = "bon-report-count";
+    reportCount.className = "bon-report-count";
+    reportCount.hidden = true;
+
+    // Derive state from report count
+    browser.storage.local.get("reports").then(({ reports = {} }) => {
+      const count = reports[username] || 0;
+      const state = count > 0 ? "bot" : "not-bot";
+      badge.src = ICONS[state];
+      badge.title = `${username}: ${state === "bot" ? "bot" : "not a bot"}`;
       badge.className = `bon-badge bon-badge--${state}`;
-    }
-
-    // Restore saved state
-    browser.storage.local.get("bots").then(({ bots = [] }) => {
-      if (bots.includes(username)) {
-        applyState("bot");
+      badge.alt = state;
+      if (count > 0) {
+        reportCount.textContent = count;
+        reportCount.hidden = false;
       }
-    });
-
-    badge.addEventListener("click", () => {
-      applyState(STATES[state].next);
-      browser.storage.local.get("bots").then(({ bots = [] }) => {
-        const updated =
-          state === "bot"
-            ? [...new Set([...bots, username])]
-            : bots.filter((b) => b !== username);
-        browser.storage.local.set({ bots: updated });
-      });
     });
 
     const checkBtn = document.createElement("button");
@@ -154,20 +157,6 @@
       });
     });
 
-    const reportCount = document.createElement("span");
-    reportCount.id = "bon-report-count";
-    reportCount.className = "bon-report-count";
-    reportCount.hidden = true;
-
-    // Restore report count
-    browser.storage.local.get("reports").then(({ reports = {} }) => {
-      const count = reports[username];
-      if (count) {
-        reportCount.textContent = count;
-        reportCount.hidden = false;
-      }
-    });
-
     const badgeWrapper = document.createElement("span");
     badgeWrapper.className = "bon-badge-wrapper";
     badgeWrapper.appendChild(badge);
@@ -175,6 +164,7 @@
 
     const container = document.createElement("div");
     container.id = "bon-badge-container";
+    container.dataset.username = username;
     container.appendChild(badgeWrapper);
     container.appendChild(checkBtn);
     h1.appendChild(container);
@@ -182,12 +172,9 @@
 
   injectBadge();
 
-  // New Reddit is a SPA — the h1 may not exist yet on initial load
+  // Keep observer running permanently to handle SPA navigation
   const observer = new MutationObserver(() => {
     injectBadge();
-    if (document.getElementById("bon-badge-container")) {
-      observer.disconnect();
-    }
   });
   observer.observe(document.body, { childList: true, subtree: true });
 })();

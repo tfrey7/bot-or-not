@@ -7,6 +7,13 @@
 .bon-badge-wrapper {
   position: relative;
   display: inline-flex;
+  align-items: center;
+  align-self: center;
+  margin-top: 6px;
+}
+
+.bon-report-count[hidden] {
+  display: none;
 }
 
 .bon-report-count {
@@ -35,6 +42,8 @@
   border-radius: 4px;
   transition: opacity 0.15s, transform 0.15s;
   opacity: 1;
+  vertical-align: middle;
+  display: block;
 }
 
 .bon-badge:hover {
@@ -42,15 +51,18 @@
 }
 
 .bon-check-btn {
+  appearance: none;
   background: none;
   border: none;
   cursor: pointer;
   font-size: 1.1em;
   padding: 0;
+  margin: 0;
   margin-left: 6px;
-  line-height: 1;
+  line-height: 0;
   border-radius: 4px;
   transition: opacity 0.15s, transform 0.15s;
+  align-self: center;
 }
 
 .bon-check-btn:hover {
