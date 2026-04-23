@@ -4,6 +4,30 @@
   margin-left: 8px;
 }
 
+.bon-badge-wrapper {
+  position: relative;
+  display: inline-flex;
+}
+
+.bon-report-count {
+  position: absolute;
+  top: -3px;
+  right: -6px;
+  background: #ff4500;
+  color: #fff;
+  font-size: 0.45em;
+  font-weight: bold;
+  width: 1.2em;
+  height: 1.2em;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  padding: 0;
+  pointer-events: none;
+}
+
 .bon-badge {
   width: 1.1em;
   height: 1.1em;
