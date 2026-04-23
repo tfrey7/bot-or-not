@@ -8,7 +8,15 @@
     document.addEventListener(
       "click",
       function (e) {
-        if (e.target.closest(".report-button-content")) {
+        const reportSpan = e
+          .composedPath()
+          .find(
+            (el) =>
+              el.classList &&
+              el.classList.contains("report-button-content") &&
+              el.textContent.trim() === "Submit"
+          );
+        if (reportSpan) {
           console.log("[Bot or Not] Reported");
         }
       },
