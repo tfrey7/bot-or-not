@@ -20,7 +20,6 @@
           console.log("[Bot or Not] Reported");
         }
       },
-
       true // capture phase — fires before Reddit's own handlers
     );
   }
@@ -102,15 +101,17 @@
     checkBtn.textContent = "🔍";
 
     checkBtn.addEventListener("click", () => {
-      const url = `https://www.reddit.com/r/BotBouncer/search.json?q=${encodeURIComponent(username)}&restrict_sr=true&type=link`;
-      fetch(url)
-        .then((res) => res.json())
-        .then((data) => {
-          console.log("[Bot or Not] Bot Bouncer results for", username, data);
-        })
-        .catch((err) => {
-          console.error("[Bot or Not] Bot Bouncer query failed:", err);
-        });
+      [
+        `https://www.reddit.com/r/BotBouncer/search/?q=${encodeURIComponent(username)}&restrict_sr=true`,
+        `https://redditmetis.com/user/${encodeURIComponent(username)}`,
+        `https://profileprobe.com/botornot/?u=${encodeURIComponent(username)}`,
+      ].forEach((url) => {
+        const a = document.createElement("a");
+        a.href = url;
+        a.target = "_blank";
+        a.rel = "noopener noreferrer";
+        a.click();
+      });
     });
 
     const container = document.createElement("div");
