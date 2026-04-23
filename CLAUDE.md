@@ -10,6 +10,12 @@
 
 Run `npm run lint` and `npm run format` before committing.
 
+### Branching
+
+- Every feature gets its own branch off `main`.
+- Work stays on the feature branch until the user approves it, then it is merged into `main`.
+- Do not commit feature work directly to `main`.
+
 ## Architecture & Patterns
 
 ### Content Script Structure
