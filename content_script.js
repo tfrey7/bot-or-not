@@ -91,7 +91,37 @@
     h1.appendChild(container);
   }
 
+  function isReportButton(el) {
+    const label = (el.getAttribute("aria-label") || "").toLowerCase();
+    const text = (el.textContent || "").trim();
+    const href = el.getAttribute("href") || "";
+    return (
+      label.includes("report") || text === "Report" || href.includes("/report")
+    );
+  }
+
+  function listenForReports() {
+    document.addEventListener(
+      "click",
+      function (e) {
+        let el = e.target;
+        for (let i = 0; i < 5; i++) {
+          if (!el || el === document.body) {
+            break;
+          }
+          if (isReportButton(el)) {
+            console.log("[Bot or Not] Reported:", username);
+            break;
+          }
+          el = el.parentElement;
+        }
+      },
+      true // capture phase — fires before Reddit's own handlers
+    );
+  }
+
   injectBadge();
+  listenForReports();
 
   // New Reddit is a SPA — the h1 may not exist yet on initial load
   const observer = new MutationObserver(() => {
