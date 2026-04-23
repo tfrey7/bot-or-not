@@ -8,12 +8,12 @@
     document.addEventListener(
       "click",
       function (e) {
-        const btn = e.target.closest(".report-button-content button");
-        if (btn && btn.textContent.trim().toLowerCase() === "submit") {
+        if (e.target.closest(".report-button-content")) {
           console.log("[Bot or Not] Reported");
         }
       },
-      true, // capture phase — fires before Reddit's own handlers
+
+      true // capture phase — fires before Reddit's own handlers
     );
   }
 
