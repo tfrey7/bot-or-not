@@ -6,10 +6,12 @@
 
   function isReportButton(el) {
     const label = (el.getAttribute("aria-label") || "").toLowerCase();
-    const text = (el.textContent || "").trim();
+    const text = (el.textContent || "").trim().toLowerCase();
     const href = el.getAttribute("href") || "";
     return (
-      label.includes("report") || text === "Report" || href.includes("/report")
+      label.includes("report") ||
+      text.startsWith("report") ||
+      href.includes("/report")
     );
   }
 
@@ -18,7 +20,7 @@
       "click",
       function (e) {
         let el = e.target;
-        for (let i = 0; i < 5; i++) {
+        for (let i = 0; i < 15; i++) {
           if (!el || el === document.body) {
             break;
           }
