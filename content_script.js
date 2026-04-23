@@ -14,7 +14,7 @@
   function listenForReports() {
     document.addEventListener(
       "click",
-      function (e) {
+      async function (e) {
         // Cache the username from the nearest faceplate-tracker on every click,
         // so we have it ready if the user proceeds to submit a report
         const profileMatch = window.location.pathname.match(
@@ -46,12 +46,11 @@
               el.textContent.trim() === "Submit"
           );
         if (reportSpan && pendingReportUsername) {
-          browser.storage.local.get("reports").then(({ reports = {} }) => {
-            reports[pendingReportUsername] =
-              (reports[pendingReportUsername] || 0) + 1;
-            browser.storage.local.set({ reports });
-            updateBadge(pendingReportUsername, reports[pendingReportUsername]);
+          const { count } = await browser.runtime.sendMessage({
+            type: "report-user",
+            username: pendingReportUsername,
           });
+          updateBadge(pendingReportUsername, count);
         }
       },
       true // capture phase — fires before Reddit's own handlers
@@ -81,7 +80,7 @@
 
   // --- Badge injection (profile pages only, SPA-aware) ---
 
-  function injectBadge() {
+  async function injectBadge() {
     const profileMatch = window.location.pathname.match(
       /^\/(?:user|u)\/([^/?#]+)/i
     );
@@ -123,19 +122,19 @@
     reportCount.className = "bon-report-count";
     reportCount.hidden = true;
 
-    // Derive state from report count
-    browser.storage.local.get("reports").then(({ reports = {} }) => {
-      const count = reports[username] || 0;
-      const state = count > 0 ? "bot" : "not-bot";
-      badge.src = ICONS[state];
-      badge.title = `${username}: ${state === "bot" ? "bot" : "not a bot"}`;
-      badge.className = `bon-badge bon-badge--${state}`;
-      badge.alt = state;
-      if (count > 0) {
-        reportCount.textContent = count;
-        reportCount.hidden = false;
-      }
+    // Fetch initial state from background
+    const { count, isBot } = await browser.runtime.sendMessage({
+      type: "get-user-state",
+      username,
     });
+    if (isBot) {
+      badge.src = ICONS.bot;
+      badge.title = `${username}: bot`;
+      badge.className = "bon-badge bon-badge--bot";
+      badge.alt = "bot";
+      reportCount.textContent = count;
+      reportCount.hidden = false;
+    }
 
     const checkBtn = document.createElement("button");
     checkBtn.id = "bon-check-btn";

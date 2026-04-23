@@ -39,7 +39,7 @@ Run `npm run lint` and `npm run format` before committing.
 
 ### Async Style
 
-- Use **promise chains** (`.then().catch()`) throughout — do not use `async/await`.
+- Use **async/await** throughout — avoid `.then()` chains.
 
 ### Naming Conventions
 
