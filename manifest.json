@@ -1,0 +1,30 @@
+{
+  "manifest_version": 3,
+  "name": "Bot or Not",
+  "version": "1.0.0",
+  "description": "Flag suspicious Reddit accounts",
+  "permissions": ["storage"],
+  "content_scripts": [
+    {
+      "matches": ["*://reddit.com/*", "*://old.reddit.com/*", "*://www.reddit.com/*"],
+      "js": ["content_script.js"],
+      "css": ["content_script.css"]
+    }
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Bot or Not",
+    "default_icon": "icon.svg"
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["icon.svg", "icon-bot.svg", "icon-not-bot.svg"],
+      "matches": ["*://reddit.com/*", "*://old.reddit.com/*", "*://www.reddit.com/*"]
+    }
+  ],
+  "icons": {
+    "16": "icon.svg",
+    "48": "icon.svg",
+    "128": "icon.svg"
+  }
+}

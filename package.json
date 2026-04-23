@@ -1,0 +1,19 @@
+{
+  "name": "bot-or-not",
+  "version": "1.0.0",
+  "description": "",
+  "scripts": {
+    "dev": "web-ext run --source-dir . --ignore-files node_modules/**",
+    "format": "prettier --write content_script.js",
+    "lint": "eslint content_script.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "type": "module",
+  "private": true,
+  "devDependencies": {
+    "eslint": "^10.2.0",
+    "eslint-config-prettier": "^10.1.8",
+    "prettier": "^3.8.1",
+    "web-ext": "^10.1.0"
+  }
+}
