@@ -1,13 +1,13 @@
 {
   "name": "bot-or-not",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "",
   "scripts": {
     "dev": "web-ext run --source-dir . --ignore-files node_modules/**",
     "build": "web-ext build --source-dir . --ignore-files node_modules/** .idea/** --overwrite-dest",
     "sign": "source .env && web-ext sign --api-key=$AMO_API_KEY --api-secret=$AMO_API_SECRET --channel unlisted --source-dir . --ignore-files node_modules/** .idea/**",
-    "format": "prettier --write content_script.js",
-    "lint": "eslint content_script.js",
+    "format": "prettier --write content_script.js background.js",
+    "lint": "eslint content_script.js background.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "type": "module",

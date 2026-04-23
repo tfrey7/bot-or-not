@@ -50,7 +50,9 @@
             type: "report-user",
             username: pendingReportUsername,
           });
+          knownBots.add(pendingReportUsername);
           updateBadge(pendingReportUsername, count);
+          markBots();
         }
       },
       true // capture phase — fires before Reddit's own handlers
@@ -77,6 +79,53 @@
   }
 
   listenForReports();
+
+  // --- Inline bot indicators (all Reddit pages) ---
+
+  let knownBots = new Set();
+  let botsLoaded = false;
+
+  async function loadKnownBots() {
+    const { bots } = await browser.runtime.sendMessage({
+      type: "get-known-bots",
+    });
+    knownBots = new Set(bots);
+    botsLoaded = true;
+    markBots();
+  }
+
+  function markBots() {
+    if (!botsLoaded) {
+      return;
+    }
+    document
+      .querySelectorAll(
+        'a[href*="/user/"]:not([data-bon-marked]), a[href*="/u/"]:not([data-bon-marked])'
+      )
+      .forEach((el) => {
+        const href = el.getAttribute("href");
+        const match = href.match(/\/(?:user|u)\/([^/?#]+)/i);
+        if (!match) {
+          return;
+        }
+        if (el.closest('[id^="profile-tab"]')) {
+          return;
+        }
+        el.dataset.bonMarked = "true";
+        const username = match[1];
+        if (!knownBots.has(username)) {
+          return;
+        }
+        const icon = document.createElement("img");
+        icon.src = ICONS.bot;
+        icon.className = "bon-inline-bot-icon";
+        icon.title = `${username}: bot`;
+        icon.alt = "bot";
+        el.appendChild(icon);
+      });
+  }
+
+  loadKnownBots();
 
   // --- Badge injection (profile pages only, SPA-aware) ---
 
@@ -168,9 +217,10 @@
 
   injectBadge();
 
-  // Keep observer running permanently to handle SPA navigation
+  // Keep observer running permanently to handle SPA navigation and dynamic content
   const observer = new MutationObserver(() => {
     injectBadge();
+    markBots();
   });
   observer.observe(document.body, { childList: true, subtree: true });
 })();
