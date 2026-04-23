@@ -4,6 +4,7 @@
   "description": "",
   "scripts": {
     "dev": "web-ext run --source-dir . --ignore-files node_modules/**",
+    "build": "web-ext build --source-dir . --ignore-files node_modules/** .idea/** --overwrite-dest",
     "format": "prettier --write content_script.js",
     "lint": "eslint content_script.js",
     "test": "echo \"Error: no test specified\" && exit 1"
