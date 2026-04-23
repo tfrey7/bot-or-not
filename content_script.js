@@ -22,13 +22,6 @@
           if (!el || el === document.body) {
             break;
           }
-          // DEBUG: log every ancestor so we can identify the report button's real DOM
-          console.log("[Bot or Not] click ancestor", i, el.tagName, {
-            text: (el.textContent || "").trim().slice(0, 50),
-            ariaLabel: el.getAttribute("aria-label"),
-            href: el.getAttribute("href"),
-            role: el.getAttribute("role"),
-          });
           if (isReportButton(el)) {
             console.log("[Bot or Not] Reported");
             break;
