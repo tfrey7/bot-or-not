@@ -5,14 +5,7 @@
   // --- Report tracking (all Reddit pages) ---
 
   function isReportButton(el) {
-    const label = (el.getAttribute("aria-label") || "").toLowerCase();
-    const text = (el.textContent || "").trim().toLowerCase();
-    const href = el.getAttribute("href") || "";
-    return (
-      label.includes("report") ||
-      text.startsWith("report") ||
-      href.includes("/report")
-    );
+    return el.classList && el.classList.contains("report-button-content");
   }
 
   function listenForReports() {
