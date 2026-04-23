@@ -3,7 +3,7 @@
   "name": "Bot or Not",
   "version": "1.0.1",
   "description": "Flag suspicious Reddit accounts",
-  "permissions": ["storage", "tabs"],
+  "permissions": ["storage"],
   "content_scripts": [
     {
       "matches": ["*://reddit.com/*", "*://old.reddit.com/*", "*://www.reddit.com/*"],

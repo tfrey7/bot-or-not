@@ -8,8 +8,15 @@
     document.addEventListener(
       "click",
       function (e) {
-        const btn = e.target.closest(".report-button-content button");
-        if (btn && btn.textContent.trim().toLowerCase() === "submit") {
+        const reportSpan = e
+          .composedPath()
+          .find(
+            (el) =>
+              el.classList &&
+              el.classList.contains("report-button-content") &&
+              el.textContent.trim() === "Submit"
+          );
+        if (reportSpan) {
           console.log("[Bot or Not] Reported");
         }
       },
@@ -94,8 +101,17 @@
     checkBtn.textContent = "🔍";
 
     checkBtn.addEventListener("click", () => {
-      const url = `https://www.reddit.com/r/BotBouncer/search/?q=${encodeURIComponent(username)}&restrict_sr=true`;
-      browser.tabs.create({ url });
+      [
+        `https://www.reddit.com/r/BotBouncer/search/?q=${encodeURIComponent(username)}&restrict_sr=true`,
+        `https://redditmetis.com/user/${encodeURIComponent(username)}`,
+        `https://profileprobe.com/botornot/?u=${encodeURIComponent(username)}`,
+      ].forEach((url) => {
+        const a = document.createElement("a");
+        a.href = url;
+        a.target = "_blank";
+        a.rel = "noopener noreferrer";
+        a.click();
+      });
     });
 
     const container = document.createElement("div");
