@@ -23,17 +23,17 @@
         if (profileMatch) {
           pendingReportUsername = profileMatch[1];
         } else {
-          const tracker = e
+          const authorEl = e
             .composedPath()
             .find(
               (el) =>
-                el.tagName && el.tagName.toLowerCase() === "faceplate-tracker"
+                el.tagName &&
+                (el.tagName.toLowerCase() === "shreddit-post" ||
+                  el.tagName.toLowerCase() === "shreddit-comment") &&
+                el.getAttribute("author")
             );
-          if (tracker) {
-            const authorEl = tracker.querySelector(".author-name");
-            if (authorEl) {
-              pendingReportUsername = authorEl.textContent.trim();
-            }
+          if (authorEl) {
+            pendingReportUsername = authorEl.getAttribute("author");
           }
         }
 
@@ -52,7 +52,7 @@
           });
           knownBots.add(pendingReportUsername);
           updateBadge(pendingReportUsername, count);
-          markBots();
+          markUser(pendingReportUsername);
         }
       },
       true // capture phase — fires before Reddit's own handlers
@@ -116,6 +116,31 @@
         if (!knownBots.has(username)) {
           return;
         }
+        const icon = document.createElement("img");
+        icon.src = ICONS.bot;
+        icon.className = "bon-inline-bot-icon";
+        icon.title = `${username}: bot`;
+        icon.alt = "bot";
+        el.appendChild(icon);
+      });
+  }
+
+  function markUser(username) {
+    document
+      .querySelectorAll('a[href*="/user/"], a[href*="/u/"]')
+      .forEach((el) => {
+        const href = el.getAttribute("href");
+        const match = href.match(/\/(?:user|u)\/([^/?#]+)/i);
+        if (!match || match[1] !== username) {
+          return;
+        }
+        if (el.closest('[id^="profile-tab"]')) {
+          return;
+        }
+        if (el.querySelector(".bon-inline-bot-icon")) {
+          return;
+        }
+        el.dataset.bonMarked = "true";
         const icon = document.createElement("img");
         icon.src = ICONS.bot;
         icon.className = "bon-inline-bot-icon";
