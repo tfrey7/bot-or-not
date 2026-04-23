@@ -4,24 +4,13 @@
 
   // --- Report tracking (all Reddit pages) ---
 
-  function isReportButton(el) {
-    return el.classList && el.classList.contains("report-button-content");
-  }
-
   function listenForReports() {
     document.addEventListener(
       "click",
       function (e) {
-        let el = e.target;
-        for (let i = 0; i < 15; i++) {
-          if (!el || el === document.body) {
-            break;
-          }
-          if (isReportButton(el)) {
-            console.log("[Bot or Not] Reported");
-            break;
-          }
-          el = el.parentElement;
+        const btn = e.target.closest(".report-button-content button");
+        if (btn && btn.textContent.trim().toLowerCase() === "submit") {
+          console.log("[Bot or Not] Reported");
         }
       },
       true, // capture phase — fires before Reddit's own handlers
