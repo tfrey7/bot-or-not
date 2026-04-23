@@ -3,6 +3,11 @@
   "name": "Bot or Not",
   "version": "1.0.1",
   "description": "Flag suspicious Reddit accounts",
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "bot-or-not@timothyfrey"
+    }
+  },
   "permissions": ["storage"],
   "content_scripts": [
     {
