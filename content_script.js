@@ -122,20 +122,6 @@
     reportCount.className = "bon-report-count";
     reportCount.hidden = true;
 
-    // Fetch initial state from background
-    const { count, isBot } = await browser.runtime.sendMessage({
-      type: "get-user-state",
-      username,
-    });
-    if (isBot) {
-      badge.src = ICONS.bot;
-      badge.title = `${username}: bot`;
-      badge.className = "bon-badge bon-badge--bot";
-      badge.alt = "bot";
-      reportCount.textContent = count;
-      reportCount.hidden = false;
-    }
-
     const checkBtn = document.createElement("button");
     checkBtn.id = "bon-check-btn";
     checkBtn.className = "bon-check-btn";
@@ -164,6 +150,20 @@
     container.appendChild(badgeWrapper);
     container.appendChild(checkBtn);
     h1.appendChild(container);
+
+    // Fetch initial state after container is in DOM to prevent race condition
+    const { count, isBot } = await browser.runtime.sendMessage({
+      type: "get-user-state",
+      username,
+    });
+    if (isBot) {
+      badge.src = ICONS.bot;
+      badge.title = `${username}: bot`;
+      badge.className = "bon-badge bon-badge--bot";
+      badge.alt = "bot";
+      reportCount.textContent = count;
+      reportCount.hidden = false;
+    }
   }
 
   injectBadge();

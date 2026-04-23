@@ -1,6 +1,6 @@
 {
   "name": "bot-or-not",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "",
   "scripts": {
     "dev": "web-ext run --source-dir . --ignore-files node_modules/**",
