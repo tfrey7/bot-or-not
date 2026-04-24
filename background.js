@@ -13,6 +13,9 @@ browser.runtime.onMessage.addListener((message) => {
   if (message.type === "get-known-bots") {
     return handleGetKnownBots();
   }
+  if (message.type === "get-all-reports") {
+    return handleGetAllReports();
+  }
 });
 
 function handleOpenTabs(message) {
@@ -31,6 +34,11 @@ async function handleReportUser(message) {
 async function handleGetKnownBots() {
   const { reports = {} } = await browser.storage.local.get("reports");
   return { bots: Object.keys(reports) };
+}
+
+async function handleGetAllReports() {
+  const { reports = {} } = await browser.storage.local.get("reports");
+  return { reports };
 }
 
 async function handleGetUserState(message) {
