@@ -12,9 +12,8 @@ Run `npm run lint` and `npm run format` before committing.
 
 ### Branching
 
-- Every feature gets its own branch off `main`.
-- Work stays on the feature branch until the user approves it, then it is merged into `main`.
-- Do not commit feature work directly to `main`.
+- Work directly on `main` — do not create feature branches.
+- Hold off on `git commit` until a change is confirmed working, then commit it to `main`.
 
 ## Architecture & Patterns
 
