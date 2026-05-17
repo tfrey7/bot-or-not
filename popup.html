@@ -32,12 +32,79 @@
       background: #4caf50;
       margin-right: 0.375em;
     }
+    .bon-reports-heading-row {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 0.5em;
+      padding-top: 0.5em;
+      margin: 0 0 0.5em;
+      border-top: 1px solid #eee;
+    }
     #bon-reports-heading {
       font-size: 0.8rem;
       color: #666;
-      margin: 0 0 0.5em;
-      padding-top: 0.5em;
-      border-top: 1px solid #eee;
+      margin: 0;
+    }
+    #bon-clear-btn {
+      background: none;
+      border: none;
+      padding: 0;
+      cursor: pointer;
+      color: #c0392b;
+      font-size: 0.75rem;
+      transition: opacity 0.15s, transform 0.15s;
+    }
+    #bon-clear-btn:hover {
+      text-decoration: underline;
+    }
+    #bon-clear-btn[hidden] {
+      display: none;
+    }
+    .bon-modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.4);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1em;
+    }
+    .bon-modal-backdrop[hidden] {
+      display: none;
+    }
+    .bon-modal {
+      background: #fff;
+      border-radius: 0.375em;
+      padding: 1em;
+      box-shadow: 0 0.25em 0.75em rgba(0, 0, 0, 0.2);
+      max-width: 100%;
+      font-size: 0.85rem;
+    }
+    .bon-modal p {
+      margin: 0 0 0.75em;
+    }
+    .bon-modal-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 0.5em;
+    }
+    .bon-modal-actions button {
+      font-size: 0.8rem;
+      padding: 0.375em 0.75em;
+      border-radius: 0.25em;
+      border: 1px solid #ccc;
+      background: #f5f5f5;
+      cursor: pointer;
+      transition: opacity 0.15s, transform 0.15s;
+    }
+    .bon-modal-actions button:hover {
+      opacity: 0.85;
+    }
+    #bon-confirm-clear {
+      background: #c0392b;
+      border-color: #c0392b;
+      color: #fff;
     }
     #bon-reports-list {
       list-style: none;
@@ -47,12 +114,18 @@
       overflow-y: auto;
       font-size: 0.85rem;
     }
-    #bon-reports-list li {
-      display: flex;
-      justify-content: space-between;
-      align-items: baseline;
+    #bon-reports-list > li {
+      padding: 0.25em 0;
+      border-bottom: 1px solid #f5f5f5;
+    }
+    #bon-reports-list > li:last-child {
+      border-bottom: none;
+    }
+    .bon-report-summary {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto 2.5em 1em;
       gap: 0.5em;
-      padding: 0.2em 0;
+      align-items: baseline;
     }
     #bon-reports-list a {
       color: #0366d6;
@@ -64,10 +137,66 @@
     #bon-reports-list a:hover {
       text-decoration: underline;
     }
+    .bon-username-cell {
+      display: inline-flex;
+      align-items: baseline;
+      gap: 0.3em;
+      min-width: 0;
+      overflow: hidden;
+    }
+    .bon-report-date {
+      color: #999;
+      font-size: 0.7rem;
+      white-space: nowrap;
+    }
+    .bon-status-icon {
+      font-size: 0.75rem;
+      flex-shrink: 0;
+      line-height: 1;
+    }
     .bon-report-count {
       color: #999;
       font-size: 0.75rem;
+      text-align: right;
+    }
+    .bon-expand-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: #999;
+      font-size: 0.7rem;
+      padding: 0;
+      transition: transform 0.15s;
+      line-height: 1;
+    }
+    .bon-expand-btn[aria-expanded="true"] {
+      transform: rotate(90deg);
+    }
+    .bon-report-history {
+      list-style: none;
+      padding: 0.25em 0 0.25em 1em;
+      margin: 0;
+      font-size: 0.75rem;
+    }
+    .bon-report-history li {
+      display: flex;
+      gap: 0.5em;
+      align-items: baseline;
+      padding: 0.1em 0;
+    }
+    .bon-report-history time {
+      color: #999;
+      font-size: 0.7rem;
+      white-space: nowrap;
       flex-shrink: 0;
+    }
+    .bon-report-history-meta {
+      color: #666;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      min-width: 0;
+      flex: 1;
     }
     .bon-empty {
       font-size: 0.8rem;
@@ -85,8 +214,20 @@
       <p class="bon-status"><span class="bon-dot"></span>Active on Reddit</p>
     </div>
   </div>
-  <h2 id="bon-reports-heading">Reported users</h2>
+  <div class="bon-reports-heading-row">
+    <h2 id="bon-reports-heading">Reported users</h2>
+    <button type="button" id="bon-clear-btn" hidden>Clear all</button>
+  </div>
   <ul id="bon-reports-list"></ul>
+  <div id="bon-confirm-modal" class="bon-modal-backdrop" hidden>
+    <div class="bon-modal" role="dialog" aria-modal="true" aria-labelledby="bon-modal-text">
+      <p id="bon-modal-text">Clear all reported users? This can't be undone.</p>
+      <div class="bon-modal-actions">
+        <button type="button" id="bon-cancel-clear">Cancel</button>
+        <button type="button" id="bon-confirm-clear">Clear all</button>
+      </div>
+    </div>
+  </div>
   <script src="popup.js"></script>
 </body>
 </html>

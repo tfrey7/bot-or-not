@@ -9,31 +9,76 @@
 
   // --- Report tracking (all Reddit pages) ---
 
-  let pendingReportUsername = null;
+  let pendingReport = null;
+
+  function buildReportContext(e) {
+    const sourceUrl = window.location.href;
+    const profileMatch = window.location.pathname.match(
+      /^\/(?:user|u)\/([^/?#]+)/i
+    );
+    const authorEl = e
+      .composedPath()
+      .find(
+        (el) =>
+          el.tagName &&
+          (el.tagName.toLowerCase() === "shreddit-post" ||
+            el.tagName.toLowerCase() === "shreddit-comment") &&
+          el.getAttribute("author")
+      );
+
+    let username = null;
+    const context = { sourceUrl };
+
+    if (profileMatch) {
+      username = profileMatch[1];
+      context.kind = "profile";
+    } else if (authorEl) {
+      username = authorEl.getAttribute("author");
+    }
+
+    if (authorEl) {
+      const tag = authorEl.tagName.toLowerCase();
+      if (!context.kind) {
+        context.kind = tag === "shreddit-post" ? "post" : "comment";
+      }
+      context.permalink = authorEl.getAttribute("permalink") || null;
+      context.subreddit =
+        authorEl.getAttribute("subreddit-prefixed-name") ||
+        authorEl.getAttribute("subreddit-name") ||
+        null;
+      if (tag === "shreddit-post") {
+        context.postTitle = authorEl.getAttribute("post-title") || null;
+        context.postId = authorEl.id || null;
+      } else {
+        context.commentId =
+          authorEl.getAttribute("thingid") ||
+          authorEl.getAttribute("comment-id") ||
+          authorEl.id ||
+          null;
+      }
+    }
+
+    if (!username) {
+      return null;
+    }
+    return { username, context };
+  }
 
   function listenForReports() {
     document.addEventListener(
       "click",
       async function (e) {
-        // Cache the username from the nearest faceplate-tracker on every click,
-        // so we have it ready if the user proceeds to submit a report
-        const profileMatch = window.location.pathname.match(
-          /^\/(?:user|u)\/([^/?#]+)/i
-        );
-        if (profileMatch) {
-          pendingReportUsername = profileMatch[1];
-        } else {
-          const authorEl = e
-            .composedPath()
-            .find(
-              (el) =>
-                el.tagName &&
-                (el.tagName.toLowerCase() === "shreddit-post" ||
-                  el.tagName.toLowerCase() === "shreddit-comment") &&
-                el.getAttribute("author")
-            );
-          if (authorEl) {
-            pendingReportUsername = authorEl.getAttribute("author");
+        // Cache report context from the nearest shreddit element on every click,
+        // so we have it ready if the user proceeds to submit a report.
+        // Don't downgrade a captured post/comment context to profile-only —
+        // Reddit's report dialog clicks happen outside the post element, so the
+        // initial "..." button click is our only chance to capture post info.
+        const cached = buildReportContext(e);
+        if (cached) {
+          const hasRicherInfo = !!cached.context.permalink;
+          const alreadyHavePostInfo = !!pendingReport?.context?.permalink;
+          if (hasRicherInfo || !alreadyHavePostInfo) {
+            pendingReport = cached;
           }
         }
 
@@ -45,14 +90,17 @@
               el.classList.contains("report-button-content") &&
               el.textContent.trim() === "Submit"
           );
-        if (reportSpan && pendingReportUsername) {
+        if (reportSpan && pendingReport) {
+          const { username, context } = pendingReport;
           const { count } = await browser.runtime.sendMessage({
             type: "report-user",
-            username: pendingReportUsername,
+            username,
+            context,
           });
-          knownBots.add(pendingReportUsername);
-          updateBadge(pendingReportUsername, count);
-          markUser(pendingReportUsername);
+          knownBots.add(username);
+          updateBadge(username, count);
+          markUser(username);
+          pendingReport = null;
         }
       },
       true // capture phase — fires before Reddit's own handlers
@@ -242,10 +290,89 @@
 
   injectBadge();
 
+  // --- Passive ban/deletion detection ---
+
+  // Track what we've already reported per page-load to avoid spam
+  let lastUserStatusReported = null;
+  const reportedPostPermalinks = new Set();
+
+  function detectUserStatus() {
+    const profileMatch = window.location.pathname.match(
+      /^\/(?:user|u)\/([^/?#]+)/i
+    );
+    if (!profileMatch) return;
+    const username = profileMatch[1];
+    const bodyText = document.body?.textContent || "";
+
+    let status = null;
+    if (/account has been suspended/i.test(bodyText)) {
+      status = "suspended";
+    } else if (/nobody on Reddit goes by that name/i.test(bodyText)) {
+      status = "deleted";
+    }
+
+    if (!status) return;
+    const key = `${username}#${status}`;
+    if (lastUserStatusReported === key) return;
+    lastUserStatusReported = key;
+    browser.runtime.sendMessage({
+      type: "update-user-status",
+      username,
+      status,
+    });
+  }
+
+  function detectPostStatuses() {
+    document
+      .querySelectorAll("shreddit-post:not([data-bon-status-checked])")
+      .forEach((post) => {
+        const permalink = post.getAttribute("permalink");
+        if (!permalink) return;
+        post.dataset.bonStatusChecked = "true";
+
+        const removedBy = post.getAttribute("removed-by-category");
+        const author = post.getAttribute("author");
+        let status = null;
+        if (removedBy && removedBy !== "" && removedBy !== "none") {
+          status = "removed";
+        } else if (author === "[deleted]") {
+          status = "deleted";
+        }
+
+        if (!status) return;
+        if (reportedPostPermalinks.has(permalink)) return;
+        reportedPostPermalinks.add(permalink);
+        browser.runtime.sendMessage({
+          type: "update-post-status",
+          permalink,
+          status,
+        });
+      });
+  }
+
+  function runStatusDetection() {
+    detectUserStatus();
+    detectPostStatuses();
+  }
+
+  runStatusDetection();
+
+  // Reset detection state on SPA navigation
+  let lastUrl = window.location.href;
+  function maybeResetForNavigation() {
+    if (window.location.href === lastUrl) return;
+    lastUrl = window.location.href;
+    lastUserStatusReported = null;
+    reportedPostPermalinks.clear();
+    pendingReport = null;
+  }
+
   // Keep observer running permanently to handle SPA navigation and dynamic content
   const observer = new MutationObserver(() => {
+    maybeResetForNavigation();
     injectBadge();
     markBots();
+    runStatusDetection();
   });
   observer.observe(document.body, { childList: true, subtree: true });
 })();
