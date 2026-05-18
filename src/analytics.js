@@ -1,0 +1,1150 @@
+// Investigation analytics dashboard. Pure render over the reports object —
+// pulls timing, token, and cost metadata off each stored investigation and
+// renders summary cards, SVG charts, per-model breakdown, and top spenders.
+//
+// Loaded by reports.html after reports.js. Entry point:
+//   bonRenderAnalytics(reports, containerEl) -> void
+// The function wipes the container and rebuilds it. No storage I/O.
+
+(function () {
+  "use strict";
+
+  const MS_PER_DAY = 86_400_000;
+  const SVG_NS = "http://www.w3.org/2000/svg";
+
+  // Inline pricing — duplicated from bot_analysis.js so analytics works in a
+  // surface that doesn't load the background module. Keep in sync.
+  const BON_PRICING = {
+    "claude-opus-4-7": {
+      input: 15,
+      output: 75,
+      cacheRead: 1.5,
+      cacheWrite5m: 18.75,
+      cacheWrite1h: 30,
+    },
+    "claude-sonnet-4-6": {
+      input: 3,
+      output: 15,
+      cacheRead: 0.3,
+      cacheWrite5m: 3.75,
+      cacheWrite1h: 6,
+    },
+    "claude-haiku-4-5": {
+      input: 1,
+      output: 5,
+      cacheRead: 0.1,
+      cacheWrite5m: 1.25,
+      cacheWrite1h: 2,
+    },
+  };
+
+  function lookupPricing(model) {
+    if (!model) return null;
+    if (BON_PRICING[model]) return BON_PRICING[model];
+    for (const k of Object.keys(BON_PRICING)) {
+      if (model.startsWith(k)) return BON_PRICING[k];
+    }
+    return null;
+  }
+
+  // ---------- Public ----------
+
+  function bonRenderAnalytics(reports, container) {
+    if (!container) return;
+    container.replaceChildren();
+
+    const investigations = collectInvestigations(reports);
+    const runs = investigations.filter((i) => i.status === "done");
+    const errors = investigations.filter((i) => i.status === "error").length;
+
+    const section = document.createElement("section");
+    section.className = "bon-analytics";
+    section.appendChild(buildHeader(runs.length, errors));
+
+    if (!runs.length) {
+      section.appendChild(buildEmptyState());
+      container.appendChild(section);
+      return;
+    }
+
+    const summary = summarize(runs);
+
+    section.appendChild(buildStatGrid(summary));
+
+    const charts = document.createElement("div");
+    charts.className = "bon-analytics-charts";
+    charts.appendChild(
+      buildChartCard(
+        "Cumulative spend",
+        runs.length === 1
+          ? `${fmtUsd(summary.totalCost)} on a single run`
+          : `${fmtUsd(summary.totalCost)} across ${runs.length} investigations`,
+        renderCumulativeCost(runs, summary)
+      )
+    );
+    charts.appendChild(
+      buildChartCard(
+        "Investigations per day",
+        `${summary.daysActive} active day${summary.daysActive === 1 ? "" : "s"} · ${fmtNum(summary.runsPerActiveDay, 1)} avg / active day`,
+        renderDailyActivity(runs)
+      )
+    );
+    charts.appendChild(
+      buildChartCard(
+        "Duration distribution",
+        `median ${fmtDuration(summary.medianDuration)} · p95 ${fmtDuration(summary.p95Duration)}`,
+        renderDurationHistogram(runs)
+      )
+    );
+    charts.appendChild(
+      buildChartCard(
+        "Token economy",
+        `${fmtThousands(summary.totalTokens)} tokens · ${fmtPercent(summary.cacheHitRate, 0)} served from cache`,
+        renderTokenMix(summary)
+      )
+    );
+    section.appendChild(charts);
+
+    section.appendChild(buildModelTable(runs));
+    section.appendChild(buildTopList(runs));
+    section.appendChild(buildFootnote(summary));
+
+    container.appendChild(section);
+  }
+
+  // ---------- Data collection ----------
+
+  function collectInvestigations(reports) {
+    const out = [];
+    for (const r of reports || []) {
+      const inv = r?.investigation;
+      if (!inv) continue;
+
+      const calls = [];
+      if (inv.usage) {
+        calls.push({
+          kind: "1d",
+          model: inv.model || null,
+          usage: inv.usage,
+          costUsd:
+            typeof inv.costUsd === "number"
+              ? inv.costUsd
+              : computeCostFallback(inv.usage, inv.model, inv.webSearchCount),
+          webSearchCount: inv.webSearchCount || 0,
+        });
+      }
+      if (inv.triangleUsage) {
+        calls.push({
+          kind: "triangle",
+          model: inv.triangleModel || null,
+          usage: inv.triangleUsage,
+          costUsd:
+            typeof inv.triangleCostUsd === "number"
+              ? inv.triangleCostUsd
+              : computeCostFallback(inv.triangleUsage, inv.triangleModel, 0),
+          webSearchCount: 0,
+        });
+      }
+      const totalCost = calls.reduce((s, c) => s + (c.costUsd || 0), 0);
+
+      out.push({
+        username: r.username,
+        status: inv.status,
+        runAt: inv.runAt || null,
+        durationMs: typeof inv.durationMs === "number" ? inv.durationMs : null,
+        verdict: inv.verdict || null,
+        postsFetched: inv.postsFetched || 0,
+        commentsFetched: inv.commentsFetched || 0,
+        calls,
+        totalCost,
+      });
+    }
+    return out;
+  }
+
+  // Recomputes cost from raw usage + model if the stored investigation predates
+  // costUsd being persisted. Same formula as bot_analysis.js.
+  function computeCostFallback(usage, model, webSearchCount) {
+    const p = lookupPricing(model);
+    if (!p || !usage) return null;
+    const inTok = usage.input_tokens || 0;
+    const outTok = usage.output_tokens || 0;
+    const cacheRead = usage.cache_read_input_tokens || 0;
+    const cacheCreate = usage.cache_creation_input_tokens || 0;
+    const w5 = usage.cache_creation?.ephemeral_5m_input_tokens ?? cacheCreate;
+    const w1 = usage.cache_creation?.ephemeral_1h_input_tokens ?? 0;
+    return (
+      (inTok * p.input +
+        outTok * p.output +
+        cacheRead * p.cacheRead +
+        w5 * p.cacheWrite5m +
+        w1 * p.cacheWrite1h) /
+        1_000_000 +
+      (webSearchCount || 0) * 0.01
+    );
+  }
+
+  function summarize(runs) {
+    const s = {
+      count: runs.length,
+      totalCost: 0,
+      totalDuration: 0,
+      totalApiCalls: 0,
+      totalWebSearches: 0,
+      totalInput: 0,
+      totalOutput: 0,
+      totalCacheRead: 0,
+      totalCacheWrite: 0,
+      totalPosts: 0,
+      totalComments: 0,
+      cacheSavingsUsd: 0,
+      models: {},
+    };
+    const durations = [];
+    const days = new Set();
+    let firstRun = Infinity;
+    let lastRun = -Infinity;
+
+    for (const r of runs) {
+      s.totalCost += r.totalCost;
+      if (typeof r.durationMs === "number") {
+        s.totalDuration += r.durationMs;
+        durations.push(r.durationMs);
+      }
+      s.totalPosts += r.postsFetched;
+      s.totalComments += r.commentsFetched;
+      if (r.runAt) {
+        firstRun = Math.min(firstRun, r.runAt);
+        lastRun = Math.max(lastRun, r.runAt);
+        const d = new Date(r.runAt);
+        days.add(`${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`);
+      }
+      for (const c of r.calls) {
+        s.totalApiCalls++;
+        s.totalWebSearches += c.webSearchCount || 0;
+        const u = c.usage || {};
+        s.totalInput += u.input_tokens || 0;
+        s.totalOutput += u.output_tokens || 0;
+        s.totalCacheRead += u.cache_read_input_tokens || 0;
+        s.totalCacheWrite += u.cache_creation_input_tokens || 0;
+        if (c.model) {
+          const m = s.models[c.model] || {
+            model: c.model,
+            calls: 0,
+            cost: 0,
+            in: 0,
+            out: 0,
+            cacheRead: 0,
+            cacheWrite: 0,
+            duration: 0,
+          };
+          m.calls++;
+          m.cost += c.costUsd || 0;
+          m.in += u.input_tokens || 0;
+          m.out += u.output_tokens || 0;
+          m.cacheRead += u.cache_read_input_tokens || 0;
+          m.cacheWrite += u.cache_creation_input_tokens || 0;
+          s.models[c.model] = m;
+        }
+      }
+    }
+
+    durations.sort((a, b) => a - b);
+    s.daysActive = days.size;
+    s.firstRunAt = isFinite(firstRun) ? firstRun : null;
+    s.lastRunAt = isFinite(lastRun) ? lastRun : null;
+    s.avgCost = s.count ? s.totalCost / s.count : 0;
+    s.medianCost = s.count
+      ? percentile(
+          runs.map((r) => r.totalCost).sort((a, b) => a - b),
+          0.5
+        )
+      : 0;
+    s.maxCost = s.count ? Math.max(...runs.map((r) => r.totalCost)) : 0;
+    s.avgDuration = durations.length ? s.totalDuration / durations.length : 0;
+    s.medianDuration = percentile(durations, 0.5);
+    s.p95Duration = percentile(durations, 0.95);
+    s.totalTokens =
+      s.totalInput + s.totalOutput + s.totalCacheRead + s.totalCacheWrite;
+    s.cacheHitRate =
+      s.totalInput + s.totalCacheRead > 0
+        ? s.totalCacheRead / (s.totalInput + s.totalCacheRead)
+        : 0;
+    s.runsPerActiveDay = s.daysActive ? s.count / s.daysActive : 0;
+    // Estimate dollars saved by cache reads vs. paying full input price.
+    let savings = 0;
+    for (const m of Object.values(s.models)) {
+      const p = lookupPricing(m.model);
+      if (!p) continue;
+      savings += (m.cacheRead * (p.input - p.cacheRead)) / 1_000_000;
+    }
+    s.cacheSavingsUsd = savings;
+    // Burn rate over last 7 days of activity (only counting days with runs
+    // to avoid a misleadingly low rate for sporadic use).
+    s.recentCost = recentCost(runs, 7);
+    s.recentDays = 7;
+    return s;
+  }
+
+  function recentCost(runs, days) {
+    const cutoff = Date.now() - days * MS_PER_DAY;
+    return runs
+      .filter((r) => r.runAt && r.runAt >= cutoff)
+      .reduce((a, r) => a + r.totalCost, 0);
+  }
+
+  function percentile(sortedArr, p) {
+    if (!sortedArr.length) return 0;
+    const idx = Math.min(
+      sortedArr.length - 1,
+      Math.floor(sortedArr.length * p)
+    );
+    return sortedArr[idx];
+  }
+
+  // ---------- Formatting ----------
+
+  function fmtUsd(n) {
+    if (n == null || !isFinite(n)) return "—";
+    if (n === 0) return "$0";
+    if (n >= 100) return `$${n.toFixed(2)}`;
+    if (n >= 10) return `$${n.toFixed(2)}`;
+    if (n >= 1) return `$${n.toFixed(3)}`;
+    if (n >= 0.01) return `$${n.toFixed(4)}`;
+    if (n >= 0.0001) return `$${n.toFixed(5)}`;
+    return `<$0.0001`;
+  }
+
+  function fmtDuration(ms) {
+    if (ms == null || !isFinite(ms)) return "—";
+    if (ms < 1000) return `${Math.round(ms)}ms`;
+    const s = ms / 1000;
+    if (s < 60) return `${s.toFixed(s < 10 ? 1 : 0)}s`;
+    const m = Math.floor(s / 60);
+    const rem = Math.round(s % 60);
+    if (m < 60) return rem ? `${m}m ${rem}s` : `${m}m`;
+    const h = Math.floor(m / 60);
+    return `${h}h ${m % 60}m`;
+  }
+
+  function fmtThousands(n) {
+    if (n == null || !isFinite(n)) return "—";
+    if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+    if (n >= 10_000) return `${(n / 1_000).toFixed(0)}k`;
+    if (n >= 1_000) return `${(n / 1_000).toFixed(1)}k`;
+    return String(Math.round(n));
+  }
+
+  function fmtNum(n, digits = 0) {
+    if (n == null || !isFinite(n)) return "—";
+    return n.toFixed(digits);
+  }
+
+  function fmtPercent(n, digits = 0) {
+    if (n == null || !isFinite(n)) return "—";
+    return `${(n * 100).toFixed(digits)}%`;
+  }
+
+  // ---------- DOM builders ----------
+
+  function buildHeader(count, errors) {
+    const header = document.createElement("header");
+    header.className = "bon-analytics-header";
+    const h2 = document.createElement("h2");
+    h2.textContent = "Investigation analytics";
+    header.appendChild(h2);
+    const sub = document.createElement("p");
+    sub.className = "bon-analytics-subtitle";
+    if (count > 0) {
+      let text = `Cost, timing, and token usage across ${count} completed investigation${count === 1 ? "" : "s"}`;
+      if (errors) {
+        text += ` (${errors} failed run${errors === 1 ? "" : "s"} excluded)`;
+      }
+      sub.textContent = text + ".";
+    } else {
+      sub.textContent =
+        "Cost, timing, and token usage across all completed investigations.";
+    }
+    header.appendChild(sub);
+    return header;
+  }
+
+  function buildEmptyState() {
+    const div = document.createElement("div");
+    div.className = "bon-analytics-empty";
+    div.textContent =
+      "No completed investigations yet. Click 🤖 on a reported user to run one — stats will populate here.";
+    return div;
+  }
+
+  function buildStatGrid(s) {
+    const grid = document.createElement("div");
+    grid.className = "bon-analytics-stats";
+
+    addStat(
+      grid,
+      "Total spent",
+      fmtUsd(s.totalCost),
+      `${fmtUsd(s.avgCost)} avg · ${fmtUsd(s.medianCost)} median · ${fmtUsd(s.maxCost)} max`
+    );
+    addStat(
+      grid,
+      "Spend last 7d",
+      fmtUsd(s.recentCost),
+      s.recentCost > 0
+        ? `~${fmtUsd(s.recentCost / s.recentDays)} / day`
+        : "no activity this week"
+    );
+    addStat(
+      grid,
+      "API requests",
+      String(s.totalApiCalls + s.totalWebSearches),
+      `${s.totalApiCalls} Claude · ${s.totalWebSearches} web search`
+    );
+    addStat(
+      grid,
+      "Total tokens",
+      fmtThousands(s.totalTokens),
+      `${fmtThousands(s.totalOutput)} output · ${fmtPercent(s.cacheHitRate)} cached`
+    );
+    addStat(
+      grid,
+      "Median duration",
+      fmtDuration(s.medianDuration),
+      `p95 ${fmtDuration(s.p95Duration)} · ${fmtDuration(s.totalDuration)} total compute`
+    );
+    addStat(
+      grid,
+      "Cache savings",
+      fmtUsd(s.cacheSavingsUsd),
+      "vs. paying full input rate on cached reads"
+    );
+    addStat(
+      grid,
+      "Reddit fetched",
+      fmtThousands(s.totalPosts + s.totalComments),
+      `${fmtThousands(s.totalPosts)} posts · ${fmtThousands(s.totalComments)} comments`
+    );
+    addStat(
+      grid,
+      "Cost per Reddit item",
+      s.totalPosts + s.totalComments > 0
+        ? fmtUsd(s.totalCost / (s.totalPosts + s.totalComments))
+        : "—",
+      "post/comment analyzed"
+    );
+
+    return grid;
+  }
+
+  function addStat(parent, label, value, sub) {
+    const card = document.createElement("div");
+    card.className = "bon-analytics-stat";
+    const l = document.createElement("div");
+    l.className = "bon-stat-label";
+    l.textContent = label;
+    const v = document.createElement("div");
+    v.className = "bon-stat-value";
+    v.textContent = value;
+    card.appendChild(l);
+    card.appendChild(v);
+    if (sub) {
+      const sb = document.createElement("div");
+      sb.className = "bon-stat-sub";
+      sb.textContent = sub;
+      card.appendChild(sb);
+    }
+    parent.appendChild(card);
+  }
+
+  function buildChartCard(title, subtitle, contentEl) {
+    const card = document.createElement("div");
+    card.className = "bon-chart-card";
+    const head = document.createElement("div");
+    head.className = "bon-chart-head";
+    const h = document.createElement("div");
+    h.className = "bon-chart-title";
+    h.textContent = title;
+    head.appendChild(h);
+    if (subtitle) {
+      const s = document.createElement("div");
+      s.className = "bon-chart-sub";
+      s.textContent = subtitle;
+      head.appendChild(s);
+    }
+    card.appendChild(head);
+    card.appendChild(contentEl);
+    return card;
+  }
+
+  function buildFootnote(s) {
+    const p = document.createElement("p");
+    p.className = "bon-analytics-footnote";
+    const parts = [];
+    if (s.firstRunAt) {
+      parts.push(`Earliest run ${new Date(s.firstRunAt).toLocaleDateString()}`);
+    }
+    if (s.lastRunAt) {
+      parts.push(`latest ${new Date(s.lastRunAt).toLocaleDateString()}`);
+    }
+    parts.push(
+      "Costs are estimated from per-token pricing; check your Anthropic console for billed amounts"
+    );
+    p.textContent = parts.join(" · ") + ".";
+    return p;
+  }
+
+  // ---------- SVG helpers ----------
+
+  function svgRoot(w, h, classes) {
+    const el = document.createElementNS(SVG_NS, "svg");
+    el.setAttribute("viewBox", `0 0 ${w} ${h}`);
+    el.setAttribute("preserveAspectRatio", "none");
+    el.setAttribute("class", classes || "bon-chart-svg");
+    return el;
+  }
+
+  function svgEl(name, attrs) {
+    const e = document.createElementNS(SVG_NS, name);
+    if (attrs) {
+      for (const [k, v] of Object.entries(attrs)) {
+        e.setAttribute(k, v);
+      }
+    }
+    return e;
+  }
+
+  function svgText(x, y, text, cls, anchor) {
+    const t = svgEl("text", { x, y, class: cls || "bon-chart-tick" });
+    if (anchor) t.setAttribute("text-anchor", anchor);
+    t.textContent = text;
+    return t;
+  }
+
+  // ---------- Chart: cumulative cost over time ----------
+
+  function renderCumulativeCost(runs, summary) {
+    const W = 600;
+    const H = 200;
+    const PAD = { t: 12, r: 12, b: 28, l: 52 };
+    const iw = W - PAD.l - PAD.r;
+    const ih = H - PAD.t - PAD.b;
+    const root = svgRoot(W, H);
+
+    const sorted = runs
+      .filter((r) => r.runAt)
+      .sort((a, b) => a.runAt - b.runAt);
+    if (!sorted.length) {
+      root.appendChild(emptyChartText(W, H, "No timestamped runs to plot."));
+      return root;
+    }
+
+    const first = sorted[0].runAt;
+    const last = sorted[sorted.length - 1].runAt;
+    const span = Math.max(last - first, 1);
+
+    let cum = 0;
+    const points = sorted.map((r) => {
+      cum += r.totalCost;
+      return {
+        x: PAD.l + ((r.runAt - first) / span) * iw,
+        cum,
+        cost: r.totalCost,
+        runAt: r.runAt,
+        username: r.username,
+      };
+    });
+    const maxCum = cum || 1;
+
+    // Y gridlines + ticks
+    for (let i = 0; i <= 4; i++) {
+      const frac = i / 4;
+      const y = PAD.t + ih - frac * ih;
+      root.appendChild(
+        svgEl("line", {
+          x1: PAD.l,
+          y1: y,
+          x2: PAD.l + iw,
+          y2: y,
+          class: "bon-chart-grid",
+        })
+      );
+      root.appendChild(
+        svgText(PAD.l - 8, y + 3, fmtUsd(maxCum * frac), null, "end")
+      );
+    }
+
+    // Area + line
+    const lineCoords = points
+      .map(
+        (p) =>
+          `${p.x.toFixed(2)},${(PAD.t + ih - (p.cum / maxCum) * ih).toFixed(2)}`
+      )
+      .join(" L ");
+    const area = `M ${PAD.l},${PAD.t + ih} L ${lineCoords} L ${(PAD.l + iw).toFixed(2)},${PAD.t + ih} Z`;
+    root.appendChild(svgEl("path", { d: area, class: "bon-chart-area" }));
+    root.appendChild(
+      svgEl("path", { d: `M ${lineCoords}`, class: "bon-chart-line" })
+    );
+
+    // Highlight the most expensive single run
+    let maxIdx = 0;
+    for (let i = 1; i < points.length; i++) {
+      if (sorted[i].totalCost > sorted[maxIdx].totalCost) maxIdx = i;
+    }
+    const mp = points[maxIdx];
+    const my = PAD.t + ih - (mp.cum / maxCum) * ih;
+    const marker = svgEl("circle", {
+      cx: mp.x,
+      cy: my,
+      r: 3.5,
+      class: "bon-chart-marker",
+    });
+    const markerTitle = svgEl("title");
+    markerTitle.textContent = `Most expensive: u/${mp.username} — ${fmtUsd(mp.cost)} (${new Date(mp.runAt).toLocaleString()})`;
+    marker.appendChild(markerTitle);
+    root.appendChild(marker);
+
+    // X axis date labels
+    [0, 0.5, 1].forEach((frac) => {
+      const t = first + frac * span;
+      const x = PAD.l + frac * iw;
+      root.appendChild(
+        svgText(
+          x,
+          PAD.t + ih + 18,
+          new Date(t).toLocaleDateString(undefined, {
+            month: "short",
+            day: "numeric",
+          }),
+          null,
+          "middle"
+        )
+      );
+    });
+
+    // Final value label
+    const lastP = points[points.length - 1];
+    const lastY = PAD.t + ih - (lastP.cum / maxCum) * ih;
+    const cap = svgEl("circle", {
+      cx: lastP.x,
+      cy: lastY,
+      r: 3,
+      class: "bon-chart-endpoint",
+    });
+    root.appendChild(cap);
+
+    // Add hover hit-rects spanning each segment
+    for (let i = 0; i < points.length; i++) {
+      const p = points[i];
+      const prev = i > 0 ? points[i - 1] : null;
+      const next = i < points.length - 1 ? points[i + 1] : null;
+      const x = prev ? (prev.x + p.x) / 2 : PAD.l;
+      const x2 = next ? (next.x + p.x) / 2 : PAD.l + iw;
+      const hit = svgEl("rect", {
+        x,
+        y: PAD.t,
+        width: Math.max(1, x2 - x),
+        height: ih,
+        fill: "transparent",
+      });
+      const t = svgEl("title");
+      t.textContent = `u/${p.username} · ${new Date(p.runAt).toLocaleString()}\nthis run: ${fmtUsd(p.cost)} · cumulative: ${fmtUsd(p.cum)}`;
+      hit.appendChild(t);
+      root.appendChild(hit);
+    }
+
+    return root;
+  }
+
+  // ---------- Chart: daily activity bars ----------
+
+  function renderDailyActivity(runs) {
+    const W = 600;
+    const H = 200;
+    const PAD = { t: 12, r: 8, b: 28, l: 36 };
+    const iw = W - PAD.l - PAD.r;
+    const ih = H - PAD.t - PAD.b;
+    const root = svgRoot(W, H);
+
+    const runsWithTime = runs.filter((r) => r.runAt);
+    if (!runsWithTime.length) {
+      root.appendChild(emptyChartText(W, H, "No timestamped runs to plot."));
+      return root;
+    }
+
+    const buckets = new Map();
+    let earliest = Infinity;
+    for (const r of runsWithTime) {
+      const d = new Date(r.runAt);
+      d.setHours(0, 0, 0, 0);
+      const ts = d.getTime();
+      earliest = Math.min(earliest, ts);
+      const b = buckets.get(ts) || { count: 0, cost: 0 };
+      b.count++;
+      b.cost += r.totalCost;
+      buckets.set(ts, b);
+    }
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayTs = today.getTime();
+    const maxSpan = 30 * MS_PER_DAY;
+    const startTs = Math.max(earliest, todayTs - maxSpan);
+    const totalDays = Math.round((todayTs - startTs) / MS_PER_DAY) + 1;
+    const maxCount = Math.max(
+      1,
+      ...Array.from(buckets.values(), (b) => b.count)
+    );
+    const barW = iw / totalDays;
+
+    // Y gridlines
+    const yTicks = Math.min(4, maxCount);
+    for (let i = 0; i <= yTicks; i++) {
+      const frac = i / yTicks;
+      const y = PAD.t + ih - frac * ih;
+      const val = Math.round(maxCount * frac);
+      root.appendChild(
+        svgEl("line", {
+          x1: PAD.l,
+          y1: y,
+          x2: PAD.l + iw,
+          y2: y,
+          class: "bon-chart-grid",
+        })
+      );
+      root.appendChild(svgText(PAD.l - 6, y + 3, String(val), null, "end"));
+    }
+
+    for (let i = 0; i < totalDays; i++) {
+      const ts = startTs + i * MS_PER_DAY;
+      const b = buckets.get(ts);
+      if (!b) continue;
+      const h = (b.count / maxCount) * ih;
+      const x = PAD.l + i * barW + 1;
+      const y = PAD.t + ih - h;
+      const rect = svgEl("rect", {
+        x: x.toFixed(2),
+        y: y.toFixed(2),
+        width: Math.max(1, barW - 2).toFixed(2),
+        height: h.toFixed(2),
+        rx: 1.5,
+        class: "bon-chart-bar bon-chart-bar--blue",
+      });
+      const t = svgEl("title");
+      t.textContent = `${new Date(ts).toLocaleDateString()} — ${b.count} run${b.count === 1 ? "" : "s"} · ${fmtUsd(b.cost)}`;
+      rect.appendChild(t);
+      root.appendChild(rect);
+    }
+
+    [0, 0.5, 1].forEach((frac) => {
+      const ts = startTs + frac * (totalDays - 1) * MS_PER_DAY;
+      root.appendChild(
+        svgText(
+          PAD.l + frac * iw,
+          PAD.t + ih + 18,
+          new Date(ts).toLocaleDateString(undefined, {
+            month: "short",
+            day: "numeric",
+          }),
+          null,
+          "middle"
+        )
+      );
+    });
+
+    return root;
+  }
+
+  // ---------- Chart: duration histogram ----------
+
+  function renderDurationHistogram(runs) {
+    const W = 600;
+    const H = 200;
+    const PAD = { t: 10, r: 10, b: 38, l: 32 };
+    const iw = W - PAD.l - PAD.r;
+    const ih = H - PAD.t - PAD.b;
+    const root = svgRoot(W, H);
+
+    const durations = runs
+      .map((r) => r.durationMs)
+      .filter((d) => typeof d === "number");
+    if (!durations.length) {
+      root.appendChild(emptyChartText(W, H, "No duration data."));
+      return root;
+    }
+
+    const buckets = [
+      { label: "<15s", max: 15_000 },
+      { label: "15–30s", max: 30_000 },
+      { label: "30–60s", max: 60_000 },
+      { label: "1–1.5m", max: 90_000 },
+      { label: "1.5–2m", max: 120_000 },
+      { label: "2–3m", max: 180_000 },
+      { label: "3m+", max: Infinity },
+    ];
+    const counts = new Array(buckets.length).fill(0);
+    for (const d of durations) {
+      let idx = buckets.findIndex((b) => d < b.max);
+      if (idx === -1) idx = buckets.length - 1;
+      counts[idx]++;
+    }
+    const maxCount = Math.max(1, ...counts);
+    const barW = iw / buckets.length;
+
+    const yTicks = Math.min(4, maxCount);
+    for (let i = 0; i <= yTicks; i++) {
+      const frac = i / yTicks;
+      const y = PAD.t + ih - frac * ih;
+      root.appendChild(
+        svgEl("line", {
+          x1: PAD.l,
+          y1: y,
+          x2: PAD.l + iw,
+          y2: y,
+          class: "bon-chart-grid",
+        })
+      );
+      root.appendChild(
+        svgText(
+          PAD.l - 6,
+          y + 3,
+          String(Math.round(maxCount * frac)),
+          null,
+          "end"
+        )
+      );
+    }
+
+    for (let i = 0; i < buckets.length; i++) {
+      const c = counts[i];
+      const x = PAD.l + i * barW + 5;
+      const w = barW - 10;
+      if (c > 0) {
+        const h = (c / maxCount) * ih;
+        const y = PAD.t + ih - h;
+        const rect = svgEl("rect", {
+          x: x.toFixed(2),
+          y: y.toFixed(2),
+          width: w.toFixed(2),
+          height: h.toFixed(2),
+          rx: 2,
+          class: "bon-chart-bar bon-chart-bar--teal",
+        });
+        const t = svgEl("title");
+        t.textContent = `${buckets[i].label}: ${c} run${c === 1 ? "" : "s"} (${fmtPercent(c / durations.length)} of total)`;
+        rect.appendChild(t);
+        root.appendChild(rect);
+      }
+      root.appendChild(
+        svgText(
+          PAD.l + i * barW + barW / 2,
+          PAD.t + ih + 18,
+          buckets[i].label,
+          null,
+          "middle"
+        )
+      );
+    }
+
+    // Median marker line — value lives in the card subtitle, so the line is
+    // unlabeled to avoid overlapping the bar-count number on tall bars. A
+    // tooltip keeps the exact median discoverable.
+    const medianMs = percentile(
+      [...durations].sort((a, b) => a - b),
+      0.5
+    );
+    let medianBucket = buckets.findIndex((b) => medianMs < b.max);
+    if (medianBucket === -1) medianBucket = buckets.length - 1;
+    const medianX = PAD.l + medianBucket * barW + barW / 2;
+    const medianLine = svgEl("line", {
+      x1: medianX,
+      y1: PAD.t,
+      x2: medianX,
+      y2: PAD.t + ih,
+      class: "bon-chart-median-line",
+    });
+    const medianTitle = svgEl("title");
+    medianTitle.textContent = `Median run: ${fmtDuration(medianMs)}`;
+    medianLine.appendChild(medianTitle);
+    root.appendChild(medianLine);
+
+    return root;
+  }
+
+  // ---------- Chart: token mix stacked bar ----------
+
+  function renderTokenMix(s) {
+    const W = 600;
+    const H = 200;
+    const root = svgRoot(W, H);
+
+    const segments = [
+      { label: "Fresh input", value: s.totalInput, color: "#3b82f6" },
+      { label: "Cache read", value: s.totalCacheRead, color: "#16a085" },
+      { label: "Cache write", value: s.totalCacheWrite, color: "#f59e0b" },
+      { label: "Output", value: s.totalOutput, color: "#8b5cf6" },
+    ];
+    const total = segments.reduce((a, b) => a + b.value, 0);
+    if (total === 0) {
+      root.appendChild(emptyChartText(W, H, "No token usage recorded."));
+      return root;
+    }
+
+    const BAR_Y = 60;
+    const BAR_H = 42;
+    const PAD = 24;
+    const innerW = W - PAD * 2;
+
+    // Caption above the bar
+    root.appendChild(
+      svgText(
+        W / 2,
+        32,
+        "Cache reads cost 10× less than fresh input — more green = better economy",
+        "bon-chart-caption",
+        "middle"
+      )
+    );
+
+    let x = PAD;
+    for (const seg of segments) {
+      const w = (seg.value / total) * innerW;
+      if (w <= 0) continue;
+      const rect = svgEl("rect", {
+        x: x.toFixed(2),
+        y: BAR_Y,
+        width: w.toFixed(2),
+        height: BAR_H,
+        fill: seg.color,
+      });
+      const title = svgEl("title");
+      title.textContent = `${seg.label}: ${fmtThousands(seg.value)} tokens (${fmtPercent(seg.value / total, 1)})`;
+      rect.appendChild(title);
+      root.appendChild(rect);
+
+      if (w > 60) {
+        root.appendChild(
+          svgText(
+            x + w / 2,
+            BAR_Y + BAR_H / 2 + 5,
+            fmtPercent(seg.value / total, 0),
+            "bon-chart-inbar",
+            "middle"
+          )
+        );
+      }
+      x += w;
+    }
+
+    // Legend grid (2x2)
+    const legendStartY = BAR_Y + BAR_H + 28;
+    const legendColW = innerW / 2;
+    segments.forEach((seg, i) => {
+      const lx = PAD + (i % 2) * legendColW;
+      const ly = legendStartY + Math.floor(i / 2) * 22;
+      root.appendChild(
+        svgEl("rect", {
+          x: lx,
+          y: ly - 8,
+          width: 11,
+          height: 11,
+          rx: 2,
+          fill: seg.color,
+        })
+      );
+      root.appendChild(
+        svgText(
+          lx + 18,
+          ly + 1,
+          `${seg.label} — ${fmtThousands(seg.value)} (${fmtPercent(seg.value / total, 0)})`,
+          "bon-chart-legend"
+        )
+      );
+    });
+
+    return root;
+  }
+
+  function emptyChartText(w, h, text) {
+    return svgText(w / 2, h / 2, text, "bon-chart-empty", "middle");
+  }
+
+  // ---------- Per-model table ----------
+
+  function buildModelTable(runs) {
+    const wrap = document.createElement("div");
+    wrap.className = "bon-analytics-table-card";
+
+    const title = document.createElement("h3");
+    title.className = "bon-analytics-section-title";
+    title.textContent = "Per-model breakdown";
+    wrap.appendChild(title);
+
+    const byModel = new Map();
+    const durationsByModel = new Map();
+    for (const r of runs) {
+      for (const c of r.calls) {
+        const key = c.model || "(unknown)";
+        const row = byModel.get(key) || {
+          model: key,
+          calls: 0,
+          cost: 0,
+          in: 0,
+          out: 0,
+          cacheRead: 0,
+          cacheWrite: 0,
+        };
+        row.calls++;
+        row.cost += c.costUsd || 0;
+        const u = c.usage || {};
+        row.in += u.input_tokens || 0;
+        row.out += u.output_tokens || 0;
+        row.cacheRead += u.cache_read_input_tokens || 0;
+        row.cacheWrite += u.cache_creation_input_tokens || 0;
+        byModel.set(key, row);
+
+        if (typeof r.durationMs === "number") {
+          if (!durationsByModel.has(key)) durationsByModel.set(key, []);
+          durationsByModel.get(key).push(r.durationMs);
+        }
+      }
+    }
+
+    const rows = Array.from(byModel.values()).sort((a, b) => b.cost - a.cost);
+    if (!rows.length) return wrap;
+
+    const table = document.createElement("table");
+    table.className = "bon-analytics-table";
+
+    const thead = document.createElement("thead");
+    const headRow = document.createElement("tr");
+    [
+      { label: "Model", align: "left" },
+      { label: "Calls" },
+      { label: "Input" },
+      { label: "Output" },
+      { label: "Cache read" },
+      { label: "Cache write" },
+      { label: "Cache hit" },
+      { label: "Avg duration" },
+      { label: "Avg / call" },
+      { label: "Total cost" },
+    ].forEach((c) => {
+      const th = document.createElement("th");
+      th.textContent = c.label;
+      if (c.align) th.style.textAlign = c.align;
+      headRow.appendChild(th);
+    });
+    thead.appendChild(headRow);
+    table.appendChild(thead);
+
+    const tbody = document.createElement("tbody");
+    for (const r of rows) {
+      const tr = document.createElement("tr");
+      const hit =
+        r.in + r.cacheRead > 0 ? r.cacheRead / (r.in + r.cacheRead) : 0;
+      const durs = durationsByModel.get(r.model) || [];
+      const avgDur = durs.length
+        ? durs.reduce((a, b) => a + b, 0) / durs.length
+        : null;
+
+      const tdModel = document.createElement("td");
+      const code = document.createElement("code");
+      code.textContent = r.model;
+      tdModel.appendChild(code);
+      tr.appendChild(tdModel);
+
+      [
+        String(r.calls),
+        fmtThousands(r.in),
+        fmtThousands(r.out),
+        fmtThousands(r.cacheRead),
+        fmtThousands(r.cacheWrite),
+        fmtPercent(hit),
+        fmtDuration(avgDur),
+        fmtUsd(r.cost / Math.max(1, r.calls)),
+        fmtUsd(r.cost),
+      ].forEach((val) => {
+        const td = document.createElement("td");
+        td.textContent = val;
+        tr.appendChild(td);
+      });
+      tbody.appendChild(tr);
+    }
+    table.appendChild(tbody);
+
+    const scroll = document.createElement("div");
+    scroll.className = "bon-analytics-table-scroll";
+    scroll.appendChild(table);
+    wrap.appendChild(scroll);
+
+    return wrap;
+  }
+
+  // ---------- Top spenders list ----------
+
+  function buildTopList(runs) {
+    const wrap = document.createElement("div");
+    wrap.className = "bon-analytics-table-card";
+    const title = document.createElement("h3");
+    title.className = "bon-analytics-section-title";
+    title.textContent = "Most expensive investigations";
+    wrap.appendChild(title);
+
+    const top = [...runs]
+      .filter((r) => r.totalCost > 0)
+      .sort((a, b) => b.totalCost - a.totalCost)
+      .slice(0, 10);
+    if (!top.length) {
+      const p = document.createElement("p");
+      p.className = "bon-analytics-empty-small";
+      p.textContent = "No cost data on the completed investigations.";
+      wrap.appendChild(p);
+      return wrap;
+    }
+
+    const maxCost = top[0].totalCost;
+    const list = document.createElement("ol");
+    list.className = "bon-analytics-top-list";
+    for (const r of top) {
+      const li = document.createElement("li");
+
+      const name = document.createElement("a");
+      name.className = "bon-analytics-top-name";
+      name.href = `https://www.reddit.com/user/${encodeURIComponent(r.username)}`;
+      name.target = "_blank";
+      name.rel = "noopener noreferrer";
+      name.textContent = `u/${r.username}`;
+      li.appendChild(name);
+
+      const meta = document.createElement("span");
+      meta.className = "bon-analytics-top-meta";
+      const metaBits = [];
+      if (r.verdict) metaBits.push(r.verdict.replace(/-/g, " "));
+      if (r.durationMs != null) metaBits.push(fmtDuration(r.durationMs));
+      metaBits.push(`${r.calls.length} call${r.calls.length === 1 ? "" : "s"}`);
+      if (r.runAt) metaBits.push(new Date(r.runAt).toLocaleDateString());
+      meta.textContent = metaBits.join(" · ");
+      li.appendChild(meta);
+
+      const bar = document.createElement("div");
+      bar.className = "bon-analytics-top-bar";
+      const fill = document.createElement("div");
+      fill.className = "bon-analytics-top-bar-fill";
+      fill.style.width = `${(r.totalCost / maxCost) * 100}%`;
+      bar.appendChild(fill);
+      li.appendChild(bar);
+
+      const cost = document.createElement("span");
+      cost.className = "bon-analytics-top-cost";
+      cost.textContent = fmtUsd(r.totalCost);
+      li.appendChild(cost);
+
+      list.appendChild(li);
+    }
+    wrap.appendChild(list);
+    return wrap;
+  }
+
+  globalThis.bonRenderAnalytics = bonRenderAnalytics;
+})();

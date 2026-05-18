@@ -1,0 +1,380 @@
+/* Investigation analytics dashboard styles. Loaded by reports.html alongside
+   analytics.js. Inherits the --bon-* tokens defined in reports.html. */
+
+.bon-analytics {
+  margin-top: 3em;
+  padding-top: 2em;
+  border-top: 1px solid var(--bon-border);
+}
+
+.bon-analytics-header {
+  margin-bottom: 1.5em;
+}
+
+.bon-analytics-header h2 {
+  font-size: 1.35rem;
+  font-weight: 700;
+  letter-spacing: -0.018em;
+  margin: 0 0 0.2em;
+  color: var(--bon-text);
+}
+
+.bon-analytics-subtitle {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--bon-muted);
+}
+
+.bon-analytics-empty {
+  background: var(--bon-surface);
+  border: 1px dashed var(--bon-border-strong);
+  border-radius: 0.625em;
+  padding: 2.5em 1em;
+  text-align: center;
+  color: var(--bon-muted);
+  font-size: 0.95rem;
+}
+
+.bon-analytics-empty-small {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--bon-muted-soft);
+}
+
+/* ---------- Stat cards ---------- */
+
+.bon-analytics-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(11.5em, 1fr));
+  gap: 0.75em;
+  margin-bottom: 1.5em;
+}
+
+.bon-analytics-stat {
+  background: var(--bon-surface);
+  border: 1px solid var(--bon-border);
+  border-radius: 0.625em;
+  padding: 0.9em 1em 0.95em;
+  box-shadow: var(--bon-shadow-sm);
+  min-width: 0;
+}
+
+.bon-stat-label {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--bon-muted);
+  font-weight: 600;
+  margin-bottom: 0.4em;
+}
+
+.bon-stat-value {
+  font-size: 1.35rem;
+  font-weight: 700;
+  letter-spacing: -0.018em;
+  color: var(--bon-text);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.15;
+  word-break: break-word;
+}
+
+.bon-stat-sub {
+  font-size: 0.72rem;
+  color: var(--bon-muted);
+  margin-top: 0.3em;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.35;
+}
+
+/* ---------- Chart cards ---------- */
+
+.bon-analytics-charts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(28em, 1fr));
+  gap: 1em;
+  margin-bottom: 1.25em;
+}
+
+.bon-chart-card {
+  background: var(--bon-surface);
+  border: 1px solid var(--bon-border);
+  border-radius: 0.625em;
+  padding: 1em 1.1em 1.1em;
+  box-shadow: var(--bon-shadow-sm);
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.bon-chart-head {
+  margin-bottom: 0.65em;
+}
+
+.bon-chart-title {
+  font-size: 0.74rem;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--bon-muted);
+  font-weight: 600;
+}
+
+.bon-chart-sub {
+  font-size: 0.78rem;
+  color: var(--bon-muted-soft);
+  font-variant-numeric: tabular-nums;
+  margin-top: 0.25em;
+}
+
+.bon-chart-svg {
+  width: 100%;
+  height: 200px;
+  display: block;
+}
+
+/* SVG element styles — referenced via class= attribute on SVG nodes. */
+
+.bon-chart-grid {
+  stroke: #f3f4f6;
+  stroke-width: 1;
+}
+
+.bon-chart-area {
+  fill: rgba(3, 102, 214, 0.12);
+  stroke: none;
+}
+
+.bon-chart-line {
+  fill: none;
+  stroke: #0366d6;
+  stroke-width: 1.75;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.bon-chart-marker {
+  fill: #e67e22;
+  stroke: #fff;
+  stroke-width: 1.5;
+}
+
+.bon-chart-endpoint {
+  fill: #0366d6;
+  stroke: #fff;
+  stroke-width: 1.25;
+}
+
+.bon-chart-bar {
+  transition: opacity 0.15s;
+}
+
+.bon-chart-bar:hover {
+  opacity: 0.78;
+}
+
+.bon-chart-bar--blue {
+  fill: #0366d6;
+}
+
+.bon-chart-bar--teal {
+  fill: #16a085;
+}
+
+.bon-chart-median-line {
+  stroke: #c0392b;
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+}
+
+.bon-chart-tick {
+  font-size: 10px;
+  fill: var(--bon-muted);
+  font-family: var(--bon-font-mono);
+}
+
+.bon-chart-label {
+  font-size: 10px;
+  fill: var(--bon-text);
+  font-family: var(--bon-font-sans);
+  font-weight: 500;
+}
+
+.bon-chart-inbar {
+  font-size: 11px;
+  fill: #fff;
+  font-family: var(--bon-font-sans);
+  font-weight: 600;
+}
+
+.bon-chart-legend {
+  font-size: 11px;
+  fill: var(--bon-text);
+  font-family: var(--bon-font-sans);
+  font-variant-numeric: tabular-nums;
+}
+
+.bon-chart-caption {
+  font-size: 11px;
+  fill: var(--bon-muted);
+  font-family: var(--bon-font-sans);
+  font-style: italic;
+}
+
+.bon-chart-empty {
+  font-size: 12px;
+  fill: var(--bon-muted-soft);
+  font-family: var(--bon-font-sans);
+}
+
+/* ---------- Table cards ---------- */
+
+.bon-analytics-table-card {
+  background: var(--bon-surface);
+  border: 1px solid var(--bon-border);
+  border-radius: 0.625em;
+  padding: 1.1em 1.2em 1.2em;
+  margin-bottom: 1em;
+  box-shadow: var(--bon-shadow-sm);
+}
+
+.bon-analytics-section-title {
+  font-size: 0.74rem;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--bon-muted);
+  font-weight: 600;
+  margin: 0 0 0.85em;
+}
+
+.bon-analytics-table-scroll {
+  overflow-x: auto;
+}
+
+.bon-analytics-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.bon-analytics-table th,
+.bon-analytics-table td {
+  padding: 0.55em 0.75em;
+  border-bottom: 1px solid var(--bon-border);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.bon-analytics-table th:first-child,
+.bon-analytics-table td:first-child {
+  text-align: left;
+}
+
+.bon-analytics-table th {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--bon-muted);
+  font-weight: 600;
+  border-bottom-color: var(--bon-border-strong);
+}
+
+.bon-analytics-table tr:last-child td {
+  border-bottom: none;
+}
+
+.bon-analytics-table code {
+  font-family: var(--bon-font-mono);
+  font-size: 0.78rem;
+  background: var(--bon-row-hover);
+  padding: 0.18em 0.45em;
+  border-radius: 0.3em;
+  color: var(--bon-text);
+}
+
+/* ---------- Top-spender list ---------- */
+
+.bon-analytics-top-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35em;
+  counter-reset: bon-rank;
+}
+
+.bon-analytics-top-list li {
+  counter-increment: bon-rank;
+  display: grid;
+  grid-template-columns: 1.75em minmax(7em, max-content) 1fr 1fr auto;
+  align-items: center;
+  gap: 0.85em;
+  padding: 0.5em 0.7em;
+  background: #fafbfc;
+  border-radius: 0.45em;
+}
+
+.bon-analytics-top-list li::before {
+  content: counter(bon-rank);
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  color: var(--bon-muted-soft);
+  font-size: 0.85rem;
+  text-align: right;
+}
+
+.bon-analytics-top-name {
+  font-weight: 500;
+  color: var(--bon-link);
+  text-decoration: none;
+  font-size: 0.9rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bon-analytics-top-name:hover {
+  text-decoration: underline;
+}
+
+.bon-analytics-top-meta {
+  font-size: 0.78rem;
+  color: var(--bon-muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bon-analytics-top-bar {
+  height: 6px;
+  background: #eef2f5;
+  border-radius: 3px;
+  overflow: hidden;
+  min-width: 4em;
+}
+
+.bon-analytics-top-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #16a085, #e67e22);
+  border-radius: 3px;
+}
+
+.bon-analytics-top-cost {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--bon-text);
+  font-size: 0.92rem;
+  text-align: right;
+  white-space: nowrap;
+}
+
+/* ---------- Footnote ---------- */
+
+.bon-analytics-footnote {
+  margin: 0.75em 0 0;
+  font-size: 0.75rem;
+  color: var(--bon-muted-soft);
+  text-align: center;
+  font-style: italic;
+}

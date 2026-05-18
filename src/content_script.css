@@ -1,18 +1,71 @@
-.bon-inline-bot-icon {
-  width: 0.85em;
-  height: 0.85em;
+.bon-user-tag {
+  display: inline-flex;
+  align-items: center;
   vertical-align: middle;
+  /* Nudge up: vertical-align:middle aligns to parent's baseline + ex/2,
+     which sits below the visual center of cap-height text. */
   position: relative;
-  top: 6px;
-  margin-left: 3px;
-  display: inline;
+  top: -0.05em;
+  margin: 0 0.25em;
+  padding: 0.1em 0.7em;
+  font-size: 0.78em;
+  font-weight: 500;
+  line-height: 1.35;
+  border-radius: 999px;
+  color: #fff;
+  background: #95a5a6;
   cursor: pointer;
+  white-space: nowrap;
+  user-select: none;
   transition: opacity 0.15s, transform 0.15s;
+  /* If the pill lands inside a flex/grid container, keep it sized to its
+     content and vertically centered with siblings instead of stretching. */
+  flex: 0 0 auto;
+  align-self: center;
 }
 
-.bon-inline-bot-icon:hover {
-  opacity: 0.75;
-  transform: scale(1.1);
+.bon-user-tag:hover {
+  opacity: 0.85;
+  transform: scale(1.05);
+}
+
+.bon-user-tag--bot {
+  background: #c0392b;
+}
+
+.bon-user-tag--likely-bot {
+  background: #e67e22;
+}
+
+.bon-user-tag--uncertain {
+  background: #7f8c8d;
+}
+
+.bon-user-tag--likely-human {
+  background: #16a085;
+}
+
+.bon-user-tag--human {
+  background: #27ae60;
+}
+
+.bon-user-tag--reported {
+  background: #d35400;
+}
+
+.bon-user-tag--running {
+  background: #3498db;
+  animation: bon-user-tag-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes bon-user-tag-pulse {
+  0%,
+  100% {
+    opacity: 0.65;
+  }
+  50% {
+    opacity: 1;
+  }
 }
 
 .bon-profile-panel {
@@ -88,14 +141,14 @@
 .bon-stat-pill {
   display: inline-flex;
   align-items: center;
-  gap: 0.25em;
-  font-size: 0.72rem;
-  padding: 0.18em 0.55em;
-  border-radius: 0.9em;
-  background: rgba(128, 128, 128, 0.15);
+  gap: 0.3em;
+  font-size: 0.75rem;
+  padding: 0.25em 0.75em;
+  border-radius: 999px;
+  background: rgba(128, 128, 128, 0.18);
   color: inherit;
   white-space: nowrap;
-  line-height: 1.4;
+  line-height: 1.2;
   font-weight: 500;
 }
 
@@ -134,19 +187,38 @@
   color: #fff;
 }
 
-.bon-stat-pill__conf {
-  opacity: 0.85;
-  font-weight: 400;
-  margin-left: 0.25em;
+.bon-profile-panel__preview {
+  padding: 0.6em 0.85em 0.75em;
+  cursor: pointer;
+}
+
+.bon-profile-panel__preview .bon-panel-actions {
+  cursor: auto;
+}
+
+.bon-profile-panel__summary {
+  font-size: 0.82rem;
+  line-height: 1.45;
+  margin: 0;
 }
 
 .bon-profile-panel__body {
-  padding: 0 0.85em 0.85em;
-  border-top: 1px solid rgba(128, 128, 128, 0.18);
+  display: grid;
+  grid-template-rows: 0fr;
+  border-top: 1px solid rgba(128, 128, 128, 0);
+  transition:
+    grid-template-rows 0.25s ease,
+    border-top-color 0.25s ease;
 }
 
-.bon-profile-panel__body[hidden] {
-  display: none;
+.bon-profile-panel__body--expanded {
+  grid-template-rows: 1fr;
+  border-top-color: rgba(128, 128, 128, 0.18);
+}
+
+.bon-profile-panel__body-inner {
+  overflow: hidden;
+  padding: 0 0.85em 0.85em;
 }
 
 .bon-panel-section {
@@ -240,7 +312,7 @@
   padding: 0;
   margin: 0;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(16em, 1fr));
+  grid-template-columns: 1fr;
   gap: 0.4em;
 }
 
@@ -271,7 +343,6 @@
   padding: 0.08em 0.35em;
   border-radius: 0.25em;
   color: #fff;
-  text-transform: lowercase;
   letter-spacing: 0.02em;
 }
 
@@ -295,11 +366,26 @@
   background: #27ae60;
 }
 
+.bon-panel-factor__signal--new {
+  background: #f59e0b;
+  color: #422006;
+}
+
+.bon-panel-factor--new {
+  border-style: dashed;
+  background: rgba(245, 158, 11, 0.08);
+}
+
 .bon-panel-factor__reasoning {
   color: inherit;
   opacity: 0.85;
   line-height: 1.4;
   font-size: 0.72rem;
+}
+
+.bon-panel-factor__reasoning--muted {
+  font-style: italic;
+  opacity: 0.7;
 }
 
 .bon-panel-reports {

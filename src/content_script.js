@@ -2,10 +2,6 @@
   const { version } = browser.runtime.getManifest();
   console.log(`[Bot or Not] v${version} loaded`);
 
-  const ICONS = {
-    bot: browser.runtime.getURL("icons/icon-bot.png"),
-  };
-
   // --- Report tracking (all Reddit pages) ---
 
   let pendingReport = null;
@@ -72,8 +68,21 @@
             username,
             context,
           });
-          knownBots.add(username);
-          markUser(username);
+          // Optimistic tag for the just-reported user — storage.onChanged will
+          // overwrite with the authoritative count moments later.
+          const key = username.toLowerCase();
+          const existing = userTags.get(key);
+          userTags.set(key, {
+            username,
+            count: (existing?.count || 0) + 1,
+            verdict: existing?.verdict ?? null,
+            confidence: existing?.confidence ?? null,
+            investigationStatus: existing?.investigationStatus ?? null,
+            investigationStartedAt: existing?.investigationStartedAt ?? null,
+            botBouncerStatus: existing?.botBouncerStatus ?? null,
+            userStatus: existing?.userStatus ?? null,
+          });
+          refreshUserTag(username);
           pendingReport = null;
         }
       },
@@ -83,24 +92,97 @@
 
   listenForReports();
 
-  // --- Inline bot indicators (all Reddit pages) ---
+  // --- Inline user tags (all Reddit pages) ---
 
-  let knownBots = new Set();
-  let botsLoaded = false;
+  // Keyed by lowercase username so lookups match Reddit's case-insensitive
+  // routing (a link can use any casing for the same account).
+  let userTags = new Map();
+  let tagsLoaded = false;
 
-  async function loadKnownBots() {
-    const { bots } = await browser.runtime.sendMessage({
-      type: "get-known-bots",
+  async function loadUserTags() {
+    const { tags = {} } = await browser.runtime.sendMessage({
+      type: "get-user-tags",
     });
-    knownBots = new Set(bots);
-    botsLoaded = true;
-    markBots();
+    userTags = new Map();
+    for (const [username, info] of Object.entries(tags)) {
+      userTags.set(username.toLowerCase(), { ...info, username });
+    }
+    tagsLoaded = true;
+    resetAndMarkAll();
   }
 
-  function markBots() {
-    if (!botsLoaded) {
-      return;
+  function tagVariant(info) {
+    if (info.verdict) return info.verdict;
+    if (info.investigationStatus === "running") return "running";
+    if (info.count > 0) return "reported";
+    if (info.botBouncerStatus === "banned") return "bot";
+    if (info.userStatus === "suspended") return "bot";
+    return "reported";
+  }
+
+  function tagLabel(info, variant) {
+    if (variant === "running") return "Investigating";
+    if (variant === "reported") {
+      return info.count > 0
+        ? `${info.count} report${info.count === 1 ? "" : "s"}`
+        : "Flagged";
     }
+    return formatVerdict(variant);
+  }
+
+  function formatVerdict(verdict) {
+    if (!verdict) return "";
+    const spaced = verdict.replace(/-/g, " ");
+    return spaced.charAt(0).toUpperCase() + spaced.slice(1);
+  }
+
+  function tagTitle(info, variant) {
+    const parts = [`@${info.username}`];
+    if (info.verdict) {
+      const conf =
+        typeof info.confidence === "number"
+          ? ` (${Math.round(info.confidence * 100)}% confidence)`
+          : "";
+      parts.push(`AI verdict: ${formatVerdict(info.verdict)}${conf}`);
+    } else if (variant === "running") {
+      parts.push("AI investigation in progress");
+    }
+    if (info.count > 0) {
+      parts.push(
+        `${info.count} report${info.count === 1 ? "" : "s"} from this extension`
+      );
+    }
+    if (info.botBouncerStatus) {
+      parts.push(`Bot Bouncer: ${info.botBouncerStatus}`);
+    }
+    if (info.userStatus) {
+      parts.push(`Account: ${info.userStatus}`);
+    }
+    return parts.join(" — ");
+  }
+
+  function buildUserTag(info) {
+    const variant = tagVariant(info);
+    const tag = document.createElement("span");
+    tag.className = `bon-user-tag bon-user-tag--${variant}`;
+    tag.dataset.bonTagFor = info.username.toLowerCase();
+    tag.setAttribute("role", "button");
+    tag.setAttribute("tabindex", "0");
+    tag.title = tagTitle(info, variant);
+    tag.textContent = tagLabel(info, variant);
+    return tag;
+  }
+
+  function isAvatarLink(el) {
+    // Avatar-wrapping anchors have no visible text — just an image/icon.
+    // Tagging them puts the pill in the wrong layout slot (often a column
+    // flex container), so it wraps to its own line below the username row.
+    if (el.textContent && el.textContent.trim()) return false;
+    return !!el.querySelector("img, svg, shreddit-avatar, faceplate-img");
+  }
+
+  function markUsers() {
+    if (!tagsLoaded) return;
     document
       .querySelectorAll(
         'a[href*="/user/"]:not([data-bon-marked]), a[href*="/u/"]:not([data-bon-marked])'
@@ -108,58 +190,75 @@
       .forEach((el) => {
         const href = el.getAttribute("href");
         const match = href.match(/\/(?:user|u)\/([^/?#]+)/i);
-        if (!match) {
-          return;
-        }
-        if (el.closest('[id^="profile-tab"]')) {
-          return;
-        }
+        if (!match) return;
+        if (el.closest('[id^="profile-tab"]')) return;
         el.dataset.bonMarked = "true";
-        const username = match[1];
-        if (!knownBots.has(username)) {
+        if (isAvatarLink(el)) return;
+        const info = userTags.get(match[1].toLowerCase());
+        if (!info) return;
+        const key = match[1].toLowerCase();
+        // Skip if a tag for this user already sits next to this link (Reddit
+        // sometimes re-parents anchors, dropping the data-bon-marked flag).
+        if (
+          el.nextElementSibling?.classList?.contains("bon-user-tag") &&
+          el.nextElementSibling.dataset.bonTagFor === key
+        ) {
           return;
         }
-        const icon = document.createElement("img");
-        icon.src = ICONS.bot;
-        icon.className = "bon-inline-bot-icon";
-        icon.title = `${username}: bot`;
-        icon.alt = "bot";
-        el.appendChild(icon);
+        // Scoped dedup: post headers often contain multiple anchors for the
+        // same user (avatar + username link). Only one pill per header.
+        const scope =
+          el.closest("shreddit-post, shreddit-comment, article, header") ||
+          el.parentElement;
+        if (
+          scope?.querySelector(
+            `.bon-user-tag[data-bon-tag-for="${cssEscape(key)}"]`
+          )
+        ) {
+          return;
+        }
+        el.insertAdjacentElement("afterend", buildUserTag(info));
       });
   }
 
-  function markUser(username) {
+  function refreshUserTag(username) {
+    const key = username.toLowerCase();
+    document
+      .querySelectorAll(`.bon-user-tag[data-bon-tag-for="${cssEscape(key)}"]`)
+      .forEach((t) => t.remove());
     document
       .querySelectorAll('a[href*="/user/"], a[href*="/u/"]')
       .forEach((el) => {
         const href = el.getAttribute("href");
         const match = href.match(/\/(?:user|u)\/([^/?#]+)/i);
-        if (!match || match[1] !== username) {
-          return;
-        }
-        if (el.closest('[id^="profile-tab"]')) {
-          return;
-        }
-        if (el.querySelector(".bon-inline-bot-icon")) {
-          return;
-        }
-        el.dataset.bonMarked = "true";
-        const icon = document.createElement("img");
-        icon.src = ICONS.bot;
-        icon.className = "bon-inline-bot-icon";
-        icon.title = `${username}: bot`;
-        icon.alt = "bot";
-        el.appendChild(icon);
+        if (!match || match[1].toLowerCase() !== key) return;
+        delete el.dataset.bonMarked;
       });
+    markUsers();
   }
 
-  loadKnownBots();
+  function resetAndMarkAll() {
+    document.querySelectorAll(".bon-user-tag").forEach((t) => t.remove());
+    document
+      .querySelectorAll("a[data-bon-marked]")
+      .forEach((el) => delete el.dataset.bonMarked);
+    markUsers();
+  }
+
+  function cssEscape(value) {
+    if (window.CSS && typeof window.CSS.escape === "function") {
+      return window.CSS.escape(value);
+    }
+    return value.replace(/[^a-zA-Z0-9_-]/g, "\\$&");
+  }
+
+  loadUserTags();
 
   document.addEventListener(
     "click",
     (e) => {
-      const icon = e.target?.closest?.(".bon-inline-bot-icon");
-      if (!icon) return;
+      const tag = e.target?.closest?.(".bon-user-tag");
+      if (!tag) return;
       e.preventDefault();
       e.stopPropagation();
       browser.runtime.sendMessage({ type: "open-popup" });
@@ -169,8 +268,13 @@
 
   // --- Profile panel injection (profile pages only, SPA-aware) ---
 
+  // Source of truth for currently active factors. Stored investigations may
+  // contain factor keys not in this list (deprecated) — those are dropped.
+  // Keys in this list missing from a stored investigation render as "added
+  // after" placeholders so old reports stay readable without re-running.
   const FACTOR_LABELS = {
     account_age_vs_activity: "Account age vs activity",
+    dormant_account_revival: "Dormant account revival",
     karma_farming_subs: "Karma-farming subreddits",
     fake_political_subs: "Fake political subreddits",
     llm_content_style: "LLM-generated content style",
@@ -178,7 +282,9 @@
     topical_drift: "Topical drift / inconsistency",
     engagement_patterns: "Engagement patterns",
     username_pattern: "Username pattern",
+    hidden_post_history: "Hidden post history",
     bot_bouncer_status: "Bot Bouncer status",
+    moderator_removal_history: "Moderator removal history",
   };
 
   const FACTOR_ORDER = Object.keys(FACTOR_LABELS);
@@ -195,9 +301,20 @@
     } else {
       refreshProfilePanel(username);
     }
+    // Visiting a profile is itself a "is this a bot?" signal. Background
+    // dedups against existing done/error/running investigations.
+    browser.runtime.sendMessage({
+      type: "auto-investigate-on-view",
+      username,
+    });
   }
 
   function injectPanel() {
+    injectProfilePanel();
+    injectPostAuthorPanel();
+  }
+
+  function injectProfilePanel() {
     const profileMatch = window.location.pathname.match(
       /^\/(?:user|u)\/([^/?#]+)/i
     );
@@ -213,14 +330,74 @@
 
     const existingPanel = document.getElementById("bon-profile-panel");
     if (existingPanel) {
-      if (existingPanel.dataset.username === username) return;
+      // If Reddit's reconciliation moved the panel inside a post/comment in
+      // the user's feed below, treat it as missing and re-inject up top.
+      const misplaced = isPanelMisplaced(existingPanel);
+      if (!misplaced && existingPanel.dataset.username === username) return;
       existingPanel.remove();
     }
 
-    const h1 = document.querySelector("h1");
-    if (!h1) return;
+    if (!findProfileH1()) return;
 
     ensureProfilePanel(username);
+  }
+
+  function findProfileH1() {
+    // After Reddit's SPA renders the user's post feed, each post has its own
+    // h1. If we use `document.querySelector("h1")` during a transient
+    // re-render where the header h1 is briefly detached, we can grab a post
+    // title h1 instead and anchor the panel inside that post.
+    for (const h1 of document.querySelectorAll("h1")) {
+      if (h1.closest("shreddit-post, shreddit-comment, article")) continue;
+      return h1;
+    }
+    return null;
+  }
+
+  function isPanelMisplaced(panel) {
+    return !!panel.closest("shreddit-post, shreddit-comment, article");
+  }
+
+  function injectPostAuthorPanel() {
+    const postMatch = window.location.pathname.match(
+      /^(\/r\/[^/]+\/comments\/[^/]+)/i
+    );
+
+    // Not on a post detail page — remove panel if present
+    if (!postMatch) {
+      const existingPanel = document.getElementById("bon-post-author-panel");
+      if (existingPanel) existingPanel.remove();
+      return;
+    }
+
+    // Reddit's SPA updates the URL via pushState before unmounting the feed,
+    // so `querySelector("shreddit-post")` during that window picks up a feed
+    // post instead of the destination post. Match the URL permalink against
+    // each post's `permalink` attribute and only inject once the actual post
+    // is in the DOM.
+    const urlBase = postMatch[1].toLowerCase();
+    const postEl = Array.from(document.querySelectorAll("shreddit-post")).find(
+      (p) =>
+        (p.getAttribute("permalink") || "").toLowerCase().startsWith(urlBase)
+    );
+    if (!postEl) {
+      // Drop any stale panel sitting on a feed post we're navigating away from.
+      const existingPanel = document.getElementById("bon-post-author-panel");
+      if (existingPanel) existingPanel.remove();
+      return;
+    }
+    const username = postEl.getAttribute("author");
+    if (!username || username === "[deleted]" || username === "AutoModerator")
+      return;
+
+    const existingPanel = document.getElementById("bon-post-author-panel");
+    if (existingPanel) {
+      const onCorrectPost = existingPanel.closest("shreddit-post") === postEl;
+      if (onCorrectPost && existingPanel.dataset.username === username) return;
+      existingPanel.remove();
+    }
+
+    ensurePostAuthorPanel(username, postEl);
   }
 
   async function refreshProfilePanel(username) {
@@ -246,20 +423,26 @@
   }
 
   function renderProfilePanel(username, report) {
-    const h1 = document.querySelector("h1");
+    const h1 = findProfileH1();
     if (!h1) return;
 
     const existing = document.getElementById("bon-profile-panel");
     const wasExpanded =
-      existing?.querySelector(".bon-profile-panel__body")?.hidden === false;
+      existing
+        ?.querySelector(".bon-profile-panel__body")
+        ?.classList.contains("bon-profile-panel__body--expanded") ?? false;
 
     const fresh = buildProfilePanel(username, report, {
       expanded: wasExpanded,
+      id: "bon-profile-panel",
     });
-    if (existing) {
+    if (existing && !isPanelMisplaced(existing)) {
       existing.replaceWith(fresh);
       return;
     }
+    // Misplaced (e.g., Reddit reparented it inside a feed post) — drop the
+    // stale node so the wrapper logic below re-anchors at the header.
+    if (existing) existing.remove();
 
     // Reddit's new profile UI wraps the header row (avatar + text column) in
     // a passthrough <div class="min-w-0 max-w-full overflow-x-clip"> whose
@@ -275,9 +458,91 @@
     h1.appendChild(fresh);
   }
 
-  function buildProfilePanel(username, report, { expanded = false } = {}) {
+  function ensurePostAuthorPanel(username, postEl) {
+    if (document.getElementById("bon-post-author-panel")) return;
+    if (reportCache.has(username)) {
+      renderPostAuthorPanel(username, postEl, reportCache.get(username));
+    } else {
+      refreshPostAuthorPanel(username, postEl);
+    }
+  }
+
+  async function refreshPostAuthorPanel(username, postEl) {
+    const postMatch = window.location.pathname.match(
+      /^\/r\/[^/]+\/comments\/[^/]+/i
+    );
+    if (!postMatch) return;
+    let report = null;
+    try {
+      const res = await browser.runtime.sendMessage({
+        type: "get-user-report",
+        username,
+      });
+      report = res?.report ?? null;
+      reportCache.set(username, report);
+    } catch (err) {
+      console.error("[Bot or Not] failed to fetch user report", err);
+    }
+    renderPostAuthorPanel(username, postEl, report);
+    if (report && !report.createdAt) {
+      fetchAndStoreCakeDay(username);
+    }
+  }
+
+  function renderPostAuthorPanel(username, postEl, report) {
+    // postEl may have been detached by Reddit's SPA re-render; re-resolve it
+    if (!postEl || !postEl.isConnected) {
+      postEl = document.querySelector("shreddit-post");
+      if (!postEl) return;
+    }
+
+    const existing = document.getElementById("bon-post-author-panel");
+    const wasExpanded =
+      existing
+        ?.querySelector(".bon-profile-panel__body")
+        ?.classList.contains("bon-profile-panel__body--expanded") ?? false;
+
+    const fresh = buildProfilePanel(username, report, {
+      expanded: wasExpanded,
+      id: "bon-post-author-panel",
+    });
+
+    // Only swap in place if the existing panel is still attached to the
+    // correct post — otherwise it's stranded on a stale feed post and we
+    // re-anchor via the credit-bar slot logic below.
+    if (existing && existing.closest("shreddit-post") === postEl) {
+      // Preserve slot assignment. `buildProfilePanel` doesn't know about
+      // shreddit-post's named slots, so without copying slot="credit-bar"
+      // here the fresh node falls into the unnamed slot and renders below
+      // the post body.
+      const slot = existing.getAttribute("slot");
+      if (slot) fresh.setAttribute("slot", slot);
+      existing.replaceWith(fresh);
+      return;
+    }
+    if (existing) existing.remove();
+
+    // shreddit-post uses named slots; the byline lives in slot="credit-bar".
+    // Adding another child with the same slot name renders it at the slot's
+    // position in light-DOM document order, so placing it after the existing
+    // credit-bar element puts the panel directly below the byline and above
+    // the title.
+    const creditBar = postEl.querySelector('[slot="credit-bar"]');
+    if (creditBar) {
+      fresh.setAttribute("slot", "credit-bar");
+      creditBar.parentElement.insertBefore(fresh, creditBar.nextSibling);
+      return;
+    }
+    postEl.parentElement?.insertBefore(fresh, postEl);
+  }
+
+  function buildProfilePanel(
+    username,
+    report,
+    { expanded = false, id = "bon-profile-panel" } = {}
+  ) {
     const panel = document.createElement("div");
-    panel.id = "bon-profile-panel";
+    panel.id = id;
     panel.className = "bon-profile-panel";
     panel.dataset.username = username;
 
@@ -301,22 +566,55 @@
     chevron.textContent = "▼";
     header.appendChild(chevron);
 
+    const preview = buildPanelPreview(username, report);
+
     const body = document.createElement("div");
     body.className = "bon-profile-panel__body";
-    body.hidden = !expanded;
-    body.appendChild(buildInvestigationSection(username, report));
-    body.appendChild(buildReportsSection(report));
+    body.classList.toggle("bon-profile-panel__body--expanded", expanded);
+    const bodyInner = document.createElement("div");
+    bodyInner.className = "bon-profile-panel__body-inner";
+    bodyInner.appendChild(buildInvestigationSection(username, report));
+    bodyInner.appendChild(buildReportsSection(report));
+    body.appendChild(bodyInner);
 
-    header.addEventListener("click", () => {
+    const toggle = () => {
       const isExpanded = header.getAttribute("aria-expanded") === "true";
       const next = !isExpanded;
       header.setAttribute("aria-expanded", String(next));
-      body.hidden = !next;
+      body.classList.toggle("bon-profile-panel__body--expanded", next);
+    };
+
+    header.addEventListener("click", toggle);
+    preview.addEventListener("click", (e) => {
+      if (e.target.closest("button, a")) return;
+      toggle();
     });
 
     panel.appendChild(header);
+    panel.appendChild(preview);
     panel.appendChild(body);
     return panel;
+  }
+
+  function buildPanelPreview(username, report) {
+    const investigation = bonNormalizeInvestigation(report?.investigation);
+    const preview = document.createElement("div");
+    preview.className = "bon-profile-panel__preview";
+
+    if (investigation?.summary) {
+      const p = document.createElement("p");
+      p.className = "bon-profile-panel__summary";
+      p.textContent = investigation.summary;
+      preview.appendChild(p);
+      return preview;
+    }
+
+    const actions = document.createElement("div");
+    actions.className = "bon-panel-actions";
+    actions.appendChild(buildInvestigateBtn(username, investigation));
+    actions.appendChild(buildExternalCheckBtn(username));
+    preview.appendChild(actions);
+    return preview;
   }
 
   function appendStatPills(container, report) {
@@ -330,7 +628,7 @@
     if (investigation.status === "running") {
       const stale = bonIsInvestigationStale(investigation);
       span.className = `bon-stat-pill bon-stat-pill--verdict-${stale ? "error" : "running"}`;
-      span.textContent = stale ? "🤖 stalled" : "🤖 investigating…";
+      span.textContent = stale ? "🤖 Stalled" : "🤖 Investigating…";
       span.title = stale
         ? "AI investigation appears orphaned — click investigate to retry"
         : "AI investigation in progress";
@@ -338,20 +636,14 @@
     }
     if (investigation.status === "error") {
       span.className = "bon-stat-pill bon-stat-pill--verdict-error";
-      span.textContent = "🤖 error";
+      span.textContent = "🤖 Error";
       span.title = investigation.error || "Investigation failed";
       return span;
     }
     const norm = bonNormalizeInvestigation(investigation);
     if (!norm.verdict) return null;
     span.className = `bon-stat-pill bon-stat-pill--verdict-${norm.verdict}`;
-    span.textContent = `🤖 ${norm.verdict.replace(/-/g, " ")}`;
-    if (typeof norm.confidence === "number") {
-      const conf = document.createElement("span");
-      conf.className = "bon-stat-pill__conf";
-      conf.textContent = `${Math.round(norm.confidence * 100)}%`;
-      span.appendChild(conf);
-    }
+    span.textContent = `🤖 ${formatVerdict(norm.verdict)}`;
     span.title = norm.summary || norm.verdict;
     return span;
   }
@@ -409,13 +701,6 @@
       return section;
     }
 
-    if (investigation.summary) {
-      const summary = document.createElement("p");
-      summary.className = "bon-panel-summary";
-      summary.textContent = investigation.summary;
-      section.appendChild(summary);
-    }
-
     const metaParts = [];
     if (typeof investigation.confidence === "number") {
       metaParts.push(
@@ -448,14 +733,48 @@
 
   function buildFactorsList(factors) {
     const byKey = new Map(factors.map((f) => [f.key, f]));
-    const ordered = [
-      ...FACTOR_ORDER.filter((k) => byKey.has(k)).map((k) => byKey.get(k)),
-      ...factors.filter((f) => !FACTOR_ORDER.includes(f.key)),
-    ];
     const ul = document.createElement("ul");
     ul.className = "bon-panel-factors";
-    for (const f of ordered) ul.appendChild(buildFactor(f));
+    // Walk the canonical key list so factors added since the report ran appear
+    // as placeholders in the right position, and stored factors that have
+    // since been removed from the schema are dropped silently.
+    for (const key of FACTOR_ORDER) {
+      const f = byKey.get(key);
+      if (f) {
+        ul.appendChild(buildFactor(f));
+      } else {
+        ul.appendChild(buildMissingFactor(key));
+      }
+    }
     return ul;
+  }
+
+  function buildMissingFactor(key) {
+    const li = document.createElement("li");
+    li.className = "bon-panel-factor bon-panel-factor--new";
+
+    const header = document.createElement("div");
+    header.className = "bon-panel-factor__header";
+
+    const name = document.createElement("span");
+    name.className = "bon-panel-factor__name";
+    name.textContent = FACTOR_LABELS[key] || key;
+    header.appendChild(name);
+
+    const pill = document.createElement("span");
+    pill.className = "bon-panel-factor__signal bon-panel-factor__signal--new";
+    pill.textContent = "Added later";
+    header.appendChild(pill);
+    li.appendChild(header);
+
+    const note = document.createElement("div");
+    note.className =
+      "bon-panel-factor__reasoning bon-panel-factor__reasoning--muted";
+    note.textContent =
+      "Added after this investigation ran — re-run to include it.";
+    li.appendChild(note);
+
+    return li;
   }
 
   function buildFactor(f) {
@@ -467,7 +786,7 @@
 
     const name = document.createElement("span");
     name.className = "bon-panel-factor__name";
-    name.textContent = FACTOR_LABELS[f.key] || f.name || f.key || "factor";
+    name.textContent = FACTOR_LABELS[f.key] || f.name || f.key || "Factor";
     header.appendChild(name);
 
     if (typeof f.score === "number") {
@@ -476,8 +795,8 @@
       pill.className = `bon-panel-factor__signal bon-panel-factor__signal--${leaning}`;
       pill.textContent =
         leaning === "neutral"
-          ? "neutral"
-          : `${leaning.replace(/-/g, " ")} ${Math.abs(f.score).toFixed(2)}`;
+          ? "Neutral"
+          : `${formatVerdict(leaning)} ${Math.abs(f.score).toFixed(2)}`;
       header.appendChild(pill);
     }
     li.appendChild(header);
@@ -622,22 +941,22 @@
     const verdict = investigation?.verdict;
 
     if (running && !stale) {
-      btn.textContent = "⏳ investigating…";
+      btn.textContent = "⏳ Investigating…";
       btn.disabled = true;
       btn.classList.add("bon-spinning");
     } else if (stale) {
-      btn.textContent = "🔁 retry (stalled)";
+      btn.textContent = "🔁 Retry (stalled)";
     } else if (verdict) {
-      btn.textContent = "🔁 re-investigate";
+      btn.textContent = "🔁 Re-investigate";
     } else {
-      btn.textContent = "🤖 investigate";
+      btn.textContent = "🤖 Investigate";
     }
 
     btn.addEventListener("click", async (e) => {
       e.stopPropagation();
       btn.disabled = true;
       btn.classList.add("bon-spinning");
-      btn.textContent = "⏳ investigating…";
+      btn.textContent = "⏳ Investigating…";
       try {
         const res = await browser.runtime.sendMessage({
           type: "investigate-user",
@@ -645,18 +964,18 @@
         });
         if (res?.ok === false && res.error === "no-api-key") {
           alert(
-            "No Claude API key set. Open the Bot or Not popup → Settings to add one."
+            "No Claude API key set. Click the Bot or Not toolbar icon, then open Settings to add one."
           );
           btn.disabled = false;
           btn.classList.remove("bon-spinning");
-          btn.textContent = verdict ? "🔁 re-investigate" : "🤖 investigate";
+          btn.textContent = verdict ? "🔁 Re-investigate" : "🤖 Investigate";
         }
         // storage.onChanged will trigger refreshProfilePanel.
       } catch (err) {
         console.error("[Bot or Not] investigate failed", err);
         btn.disabled = false;
         btn.classList.remove("bon-spinning");
-        btn.textContent = verdict ? "🔁 re-investigate" : "🤖 investigate";
+        btn.textContent = verdict ? "🔁 Re-investigate" : "🤖 Investigate";
       }
     });
     return btn;
@@ -666,7 +985,7 @@
     const btn = document.createElement("button");
     btn.type = "button";
     btn.className = "bon-panel-btn";
-    btn.textContent = "🔍 external check";
+    btn.textContent = "🔍 External check";
     btn.title = `Check Bot Bouncer, RedditMetis, ProfileProbe, Google for ${username}`;
     btn.addEventListener("click", (e) => {
       e.stopPropagation();
@@ -707,11 +1026,16 @@
 
   browser.storage.onChanged.addListener((changes, area) => {
     if (area !== "local" || !changes.reports) return;
-    const panel = document.getElementById("bon-profile-panel");
-    if (!panel) return;
-    const username = panel.dataset.username;
-    if (!username) return;
-    refreshProfilePanel(username);
+    loadUserTags();
+    const profilePanel = document.getElementById("bon-profile-panel");
+    if (profilePanel?.dataset.username) {
+      refreshProfilePanel(profilePanel.dataset.username);
+    }
+    const postPanel = document.getElementById("bon-post-author-panel");
+    if (postPanel?.dataset.username) {
+      const postEl = document.querySelector("shreddit-post");
+      refreshPostAuthorPanel(postPanel.dataset.username, postEl);
+    }
   });
 
   // --- Passive ban/deletion detection ---
@@ -866,7 +1190,7 @@
   const observer = new MutationObserver(() => {
     maybeResetForNavigation();
     injectPanel();
-    markBots();
+    markUsers();
     runStatusDetection();
   });
   observer.observe(document.body, { childList: true, subtree: true });

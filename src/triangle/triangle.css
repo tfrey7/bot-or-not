@@ -1,0 +1,73 @@
+.bon-triangle-col {
+  width: 6.5em;
+  text-align: center;
+}
+
+.bon-beta-tag {
+  display: inline-block;
+  margin-left: 0.35em;
+  padding: 0.05em 0.4em;
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: #b45309;
+  background: #fef3c7;
+  border: 1px solid #fcd34d;
+  border-radius: 0.25em;
+  vertical-align: middle;
+  text-transform: uppercase;
+}
+
+.bon-triangle-cell {
+  text-align: center;
+  vertical-align: middle;
+}
+
+.bon-triangle {
+  display: inline-flex;
+  align-items: center;
+  position: relative;
+  vertical-align: middle;
+  transition: transform 0.15s ease;
+}
+
+.bon-triangle:hover {
+  transform: scale(1.08);
+}
+
+.bon-triangle-svg {
+  display: block;
+  overflow: visible;
+}
+
+.bon-triangle-base {
+  fill: #ffffff;
+  stroke: none;
+}
+
+.bon-triangle-outline {
+  fill: none;
+  stroke: rgba(15, 23, 42, 0.18);
+  stroke-width: 0.7;
+  stroke-linejoin: round;
+}
+
+.bon-triangle-label {
+  font-size: 7px;
+  font-family:
+    "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  fill: #94a3b8;
+  text-anchor: middle;
+}
+
+.bon-triangle-halo {
+  fill: rgba(255, 255, 255, 0.85);
+}
+
+.bon-triangle-dot {
+  fill: #1e293b;
+  stroke: #ffffff;
+  stroke-width: 0.7;
+}

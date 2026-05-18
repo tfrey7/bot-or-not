@@ -9,21 +9,47 @@
   const modalText = document.getElementById("bon-modal-text");
   const cancelBtn = document.getElementById("bon-cancel-clear");
   const confirmBtn = document.getElementById("bon-confirm-clear");
-  const settingsBtn = document.getElementById("bon-settings-btn");
-  const settingsModal = document.getElementById("bon-settings-modal");
-  const settingsCancel = document.getElementById("bon-settings-cancel");
-  const settingsSave = document.getElementById("bon-settings-save");
-  const apiKeyInput = document.getElementById("bon-api-key-input");
-  const apiKeyStatus = document.getElementById("bon-api-key-status");
   let pendingConfirmAction = null;
 
   let allReports = [];
-  const analyticsContainer = document.getElementById("bon-analytics-container");
   let sortKey = "lastReportedAt";
   let sortDir = "desc";
   const expanded = new Set();
   const inflightActivity = new Set();
   const BON_ACTIVITY_TTL_MS = 24 * 60 * 60 * 1000;
+
+  // --- Triangle helpers (beta) ---
+  // Placeholder so the widget has something to render before the real parallel
+  // analysis ships. Stable per-username so positions don't jitter between renders.
+  function bonPlaceholderTriangle(username) {
+    let h = 2166136261;
+    for (let i = 0; i < username.length; i++) {
+      h = (h ^ username.charCodeAt(i)) >>> 0;
+      h = (h + ((h << 1) + (h << 4) + (h << 7) + (h << 8) + (h << 24))) >>> 0;
+    }
+    const a = (h % 1000) / 1000;
+    const b = ((h >>> 10) % 1000) / 1000;
+    const c = ((h >>> 20) % 1000) / 1000;
+    const sum = a + b + c || 1;
+    return { bot: a / sum, stan: b / sum, farmer: c / sum };
+  }
+
+  function triangleFor(report) {
+    return (
+      report.investigation?.triangle || bonPlaceholderTriangle(report.username)
+    );
+  }
+
+  // "Normal" when no single corner pulls the position meaningfully off the
+  // centroid. 0.20 is a tilt of 20 percentage points between max and min.
+  function dominantCorner(tri) {
+    const max = Math.max(tri.bot, tri.stan, tri.farmer);
+    const min = Math.min(tri.bot, tri.stan, tri.farmer);
+    if (max - min < 0.2) return { key: "normal", label: "Normal" };
+    if (max === tri.bot) return { key: "bot", label: "Bot" };
+    if (max === tri.stan) return { key: "stan", label: "Stan" };
+    return { key: "farmer", label: "Farmer" };
+  }
 
   function isActivityFresh(activityData) {
     return (
@@ -65,11 +91,12 @@
   let pollTimer = null;
   const POLL_INTERVAL_MS = 1000;
 
-  // Factor list is canonical in src/factors.js. Stored investigations may
+  // Source of truth for *currently active* factors. Stored investigations may
   // contain factor keys not in this list (deprecated since the report ran) —
   // those are dropped silently. Keys in this list missing from a stored
   // investigation are rendered as "added after" placeholders so old reports
   // stay readable without re-running.
+  // Factor list is canonical in src/factors.js.
   const FACTOR_LABELS = BON_FACTOR_LABELS;
   const FACTOR_KEYS = BON_FACTOR_KEYS;
 
@@ -130,76 +157,8 @@
     if (e.target === modal) closeConfirmModal();
   });
   document.addEventListener("keydown", (e) => {
-    if (e.key !== "Escape") return;
-    if (!modal.hidden) closeConfirmModal();
-    if (!settingsModal.hidden) settingsModal.hidden = true;
+    if (e.key === "Escape" && !modal.hidden) closeConfirmModal();
   });
-
-  settingsBtn.addEventListener("click", openSettings);
-  settingsCancel.addEventListener("click", () => {
-    settingsModal.hidden = true;
-  });
-  settingsModal.addEventListener("click", (e) => {
-    if (e.target === settingsModal) settingsModal.hidden = true;
-  });
-  settingsSave.addEventListener("click", saveApiKey);
-
-  async function openSettings() {
-    apiKeyInput.value = "";
-    apiKeyStatus.textContent = "Loading...";
-    apiKeyStatus.className = "bon-settings-status";
-    settingsModal.hidden = false;
-    apiKeyInput.focus();
-    try {
-      const { hasKey } = await browser.runtime.sendMessage({
-        type: "get-claude-api-key",
-      });
-      renderApiKeyStatus(hasKey);
-    } catch (err) {
-      apiKeyStatus.textContent = "Failed to read key status.";
-      apiKeyStatus.className =
-        "bon-settings-status bon-settings-status--missing";
-    }
-  }
-
-  function renderApiKeyStatus(hasKey) {
-    if (hasKey) {
-      apiKeyStatus.textContent =
-        "Key set. Type a new one to replace, or leave blank to keep.";
-      apiKeyStatus.className = "bon-settings-status bon-settings-status--set";
-      apiKeyInput.placeholder = "•••• (key on file)";
-    } else {
-      apiKeyStatus.textContent =
-        "No key set. Investigations will fail until one is saved.";
-      apiKeyStatus.className =
-        "bon-settings-status bon-settings-status--missing";
-      apiKeyInput.placeholder = "sk-ant-...";
-    }
-  }
-
-  async function saveApiKey() {
-    const value = apiKeyInput.value.trim();
-    if (!value) {
-      settingsModal.hidden = true;
-      return;
-    }
-    settingsSave.disabled = true;
-    try {
-      const { hasKey } = await browser.runtime.sendMessage({
-        type: "set-claude-api-key",
-        apiKey: value,
-      });
-      renderApiKeyStatus(hasKey);
-      apiKeyInput.value = "";
-      settingsModal.hidden = true;
-    } catch (err) {
-      apiKeyStatus.textContent = "Failed to save key.";
-      apiKeyStatus.className =
-        "bon-settings-status bon-settings-status--missing";
-    } finally {
-      settingsSave.disabled = false;
-    }
-  }
   confirmBtn.addEventListener("click", async () => {
     if (!pendingConfirmAction) return;
     const action = pendingConfirmAction;
@@ -242,22 +201,12 @@
         ...data,
       }));
       render();
-      renderAnalytics();
     } catch (err) {
       console.error("[Bot or Not] failed to load reports", err);
       tableWrap.hidden = true;
       emptyEl.hidden = false;
       emptyEl.textContent = "Failed to load reports.";
     }
-  }
-
-  // Analytics shows aggregates across every investigation, so it should not
-  // react to the search input or to every poll tick — only when the underlying
-  // data actually changes.
-  function renderAnalytics() {
-    if (!analyticsContainer) return;
-    if (typeof bonRenderAnalytics !== "function") return;
-    bonRenderAnalytics(allReports, analyticsContainer);
   }
 
   function render() {
@@ -377,7 +326,6 @@
       allReports = fresh;
       if (structuralChange) {
         render();
-        renderAnalytics();
       } else {
         updateRunningInPlace();
         ensurePolling();
@@ -471,40 +419,17 @@
     if (key === "username") return r.username.toLowerCase();
     if (key === "count") return r.count || 0;
     if (key === "lastReportedAt") return r.lastReportedAt || 0;
-    if (key === "verdict") {
-      const v = r.investigation?.verdict;
-      return VERDICT_RANK[v] ?? 5;
+    if (key === "triangle") {
+      // Sort by how far the dot is pulled toward any corner — most extreme first.
+      const t = triangleFor(r);
+      return Math.max(t.bot, t.stan, t.farmer);
     }
     if (key === "investigatedAt") return r.investigation?.runAt || 0;
-    if (key === "region") {
-      // Sort by region label so same-country rows cluster; rows with no
-      // inferred region sink to the bottom.
-      const region = computeRegionForReport(r);
-      if (!region) return "￿";
-      if (region.kind === "deterministic") {
-        return (BON_REGION_INFO[region.region]?.label || region.region) + "_a";
-      }
-      // timezone-only sorts after subreddit-based hits regardless of label
-      return "￾_" + (region.offsetHours ?? 99);
-    }
     return null;
   }
 
-  function computeRegionForReport(report) {
-    const activityData = report.activityData;
-    const timestamps = [
-      ...(activityData?.postTimestamps || []),
-      ...(activityData?.commentTimestamps || []),
-    ];
-    const tz =
-      typeof inferTimezoneFromTimestamps === "function"
-        ? inferTimezoneFromTimestamps(timestamps)
-        : null;
-    return bonInferRegion(activityData, tz);
-  }
-
   function renderReportRow(report) {
-    const { username, lastReportedAt, history, investigation } = report;
+    const { username, lastReportedAt, history, count, investigation } = report;
 
     const summary = document.createElement("tr");
     summary.className = "bon-row-summary";
@@ -569,22 +494,17 @@
     userCell.appendChild(nameWrap);
     summary.appendChild(userCell);
 
-    const regionCell = document.createElement("td");
-    regionCell.className = "bon-region-cell";
-    regionCell.appendChild(renderRegionBadge(report));
-    summary.appendChild(regionCell);
-
-    const verdictCell = document.createElement("td");
-    const verdictEl = verdictBadge(investigation);
-    if (verdictEl) {
-      verdictCell.appendChild(verdictEl);
-    } else {
-      const dash = document.createElement("span");
-      dash.className = "bon-bb-empty";
-      dash.textContent = "—";
-      verdictCell.appendChild(dash);
-    }
-    summary.appendChild(verdictCell);
+    const triangleCell = document.createElement("td");
+    triangleCell.className = "bon-triangle-cell";
+    const tri = triangleFor(report);
+    const widget = bonRenderTriangleWidget(tri);
+    if (widget) triangleCell.appendChild(widget);
+    const dom = dominantCorner(tri);
+    const domLabel = document.createElement("div");
+    domLabel.className = `bon-triangle-dominant bon-triangle-dominant--${dom.key}`;
+    domLabel.textContent = dom.label;
+    triangleCell.appendChild(domLabel);
+    summary.appendChild(triangleCell);
 
     const factorsCell = document.createElement("td");
     factorsCell.appendChild(renderFactorDots(investigation));
@@ -600,6 +520,11 @@
       investigatedCell.dataset.bonRunningCell = username;
     }
     summary.appendChild(investigatedCell);
+
+    const countCell = document.createElement("td");
+    countCell.className = "bon-cell-numeric";
+    countCell.textContent = count || 0;
+    summary.appendChild(countCell);
 
     const dateCell = document.createElement("td");
     dateCell.className = "bon-cell-muted";
@@ -620,6 +545,17 @@
 
     const startCollapsed = !expanded.has(username);
 
+    // Triangle breakdown is always available (real data when present, otherwise
+    // the placeholder), so we always render this detail row first.
+    const triangleRow = document.createElement("tr");
+    triangleRow.className = "bon-row-history";
+    triangleRow.hidden = startCollapsed;
+    const triangleDetailCell = document.createElement("td");
+    triangleDetailCell.colSpan = 8;
+    triangleDetailCell.appendChild(renderTriangleDetail(tri));
+    triangleRow.appendChild(triangleDetailCell);
+    detailRows.push(triangleRow);
+
     if (hasInvestigation) {
       const investigationRow = document.createElement("tr");
       investigationRow.className = "bon-row-history";
@@ -636,7 +572,7 @@
       activityRow.className = "bon-row-history";
       activityRow.hidden = startCollapsed;
       const activityCell = document.createElement("td");
-      activityCell.colSpan = 7;
+      activityCell.colSpan = 8;
       if (inflightActivity.has(username) && !report.activityData) {
         activityCell.appendChild(renderActivityLoadingPlaceholder());
       } else {
@@ -653,7 +589,7 @@
       historyRow.className = "bon-row-history";
       historyRow.hidden = startCollapsed;
       const historyCell = document.createElement("td");
-      historyCell.colSpan = 7;
+      historyCell.colSpan = 8;
       const wrap = document.createElement("div");
       wrap.className = "bon-detail-wrap";
       const title = document.createElement("p");
@@ -763,126 +699,6 @@
     span.className = `bon-verdict-badge bon-verdict-badge--${investigation.verdict}`;
     span.textContent = formatVerdict(investigation.verdict);
     span.title = investigation.summary || investigation.verdict;
-    return span;
-  }
-
-  // Assemble the badge hover tooltip by listing every source that contributed
-  // to the region pick, plus the timezone agreement and runner-up. Aims to
-  // make the operator audit-able: "yes, here's exactly why we said India."
-  function formatRegionTooltip(region, info) {
-    const lines = [`${info.label} — combined region signal:`];
-    if (region.subreddit) {
-      const hitsSummary = region.subreddit.hits
-        .slice(0, 4)
-        .map(({ sub, count }) => `r/${sub}${count > 1 ? ` ×${count}` : ""}`)
-        .join(", ");
-      const more =
-        region.subreddit.hits.length > 4
-          ? ` +${region.subreddit.hits.length - 4} more`
-          : "";
-      lines.push(
-        `• ${region.subreddit.count} item${region.subreddit.count === 1 ? "" : "s"} in ${info.label}-coded subreddits (${hitsSummary}${more})`
-      );
-    }
-    if (region.scriptSignal) {
-      const scriptSummary = region.scriptSignal.hits
-        .map((h) => `${h.count} ${h.script}`)
-        .join(", ");
-      lines.push(`• Script in their writing: ${scriptSummary}`);
-    }
-    if (region.languageSignal) {
-      const langSummary = region.languageSignal.hits
-        .map((h) => `${h.count} ${h.label}`)
-        .join(", ");
-      lines.push(`• Language markers in their writing: ${langSummary}`);
-    }
-    if (region.moderator) {
-      const modList = region.moderator.hits
-        .slice(0, 3)
-        .map((h) => `r/${h.sub}`)
-        .join(", ");
-      lines.push(
-        `• Moderates ${region.moderator.score} ${info.label}-coded sub${region.moderator.score === 1 ? "" : "s"} (${modList})`
-      );
-    }
-    if (region.tzMatch === true) {
-      lines.push(
-        `• Posting timezone UTC${region.tzOffset >= 0 ? "+" : ""}${region.tzOffset} matches ${info.label}`
-      );
-    } else if (region.tzMatch === false) {
-      lines.push(
-        `⚠ Posting timezone UTC${region.tzOffset >= 0 ? "+" : ""}${region.tzOffset} does NOT match — possible operator in a different country`
-      );
-    }
-    if (region.runnerUp) {
-      const r = BON_REGION_INFO[region.runnerUp.region];
-      lines.push(
-        `(runner-up: ${r?.label || region.runnerUp.region} with score ${region.runnerUp.score.toFixed(1)})`
-      );
-    }
-    return lines.join("\n");
-  }
-
-  function renderRegionBadge(report) {
-    const region = computeRegionForReport(report);
-    if (!region) {
-      const dash = document.createElement("span");
-      dash.className = "bon-bb-empty";
-      dash.textContent = "—";
-      if (!report.activityData) {
-        dash.title =
-          "Activity not loaded yet — expand the row or run an investigation to populate.";
-      } else if (!report.activityData.subredditCounts) {
-        dash.title =
-          "Activity data was fetched before subreddit-region tracking was added. Click ↻ refresh in the heatmap to re-fetch and populate this column.";
-      } else {
-        dash.title =
-          "No region-specific subreddits in this account's recent activity, and no clear daily sleep cycle for timezone inference.";
-      }
-      return dash;
-    }
-
-    if (region.kind === "deterministic") {
-      const info = BON_REGION_INFO[region.region] || {
-        flag: "🏳",
-        label: region.region,
-      };
-      const badge = document.createElement("span");
-      let tzClass = "";
-      if (region.tzMatch === true) tzClass = " bon-region-badge--tz-match";
-      else if (region.tzMatch === false)
-        tzClass = " bon-region-badge--tz-mismatch";
-      badge.className = `bon-region-badge${tzClass}`;
-
-      const flag = document.createElement("span");
-      flag.className = "bon-region-flag";
-      flag.textContent = info.flag;
-      // Tooltip on the flag itself for quick "what country is this?" hover —
-      // labels sit next to the flag too, but a flag-only glance should be
-      // self-explanatory.
-      flag.title = info.label;
-      badge.appendChild(flag);
-
-      const label = document.createElement("span");
-      label.textContent = info.label;
-      badge.appendChild(label);
-
-      badge.title = formatRegionTooltip(region, info);
-      return badge;
-    }
-
-    // timezone-only — weak signal, render as muted text
-    const span = document.createElement("span");
-    span.className = "bon-region-tz-only";
-    const offset = region.offsetHours;
-    const sign = offset >= 0 ? "+" : "";
-    span.textContent = `UTC${sign}${offset}`;
-    const candidates = region.possibleRegions
-      .map((code) => BON_REGION_INFO[code]?.label)
-      .filter(Boolean);
-    span.title = candidates.length
-      ? `Timezone-only inference. Posting hours cluster around UTC${sign}${offset} — possible regions: ${candidates.join(", ")}. No country-coded subreddits in activity.`
-      : `Timezone-only inference. Posting hours cluster around UTC${sign}${offset}. No country-coded subreddits in activity.`;
     return span;
   }
 
@@ -1027,7 +843,9 @@
           username,
         });
         if (res?.ok === false && res.error === "no-api-key") {
-          openSettings();
+          alert(
+            "No Claude API key set. Open the main Reports page and click Settings to add one."
+          );
         }
         // storage.onChanged will reload and re-render.
       } catch (err) {
@@ -1056,6 +874,52 @@
       });
     });
     return btn;
+  }
+
+  function renderTriangleDetail(tri) {
+    const wrap = document.createElement("div");
+    wrap.className = "bon-detail-triangle-wrap";
+
+    const widget = bonRenderTriangleWidget(tri);
+    if (widget) {
+      // Scale up the in-row widget for the detail view without re-implementing it.
+      widget.style.transform = "scale(1.8)";
+      widget.style.transformOrigin = "left center";
+      widget.style.marginRight = "5em";
+      widget.style.marginLeft = "2em";
+      wrap.appendChild(widget);
+    }
+
+    const bars = document.createElement("div");
+    bars.className = "bon-detail-triangle-bars";
+    const corners = [
+      { key: "bot", label: "Bot" },
+      { key: "stan", label: "Stan" },
+      { key: "farmer", label: "Farmer" },
+    ];
+    for (const c of corners) {
+      const row = document.createElement("div");
+      row.className = "bon-detail-triangle-bar-row";
+      const label = document.createElement("span");
+      label.className = "bon-detail-triangle-bar-label";
+      label.textContent = c.label;
+      const track = document.createElement("div");
+      track.className = "bon-detail-triangle-bar-track";
+      const fill = document.createElement("div");
+      fill.className = `bon-detail-triangle-bar-fill bon-detail-triangle-bar-fill--${c.key}`;
+      fill.style.width = `${Math.round(tri[c.key] * 100)}%`;
+      track.appendChild(fill);
+      const value = document.createElement("span");
+      value.className = "bon-detail-triangle-bar-value";
+      value.textContent = `${Math.round(tri[c.key] * 100)}%`;
+      row.appendChild(label);
+      row.appendChild(track);
+      row.appendChild(value);
+      bars.appendChild(row);
+    }
+    wrap.appendChild(bars);
+
+    return wrap;
   }
 
   function renderInvestigationDetail(rawInvestigation) {
@@ -1119,13 +983,6 @@
     if (typeof investigation.postsFetched === "number") {
       metaParts.push(
         `${investigation.postsFetched} posts, ${investigation.commentsFetched ?? 0} comments analyzed`
-      );
-    }
-    if (typeof investigation.webSearchCount === "number") {
-      metaParts.push(
-        investigation.webSearchCount > 0
-          ? `🌐 web search: ${investigation.webSearchCount}`
-          : "🌐 web search: skipped"
       );
     }
     meta.textContent = metaParts.join(" · ");
@@ -1427,7 +1284,7 @@
     wrap.appendChild(meta);
 
     wrap.appendChild(renderCalendarHeatmap(timestamps, activityData));
-    wrap.appendChild(renderHourSection(timestamps, activityData));
+    wrap.appendChild(renderHourSection(timestamps));
 
     return wrap;
   }
@@ -1607,51 +1464,14 @@
     return outer;
   }
 
-  function renderHourSection(timestamps, activityData) {
+  function renderHourSection(timestamps) {
     const outer = document.createElement("div");
     outer.style.marginTop = "0.75em";
-
-    // Surface every deterministic signal source independently so the operator
-    // can see which ones fired (subreddit / script / language markers /
-    // moderated subs) — not just the combined verdict.
-    const subRegion = bonInferRegionFromSubreddits(
-      activityData?.subredditCounts
-    );
-    const scriptRegion = bonInferRegionFromScripts(activityData?.scriptSignals);
-    const langRegion = bonInferRegionFromLanguage(
-      activityData?.languageSignals
-    );
-    const modRegion = bonInferRegionFromModerated(activityData?.moderatedSubs);
-
-    if (subRegion) {
-      const row = document.createElement("p");
-      row.className = "bon-heatmap-row";
-      row.appendChild(renderSubredditRegionLine(subRegion));
-      outer.appendChild(row);
-    }
-    if (scriptRegion) {
-      const row = document.createElement("p");
-      row.className = "bon-heatmap-row";
-      row.appendChild(renderScriptRegionLine(scriptRegion));
-      outer.appendChild(row);
-    }
-    if (langRegion) {
-      const row = document.createElement("p");
-      row.className = "bon-heatmap-row";
-      row.appendChild(renderLanguageRegionLine(langRegion));
-      outer.appendChild(row);
-    }
-    if (modRegion) {
-      const row = document.createElement("p");
-      row.className = "bon-heatmap-row";
-      row.appendChild(renderModeratorRegionLine(modRegion));
-      outer.appendChild(row);
-    }
 
     const inferred = inferTimezoneFromTimestamps(timestamps);
     const primary = document.createElement("p");
     primary.className = "bon-heatmap-row";
-    primary.appendChild(renderInferredTimezone(inferred, subRegion));
+    primary.appendChild(renderInferredTimezone(inferred));
     outer.appendChild(primary);
 
     const tzName = Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -1712,7 +1532,7 @@
     };
   }
 
-  function renderInferredTimezone(inferred, subRegion) {
+  function renderInferredTimezone(inferred) {
     const span = document.createElement("span");
     if (inferred.kind === "insufficient") {
       span.innerHTML = `<small>Not enough activity to infer a timezone (${inferred.count} item${inferred.count === 1 ? "" : "s"}).</small>`;
@@ -1726,82 +1546,7 @@
     const offsetStr = `UTC${offsetHours >= 0 ? "+" : ""}${offsetHours}`;
     const region = regionForOffset(offsetHours);
     const sleep = `${pad2(sleepStartUtc)}:00–${pad2(sleepEndUtc)}:00 UTC`;
-    let suffix = "";
-    if (subRegion) {
-      const info = BON_REGION_INFO[subRegion.region];
-      const offsets = info?.utcOffsets || [];
-      if (offsets.includes(offsetHours)) {
-        suffix = ` — <strong style="color:#16a085">matches ${info.label} posting history ✓</strong>`;
-      } else {
-        suffix = ` — <strong style="color:#c0392b">does NOT match ${info?.label || subRegion.region} posting history ⚠</strong>`;
-      }
-    }
-    span.innerHTML = `Likely profile timezone: <strong>${offsetStr}</strong>${region ? ` (${region})` : ""} — inactive window ${sleep}${suffix}`;
-    return span;
-  }
-
-  function renderSubredditRegionLine(subRegion) {
-    const info = BON_REGION_INFO[subRegion.region] || {
-      flag: "🏳",
-      label: subRegion.region,
-    };
-    const span = document.createElement("span");
-    const hitsList = subRegion.hits
-      .slice(0, 5)
-      .map(({ sub, count }) => `r/${sub}${count > 1 ? ` ×${count}` : ""}`)
-      .join(", ");
-    const moreNote =
-      subRegion.hits.length > 5
-        ? ` <span class="bon-region-tz">+${subRegion.hits.length - 5} more</span>`
-        : "";
-    let runnerNote = "";
-    if (subRegion.runnerUp) {
-      const r = BON_REGION_INFO[subRegion.runnerUp.region];
-      runnerNote = ` <span class="bon-region-tz">(also ${subRegion.runnerUp.count} in ${r?.label || subRegion.runnerUp.region})</span>`;
-    }
-    span.innerHTML = `Region from posting history: <strong title="${info.label}">${info.flag} ${info.label}</strong> — ${subRegion.count} item${subRegion.count === 1 ? "" : "s"} in ${hitsList}${moreNote}${runnerNote}`;
-    return span;
-  }
-
-  function renderScriptRegionLine(scriptRegion) {
-    const info = BON_REGION_INFO[scriptRegion.region] || {
-      flag: "🏳",
-      label: scriptRegion.region,
-    };
-    const span = document.createElement("span");
-    const hits = scriptRegion.hits
-      .map((h) => `${h.count} ${h.script}`)
-      .join(", ");
-    span.innerHTML = `Script in their writing: <strong title="${info.label}">${info.flag} ${info.label}</strong> — ${hits}`;
-    return span;
-  }
-
-  function renderLanguageRegionLine(langRegion) {
-    const info = BON_REGION_INFO[langRegion.region] || {
-      flag: "🏳",
-      label: langRegion.region,
-    };
-    const span = document.createElement("span");
-    const hits = langRegion.hits.map((h) => `${h.count} ${h.label}`).join(", ");
-    span.innerHTML = `Language markers in writing: <strong title="${info.label}">${info.flag} ${info.label}</strong> — ${hits}`;
-    return span;
-  }
-
-  function renderModeratorRegionLine(modRegion) {
-    const info = BON_REGION_INFO[modRegion.region] || {
-      flag: "🏳",
-      label: modRegion.region,
-    };
-    const span = document.createElement("span");
-    const list = modRegion.hits
-      .slice(0, 5)
-      .map((h) => `r/${h.sub}`)
-      .join(", ");
-    const more =
-      modRegion.hits.length > 5
-        ? ` <span class="bon-region-tz">+${modRegion.hits.length - 5} more</span>`
-        : "";
-    span.innerHTML = `Moderates ${modRegion.score} ${info.label}-coded sub${modRegion.score === 1 ? "" : "s"}: <strong title="${info.label}">${info.flag} ${info.label}</strong> — ${list}${more}`;
+    span.innerHTML = `Likely profile timezone: <strong>${offsetStr}</strong>${region ? ` (${region})` : ""} — inactive window ${sleep}`;
     return span;
   }
 

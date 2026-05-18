@@ -4,10 +4,10 @@
   "description": "",
   "scripts": {
     "dev": "web-ext run --source-dir . --ignore-files node_modules/**",
-    "build": "web-ext build --source-dir . --ignore-files node_modules/** .idea/** icons/source/** CLAUDE.md SPEC.md eslint.config.js package.json package-lock.json .prettierrc.json --overwrite-dest",
-    "sign": "source .env && web-ext sign --api-key=$AMO_API_KEY --api-secret=$AMO_API_SECRET --channel unlisted --source-dir . --ignore-files node_modules/** .idea/** icons/source/** CLAUDE.md SPEC.md eslint.config.js package.json package-lock.json .prettierrc.json",
-    "format": "prettier --write src/content_script.js src/background.js src/popup.js src/reports.js src/bot_analysis.js src/verdict.js",
-    "lint": "eslint src/content_script.js src/background.js src/popup.js src/reports.js src/bot_analysis.js src/verdict.js",
+    "build": "web-ext build --source-dir . --ignore-files node_modules/** .idea/** icons/source/** CLAUDE.md eslint.config.js package.json package-lock.json .prettierrc.json --overwrite-dest",
+    "sign": "source .env && web-ext sign --api-key=$AMO_API_KEY --api-secret=$AMO_API_SECRET --channel unlisted --source-dir . --ignore-files node_modules/** .idea/** icons/source/** CLAUDE.md eslint.config.js package.json package-lock.json .prettierrc.json",
+    "format": "prettier --write \"src/**/*.js\"",
+    "lint": "eslint \"src/**/*.js\"",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "type": "module",

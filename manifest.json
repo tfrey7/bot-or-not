@@ -9,7 +9,15 @@
     }
   },
   "background": {
-    "scripts": ["src/verdict.js", "src/bot_analysis.js", "src/background.js"]
+    "scripts": [
+      "src/factors.js",
+      "src/verdict.js",
+      "src/triangle/verdict_triangle.js",
+      "src/regions.js",
+      "src/bot_analysis.js",
+      "src/triangle/bot_analysis_triangle.js",
+      "src/background.js"
+    ]
   },
   "permissions": ["storage", "tabs"],
   "host_permissions": [
@@ -24,7 +32,6 @@
     }
   ],
   "action": {
-    "default_popup": "src/popup.html",
     "default_title": "Bot or Not",
     "default_icon": {
       "16": "icons/icon-16.png",

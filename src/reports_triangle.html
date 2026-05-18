@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <title>Bot or Not — Reports</title>
+    <title>Bot or Not — Triangle (Beta)</title>
     <link rel="icon" type="image/png" href="../icons/icon-32.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -255,43 +255,6 @@
         color: var(--bon-muted-soft);
         font-size: 0.78rem;
       }
-      .bon-region-cell {
-        white-space: nowrap;
-        font-size: 0.82rem;
-        line-height: 1.3;
-      }
-      .bon-region-badge {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.35em;
-        padding: 0.18em 0.55em 0.18em 0.4em;
-        background: #eef2f5;
-        border: 1px solid var(--bon-border);
-        border-radius: 0.45em;
-        font-weight: 500;
-        color: var(--bon-text);
-      }
-      .bon-region-badge--tz-match {
-        background: #ecfdf5;
-        border-color: #a7f3d0;
-      }
-      .bon-region-badge--tz-mismatch {
-        background: #fef3c7;
-        border-color: #fde68a;
-      }
-      .bon-region-badge .bon-region-flag {
-        font-size: 1rem;
-        line-height: 1;
-      }
-      .bon-region-tz {
-        color: var(--bon-muted);
-        font-variant-numeric: tabular-nums;
-        font-size: 0.78rem;
-      }
-      .bon-region-tz-only {
-        color: var(--bon-muted);
-        font-style: italic;
-      }
       .bon-verdict-badge {
         display: inline-block;
         font-size: 0.65rem;
@@ -325,8 +288,7 @@
         background: #3498db;
       }
       .bon-factors-cell {
-        display: inline-grid;
-        grid-template-columns: repeat(7, auto);
+        display: inline-flex;
         gap: 0.18em;
       }
       .bon-factor-dot {
@@ -654,43 +616,6 @@
         justify-content: flex-end;
         gap: 0.5em;
       }
-      .bon-settings-field {
-        display: block;
-        margin: 0 0 1em;
-      }
-      .bon-settings-field label {
-        display: block;
-        font-size: 0.78rem;
-        color: var(--bon-muted);
-        margin-bottom: 0.35em;
-      }
-      .bon-settings-field input {
-        width: 100%;
-        font-family: var(--bon-font-mono);
-        font-size: 0.85rem;
-        padding: 0.55em 0.7em;
-        border: 1px solid var(--bon-border-strong);
-        border-radius: 0.4em;
-        box-sizing: border-box;
-        background: var(--bon-surface);
-        color: var(--bon-text);
-      }
-      .bon-settings-field input:focus {
-        outline: none;
-        border-color: var(--bon-link);
-        box-shadow: 0 0 0 3px rgba(3, 102, 214, 0.15);
-      }
-      .bon-settings-status {
-        font-size: 0.75rem;
-        color: var(--bon-muted);
-        margin: 0.4em 0 0;
-      }
-      .bon-settings-status--set {
-        color: #16a085;
-      }
-      .bon-settings-status--missing {
-        color: var(--bon-danger);
-      }
       .bon-heatmap-empty {
         font-size: 0.82rem;
         color: var(--bon-muted);
@@ -890,35 +815,150 @@
       }
     </style>
     <link rel="stylesheet" href="triangle/triangle.css" />
-    <!--
-      triangle.css stays loaded so the .bon-beta-tag pill in the header link
-      keeps its styling. The triangle widget itself isn't used on this page.
-    -->
-    <link rel="stylesheet" href="analytics.css" />
+    <style>
+      /* Triangle-page-specific additions */
+      .bon-placeholder-banner {
+        margin-bottom: 1.25em;
+        padding: 0.85em 1em;
+        background: #fffbeb;
+        border: 1px solid #fde68a;
+        border-radius: 0.5em;
+        font-size: 0.85rem;
+        color: #78350f;
+        line-height: 1.45;
+      }
+      .bon-placeholder-banner strong {
+        color: #92400e;
+      }
+      .bon-legend {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1.25em;
+        margin-bottom: 1em;
+        padding: 0.5em 0;
+        font-size: 0.82rem;
+        color: var(--bon-muted);
+      }
+      .bon-legend-item {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4em;
+      }
+      .bon-legend-swatch {
+        width: 0.7em;
+        height: 0.7em;
+        border-radius: 50%;
+        display: inline-block;
+      }
+      .bon-legend-swatch--bot {
+        background: #ef4444;
+      }
+      .bon-legend-swatch--stan {
+        background: #ec4899;
+      }
+      .bon-legend-swatch--farmer {
+        background: #8b5cf6;
+      }
+      .bon-legend-center {
+        color: var(--bon-muted-soft);
+        font-style: italic;
+      }
+      .bon-triangle-dominant {
+        margin-top: 0.4em;
+        font-size: 0.7rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: var(--bon-muted);
+      }
+      .bon-triangle-dominant--bot {
+        color: #b91c1c;
+      }
+      .bon-triangle-dominant--stan {
+        color: #be185d;
+      }
+      .bon-triangle-dominant--farmer {
+        color: #6d28d9;
+      }
+      .bon-triangle-dominant--normal {
+        color: var(--bon-muted-soft);
+        font-style: italic;
+      }
+      .bon-triangle-th {
+        text-align: center;
+      }
+      .bon-detail-triangle-wrap {
+        display: flex;
+        gap: 1.5em;
+        align-items: center;
+        padding: 1em 1.5em 1.25em;
+        border-bottom: 1px solid var(--bon-border);
+      }
+      .bon-detail-triangle-bars {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 0.4em;
+      }
+      .bon-detail-triangle-bar-row {
+        display: grid;
+        grid-template-columns: 5em 1fr 3em;
+        align-items: center;
+        gap: 0.75em;
+        font-size: 0.82rem;
+      }
+      .bon-detail-triangle-bar-label {
+        color: var(--bon-muted);
+        font-weight: 500;
+      }
+      .bon-detail-triangle-bar-track {
+        position: relative;
+        height: 0.55em;
+        background: #eef2f5;
+        border-radius: 0.3em;
+        overflow: hidden;
+      }
+      .bon-detail-triangle-bar-fill {
+        position: absolute;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        border-radius: 0.3em;
+      }
+      .bon-detail-triangle-bar-fill--bot {
+        background: #ef4444;
+      }
+      .bon-detail-triangle-bar-fill--stan {
+        background: #ec4899;
+      }
+      .bon-detail-triangle-bar-fill--farmer {
+        background: #8b5cf6;
+      }
+      .bon-detail-triangle-bar-value {
+        text-align: right;
+        font-variant-numeric: tabular-nums;
+        color: var(--bon-text);
+        font-weight: 600;
+      }
+    </style>
   </head>
   <body>
     <div class="bon-page">
       <header class="bon-header">
         <img src="../icons/icon.png" width="40" height="40" alt="" />
         <div>
-          <h1>Bot or Not — Reports</h1>
-          <p class="bon-subtitle">All accounts you've flagged on Reddit</p>
+          <h1>
+            Triangle classifier
+            <span class="bon-beta-tag">BETA</span>
+          </h1>
+          <p class="bon-subtitle">
+            Experimental three-way placement of reported accounts.
+          </p>
         </div>
         <div class="bon-header-actions">
-          <a href="reports_triangle.html" class="bon-btn">
-            Triangle view <span class="bon-beta-tag">BETA</span>
-          </a>
+          <a href="reports.html" class="bon-btn">← Back to reports</a>
           <button type="button" id="bon-refresh-btn" class="bon-btn">
             ↻ Refresh
-          </button>
-          <button
-            type="button"
-            id="bon-settings-btn"
-            class="bon-btn"
-            aria-label="Settings"
-            title="Settings"
-          >
-            ⚙ Settings
           </button>
           <button
             type="button"
@@ -930,6 +970,30 @@
           </button>
         </div>
       </header>
+
+      <div class="bon-placeholder-banner">
+        <strong>Beta.</strong> The triangle classifier runs in parallel with
+        the standard bot/not analysis whenever you investigate a user. Newly
+        investigated users show real classifier output; older investigations
+        (run before this feature shipped) still show a stable
+        username-derived placeholder until you re-investigate them.
+      </div>
+
+      <div class="bon-legend">
+        <span class="bon-legend-item">
+          <span class="bon-legend-swatch bon-legend-swatch--bot"></span>
+          Bot — automated, repetitive, generic
+        </span>
+        <span class="bon-legend-item">
+          <span class="bon-legend-swatch bon-legend-swatch--stan"></span>
+          Stan — high-volume emotional fandom
+        </span>
+        <span class="bon-legend-item">
+          <span class="bon-legend-swatch bon-legend-swatch--farmer"></span>
+          Farmer — repost / karma-farm / engagement bait
+        </span>
+        <span class="bon-legend-center">Center = normal user</span>
+      </div>
 
       <div class="bon-toolbar">
         <input
@@ -949,11 +1013,12 @@
               <th class="bon-sortable" data-sort="username">
                 User <span class="bon-sort-indicator"></span>
               </th>
-              <th class="bon-sortable" data-sort="region">
-                Region <span class="bon-sort-indicator"></span>
-              </th>
-              <th class="bon-sortable" data-sort="verdict">
-                AI verdict <span class="bon-sort-indicator"></span>
+              <th
+                class="bon-sortable bon-triangle-th"
+                data-sort="triangle"
+                data-default-dir="desc"
+              >
+                Triangle <span class="bon-sort-indicator"></span>
               </th>
               <th>Factors</th>
               <th
@@ -962,6 +1027,9 @@
                 data-default-dir="desc"
               >
                 Investigated <span class="bon-sort-indicator"></span>
+              </th>
+              <th class="bon-sortable bon-cell-numeric" data-sort="count">
+                Reports <span class="bon-sort-indicator"></span>
               </th>
               <th
                 class="bon-sortable"
@@ -980,40 +1048,6 @@
       <div id="bon-empty" class="bon-empty" hidden>
         No reports yet. Flag a Reddit user from their profile page to start
         tracking.
-      </div>
-
-      <div id="bon-analytics-container"></div>
-    </div>
-
-    <div id="bon-settings-modal" class="bon-modal-backdrop" hidden>
-      <div
-        class="bon-modal"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="bon-settings-heading"
-      >
-        <p id="bon-settings-heading">
-          <strong>Settings</strong>
-        </p>
-        <div class="bon-settings-field">
-          <label for="bon-api-key-input">Claude API key</label>
-          <input
-            type="password"
-            id="bon-api-key-input"
-            placeholder="sk-ant-..."
-            autocomplete="off"
-            spellcheck="false"
-          />
-          <p id="bon-api-key-status" class="bon-settings-status"></p>
-        </div>
-        <div class="bon-modal-actions">
-          <button type="button" id="bon-settings-cancel" class="bon-btn">
-            Close
-          </button>
-          <button type="button" id="bon-settings-save" class="bon-btn">
-            Save
-          </button>
-        </div>
       </div>
     </div>
 
@@ -1045,8 +1079,7 @@
     <script src="verdict.js"></script>
     <script src="config.js"></script>
     <script src="factors.js"></script>
-    <script src="regions.js"></script>
-    <script src="analytics.js"></script>
-    <script src="reports.js"></script>
+    <script src="triangle/triangle_widget.js"></script>
+    <script src="reports_triangle.js"></script>
   </body>
 </html>

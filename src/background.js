@@ -49,8 +49,8 @@ browser.runtime.onMessage.addListener((message) => {
   if (message.type === "get-user-report") {
     return handleGetUserReport(message);
   }
-  if (message.type === "get-known-bots") {
-    return handleGetKnownBots();
+  if (message.type === "get-user-tags") {
+    return handleGetUserTags();
   }
   if (message.type === "get-all-reports") {
     return handleGetAllReports();
@@ -79,6 +79,9 @@ browser.runtime.onMessage.addListener((message) => {
   if (message.type === "investigate-user") {
     return handleInvestigateUser(message);
   }
+  if (message.type === "auto-investigate-on-view") {
+    return handleAutoInvestigateOnView(message);
+  }
   if (message.type === "fetch-activity") {
     return handleFetchActivity(message);
   }
@@ -90,12 +93,30 @@ browser.runtime.onMessage.addListener((message) => {
   }
 });
 
-async function handleOpenPopup() {
+browser.action.onClicked.addListener(() => {
+  void openReportsTab();
+});
+
+async function openReportsTab() {
+  const url = browser.runtime.getURL("src/reports.html");
   try {
-    await browser.action.openPopup();
+    const existing = await browser.tabs.query({ url });
+    if (existing && existing.length > 0) {
+      const tab = existing[0];
+      await browser.tabs.update(tab.id, { active: true });
+      if (tab.windowId != null) {
+        await browser.windows.update(tab.windowId, { focused: true });
+      }
+      return;
+    }
+    await browser.tabs.create({ url });
   } catch (err) {
-    console.error("[Bot or Not] openPopup failed", err);
+    console.error("[Bot or Not] openReportsTab failed", err);
   }
+}
+
+async function handleOpenPopup() {
+  await openReportsTab();
 }
 
 function handleOpenTabs(message) {
@@ -209,6 +230,31 @@ async function maybeAutoInvestigate(username) {
   }
 }
 
+// Viewing someone's profile is itself a signal of suspicion — kick off an
+// investigation when one isn't already on file. Stale "running" is treated as
+// no-investigation since a previous worker died mid-await. Done/error/fresh-
+// running are left alone; the user can retry errors via the panel button.
+async function handleAutoInvestigateOnView(message) {
+  const username = (message.username || "").trim();
+  if (!username) return { ok: false, error: "missing-username" };
+  try {
+    const { claudeApiKey = "" } =
+      await browser.storage.local.get("claudeApiKey");
+    if (!claudeApiKey) return { ok: true, started: false };
+    const { reports = {} } = await browser.storage.local.get("reports");
+    const key = findReportKey(reports, username) || username;
+    const inv = normalizeReport(reports[key]).investigation;
+    if (inv && !(inv.status === "running" && bonIsInvestigationStale(inv))) {
+      return { ok: true, started: false };
+    }
+    void handleInvestigateUser({ username });
+    return { ok: true, started: true };
+  } catch (err) {
+    console.error("[Bot or Not] auto-investigate-on-view failed", err);
+    return { ok: false, error: String(err?.message || err) };
+  }
+}
+
 async function handleUpdateUserCreatedAt(message) {
   const { reports = {} } = await browser.storage.local.get("reports");
   if (!reports[message.username]) return;
@@ -280,15 +326,38 @@ async function handleUpdatePostStatus(message) {
   }
 }
 
-async function handleGetKnownBots() {
+async function handleGetUserTags() {
   const { reports = {} } = await browser.storage.local.get("reports");
-  // Only users who've actually been reported get the inline bot icon —
-  // investigated-only records (count: 0) are tracked but not flagged sitewide.
-  const bots = [];
+  const tags = {};
   for (const [username, value] of Object.entries(reports)) {
-    if (normalizeReport(value).count > 0) bots.push(username);
+    const tag = summarizeUserTag(username, value);
+    if (tag) tags[username] = tag;
   }
-  return { bots };
+  return { tags };
+}
+
+function summarizeUserTag(username, value) {
+  const r = normalizeReport(value);
+  const inv = bonNormalizeInvestigation(r.investigation);
+  const verdict = inv?.status === "done" && inv?.verdict ? inv.verdict : null;
+  const investigationStatus = inv?.status || null;
+  const hasSignal =
+    verdict ||
+    r.count > 0 ||
+    r.userStatus ||
+    r.botBouncerStatus ||
+    investigationStatus === "running";
+  if (!hasSignal) return null;
+  return {
+    username,
+    count: r.count,
+    verdict,
+    confidence: typeof inv?.confidence === "number" ? inv.confidence : null,
+    investigationStatus,
+    investigationStartedAt: inv?.startedAt || null,
+    botBouncerStatus: r.botBouncerStatus || null,
+    userStatus: r.userStatus || null,
+  };
 }
 
 async function handleGetAllReports() {
@@ -366,34 +435,58 @@ async function handleInvestigateUser(message) {
   );
 
   try {
-    const result = await bonInvestigateUser(username, claudeApiKey, {
+    // One Reddit fetch, two parallel Claude calls — 1D bot/not analysis and
+    // the experimental triangle classifier. They share the same profile
+    // summary so the LLMs see identical input.
+    const inputs = await bonGatherProfile(username, {
       botBouncerStatus: existingRecord.botBouncerStatus,
       botBouncerCheckedAt: existingRecord.botBouncerCheckedAt,
     });
+    // The triangle analyzer can fail independently of the 1D analyzer (bad
+    // JSON, etc.) — don't let a triangle failure tank the whole investigation.
+    // Settle the 1D call; allow-settle the triangle call.
+    const [oneD, triResult] = await Promise.all([
+      bonRunOneDAnalysis(claudeApiKey, inputs.summary),
+      bonInvestigateUserTriangle(claudeApiKey, inputs.summary).catch((err) => {
+        console.error("[Bot or Not] triangle analysis failed", err);
+        return null;
+      }),
+    ]);
+
     const durationMs = Date.now() - startedAt;
-    const {
-      activityData,
-      botBouncerStatus,
-      botBouncerCheckedAt,
-      ...investigationFields
-    } = result;
+    console.log(
+      `[Bot or Not] timing: investigation ${username} ${durationMs}ms`
+    );
+    const sharedFields = {
+      postsFetched: inputs.raw.submitted?.data?.children?.length || 0,
+      commentsFetched: inputs.raw.comments?.data?.children?.length || 0,
+      accountCreatedAt: inputs.summary.account.created_at,
+      accountAgeDays: inputs.summary.account.age_days,
+    };
+
     await setInvestigationState(username, {
       status: "done",
       startedAt: null,
       error: null,
       durationMs,
-      ...investigationFields,
+      ...oneD,
+      ...sharedFields,
+      ...(triResult || {}),
     });
-    if (activityData) {
-      await saveActivityData(username, activityData);
+
+    if (inputs.activityData) {
+      await saveActivityData(username, inputs.activityData);
     }
-    if (botBouncerStatus) {
+    if (inputs.botBouncerStatus) {
       await handleUpdateBotBouncerStatus({
         username,
-        status: botBouncerStatus,
+        status: inputs.botBouncerStatus,
       });
     }
-    return { ok: true, result: { ...result, durationMs } };
+    return {
+      ok: true,
+      result: { ...oneD, ...sharedFields, ...(triResult || {}), durationMs },
+    };
   } catch (err) {
     console.error("[Bot or Not] investigation failed", err);
     await setInvestigationState(username, {
