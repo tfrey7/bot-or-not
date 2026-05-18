@@ -3,9 +3,9 @@
   "version": "2.0.0",
   "description": "",
   "scripts": {
-    "dev": "web-ext run --source-dir . --ignore-files node_modules/** references/**",
-    "build": "web-ext build --source-dir . --ignore-files node_modules/** .idea/** icons/source/** references/** CLAUDE.md eslint.config.js package.json package-lock.json .prettierrc.json --overwrite-dest",
-    "sign": "source .env && web-ext sign --api-key=$AMO_API_KEY --api-secret=$AMO_API_SECRET --channel unlisted --source-dir . --ignore-files node_modules/** .idea/** icons/source/** references/** CLAUDE.md eslint.config.js package.json package-lock.json .prettierrc.json",
+    "dev": "vite build --watch --mode development",
+    "build": "vite build",
+    "sign": "source .env && npm run build && web-ext sign --api-key=$AMO_API_KEY --api-secret=$AMO_API_SECRET --channel unlisted --source-dir dist",
     "format": "prettier --write \"src/**/*.js\"",
     "lint": "eslint \"src/**/*.js\"",
     "test": "echo \"Error: no test specified\" && exit 1"
@@ -16,6 +16,8 @@
     "eslint": "^10.2.0",
     "eslint-config-prettier": "^10.1.8",
     "prettier": "^3.8.1",
+    "vite": "^8.0.13",
+    "vite-plugin-web-extension": "^4.5.1",
     "web-ext": "^10.1.0"
   }
 }

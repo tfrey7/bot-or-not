@@ -1,3 +1,26 @@
+import "./verdict.js";
+import "./factors.js";
+import "./features/regions/data.js";
+import "./features/regions/index.js";
+import "./utils/format_time.js";
+import "./utils/format_number.js";
+import "./utils/format_text.js";
+import "./utils/cost.js";
+import "./utils/scoring.js";
+import "./utils/stats.js";
+import "./features/analytics/logic.js";
+import "./features/analytics/svg.js";
+import "./features/analytics/chart_card.js";
+import "./features/analytics/stat_grid.js";
+import "./features/analytics/chart_cost.js";
+import "./features/analytics/chart_activity.js";
+import "./features/analytics/chart_duration.js";
+import "./features/analytics/chart_tokens.js";
+import "./features/analytics/table_models.js";
+import "./features/analytics/table_top_spenders.js";
+import "./features/analytics/table_run_log.js";
+import "./features/analytics/index.js";
+
 (async function () {
   const tbody = document.getElementById("bon-tbody");
   const tableWrap = document.getElementById("bon-table-wrap");

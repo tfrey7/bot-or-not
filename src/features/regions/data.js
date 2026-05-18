@@ -454,3 +454,8 @@ var BON_LANGUAGE_MARKERS = {
       /\b(che|boludo|pelotudo|quilombo|laburar|pibe|guacho|bondi|chamuyo)\b/gi,
   },
 };
+
+globalThis.BON_REGION_INFO = BON_REGION_INFO;
+globalThis.BON_REGION_SUBS = BON_REGION_SUBS;
+globalThis.BON_SCRIPT_RANGES = BON_SCRIPT_RANGES;
+globalThis.BON_LANGUAGE_MARKERS = BON_LANGUAGE_MARKERS;

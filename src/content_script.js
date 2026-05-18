@@ -1,3 +1,9 @@
+import "./factors.js";
+import "./verdict.js";
+import "./utils/format_time.js";
+import "./utils/format_text.js";
+import "./utils/scoring.js";
+
 (function () {
   const { version } = browser.runtime.getManifest();
   console.log(`[Bot or Not] v${version} loaded`);

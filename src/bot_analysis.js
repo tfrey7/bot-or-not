@@ -2,6 +2,9 @@
 // Loaded before background.js; functions are attached to globalThis so the
 // background message handlers can call them.
 
+// Vite inlines the .md as a string at build time — no runtime fetch needed.
+import BON_ANALYSIS_PROMPT from "./bot_analysis.md?raw";
+
 const BON_CLAUDE_MODEL = "claude-sonnet-4-6";
 const BON_CLAUDE_API_URL = "https://api.anthropic.com/v1/messages";
 const BON_REDDIT_FETCH_LIMIT = 100;
@@ -9,8 +12,6 @@ const BON_MAX_ITEMS_TO_AI = 60; // per kind (posts + comments)
 // Hard ceiling on the Claude call. Sonnet 4.6 on a 14k-token prompt typically
 // returns in 40-90s; anything past this is a hung connection, not a slow one.
 const BON_CLAUDE_TIMEOUT_MS = 4 * 60 * 1000;
-
-let bonCachedPrompt = null;
 
 async function bonTimed(label, fn) {
   const t0 = performance.now();
@@ -27,20 +28,7 @@ async function bonTimed(label, fn) {
 }
 
 async function bonLoadAnalysisPrompt() {
-  if (bonCachedPrompt) {
-    return bonCachedPrompt;
-  }
-  const url = browser.runtime.getURL("src/bot_analysis.md");
-  const res = await fetch(url);
-  if (!res.ok) {
-    throw new Error(`Failed to load bot_analysis.md (${res.status})`);
-  }
-  bonCachedPrompt = await res.text();
-  return bonCachedPrompt;
-}
-
-function bonResetPromptCache() {
-  bonCachedPrompt = null;
+  return BON_ANALYSIS_PROMPT;
 }
 
 async function bonFetchJson(url) {
@@ -463,5 +451,4 @@ globalThis.bonGatherProfile = bonGatherProfile;
 globalThis.bonRunOneDAnalysis = bonRunOneDAnalysis;
 globalThis.bonInvestigateUser = bonInvestigateUser;
 globalThis.bonFetchUserActivity = bonFetchUserActivity;
-globalThis.bonResetPromptCache = bonResetPromptCache;
 globalThis.bonCallClaude = bonCallClaude;

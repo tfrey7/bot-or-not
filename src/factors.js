@@ -58,3 +58,10 @@ var BON_ARCHETYPE_KEYS = BON_ARCHETYPES.map((a) => a.key);
 // only plots human-flavor archetypes. `bot` = automated; `normal` = a genuine,
 // low-key human with no strong pull toward any of the named archetypes.
 var BON_PERSONA_LABELS = [...BON_ARCHETYPE_KEYS, "bot", "normal"];
+
+globalThis.BON_FACTORS = BON_FACTORS;
+globalThis.BON_FACTOR_KEYS = BON_FACTOR_KEYS;
+globalThis.BON_FACTOR_LABELS = BON_FACTOR_LABELS;
+globalThis.BON_ARCHETYPES = BON_ARCHETYPES;
+globalThis.BON_ARCHETYPE_KEYS = BON_ARCHETYPE_KEYS;
+globalThis.BON_PERSONA_LABELS = BON_PERSONA_LABELS;

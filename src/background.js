@@ -1,3 +1,18 @@
+// Side-effect imports — each module attaches its API to globalThis on load.
+// Order matters: dependencies first, then bot_analysis, then this file
+// consumes those globals.
+import "./factors.js";
+import "./verdict.js";
+import "./features/regions/data.js";
+import "./features/regions/index.js";
+import "./utils/format_text.js";
+import "./utils/json.js";
+import "./utils/persona.js";
+import "./utils/cost.js";
+import "./utils/reddit_activity.js";
+import "./utils/history.js";
+import "./bot_analysis.js";
+
 console.log("[Bot or Not] background loaded");
 
 // Any investigation found with status: "running" at startup was orphaned —
