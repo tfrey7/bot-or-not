@@ -29,7 +29,26 @@ bonReportingInit();
 bonProfilePanelInit();
 bonStatusDetectionInit();
 
+// Coalesce scan work to one execution per animation frame. Reddit's SPA
+// can fire hundreds of mutations per second while mounting big comment
+// trees (e.g. WSB megathreads); without throttling we'd run every scan
+// for every mutation and freeze the page.
 let lastUrl = window.location.href;
+let scanScheduled = false;
+
+function scheduleScan(): void {
+  if (scanScheduled) {
+    return;
+  }
+  scanScheduled = true;
+  requestAnimationFrame(() => {
+    scanScheduled = false;
+    bonProfilePanelInject();
+    bonInlineTagsMark();
+    bonStatusDetectionScan();
+  });
+}
+
 const observer = new MutationObserver(() => {
   if (window.location.href !== lastUrl) {
     lastUrl = window.location.href;
@@ -37,8 +56,6 @@ const observer = new MutationObserver(() => {
     bonStatusDetectionResetNav();
   }
 
-  bonProfilePanelInject();
-  bonInlineTagsMark();
-  bonStatusDetectionScan();
+  scheduleScan();
 });
 observer.observe(document.body, { childList: true, subtree: true });

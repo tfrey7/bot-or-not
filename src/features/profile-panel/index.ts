@@ -98,19 +98,42 @@ function injectPostAuthorPanel(): void {
     return;
   }
 
-  // Reddit's SPA updates the URL via pushState before unmounting the feed,
-  // so `querySelector("shreddit-post")` during that window picks up a feed
-  // post instead of the destination post. Match the URL permalink against
-  // each post's `permalink` attribute and only inject once the actual post
-  // is in the DOM.
+  // Fast path: panel already placed on a non-feed post for the right author.
+  // The orchestrator calls us on every animation frame; without this guard
+  // we'd run the whole-document shreddit-post scan below on every frame for
+  // the entire time the user is on a comments page (slow when the index
+  // feed is still attached after SPA navigation).
+  const existingPanel = document.getElementById(
+    "bon-post-author-panel"
+  ) as HTMLElement | null;
+
+  if (existingPanel?.isConnected) {
+    const ancestorPost = existingPanel.closest(
+      "shreddit-post"
+    ) as HTMLElement | null;
+    if (
+      ancestorPost &&
+      !ancestorPost.closest("shreddit-feed") &&
+      existingPanel.dataset.username === ancestorPost.getAttribute("author")
+    ) {
+      return;
+    }
+  }
+
+  // Slow path: resolve the destination post and inject. Reddit's SPA updates
+  // the URL via pushState before unmounting the feed, so we match the URL
+  // permalink against each post's `permalink` attribute and skip any match
+  // still inside a <shreddit-feed> — that's the just-clicked feed item, not
+  // the destination post page render.
   const urlBase = postMatch[1].toLowerCase();
   const postEl = Array.from(document.querySelectorAll("shreddit-post")).find(
-    (p) => (p.getAttribute("permalink") || "").toLowerCase().startsWith(urlBase)
+    (p) =>
+      (p.getAttribute("permalink") || "").toLowerCase().startsWith(urlBase) &&
+      !p.closest("shreddit-feed")
   ) as HTMLElement | undefined;
 
   if (!postEl) {
     // Drop any stale panel sitting on a feed post we're navigating away from.
-    const existingPanel = document.getElementById("bon-post-author-panel");
     if (existingPanel) {
       existingPanel.remove();
     }
@@ -122,12 +145,7 @@ function injectPostAuthorPanel(): void {
     return;
   }
 
-  const existingPanel = document.getElementById("bon-post-author-panel");
   if (existingPanel) {
-    const onCorrectPost = existingPanel.closest("shreddit-post") === postEl;
-    if (onCorrectPost && existingPanel.dataset.username === username) {
-      return;
-    }
     existingPanel.remove();
   }
 
@@ -253,9 +271,14 @@ function renderPostAuthorPanel(
   postEl: HTMLElement | null,
   report: Report | null
 ): void {
-  // postEl may have been detached by Reddit's SPA re-render; re-resolve it
+  // postEl may have been detached by Reddit's SPA re-render; re-resolve it,
+  // skipping any post still nested in a feed (those are feed items, not the
+  // destination post page).
   if (!postEl || !postEl.isConnected) {
-    postEl = document.querySelector("shreddit-post") as HTMLElement | null;
+    postEl =
+      (Array.from(document.querySelectorAll("shreddit-post")).find(
+        (p) => !p.closest("shreddit-feed")
+      ) as HTMLElement | undefined) ?? null;
     if (!postEl) {
       return;
     }
@@ -327,9 +350,10 @@ export function bonProfilePanelInit(): void {
 
     const postPanel = document.getElementById("bon-post-author-panel");
     if (postPanel?.dataset.username) {
-      const postEl = document.querySelector(
-        "shreddit-post"
-      ) as HTMLElement | null;
+      const postEl =
+        (Array.from(document.querySelectorAll("shreddit-post")).find(
+          (p) => !p.closest("shreddit-feed")
+        ) as HTMLElement | undefined) ?? null;
 
       void refreshPostAuthorPanel(
         postPanel.dataset.username,

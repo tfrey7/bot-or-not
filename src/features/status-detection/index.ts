@@ -9,6 +9,17 @@ let lastUserStatusReported: string | null = null;
 const reportedPostPermalinks = new Set<string>();
 const reportedBotBouncerKeys = new Set<string>();
 
+// document.body.textContent scans are O(body size). On big comment threads
+// the body can be multiple MB, and the orchestrator fires us once per
+// animation frame — so we throttle the textContent-backed detectors to one
+// scan per second. The detected message may not be in the DOM on the first
+// scan, so we can't go "once and done" — but per-second is cheap and still
+// catches late renders within the page lifetime. resetNav() resets these
+// on SPA navigation.
+const STATUS_SCAN_THROTTLE_MS = 1000;
+let lastUserStatusScanAt = 0;
+let lastStandalonePostScanAt = 0;
+
 function detectUserStatus(): void {
   const profileMatch = window.location.pathname.match(
     /^\/(?:user|u)\/([^/?#]+)/i
@@ -16,6 +27,12 @@ function detectUserStatus(): void {
   if (!profileMatch) {
     return;
   }
+
+  const now = Date.now();
+  if (now - lastUserStatusScanAt < STATUS_SCAN_THROTTLE_MS) {
+    return;
+  }
+  lastUserStatusScanAt = now;
 
   const username = profileMatch[1];
   const bodyText = document.body?.textContent || "";
@@ -96,6 +113,16 @@ function detectStandalonePostStatus(): void {
   }
 
   const permalink = m[1].endsWith("/") ? m[1] : `${m[1]}/`;
+  if (reportedPostPermalinks.has(permalink)) {
+    return;
+  }
+
+  const now = Date.now();
+  if (now - lastStandalonePostScanAt < STATUS_SCAN_THROTTLE_MS) {
+    return;
+  }
+  lastStandalonePostScanAt = now;
+
   const bodyText = document.body?.textContent || "";
 
   let status: string | null = null;
@@ -186,4 +213,6 @@ export function bonStatusDetectionResetNav(): void {
   lastUserStatusReported = null;
   reportedPostPermalinks.clear();
   reportedBotBouncerKeys.clear();
+  lastUserStatusScanAt = 0;
+  lastStandalonePostScanAt = 0;
 }
