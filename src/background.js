@@ -2,7 +2,7 @@ import {
   bonFetchUserActivity,
   bonGatherProfile,
   bonRunOneDAnalysis,
-} from "./bot_analysis.js";
+} from "./features/investigation/index.js";
 import {
   bonDedupeHistory,
   bonFindReportKey,

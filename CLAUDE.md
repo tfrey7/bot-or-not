@@ -85,16 +85,16 @@ Investigation shape:
 ## Patterns
 
 - **Storage I/O is background-only.** Content script, popup, and reports page all message the background (`get-user-report`, `update-user-status`, …). Do not call `browser.storage.local` from anywhere else.
-- The content script is wrapped in an **IIFE**. Do not convert to ES modules — content scripts can't use top-level `import` even though `package.json` has `"type": "module"`.
+- All source files are ES modules — Vite bundles each entry point (`background.js`, `content_script.js`, `reports.html`) so content scripts can use `import` despite the manifest treating them as classic scripts.
 - Profile-page badge injection is **idempotent** — check for `#bon-badge-container` before injecting. A **MutationObserver** handles Reddit's async SPA renders; disconnect it once injection succeeds.
 - On background startup, investigations stuck at `status: "running"` are swept to `status: "error"` — the previous worker died mid-await (web-ext reload, browser restart, service-worker eviction) and won't be back to finish them.
 - Inline username tags are keyed by **lowercase** username (Reddit's routing is case-insensitive).
 
 ## Code organization
 
-The project is migrating from type-based grouping (top-level screens, shared `utils/`) to **feature-based directories** under `src/features/<feature>/`. Each directory IS the feature — drop the directory, remove its `<script>` tags from `manifest.json`/`reports.html`, remove the one or two call sites, and the feature is gone. New code goes in this shape; old code gets pulled in incrementally.
+Every screen and pipeline lives under `src/features/<feature>/`. Each directory IS the feature — drop the directory, remove the one or two imports from `src/content_script.js` / `src/background.js` / `src/reports.html`, and the feature is gone.
 
-Done so far: `src/features/analytics/`, `src/features/regions/`. Likely-next: the investigation pipeline, the reports page, splitting `content_script.js` into `inline-tags` / `reporting` / `profile-panel`.
+Current features: `analytics/`, `regions/`, `inline-tags/`, `reporting/`, `profile-panel/`, `status-detection/`, `reports/`, `investigation/`. Top-level survivors are intentional cross-feature contracts: `src/verdict.js` (the verdict-derivation math) and `src/factors.js` (the canonical factor + persona list both the analyzer and every UI consumes), plus the `src/utils/` helpers.
 
 ### File roles inside a feature
 
@@ -110,28 +110,23 @@ Done so far: `src/features/analytics/`, `src/features/regions/`. Likely-next: th
 
 **Separate business logic from rendering.** Pure transforms go in `logic.js`; DOM building goes in `index.js` or per-widget files. A function that computes summary stats and the function that paints them shouldn't share a file.
 
-### Naming exposed globals
+### Naming exported names
 
-Plain scripts (no ES modules — see Patterns), so cross-file communication is via globals on `globalThis`:
+ES modules everywhere; cross-file communication is via `import` / `export` (no IIFE/`globalThis`).
 
-- Every exported global gets the `bon` prefix.
-- **Feature-internal helpers** used by other files in the same feature get the `bon<Feature>` prefix (`bonAnalyticsSvgRoot`, `bonAnalyticsChartCard`). The long name keeps ownership obvious and prevents collisions if another feature grows similar helpers.
+- Every exported name gets the `bon` prefix so it's obvious in import lists where the symbol came from.
+- **Feature-internal helpers** used by other files in the same feature get a `bon<Feature>` prefix (`bonAnalyticsSvgRoot`, `bonReportsRow`). The long name keeps ownership obvious and prevents collisions if another feature grows similar helpers.
 - **Cross-feature utilities** go in `src/utils/<topic>.js` with a short `bon` prefix (`bonFmtUsd`, `bonExtractJson`).
-- Each file wraps its declarations in an **IIFE** (`(function () { ... })();`) and attaches its public API to `globalThis` at the bottom.
-
-### Script loading order
-
-`manifest.json` (background + content scripts) and `src/reports.html` each load every `.js` as a separate `<script>` — order matters. List dependencies before consumers (regions `data.js` before regions `index.js`; utils before features; feature widgets before that feature's `index.js`).
 
 ### Refactoring guidelines (when asked to "feature-ify" something)
 
 1. Survey the file to identify the seams (one widget = one render function = one file).
 2. `git mv` the main file into `src/features/<feature>/index.js` to preserve history.
 3. Pull pure data into `logic.js` / `data.js` first — these are the easiest extractions.
-4. Pull each widget into its own file, exposing one `bon<Feature><Widget>` global.
+4. Pull each widget into its own file, exporting one `bon<Feature><Widget>` function.
 5. Slim `index.js` to an orchestrator: data-load → call each widget → assemble. Keep page chrome (header/empty/footnote) inline if tiny.
-6. Update `manifest.json` and/or `reports.html` script tags — dependencies before consumers.
-7. Run `npm run lint && npm run format`. Done.
+6. Update any `import` sites in `background.js` / `content_script.js` / `reports.html` to point at the new feature path.
+7. Run `npm run lint && npm run format && npm run build`. Done.
 
 ## Conventions
 
