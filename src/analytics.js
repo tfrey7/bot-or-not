@@ -12,41 +12,6 @@
   const MS_PER_DAY = 86_400_000;
   const SVG_NS = "http://www.w3.org/2000/svg";
 
-  // Inline pricing — duplicated from bot_analysis.js so analytics works in a
-  // surface that doesn't load the background module. Keep in sync.
-  const BON_PRICING = {
-    "claude-opus-4-7": {
-      input: 15,
-      output: 75,
-      cacheRead: 1.5,
-      cacheWrite5m: 18.75,
-      cacheWrite1h: 30,
-    },
-    "claude-sonnet-4-6": {
-      input: 3,
-      output: 15,
-      cacheRead: 0.3,
-      cacheWrite5m: 3.75,
-      cacheWrite1h: 6,
-    },
-    "claude-haiku-4-5": {
-      input: 1,
-      output: 5,
-      cacheRead: 0.1,
-      cacheWrite5m: 1.25,
-      cacheWrite1h: 2,
-    },
-  };
-
-  function lookupPricing(model) {
-    if (!model) return null;
-    if (BON_PRICING[model]) return BON_PRICING[model];
-    for (const k of Object.keys(BON_PRICING)) {
-      if (model.startsWith(k)) return BON_PRICING[k];
-    }
-    return null;
-  }
-
   // ---------- Public ----------
 
   function bonRenderAnalytics(reports, container) {
@@ -77,29 +42,29 @@
       buildChartCard(
         "Cumulative spend",
         runs.length === 1
-          ? `${fmtUsd(summary.totalCost)} on a single run`
-          : `${fmtUsd(summary.totalCost)} across ${runs.length} investigations`,
+          ? `${bonFmtUsd(summary.totalCost)} on a single run`
+          : `${bonFmtUsd(summary.totalCost)} across ${runs.length} investigations`,
         renderCumulativeCost(runs, summary)
       )
     );
     charts.appendChild(
       buildChartCard(
         "Investigations per day",
-        `${summary.daysActive} active day${summary.daysActive === 1 ? "" : "s"} · ${fmtNum(summary.runsPerActiveDay, 1)} avg / active day`,
+        `${summary.daysActive} active day${summary.daysActive === 1 ? "" : "s"} · ${bonFmtNum(summary.runsPerActiveDay, 1)} avg / active day`,
         renderDailyActivity(runs)
       )
     );
     charts.appendChild(
       buildChartCard(
         "Duration distribution",
-        `median ${fmtDuration(summary.medianDuration)} · p95 ${fmtDuration(summary.p95Duration)}`,
+        `median ${bonFmtDuration(summary.medianDuration)} · p95 ${bonFmtDuration(summary.p95Duration)}`,
         renderDurationHistogram(runs)
       )
     );
     charts.appendChild(
       buildChartCard(
         "Token economy",
-        `${fmtThousands(summary.totalTokens)} tokens · ${fmtPercent(summary.cacheHitRate, 0)} served from cache`,
+        `${bonFmtThousands(summary.totalTokens)} tokens · ${bonFmtPercent(summary.cacheHitRate, 0)} served from cache`,
         renderTokenMix(summary)
       )
     );
@@ -149,7 +114,7 @@
         costUsd:
           typeof run.costUsd === "number"
             ? run.costUsd
-            : computeCostFallback(run.usage, run.model, run.webSearchCount),
+            : bonEstimateCostUsd(run.usage, run.model, run.webSearchCount),
         webSearchCount: run.webSearchCount || 0,
       });
     }
@@ -170,28 +135,6 @@
       calls,
       totalCost,
     };
-  }
-
-  // Recomputes cost from raw usage + model if the stored investigation predates
-  // costUsd being persisted. Same formula as bot_analysis.js.
-  function computeCostFallback(usage, model, webSearchCount) {
-    const p = lookupPricing(model);
-    if (!p || !usage) return null;
-    const inTok = usage.input_tokens || 0;
-    const outTok = usage.output_tokens || 0;
-    const cacheRead = usage.cache_read_input_tokens || 0;
-    const cacheCreate = usage.cache_creation_input_tokens || 0;
-    const w5 = usage.cache_creation?.ephemeral_5m_input_tokens ?? cacheCreate;
-    const w1 = usage.cache_creation?.ephemeral_1h_input_tokens ?? 0;
-    return (
-      (inTok * p.input +
-        outTok * p.output +
-        cacheRead * p.cacheRead +
-        w5 * p.cacheWrite5m +
-        w1 * p.cacheWrite1h) /
-        1_000_000 +
-      (webSearchCount || 0) * 0.01
-    );
   }
 
   function summarize(runs) {
@@ -265,15 +208,15 @@
     s.lastRunAt = isFinite(lastRun) ? lastRun : null;
     s.avgCost = s.count ? s.totalCost / s.count : 0;
     s.medianCost = s.count
-      ? percentile(
+      ? bonPercentile(
           runs.map((r) => r.totalCost).sort((a, b) => a - b),
           0.5
         )
       : 0;
     s.maxCost = s.count ? Math.max(...runs.map((r) => r.totalCost)) : 0;
     s.avgDuration = durations.length ? s.totalDuration / durations.length : 0;
-    s.medianDuration = percentile(durations, 0.5);
-    s.p95Duration = percentile(durations, 0.95);
+    s.medianDuration = bonPercentile(durations, 0.5);
+    s.p95Duration = bonPercentile(durations, 0.95);
     s.totalTokens =
       s.totalInput + s.totalOutput + s.totalCacheRead + s.totalCacheWrite;
     s.cacheHitRate =
@@ -284,75 +227,16 @@
     // Estimate dollars saved by cache reads vs. paying full input price.
     let savings = 0;
     for (const m of Object.values(s.models)) {
-      const p = lookupPricing(m.model);
+      const p = bonLookupPricing(m.model);
       if (!p) continue;
       savings += (m.cacheRead * (p.input - p.cacheRead)) / 1_000_000;
     }
     s.cacheSavingsUsd = savings;
     // Burn rate over last 7 days of activity (only counting days with runs
     // to avoid a misleadingly low rate for sporadic use).
-    s.recentCost = recentCost(runs, 7);
+    s.recentCost = bonRecentCost(runs, 7);
     s.recentDays = 7;
     return s;
-  }
-
-  function recentCost(runs, days) {
-    const cutoff = Date.now() - days * MS_PER_DAY;
-    return runs
-      .filter((r) => r.runAt && r.runAt >= cutoff)
-      .reduce((a, r) => a + r.totalCost, 0);
-  }
-
-  function percentile(sortedArr, p) {
-    if (!sortedArr.length) return 0;
-    const idx = Math.min(
-      sortedArr.length - 1,
-      Math.floor(sortedArr.length * p)
-    );
-    return sortedArr[idx];
-  }
-
-  // ---------- Formatting ----------
-
-  function fmtUsd(n) {
-    if (n == null || !isFinite(n)) return "—";
-    if (n === 0) return "$0";
-    if (n >= 100) return `$${n.toFixed(2)}`;
-    if (n >= 10) return `$${n.toFixed(2)}`;
-    if (n >= 1) return `$${n.toFixed(3)}`;
-    if (n >= 0.01) return `$${n.toFixed(4)}`;
-    if (n >= 0.0001) return `$${n.toFixed(5)}`;
-    return `<$0.0001`;
-  }
-
-  function fmtDuration(ms) {
-    if (ms == null || !isFinite(ms)) return "—";
-    if (ms < 1000) return `${Math.round(ms)}ms`;
-    const s = ms / 1000;
-    if (s < 60) return `${s.toFixed(s < 10 ? 1 : 0)}s`;
-    const m = Math.floor(s / 60);
-    const rem = Math.round(s % 60);
-    if (m < 60) return rem ? `${m}m ${rem}s` : `${m}m`;
-    const h = Math.floor(m / 60);
-    return `${h}h ${m % 60}m`;
-  }
-
-  function fmtThousands(n) {
-    if (n == null || !isFinite(n)) return "—";
-    if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
-    if (n >= 10_000) return `${(n / 1_000).toFixed(0)}k`;
-    if (n >= 1_000) return `${(n / 1_000).toFixed(1)}k`;
-    return String(Math.round(n));
-  }
-
-  function fmtNum(n, digits = 0) {
-    if (n == null || !isFinite(n)) return "—";
-    return n.toFixed(digits);
-  }
-
-  function fmtPercent(n, digits = 0) {
-    if (n == null || !isFinite(n)) return "—";
-    return `${(n * 100).toFixed(digits)}%`;
   }
 
   // ---------- DOM builders ----------
@@ -394,15 +278,15 @@
     addStat(
       grid,
       "Total spent",
-      fmtUsd(s.totalCost),
-      `${fmtUsd(s.avgCost)} avg · ${fmtUsd(s.medianCost)} median · ${fmtUsd(s.maxCost)} max`
+      bonFmtUsd(s.totalCost),
+      `${bonFmtUsd(s.avgCost)} avg · ${bonFmtUsd(s.medianCost)} median · ${bonFmtUsd(s.maxCost)} max`
     );
     addStat(
       grid,
       "Spend last 7d",
-      fmtUsd(s.recentCost),
+      bonFmtUsd(s.recentCost),
       s.recentCost > 0
-        ? `~${fmtUsd(s.recentCost / s.recentDays)} / day`
+        ? `~${bonFmtUsd(s.recentCost / s.recentDays)} / day`
         : "no activity this week"
     );
     addStat(
@@ -414,32 +298,32 @@
     addStat(
       grid,
       "Total tokens",
-      fmtThousands(s.totalTokens),
-      `${fmtThousands(s.totalOutput)} output · ${fmtPercent(s.cacheHitRate)} cached`
+      bonFmtThousands(s.totalTokens),
+      `${bonFmtThousands(s.totalOutput)} output · ${bonFmtPercent(s.cacheHitRate)} cached`
     );
     addStat(
       grid,
       "Median duration",
-      fmtDuration(s.medianDuration),
-      `p95 ${fmtDuration(s.p95Duration)} · ${fmtDuration(s.totalDuration)} total compute`
+      bonFmtDuration(s.medianDuration),
+      `p95 ${bonFmtDuration(s.p95Duration)} · ${bonFmtDuration(s.totalDuration)} total compute`
     );
     addStat(
       grid,
       "Cache savings",
-      fmtUsd(s.cacheSavingsUsd),
+      bonFmtUsd(s.cacheSavingsUsd),
       "vs. paying full input rate on cached reads"
     );
     addStat(
       grid,
       "Reddit fetched",
-      fmtThousands(s.totalPosts + s.totalComments),
-      `${fmtThousands(s.totalPosts)} posts · ${fmtThousands(s.totalComments)} comments`
+      bonFmtThousands(s.totalPosts + s.totalComments),
+      `${bonFmtThousands(s.totalPosts)} posts · ${bonFmtThousands(s.totalComments)} comments`
     );
     addStat(
       grid,
       "Cost per Reddit item",
       s.totalPosts + s.totalComments > 0
-        ? fmtUsd(s.totalCost / (s.totalPosts + s.totalComments))
+        ? bonFmtUsd(s.totalCost / (s.totalPosts + s.totalComments))
         : "—",
       "post/comment analyzed"
     );
@@ -580,7 +464,7 @@
         })
       );
       root.appendChild(
-        svgText(PAD.l - 8, y + 3, fmtUsd(maxCum * frac), null, "end")
+        svgText(PAD.l - 8, y + 3, bonFmtUsd(maxCum * frac), null, "end")
       );
     }
 
@@ -611,7 +495,7 @@
       class: "bon-chart-marker",
     });
     const markerTitle = svgEl("title");
-    markerTitle.textContent = `Most expensive: u/${mp.username} — ${fmtUsd(mp.cost)} (${new Date(mp.runAt).toLocaleString()})`;
+    markerTitle.textContent = `Most expensive: u/${mp.username} — ${bonFmtUsd(mp.cost)} (${new Date(mp.runAt).toLocaleString()})`;
     marker.appendChild(markerTitle);
     root.appendChild(marker);
 
@@ -668,7 +552,7 @@
         fill: "transparent",
       });
       const t = svgEl("title");
-      t.textContent = `u/${p.username} · ${new Date(p.runAt).toLocaleString()}\nthis run: ${fmtUsd(p.cost)} · cumulative: ${fmtUsd(p.cum)}`;
+      t.textContent = `u/${p.username} · ${new Date(p.runAt).toLocaleString()}\nthis run: ${bonFmtUsd(p.cost)} · cumulative: ${bonFmtUsd(p.cum)}`;
       hit.appendChild(t);
       root.appendChild(hit);
     }
@@ -750,7 +634,7 @@
         class: "bon-chart-bar bon-chart-bar--blue",
       });
       const t = svgEl("title");
-      t.textContent = `${new Date(ts).toLocaleDateString()} — ${b.count} run${b.count === 1 ? "" : "s"} · ${fmtUsd(b.cost)}`;
+      t.textContent = `${new Date(ts).toLocaleDateString()} — ${b.count} run${b.count === 1 ? "" : "s"} · ${bonFmtUsd(b.cost)}`;
       rect.appendChild(t);
       root.appendChild(rect);
     }
@@ -869,7 +753,7 @@
           class: "bon-chart-bar bon-chart-bar--teal",
         });
         const t = svgEl("title");
-        t.textContent = `${buckets[i].label}: ${c} run${c === 1 ? "" : "s"} (${fmtPercent(c / durations.length)} of total)`;
+        t.textContent = `${buckets[i].label}: ${c} run${c === 1 ? "" : "s"} (${bonFmtPercent(c / durations.length)} of total)`;
         rect.appendChild(t);
         root.appendChild(rect);
       }
@@ -887,7 +771,7 @@
     // Median marker line — value lives in the card subtitle, so the line is
     // unlabeled to avoid overlapping the bar-count number on tall bars. A
     // tooltip keeps the exact median discoverable.
-    const medianMs = percentile(
+    const medianMs = bonPercentile(
       [...durations].sort((a, b) => a - b),
       0.5
     );
@@ -902,7 +786,7 @@
       class: "bon-chart-median-line",
     });
     const medianTitle = svgEl("title");
-    medianTitle.textContent = `Median run: ${fmtDuration(medianMs)}`;
+    medianTitle.textContent = `Median run: ${bonFmtDuration(medianMs)}`;
     medianLine.appendChild(medianTitle);
     root.appendChild(medianLine);
 
@@ -956,7 +840,7 @@
         fill: seg.color,
       });
       const title = svgEl("title");
-      title.textContent = `${seg.label}: ${fmtThousands(seg.value)} tokens (${fmtPercent(seg.value / total, 1)})`;
+      title.textContent = `${seg.label}: ${bonFmtThousands(seg.value)} tokens (${bonFmtPercent(seg.value / total, 1)})`;
       rect.appendChild(title);
       root.appendChild(rect);
 
@@ -965,7 +849,7 @@
           svgText(
             x + w / 2,
             BAR_Y + BAR_H / 2 + 5,
-            fmtPercent(seg.value / total, 0),
+            bonFmtPercent(seg.value / total, 0),
             "bon-chart-inbar",
             "middle"
           )
@@ -994,7 +878,7 @@
         svgText(
           lx + 18,
           ly + 1,
-          `${seg.label} — ${fmtThousands(seg.value)} (${fmtPercent(seg.value / total, 0)})`,
+          `${seg.label} — ${bonFmtThousands(seg.value)} (${bonFmtPercent(seg.value / total, 0)})`,
           "bon-chart-legend"
         )
       );
@@ -1112,14 +996,14 @@
 
       [
         String(r.calls),
-        fmtThousands(r.in),
-        fmtThousands(r.out),
-        fmtThousands(r.cacheRead),
-        fmtThousands(r.cacheWrite),
-        fmtPercent(hit),
-        fmtDuration(avgDur),
-        fmtUsd(r.cost / Math.max(1, r.calls)),
-        fmtUsd(r.cost),
+        bonFmtThousands(r.in),
+        bonFmtThousands(r.out),
+        bonFmtThousands(r.cacheRead),
+        bonFmtThousands(r.cacheWrite),
+        bonFmtPercent(hit),
+        bonFmtDuration(avgDur),
+        bonFmtUsd(r.cost / Math.max(1, r.calls)),
+        bonFmtUsd(r.cost),
       ].forEach((val) => {
         const td = document.createElement("td");
         td.textContent = val;
@@ -1177,7 +1061,7 @@
       meta.className = "bon-analytics-top-meta";
       const metaBits = [];
       if (r.verdict) metaBits.push(r.verdict.replace(/-/g, " "));
-      if (r.durationMs != null) metaBits.push(fmtDuration(r.durationMs));
+      if (r.durationMs != null) metaBits.push(bonFmtDuration(r.durationMs));
       metaBits.push(`${r.calls.length} call${r.calls.length === 1 ? "" : "s"}`);
       if (r.runAt) metaBits.push(new Date(r.runAt).toLocaleDateString());
       meta.textContent = metaBits.join(" · ");
@@ -1193,7 +1077,7 @@
 
       const cost = document.createElement("span");
       cost.className = "bon-analytics-top-cost";
-      cost.textContent = fmtUsd(r.totalCost);
+      cost.textContent = bonFmtUsd(r.totalCost);
       li.appendChild(cost);
 
       list.appendChild(li);
@@ -1258,7 +1142,7 @@
       const tr = document.createElement("tr");
 
       const tdWhen = document.createElement("td");
-      tdWhen.textContent = r.runAt ? fmtTimestamp(r.runAt) : "—";
+      tdWhen.textContent = r.runAt ? bonFmtTimestamp(r.runAt) : "—";
       tr.appendChild(tdWhen);
 
       const tdUser = document.createElement("td");
@@ -1291,7 +1175,7 @@
       tr.appendChild(tdModel);
 
       const tdDuration = document.createElement("td");
-      tdDuration.textContent = fmtDuration(r.durationMs);
+      tdDuration.textContent = bonFmtDuration(r.durationMs);
       tr.appendChild(tdDuration);
 
       const tdCalls = document.createElement("td");
@@ -1300,11 +1184,11 @@
 
       const tdTokens = document.createElement("td");
       const tokenTotal = sumRunTokens(r);
-      tdTokens.textContent = tokenTotal > 0 ? fmtThousands(tokenTotal) : "—";
+      tdTokens.textContent = tokenTotal > 0 ? bonFmtThousands(tokenTotal) : "—";
       tr.appendChild(tdTokens);
 
       const tdCost = document.createElement("td");
-      tdCost.textContent = fmtUsd(r.totalCost);
+      tdCost.textContent = bonFmtUsd(r.totalCost);
       tr.appendChild(tdCost);
 
       if (r.summary) {
@@ -1348,29 +1232,16 @@
     if (!r.verdict) return "—";
     const label = r.verdict.replace(/-/g, " ");
     if (typeof r.botProbability === "number") {
-      return `${label} · ${fmtPercent(r.botProbability)} bot`;
+      return `${label} · ${bonFmtPercent(r.botProbability)} bot`;
     }
     if (typeof r.confidence === "number") {
-      return `${label} · ${fmtPercent(r.confidence)} conf`;
+      return `${label} · ${bonFmtPercent(r.confidence)} conf`;
     }
     return label;
   }
 
   function shortModelName(model) {
     return model.replace(/^claude-/, "").replace(/-\d{8}$/, "");
-  }
-
-  function fmtTimestamp(ts) {
-    const d = new Date(ts);
-    const date = d.toLocaleDateString(undefined, {
-      month: "short",
-      day: "numeric",
-    });
-    const time = d.toLocaleTimeString(undefined, {
-      hour: "numeric",
-      minute: "2-digit",
-    });
-    return `${date} ${time}`;
   }
 
   globalThis.bonRenderAnalytics = bonRenderAnalytics;

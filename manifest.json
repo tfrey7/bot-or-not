@@ -13,6 +13,12 @@
       "src/factors.js",
       "src/verdict.js",
       "src/regions.js",
+      "src/utils/format_text.js",
+      "src/utils/json.js",
+      "src/utils/persona.js",
+      "src/utils/cost.js",
+      "src/utils/reddit_activity.js",
+      "src/utils/history.js",
       "src/bot_analysis.js",
       "src/background.js"
     ]
@@ -25,7 +31,14 @@
   "content_scripts": [
     {
       "matches": ["*://reddit.com/*", "*://old.reddit.com/*", "*://www.reddit.com/*"],
-      "js": ["src/factors.js", "src/verdict.js", "src/content_script.js"],
+      "js": [
+        "src/factors.js",
+        "src/verdict.js",
+        "src/utils/format_time.js",
+        "src/utils/format_text.js",
+        "src/utils/scoring.js",
+        "src/content_script.js"
+      ],
       "css": ["src/content_script.css"]
     }
   ],

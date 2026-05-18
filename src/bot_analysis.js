@@ -10,78 +10,7 @@ const BON_MAX_ITEMS_TO_AI = 60; // per kind (posts + comments)
 // returns in 40-90s; anything past this is a hung connection, not a slow one.
 const BON_CLAUDE_TIMEOUT_MS = 4 * 60 * 1000;
 
-// USD per million tokens. Verify against current Anthropic pricing — these
-// drift. Web search is billed per request, not per token.
-const BON_MODEL_PRICING = {
-  "claude-opus-4-7": {
-    input: 15,
-    output: 75,
-    cacheRead: 1.5,
-    cacheWrite5m: 18.75,
-    cacheWrite1h: 30,
-  },
-  "claude-sonnet-4-6": {
-    input: 3,
-    output: 15,
-    cacheRead: 0.3,
-    cacheWrite5m: 3.75,
-    cacheWrite1h: 6,
-  },
-  "claude-haiku-4-5": {
-    input: 1,
-    output: 5,
-    cacheRead: 0.1,
-    cacheWrite5m: 1.25,
-    cacheWrite1h: 2,
-  },
-};
-const BON_WEB_SEARCH_USD_PER_REQUEST = 0.01;
-
-// Look up a pricing row by the model id the API echoed back. The API often
-// returns a dated suffix (e.g. "claude-sonnet-4-6-20251022"); match by prefix.
-function bonLookupPricing(model) {
-  if (!model) return null;
-  if (BON_MODEL_PRICING[model]) return BON_MODEL_PRICING[model];
-  for (const key of Object.keys(BON_MODEL_PRICING)) {
-    if (model.startsWith(key)) return BON_MODEL_PRICING[key];
-  }
-  return null;
-}
-
-// Compute USD cost for one Claude call. Returns null if the model is unknown
-// so callers can distinguish "free" from "unpriced".
-function bonEstimateCostUsd(usage, model, webSearchCount = 0) {
-  const p = bonLookupPricing(model);
-  if (!p || !usage) return null;
-  const inTok = usage.input_tokens || 0;
-  const outTok = usage.output_tokens || 0;
-  const cacheRead = usage.cache_read_input_tokens || 0;
-  const cacheCreate = usage.cache_creation_input_tokens || 0;
-  const write5m = usage.cache_creation?.ephemeral_5m_input_tokens;
-  const write1h = usage.cache_creation?.ephemeral_1h_input_tokens;
-  // Prefer the split if present; otherwise treat all cache creation as 5m.
-  const w5 = write5m != null ? write5m : cacheCreate;
-  const w1 = write1h != null ? write1h : 0;
-  const usd =
-    (inTok * p.input +
-      outTok * p.output +
-      cacheRead * p.cacheRead +
-      w5 * p.cacheWrite5m +
-      w1 * p.cacheWrite1h) /
-      1_000_000 +
-    (webSearchCount || 0) * BON_WEB_SEARCH_USD_PER_REQUEST;
-  return usd;
-}
-
 let bonCachedPrompt = null;
-
-function bonShortUrl(url) {
-  try {
-    return new URL(url).pathname;
-  } catch {
-    return url;
-  }
-}
 
 async function bonTimed(label, fn) {
   const t0 = performance.now();
@@ -166,68 +95,6 @@ async function bonFetchRedditProfile(username) {
     ).catch(() => null),
   ]);
   return { about, submitted, comments, moderated };
-}
-
-function bonExtractActivityData(raw) {
-  const posts = (raw.submitted?.data?.children || [])
-    .map((c) => c.data)
-    .filter(Boolean);
-  const comments = (raw.comments?.data?.children || [])
-    .map((c) => c.data)
-    .filter(Boolean);
-  const postTimestamps = posts
-    .map((p) => (p.created_utc ? p.created_utc * 1000 : null))
-    .filter((t) => typeof t === "number");
-  const commentTimestamps = comments
-    .map((c) => (c.created_utc ? c.created_utc * 1000 : null))
-    .filter((t) => typeof t === "number");
-  const subredditCounts = {};
-  for (const item of [...posts, ...comments]) {
-    const sub = (
-      item.subreddit ||
-      (item.subreddit_name_prefixed || "").replace(/^r\//i, "")
-    )
-      .toString()
-      .toLowerCase();
-    if (!sub) continue;
-    subredditCounts[sub] = (subredditCounts[sub] || 0) + 1;
-  }
-  // Concatenate all visible user-authored text and scan for region signals
-  // (non-Latin scripts, dialect/transliteration markers). The scanner lives
-  // in regions.js so the script/marker tables stay in one place.
-  const corpus = [
-    ...posts.map((p) => `${p.title || ""}\n${p.selftext || ""}`),
-    ...comments.map((c) => c.body || ""),
-  ].join("\n");
-  const scanned =
-    typeof bonScanTextSignals === "function"
-      ? bonScanTextSignals(corpus)
-      : { scripts: {}, languages: {} };
-  // moderated_subreddits.json: { "data": [{ "sr": "name", ... }, ...] } when
-  // the user has the "show moderated subs publicly" setting on; otherwise it
-  // 403s and bonFetchRedditProfile catches → null. Either case is fine.
-  const moderatedSubs = Array.isArray(raw.moderated?.data)
-    ? raw.moderated.data
-        .map((m) => m.sr || m.display_name || null)
-        .filter(Boolean)
-    : [];
-  return {
-    postTimestamps,
-    commentTimestamps,
-    subredditCounts,
-    scriptSignals: scanned.scripts,
-    languageSignals: scanned.languages,
-    moderatedSubs,
-    corpusChars: corpus.length,
-    postsLimited: posts.length >= BON_REDDIT_FETCH_LIMIT,
-    commentsLimited: comments.length >= BON_REDDIT_FETCH_LIMIT,
-    earliestPostAt: postTimestamps.length ? Math.min(...postTimestamps) : null,
-    earliestCommentAt: commentTimestamps.length
-      ? Math.min(...commentTimestamps)
-      : null,
-    fetchLimit: BON_REDDIT_FETCH_LIMIT,
-    fetchedAt: Date.now(),
-  };
 }
 
 async function bonFetchUserActivity(username) {
@@ -390,26 +257,6 @@ function bonSummarizeProfile(username, raw, extra = {}) {
     recent_posts: trimmedPosts,
     recent_comments: trimmedComments,
   };
-}
-
-function bonExtractJson(text) {
-  if (!text) return null;
-  let s = text.trim();
-  // Strip ```json or ``` fences if present
-  if (s.startsWith("```")) {
-    s = s.replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/i, "");
-  }
-  // Find the first {...} block
-  const start = s.indexOf("{");
-  const end = s.lastIndexOf("}");
-  if (start === -1 || end === -1 || end < start) return null;
-  const candidate = s.slice(start, end + 1);
-  try {
-    return JSON.parse(candidate);
-  } catch (err) {
-    console.error("[Bot or Not] verdict JSON parse failed", err, candidate);
-    return null;
-  }
 }
 
 async function bonCallClaude(
@@ -588,47 +435,6 @@ async function bonRunOneDAnalysis(apiKey, profileSummary) {
   };
 }
 
-// Validates the persona block from Claude's response. Returns null when the
-// model omits it or returns a label outside the allowed enum — UI then falls
-// back to no-persona rendering instead of inventing a label from the verdict.
-//
-// `archetypes` is the per-axis 0–1 score map that powers the radar chart.
-// Axis list is the canonical one in factors.js so reports.js can trust the
-// shape: every known axis present, clamped to [0,1], or null for legacy data.
-function bonNormalizePersona(raw) {
-  if (!raw || typeof raw !== "object") return null;
-  const label = String(raw.label || "")
-    .toLowerCase()
-    .trim();
-  if (!BON_PERSONA_LABELS.includes(label)) return null;
-  const reasoning =
-    typeof raw.reasoning === "string" ? raw.reasoning.trim() : "";
-  return {
-    label,
-    reasoning,
-    archetypes: bonNormalizeArchetypes(raw.archetypes),
-  };
-}
-
-function bonNormalizeArchetypes(raw) {
-  const out = {};
-  const src = raw && typeof raw === "object" ? raw : {};
-  let anyPresent = false;
-  for (const axis of BON_ARCHETYPE_KEYS) {
-    const v = src[axis];
-    if (typeof v === "number" && Number.isFinite(v)) {
-      out[axis] = Math.max(0, Math.min(1, v));
-      anyPresent = true;
-    } else {
-      out[axis] = 0;
-    }
-  }
-  // Legacy investigations (and any pre-archetype model output) have no axes —
-  // return null so the renderer can fall back to the text-only persona panel
-  // instead of drawing a flat zero radar.
-  return anyPresent ? out : null;
-}
-
 // Single-call entry point: fetch the profile, run the 1D analyzer, return the
 // combined investigation object.
 async function bonInvestigateUser(username, apiKey, extra = {}) {
@@ -652,5 +458,3 @@ globalThis.bonInvestigateUser = bonInvestigateUser;
 globalThis.bonFetchUserActivity = bonFetchUserActivity;
 globalThis.bonResetPromptCache = bonResetPromptCache;
 globalThis.bonCallClaude = bonCallClaude;
-globalThis.bonExtractJson = bonExtractJson;
-globalThis.bonEstimateCostUsd = bonEstimateCostUsd;

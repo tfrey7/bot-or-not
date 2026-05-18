@@ -724,7 +724,7 @@
     const dateCell = document.createElement("td");
     dateCell.className = "bon-cell-muted";
     if (lastReportedAt) {
-      dateCell.textContent = formatDate(lastReportedAt);
+      dateCell.textContent = bonFormatDate(lastReportedAt);
       dateCell.title = new Date(lastReportedAt).toLocaleString();
     } else {
       dateCell.textContent = "—";
@@ -881,7 +881,7 @@
     if (!investigation.verdict) return null;
     const span = document.createElement("span");
     span.className = `bon-verdict-badge bon-verdict-badge--${investigation.verdict}`;
-    span.textContent = formatVerdict(investigation.verdict);
+    span.textContent = bonFormatVerdict(investigation.verdict);
     span.title = investigation.summary || investigation.verdict;
     return span;
   }
@@ -1040,7 +1040,7 @@
 
     let leaning;
     if (f && typeof f.score === "number") {
-      leaning = scoreLeaning(f.score, f.confidence);
+      leaning = bonScoreLeaning(f.score, f.confidence);
     } else if (!f && hasRun) {
       leaning = "new";
     } else if (!f) {
@@ -1153,7 +1153,7 @@
       pill.textContent =
         leaning === "neutral" || leaning === "missing"
           ? "Neutral"
-          : formatVerdict(leaning);
+          : bonFormatVerdict(leaning);
       header.appendChild(pill);
     }
     card.appendChild(header);
@@ -1202,16 +1202,6 @@
     return card;
   }
 
-  function scoreLeaning(score, confidence) {
-    if (typeof score !== "number") return "neutral";
-    if (typeof confidence === "number" && confidence < 0.2) return "neutral";
-    if (score <= -0.5) return "bot";
-    if (score <= -0.2) return "likely-bot";
-    if (score >= 0.5) return "human";
-    if (score >= 0.2) return "likely-human";
-    return "neutral";
-  }
-
   function buildTopReasonsList(factors) {
     const top = bonTopReasons(factors, 3);
     if (!top.length) return null;
@@ -1219,7 +1209,7 @@
     ul.className = "bon-top-reasons";
     for (const f of top) {
       const li = document.createElement("li");
-      const leaning = scoreLeaning(f.score, f.confidence);
+      const leaning = bonScoreLeaning(f.score, f.confidence);
       li.className = `bon-reason bon-reason--${leaning}`;
       const bullet = document.createElement("span");
       bullet.className = "bon-reason__bullet";
@@ -1268,7 +1258,7 @@
     }
     const when = document.createElement("span");
     when.textContent = investigation.runAt
-      ? formatDate(investigation.runAt)
+      ? bonFormatDate(investigation.runAt)
       : "—";
     if (investigation.runAt) {
       when.title = new Date(investigation.runAt).toLocaleString();
@@ -1277,18 +1267,9 @@
     if (typeof investigation.durationMs === "number") {
       const dur = document.createElement("span");
       dur.className = "bon-duration";
-      dur.textContent = `Took ${formatDuration(investigation.durationMs)}`;
+      dur.textContent = `Took ${bonFmtDuration(investigation.durationMs)}`;
       cell.appendChild(dur);
     }
-  }
-
-  function formatDuration(ms) {
-    if (ms < 1000) return `${ms}ms`;
-    const s = ms / 1000;
-    if (s < 60) return `${s.toFixed(s < 10 ? 1 : 0)}s`;
-    const m = Math.floor(s / 60);
-    const rem = Math.round(s % 60);
-    return rem ? `${m}m ${rem}s` : `${m}m`;
   }
 
   function renderInvestigateButton(username, investigation) {
@@ -1442,7 +1423,7 @@
       metaParts.push(`run ${ts}`);
     }
     if (typeof investigation.durationMs === "number") {
-      metaParts.push(`took ${formatDuration(investigation.durationMs)}`);
+      metaParts.push(`took ${bonFmtDuration(investigation.durationMs)}`);
     }
     if (typeof investigation.postsFetched === "number") {
       metaParts.push(
@@ -1693,12 +1674,6 @@
     return f.key || "Factor";
   }
 
-  function formatVerdict(verdict) {
-    if (!verdict) return "";
-    const spaced = verdict.replace(/-/g, " ");
-    return spaced.charAt(0).toUpperCase() + spaced.slice(1);
-  }
-
   function renderFactor(f) {
     const li = document.createElement("li");
     li.className = "bon-factor";
@@ -1715,7 +1690,7 @@
     header.appendChild(name);
 
     if (typeof f.score === "number") {
-      const leaning = scoreLeaning(f.score, f.confidence);
+      const leaning = bonScoreLeaning(f.score, f.confidence);
       const pill = document.createElement("span");
       const pillClass =
         leaning === "likely-bot"
@@ -1729,7 +1704,7 @@
       pill.textContent =
         leaning === "neutral" || leaning === "missing"
           ? "Neutral"
-          : formatVerdict(leaning);
+          : bonFormatVerdict(leaning);
       header.appendChild(pill);
     }
     meta.appendChild(header);
@@ -1784,7 +1759,7 @@
     const bar = document.createElement("div");
     bar.className = "bon-factor-bar";
     const fill = document.createElement("div");
-    const leaning = scoreLeaning(clamped, confidence);
+    const leaning = bonScoreLeaning(clamped, confidence);
     const fillClass =
       leaning === "likely-bot"
         ? "bot"
@@ -2070,7 +2045,7 @@
           cell.classList.add("bon-cal-cell--future");
         } else {
           const c = counts.get(dayKey(date)) || 0;
-          const lvl = bucketLevel(c);
+          const lvl = bonBucketLevel(c);
           const inUnknownZone =
             earliestVisible && date.getTime() < earliestVisible && c === 0;
           if (inUnknownZone) {
@@ -2224,8 +2199,8 @@
     }
     const { offsetHours, sleepStartUtc, sleepEndUtc } = inferred;
     const offsetStr = `UTC${offsetHours >= 0 ? "+" : ""}${offsetHours}`;
-    const region = regionForOffset(offsetHours);
-    const sleep = `${pad2(sleepStartUtc)}:00–${pad2(sleepEndUtc)}:00 UTC`;
+    const region = bonRegionForOffset(offsetHours);
+    const sleep = `${bonPad2(sleepStartUtc)}:00–${bonPad2(sleepEndUtc)}:00 UTC`;
     let suffix = "";
     if (subRegion) {
       const info = BON_REGION_INFO[subRegion.region];
@@ -2305,37 +2280,6 @@
     return span;
   }
 
-  function pad2(n) {
-    return String(n).padStart(2, "0");
-  }
-
-  function regionForOffset(offset) {
-    if (offset === 0) return "UK, Portugal, West Africa";
-    if (offset === 1) return "Western/Central Europe";
-    if (offset === 2) return "Eastern Europe, South Africa";
-    if (offset === 3) return "Moscow, Eastern Europe, East Africa";
-    if (offset === 4) return "Gulf, Caucasus";
-    if (offset === 5) return "Pakistan, West Asia";
-    if (offset === 6) return "India, Bangladesh";
-    if (offset === 7) return "Thailand, Vietnam, Indonesia";
-    if (offset === 8) return "China, Singapore, Philippines";
-    if (offset === 9) return "Japan, Korea";
-    if (offset === 10) return "Eastern Australia";
-    if (offset === 11) return "Solomon Islands";
-    if (offset === 12) return "New Zealand";
-    if (offset === -1) return "Azores, Cape Verde";
-    if (offset === -2) return "Mid-Atlantic";
-    if (offset === -3) return "Brazil, Argentina";
-    if (offset === -4) return "Atlantic, Eastern Caribbean";
-    if (offset === -5) return "US Eastern, Colombia, Peru";
-    if (offset === -6) return "US Central, Mexico";
-    if (offset === -7) return "US Mountain";
-    if (offset === -8) return "US Pacific";
-    if (offset === -9) return "Alaska";
-    if (offset === -10) return "Hawaii";
-    return "";
-  }
-
   function renderHourHeatmap(timestamps) {
     // 7 (day of week) x 24 (hour of day) buckets in the viewer's local timezone.
     const counts = new Array(7 * 24).fill(0);
@@ -2377,7 +2321,7 @@
         const cell = document.createElement("div");
         cell.className = "bon-hour-cell";
         const c = counts[d * 24 + h];
-        const lvl = bucketLevel(c);
+        const lvl = bonBucketLevel(c);
         if (lvl > 0) cell.classList.add(`bon-heatmap-cell--lvl${lvl}`);
         cell.title = `${DAY_NAMES[d]} ${String(h).padStart(2, "0")}:00 — ${c} item${c === 1 ? "" : "s"}`;
         grid.appendChild(cell);
@@ -2386,32 +2330,5 @@
     right.appendChild(grid);
     wrap.appendChild(right);
     return wrap;
-  }
-
-  function bucketLevel(count) {
-    if (count <= 0) return 0;
-    if (count === 1) return 1;
-    if (count <= 3) return 2;
-    if (count <= 6) return 3;
-    if (count <= 10) return 4;
-    return 5;
-  }
-
-  function formatDate(ts) {
-    const d = new Date(ts);
-    const diffMs = Date.now() - ts;
-    const min = 60_000;
-    const hour = 60 * min;
-    const day = 24 * hour;
-    if (diffMs < min) return "now";
-    if (diffMs < hour) return `${Math.floor(diffMs / min)}m ago`;
-    if (diffMs < day) return `${Math.floor(diffMs / hour)}h ago`;
-    if (diffMs < 7 * day) return `${Math.floor(diffMs / day)}d ago`;
-    const sameYear = d.getFullYear() === new Date().getFullYear();
-    return d.toLocaleDateString(undefined, {
-      year: sameYear ? undefined : "2-digit",
-      month: "short",
-      day: "numeric",
-    });
   }
 })();

@@ -116,77 +116,12 @@ async function handleOpenPopup() {
   await openReportsTab();
 }
 
-function mergeHistoryEntries(a, b) {
-  const newer = (b?.at || 0) >= (a?.at || 0) ? b : a;
-  const older = newer === a ? b : a;
-  return {
-    ...older,
-    ...newer,
-    status: newer.status || older.status,
-    statusCheckedAt: newer.statusCheckedAt || older.statusCheckedAt,
-  };
-}
-
-function dedupeHistory(history) {
-  const seen = new Map();
-  const out = [];
-  for (const entry of history) {
-    const key = entry?.permalink;
-    if (key && seen.has(key)) {
-      const idx = seen.get(key);
-      out[idx] = mergeHistoryEntries(out[idx], entry);
-    } else {
-      if (key) seen.set(key, out.length);
-      out.push({ ...entry });
-    }
-  }
-  return out;
-}
-
-function normalizeReport(value) {
-  if (typeof value === "number") {
-    return {
-      count: value,
-      lastReportedAt: 0,
-      history: [],
-      userStatus: null,
-      userStatusCheckedAt: 0,
-      createdAt: null,
-    };
-  }
-  const history = dedupeHistory(
-    Array.isArray(value?.history) ? value.history : []
-  );
-  const count = history.length > 0 ? history.length : (value?.count ?? 0);
-  return {
-    count,
-    lastReportedAt: value?.lastReportedAt ?? 0,
-    history,
-    userStatus: value?.userStatus ?? null,
-    userStatusCheckedAt: value?.userStatusCheckedAt ?? 0,
-    createdAt: value?.createdAt ?? null,
-    botBouncerStatus: value?.botBouncerStatus ?? null,
-    botBouncerCheckedAt: value?.botBouncerCheckedAt ?? 0,
-    investigation: value?.investigation ?? null,
-    activityData: value?.activityData ?? null,
-  };
-}
-
-function findReportKey(reports, username) {
-  if (reports[username]) return username;
-  const target = username.toLowerCase();
-  for (const k of Object.keys(reports)) {
-    if (k.toLowerCase() === target) return k;
-  }
-  return null;
-}
-
 async function handleReportUser(message) {
   const { reports = {} } = await browser.storage.local.get("reports");
-  const existing = normalizeReport(reports[message.username]);
+  const existing = bonNormalizeReport(reports[message.username]);
   const at = Date.now();
   const entry = { at, ...(message.context || {}) };
-  const history = dedupeHistory([...existing.history, entry]);
+  const history = bonDedupeHistory([...existing.history, entry]);
   reports[message.username] = {
     ...existing,
     count: history.length,
@@ -206,8 +141,8 @@ async function maybeAutoInvestigate(username) {
       await browser.storage.local.get("claudeApiKey");
     if (!claudeApiKey) return;
     const { reports = {} } = await browser.storage.local.get("reports");
-    const key = findReportKey(reports, username) || username;
-    const inv = normalizeReport(reports[key]).investigation;
+    const key = bonFindReportKey(reports, username) || username;
+    const inv = bonNormalizeReport(reports[key]).investigation;
     if (inv?.status === "running" && !bonIsInvestigationStale(inv)) return;
     if (
       inv?.runAt &&
@@ -233,8 +168,8 @@ async function handleAutoInvestigateOnView(message) {
       await browser.storage.local.get("claudeApiKey");
     if (!claudeApiKey) return { ok: true, started: false };
     const { reports = {} } = await browser.storage.local.get("reports");
-    const key = findReportKey(reports, username) || username;
-    const inv = normalizeReport(reports[key]).investigation;
+    const key = bonFindReportKey(reports, username) || username;
+    const inv = bonNormalizeReport(reports[key]).investigation;
     if (inv && !(inv.status === "running" && bonIsInvestigationStale(inv))) {
       return { ok: true, started: false };
     }
@@ -249,7 +184,7 @@ async function handleAutoInvestigateOnView(message) {
 async function handleUpdateUserCreatedAt(message) {
   const { reports = {} } = await browser.storage.local.get("reports");
   if (!reports[message.username]) return;
-  const existing = normalizeReport(reports[message.username]);
+  const existing = bonNormalizeReport(reports[message.username]);
   if (existing.createdAt) return;
   reports[message.username] = {
     ...existing,
@@ -262,7 +197,7 @@ async function handleUpdateUserStatus(message) {
   const { reports = {} } = await browser.storage.local.get("reports");
   // Only update users we've already reported
   if (!reports[message.username]) return;
-  const existing = normalizeReport(reports[message.username]);
+  const existing = bonNormalizeReport(reports[message.username]);
   if (existing.userStatus === message.status) return;
   reports[message.username] = {
     ...existing,
@@ -274,9 +209,9 @@ async function handleUpdateUserStatus(message) {
 
 async function handleUpdateBotBouncerStatus(message) {
   const { reports = {} } = await browser.storage.local.get("reports");
-  const key = findReportKey(reports, message.username);
+  const key = bonFindReportKey(reports, message.username);
   if (!key) return;
-  const existing = normalizeReport(reports[key]);
+  const existing = bonNormalizeReport(reports[key]);
   if (existing.botBouncerStatus === message.status) return;
   reports[key] = {
     ...existing,
@@ -290,7 +225,7 @@ async function handleUpdatePostStatus(message) {
   const { reports = {} } = await browser.storage.local.get("reports");
   let updated = false;
   for (const username of Object.keys(reports)) {
-    const existing = normalizeReport(reports[username]);
+    const existing = bonNormalizeReport(reports[username]);
     let changed = false;
     const newHistory = existing.history.map((entry) => {
       if (
@@ -328,7 +263,7 @@ async function handleGetUserTags() {
 }
 
 function summarizeUserTag(username, value) {
-  const r = normalizeReport(value);
+  const r = bonNormalizeReport(value);
   const inv = bonNormalizeInvestigation(r.investigation);
   const verdict = inv?.status === "done" && inv?.verdict ? inv.verdict : null;
   const investigationStatus = inv?.status || null;
@@ -355,7 +290,7 @@ async function handleGetAllReports() {
   const { reports = {} } = await browser.storage.local.get("reports");
   const normalized = {};
   for (const [username, value] of Object.entries(reports)) {
-    normalized[username] = normalizeReport(value);
+    normalized[username] = bonNormalizeReport(value);
   }
   return { reports: normalized };
 }
@@ -394,8 +329,8 @@ async function setInvestigationState(username, patch) {
   const { reports = {} } = await browser.storage.local.get("reports");
   // Create the record on first investigation so users who haven't been
   // reported yet still get tracked.
-  const key = findReportKey(reports, username) || username;
-  const existing = normalizeReport(reports[key]);
+  const key = bonFindReportKey(reports, username) || username;
+  const existing = bonNormalizeReport(reports[key]);
   const prevInv = existing.investigation || {};
   const nextInv = { ...prevInv, ...patch };
 
@@ -411,32 +346,13 @@ async function setInvestigationState(username, patch) {
       prevRuns.length === 0 &&
       prevInv.runAt &&
       typeof prevInv.durationMs === "number"
-        ? [snapshotRun(prevInv, "done")]
+        ? [bonSnapshotRun(prevInv, "done")]
         : prevRuns;
-    nextInv.runs = [...seeded, snapshotRun(nextInv, patch.status)];
+    nextInv.runs = [...seeded, bonSnapshotRun(nextInv, patch.status)];
   }
 
   reports[key] = { ...existing, investigation: nextInv };
   await browser.storage.local.set({ reports });
-}
-
-function snapshotRun(inv, status) {
-  return {
-    runAt: inv.runAt || Date.now(),
-    durationMs: typeof inv.durationMs === "number" ? inv.durationMs : null,
-    status,
-    verdict: inv.verdict || null,
-    confidence: typeof inv.confidence === "number" ? inv.confidence : null,
-    botProbability:
-      typeof inv.botProbability === "number" ? inv.botProbability : null,
-    model: inv.model || null,
-    usage: inv.usage || null,
-    costUsd: typeof inv.costUsd === "number" ? inv.costUsd : null,
-    webSearchCount: inv.webSearchCount || 0,
-    postsFetched: inv.postsFetched || 0,
-    commentsFetched: inv.commentsFetched || 0,
-    error: status === "error" ? inv.error || null : null,
-  };
 }
 
 async function handleInvestigateUser(message) {
@@ -457,8 +373,8 @@ async function handleInvestigateUser(message) {
 
   const { reports: latestReports = {} } =
     await browser.storage.local.get("reports");
-  const existingRecord = normalizeReport(
-    latestReports[findReportKey(latestReports, username) || username]
+  const existingRecord = bonNormalizeReport(
+    latestReports[bonFindReportKey(latestReports, username) || username]
   );
 
   try {
@@ -515,8 +431,8 @@ async function handleInvestigateUser(message) {
 
 async function saveActivityData(username, activityData) {
   const { reports = {} } = await browser.storage.local.get("reports");
-  const key = findReportKey(reports, username) || username;
-  const existing = normalizeReport(reports[key]);
+  const key = bonFindReportKey(reports, username) || username;
+  const existing = bonNormalizeReport(reports[key]);
   reports[key] = { ...existing, activityData };
   await browser.storage.local.set({ reports });
 }
@@ -536,13 +452,13 @@ async function handleFetchActivity(message) {
 
 async function handleGetUserState(message) {
   const { reports = {} } = await browser.storage.local.get("reports");
-  const { count } = normalizeReport(reports[message.username]);
+  const { count } = bonNormalizeReport(reports[message.username]);
   return { count, isBot: count > 0 };
 }
 
 async function handleGetUserReport(message) {
   const { reports = {} } = await browser.storage.local.get("reports");
-  const key = findReportKey(reports, message.username);
+  const key = bonFindReportKey(reports, message.username);
   if (!key) return { report: null };
-  return { report: normalizeReport(reports[key]) };
+  return { report: bonNormalizeReport(reports[key]) };
 }

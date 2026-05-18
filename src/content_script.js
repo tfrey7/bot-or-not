@@ -127,13 +127,7 @@
         ? `${info.count} report${info.count === 1 ? "" : "s"}`
         : "Flagged";
     }
-    return formatVerdict(variant);
-  }
-
-  function formatVerdict(verdict) {
-    if (!verdict) return "";
-    const spaced = verdict.replace(/-/g, " ");
-    return spaced.charAt(0).toUpperCase() + spaced.slice(1);
+    return bonFormatVerdict(variant);
   }
 
   function tagTitle(info, variant) {
@@ -143,7 +137,7 @@
         typeof info.confidence === "number"
           ? ` (${Math.round(info.confidence * 100)}% confidence)`
           : "";
-      parts.push(`AI verdict: ${formatVerdict(info.verdict)}${conf}`);
+      parts.push(`AI verdict: ${bonFormatVerdict(info.verdict)}${conf}`);
     } else if (variant === "running") {
       parts.push("AI investigation in progress");
     }
@@ -212,7 +206,7 @@
           el.parentElement;
         if (
           scope?.querySelector(
-            `.bon-user-tag[data-bon-tag-for="${cssEscape(key)}"]`
+            `.bon-user-tag[data-bon-tag-for="${bonCssEscape(key)}"]`
           )
         ) {
           return;
@@ -224,7 +218,9 @@
   function refreshUserTag(username) {
     const key = username.toLowerCase();
     document
-      .querySelectorAll(`.bon-user-tag[data-bon-tag-for="${cssEscape(key)}"]`)
+      .querySelectorAll(
+        `.bon-user-tag[data-bon-tag-for="${bonCssEscape(key)}"]`
+      )
       .forEach((t) => t.remove());
     document
       .querySelectorAll('a[href*="/user/"], a[href*="/u/"]')
@@ -243,13 +239,6 @@
       .querySelectorAll("a[data-bon-marked]")
       .forEach((el) => delete el.dataset.bonMarked);
     markUsers();
-  }
-
-  function cssEscape(value) {
-    if (window.CSS && typeof window.CSS.escape === "function") {
-      return window.CSS.escape(value);
-    }
-    return value.replace(/[^a-zA-Z0-9_-]/g, "\\$&");
   }
 
   loadUserTags();
@@ -836,7 +825,7 @@
     ul.className = "bon-profile-panel__reasons";
     for (const f of top) {
       const li = document.createElement("li");
-      const leaning = scoreLeaning(f.score, f.confidence);
+      const leaning = bonScoreLeaning(f.score, f.confidence);
       li.className = `bon-reason bon-reason--${leaning}`;
       const bullet = document.createElement("span");
       bullet.className = "bon-reason__bullet";
@@ -882,7 +871,7 @@
     const norm = bonNormalizeInvestigation(investigation);
     if (!norm.verdict) return null;
     span.className = `bon-stat-pill bon-stat-pill--verdict-${norm.verdict}`;
-    span.textContent = `🤖 ${formatVerdict(norm.verdict)}`;
+    span.textContent = `🤖 ${bonFormatVerdict(norm.verdict)}`;
     span.title = norm.summary || norm.verdict;
     return span;
   }
@@ -990,7 +979,7 @@
 
     let leaning;
     if (f && typeof f.score === "number") {
-      leaning = scoreLeaning(f.score, f.confidence);
+      leaning = bonScoreLeaning(f.score, f.confidence);
     } else if (!f && hasRun) {
       leaning = "new";
     } else if (!f) {
@@ -1007,7 +996,7 @@
           : "—";
       dot.setAttribute(
         "aria-label",
-        `${fullLabel}: ${leaning === "neutral" ? "neutral" : formatVerdict(leaning)} · ${confText} confidence`
+        `${fullLabel}: ${leaning === "neutral" ? "neutral" : bonFormatVerdict(leaning)} · ${confText} confidence`
       );
     } else if (hasRun) {
       dot.setAttribute(
@@ -1090,7 +1079,7 @@
       const pill = document.createElement("span");
       pill.className = `bon-panel-factor-card__signal bon-panel-factor-card__signal--${leaning}`;
       pill.textContent =
-        leaning === "neutral" ? "Neutral" : formatVerdict(leaning);
+        leaning === "neutral" ? "Neutral" : bonFormatVerdict(leaning);
       header.appendChild(pill);
     }
     card.appendChild(header);
@@ -1194,11 +1183,11 @@
     header.appendChild(name);
 
     if (typeof f.score === "number") {
-      const leaning = scoreLeaning(f.score, f.confidence);
+      const leaning = bonScoreLeaning(f.score, f.confidence);
       const pill = document.createElement("span");
       pill.className = `bon-panel-factor__signal bon-panel-factor__signal--${leaning}`;
       pill.textContent =
-        leaning === "neutral" ? "Neutral" : formatVerdict(leaning);
+        leaning === "neutral" ? "Neutral" : bonFormatVerdict(leaning);
       header.appendChild(pill);
     }
     li.appendChild(header);
@@ -1211,16 +1200,6 @@
     }
 
     return li;
-  }
-
-  function scoreLeaning(score, confidence) {
-    if (typeof score !== "number") return "neutral";
-    if (typeof confidence === "number" && confidence < 0.2) return "neutral";
-    if (score <= -0.5) return "bot";
-    if (score <= -0.2) return "likely-bot";
-    if (score >= 0.5) return "human";
-    if (score >= 0.2) return "likely-human";
-    return "neutral";
   }
 
   function buildReportsSection(report) {
@@ -1267,7 +1246,7 @@
     const time = document.createElement("time");
     if (entry.at) {
       time.dateTime = new Date(entry.at).toISOString();
-      time.textContent = formatPanelDate(entry.at);
+      time.textContent = bonFormatPanelDate(entry.at);
       time.title = new Date(entry.at).toLocaleString();
     } else {
       time.textContent = "unknown";
@@ -1314,24 +1293,6 @@
     if (/^https?:\/\//i.test(permalink)) return permalink;
     if (permalink.startsWith("/")) return `https://www.reddit.com${permalink}`;
     return `https://www.reddit.com/${permalink}`;
-  }
-
-  function formatPanelDate(ts) {
-    const diffMs = Date.now() - ts;
-    const min = 60_000;
-    const hour = 60 * min;
-    const day = 24 * hour;
-    if (diffMs < min) return "now";
-    if (diffMs < hour) return `${Math.floor(diffMs / min)}m`;
-    if (diffMs < day) return `${Math.floor(diffMs / hour)}h`;
-    if (diffMs < 7 * day) return `${Math.floor(diffMs / day)}d`;
-    const d = new Date(ts);
-    const sameYear = d.getFullYear() === new Date().getFullYear();
-    return d.toLocaleDateString(undefined, {
-      year: sameYear ? undefined : "2-digit",
-      month: "short",
-      day: "numeric",
-    });
   }
 
   function buildInvestigateBtn(username, investigation) {
