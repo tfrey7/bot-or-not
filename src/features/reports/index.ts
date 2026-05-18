@@ -40,12 +40,21 @@ const clearBtn = document.getElementById("bon-clear-btn") as HTMLButtonElement;
 const analyticsContainer = document.getElementById(
   "bon-analytics-container"
 ) as HTMLElement | null;
+// Vite inlines import.meta.env.DEV at build time, so the suffix only ships
+// in `vite dev` builds — published AMO builds (vite build) get a clean
+// version string.
+const versionEl = document.getElementById("bon-version");
+if (versionEl) {
+  const v = browser.runtime.getManifest().version;
+  versionEl.textContent = import.meta.env.DEV ? `${v} (dev)` : v;
+}
 
 const REGION_LABELS: Record<string, string> = Object.fromEntries(
   Object.entries(BON_REGION_INFO).map(([code, info]) => [code, info.label])
 );
 
 let allReports: ReportRow[] = [];
+let hasApiKey = false;
 // Median duration across all completed runs. Drives the progress ring and
 // "~Xs left" countdown on in-flight investigations. Recomputed before
 // render and before each poll tick. Null until we have ≥3 completed runs.
@@ -84,8 +93,14 @@ async function loadActivityIfStale(
 }
 
 browser.storage.onChanged.addListener((changes, area) => {
-  if (area === "local" && changes.reports) {
+  if (area !== "local") {
+    return;
+  }
+  if (changes.reports) {
     void load();
+  }
+  if (changes.claudeApiKey) {
+    void refreshApiKeyState();
   }
 });
 
@@ -128,14 +143,16 @@ await load();
 
 async function load(): Promise<void> {
   try {
-    const { reports = {} } = (await browser.runtime.sendMessage({
-      type: "get-all-reports",
-    })) as { reports?: Record<string, Report> };
+    const [{ reports = {} }, { hasKey }] = (await Promise.all([
+      browser.runtime.sendMessage({ type: "get-all-reports" }),
+      browser.runtime.sendMessage({ type: "get-claude-api-key" }),
+    ])) as [{ reports?: Record<string, Report> }, { hasKey: boolean }];
 
     allReports = Object.entries(reports).map(([username, data]) => ({
       username,
       ...data,
     }));
+    hasApiKey = !!hasKey;
 
     render();
     renderAnalytics();
@@ -144,6 +161,22 @@ async function load(): Promise<void> {
     tableWrap.hidden = true;
     emptyEl.hidden = false;
     renderLoadError(err);
+  }
+}
+
+async function refreshApiKeyState(): Promise<void> {
+  try {
+    const { hasKey } = (await browser.runtime.sendMessage({
+      type: "get-claude-api-key",
+    })) as { hasKey: boolean };
+    const next = !!hasKey;
+    if (next === hasApiKey) {
+      return;
+    }
+    hasApiKey = next;
+    render();
+  } catch (err) {
+    console.error("[Bot or Not] failed to refresh api-key state", err);
   }
 }
 
@@ -273,6 +306,23 @@ function renderEmptyState(query: string): void {
     return;
   }
 
+  if (!hasApiKey) {
+    const hint = document.createElement("p");
+    hint.className = "bon-empty-text bon-empty-hint";
+    hint.textContent = `Add a Claude API key in Settings to investigate u/${username}.`;
+    emptyEl.appendChild(hint);
+
+    const settingsBtn = document.createElement("button");
+    settingsBtn.type = "button";
+    settingsBtn.className = "bon-btn bon-empty-action";
+    settingsBtn.textContent = "Open Settings";
+    settingsBtn.addEventListener("click", () => {
+      void bonReportsOpenSettings();
+    });
+    emptyEl.appendChild(settingsBtn);
+    return;
+  }
+
   const btn = document.createElement("button");
   btn.type = "button";
   btn.className = "bon-btn bon-empty-action";
@@ -282,10 +332,17 @@ function renderEmptyState(query: string): void {
     btn.disabled = true;
     btn.textContent = "Starting…";
     try {
-      void browser.runtime.sendMessage({
+      const res = (await browser.runtime.sendMessage({
         type: "investigate-user",
         username,
-      });
+      })) as { ok?: boolean; error?: string };
+
+      if (res?.ok === false && res.error === "no-api-key") {
+        hasApiKey = false;
+        render();
+        return;
+      }
+
       searchInput.value = "";
       sortKey = "investigatedAt";
       sortDir = "desc";

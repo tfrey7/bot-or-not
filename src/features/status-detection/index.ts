@@ -73,7 +73,6 @@ function reportPostStatus(
   }
 
   reportedPostPermalinks.add(permalink);
-  console.log("[Bot or Not] post status detected", { permalink, status });
   browser.runtime.sendMessage({
     type: "update-post-status",
     permalink,

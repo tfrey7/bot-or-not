@@ -22,6 +22,11 @@ export default defineConfig(({ mode }) => ({
       // reports.html is opened via browser.runtime.getURL from background.js,
       // not declared in the manifest, so list it here so Vite still builds it.
       additionalInputs: ["src/reports.html"],
+      // The plugin only re-reads files it bundles, so manifest.json edits
+      // (version bumps, permission changes) are invisible to dev mode
+      // without listing it here. Same for the icons/ tree, which the
+      // copyIcons plugin below ships to dist.
+      watchFilePaths: ["manifest.json", "icons"],
       // Plugin bug workaround: getMultiPageConfig (used for HTML entries)
       // omits build.watch, so reports.html and its CSS/JS deps never rebuild
       // in `vite build --watch`. Force the watcher on in dev only.
