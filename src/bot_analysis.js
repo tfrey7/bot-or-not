@@ -428,9 +428,9 @@ async function bonCallClaude(
     // final JSON verdict. Sonnet 4.6 supports much higher; 8192 is safe
     // headroom without becoming a runaway expense.
     max_tokens: webSearchOn ? 8192 : 4096,
-    // Mark the system prompt for ephemeral (5-min) caching. The 1D and triangle
-    // prompts are byte-identical across investigations, so back-to-back calls
-    // within ~5 min hit the cache at ~10% of the input rate.
+    // Mark the system prompt for ephemeral (5-min) caching. The prompt is
+    // byte-identical across investigations, so back-to-back calls within
+    // ~5 min hit the cache at ~10% of the input rate.
     system: [
       {
         type: "text",
@@ -534,9 +534,8 @@ async function bonCallClaude(
   };
 }
 
-// Fetch + summarize the account once. Shared between the 1D analyzer and the
-// triangle analyzer so both prompts work from the same input (one Reddit fetch
-// per investigation, not two).
+// Fetch + summarize the account once so the analyzer works from a single
+// Reddit fetch per investigation.
 async function bonGatherProfile(username, extra = {}) {
   const [raw, freshBotBouncerStatus] = await Promise.all([
     bonFetchRedditProfile(username),
@@ -579,6 +578,7 @@ async function bonRunOneDAnalysis(apiKey, profileSummary) {
     confidence: derived.confidence,
     botProbability: derived.botProbability,
     summary: verdict.summary || "",
+    persona: bonNormalizePersona(verdict.persona),
     factors,
     runAt: Date.now(),
     model,
@@ -588,9 +588,49 @@ async function bonRunOneDAnalysis(apiKey, profileSummary) {
   };
 }
 
-// Old single-call entry point. Kept so anything still calling it keeps working;
-// background.js now uses bonGatherProfile + bonRunOneDAnalysis + the triangle
-// analyzer in parallel instead.
+// Validates the persona block from Claude's response. Returns null when the
+// model omits it or returns a label outside the allowed enum — UI then falls
+// back to no-persona rendering instead of inventing a label from the verdict.
+//
+// `archetypes` is the per-axis 0–1 score map that powers the radar chart.
+// Axis list is the canonical one in factors.js so reports.js can trust the
+// shape: every known axis present, clamped to [0,1], or null for legacy data.
+function bonNormalizePersona(raw) {
+  if (!raw || typeof raw !== "object") return null;
+  const label = String(raw.label || "")
+    .toLowerCase()
+    .trim();
+  if (!BON_PERSONA_LABELS.includes(label)) return null;
+  const reasoning =
+    typeof raw.reasoning === "string" ? raw.reasoning.trim() : "";
+  return {
+    label,
+    reasoning,
+    archetypes: bonNormalizeArchetypes(raw.archetypes),
+  };
+}
+
+function bonNormalizeArchetypes(raw) {
+  const out = {};
+  const src = raw && typeof raw === "object" ? raw : {};
+  let anyPresent = false;
+  for (const axis of BON_ARCHETYPE_KEYS) {
+    const v = src[axis];
+    if (typeof v === "number" && Number.isFinite(v)) {
+      out[axis] = Math.max(0, Math.min(1, v));
+      anyPresent = true;
+    } else {
+      out[axis] = 0;
+    }
+  }
+  // Legacy investigations (and any pre-archetype model output) have no axes —
+  // return null so the renderer can fall back to the text-only persona panel
+  // instead of drawing a flat zero radar.
+  return anyPresent ? out : null;
+}
+
+// Single-call entry point: fetch the profile, run the 1D analyzer, return the
+// combined investigation object.
 async function bonInvestigateUser(username, apiKey, extra = {}) {
   const inputs = await bonGatherProfile(username, extra);
   const oneD = await bonRunOneDAnalysis(apiKey, inputs.summary);

@@ -5,3 +5,5 @@ node_modules/
 web-ext-artifacts/
 icons/source/*@source.png
 .playwright-mcp/
+references/
+reddit-page.png

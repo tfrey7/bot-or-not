@@ -75,8 +75,29 @@
     };
   }
 
+  // Ranks factors by decisiveness (|score| × confidence — the same weight
+  // bonComputeVerdict uses for the overall verdict) and returns the top N
+  // that carried real signal. Neutrals and low-confidence factors are filtered
+  // out so the bullets don't include "no signal" filler.
+  function bonTopReasons(factors, count = 3) {
+    if (!Array.isArray(factors)) return [];
+    return factors
+      .filter((f) => {
+        const s = typeof f?.score === "number" ? f.score : 0;
+        const c = typeof f?.confidence === "number" ? f.confidence : 0;
+        return Math.abs(s) >= 0.2 && c >= 0.3;
+      })
+      .map((f) => ({
+        ...f,
+        weight: Math.abs(f.score) * f.confidence,
+      }))
+      .sort((a, b) => b.weight - a.weight)
+      .slice(0, count);
+  }
+
   globalThis.bonComputeVerdict = bonComputeVerdict;
   globalThis.bonNormalizeInvestigation = bonNormalizeInvestigation;
   globalThis.bonIsInvestigationStale = bonIsInvestigationStale;
+  globalThis.bonTopReasons = bonTopReasons;
   globalThis.BON_STALE_INVESTIGATION_MS = BON_STALE_INVESTIGATION_MS;
 })();

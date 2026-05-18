@@ -4,7 +4,6 @@
   const emptyEl = document.getElementById("bon-empty");
   const searchInput = document.getElementById("bon-search");
   const clearBtn = document.getElementById("bon-clear-btn");
-  const refreshBtn = document.getElementById("bon-refresh-btn");
   const modal = document.getElementById("bon-confirm-modal");
   const modalText = document.getElementById("bon-modal-text");
   const cancelBtn = document.getElementById("bon-cancel-clear");
@@ -18,8 +17,12 @@
   let pendingConfirmAction = null;
 
   let allReports = [];
+  // Median across every prior completed run. Used to drive the progress ring
+  // and "~Xs left" countdown on in-flight investigations. Recomputed before
+  // render and before each poll tick. Null until we have ≥3 completed runs.
+  let expectedDurationMs = null;
   const analyticsContainer = document.getElementById("bon-analytics-container");
-  let sortKey = "lastReportedAt";
+  let sortKey = "investigatedAt";
   let sortDir = "desc";
   const expanded = new Set();
   const inflightActivity = new Set();
@@ -102,7 +105,6 @@
     if (area === "local" && changes.reports) load();
   });
 
-  refreshBtn.addEventListener("click", load);
   searchInput.addEventListener("input", render);
 
   function openConfirmModal({ text, confirmLabel, action }) {
@@ -247,8 +249,59 @@
       console.error("[Bot or Not] failed to load reports", err);
       tableWrap.hidden = true;
       emptyEl.hidden = false;
-      emptyEl.textContent = "Failed to load reports.";
+      renderLoadError(err);
     }
+  }
+
+  function renderLoadError(err) {
+    emptyEl.replaceChildren();
+
+    const heading = document.createElement("p");
+    heading.className = "bon-empty-text";
+    heading.textContent = "Failed to load reports.";
+    emptyEl.appendChild(heading);
+
+    const rawMessage = err?.message || String(err) || "Unknown error";
+    const hint = diagnoseLoadError(rawMessage);
+
+    const detail = document.createElement("p");
+    detail.className = "bon-empty-text bon-empty-detail";
+    detail.textContent = rawMessage;
+    emptyEl.appendChild(detail);
+
+    if (hint) {
+      const hintEl = document.createElement("p");
+      hintEl.className = "bon-empty-text bon-empty-hint";
+      hintEl.textContent = hint;
+      emptyEl.appendChild(hintEl);
+    }
+
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "bon-btn bon-empty-action";
+    btn.textContent = "Reload page";
+    btn.addEventListener("click", () => {
+      location.reload();
+    });
+    emptyEl.appendChild(btn);
+  }
+
+  function diagnoseLoadError(message) {
+    const msg = (message || "").toLowerCase();
+    if (
+      msg.includes("receiving end does not exist") ||
+      msg.includes("could not establish connection") ||
+      msg.includes("message port closed")
+    ) {
+      return "The extension background worker isn't responding. This usually happens after the extension was reloaded or updated while this page was open. Reload the page to reconnect.";
+    }
+    if (msg.includes("quota") || msg.includes("storage")) {
+      return "Browser storage may be full or unavailable. Try clearing some reports or checking your browser's extension storage permissions.";
+    }
+    if (msg.includes("undefined") || msg.includes("cannot read")) {
+      return "Stored report data may be corrupted. Check the browser console for details, or clear all reports from Settings as a last resort.";
+    }
+    return "Open the browser console (F12) for more details, then try reloading the page.";
   }
 
   // Analytics shows aggregates across every investigation, so it should not
@@ -260,7 +313,58 @@
     bonRenderAnalytics(allReports, analyticsContainer);
   }
 
+  // Median duration across all completed runs (including runs[] history).
+  // Returns null below 3 samples — not enough signal to predict against.
+  function computeExpectedDurationMs() {
+    const durs = [];
+    for (const r of allReports) {
+      const inv = r.investigation;
+      if (!inv) continue;
+      if (Array.isArray(inv.runs) && inv.runs.length > 0) {
+        for (const run of inv.runs) {
+          if (run.status === "done" && typeof run.durationMs === "number") {
+            durs.push(run.durationMs);
+          }
+        }
+      } else if (inv.status === "done" && typeof inv.durationMs === "number") {
+        durs.push(inv.durationMs);
+      }
+    }
+    if (durs.length < 3) return null;
+    durs.sort((a, b) => a - b);
+    return durs[Math.floor(durs.length / 2)];
+  }
+
+  function formatExpectedSec(ms) {
+    return Math.max(1, Math.round(ms / 1000));
+  }
+
+  function formatRunningCellText(elapsedSec, expectedMs) {
+    if (!expectedMs) return `Running… ${elapsedSec}s`;
+    return `Running… ${elapsedSec}s / ~${formatExpectedSec(expectedMs)}s`;
+  }
+
+  function formatRunningTitle(elapsedSec, expectedMs) {
+    if (!expectedMs) {
+      return `Investigation running… ${elapsedSec}s elapsed (large accounts can take 60–90s)`;
+    }
+    const expSec = formatExpectedSec(expectedMs);
+    if (elapsedSec > expSec) {
+      return `Running ${elapsedSec}s — longer than the typical ${expSec}s. Hang tight.`;
+    }
+    const remaining = Math.max(0, expSec - elapsedSec);
+    return `Running ${elapsedSec}s · ~${remaining}s left (typical ${expSec}s)`;
+  }
+
+  function applyProgressVisual(btn, elapsedMs, expectedMs) {
+    if (!expectedMs) return;
+    const pct = Math.min(100, (elapsedMs / expectedMs) * 100);
+    btn.style.setProperty("--bon-progress", `${pct.toFixed(1)}%`);
+    btn.classList.toggle("bon-progress--overtime", elapsedMs > expectedMs);
+  }
+
   function render() {
+    expectedDurationMs = computeExpectedDurationMs();
     const query = searchInput.value.trim().toLowerCase();
 
     const filtered = allReports.filter((r) => {
@@ -327,20 +431,24 @@
     const btn = document.createElement("button");
     btn.type = "button";
     btn.className = "bon-btn bon-empty-action";
-    btn.textContent = `Report u/${username}`;
+    btn.textContent = `Investigate u/${username}`;
     btn.addEventListener("click", async () => {
       btn.disabled = true;
-      btn.textContent = "Reporting…";
+      btn.textContent = "Starting…";
       try {
-        await browser.runtime.sendMessage({
-          type: "report-user",
+        void browser.runtime.sendMessage({
+          type: "investigate-user",
           username,
         });
-        // storage.onChanged will reload and re-render.
+        searchInput.value = "";
+        sortKey = "investigatedAt";
+        sortDir = "desc";
+        updateSortIndicators();
+        render();
       } catch (err) {
-        console.error("[Bot or Not] manual report failed", err);
+        console.error("[Bot or Not] manual investigate failed", err);
         btn.disabled = false;
-        btn.textContent = `Report u/${username}`;
+        btn.textContent = `Investigate u/${username}`;
       }
     });
     emptyEl.appendChild(btn);
@@ -409,25 +517,31 @@
   }
 
   function updateRunningInPlace() {
+    // Recompute in case a run completed between full renders and we have a
+    // new sample for the median (no full re-render fires for that alone).
+    expectedDurationMs = computeExpectedDurationMs();
     for (const r of allReports) {
       const inv = r.investigation;
       if (inv?.status !== "running") continue;
       if (bonIsInvestigationStale(inv)) continue;
       if (!inv.startedAt) continue;
-      const elapsed = Math.max(
-        0,
-        Math.round((Date.now() - inv.startedAt) / 1000)
-      );
+      const elapsedMs = Math.max(0, Date.now() - inv.startedAt);
+      const elapsedSec = Math.round(elapsedMs / 1000);
       const cells = tbody.querySelectorAll("[data-bon-running-cell]");
       for (const cell of cells) {
         if (cell.dataset.bonRunningCell === r.username) {
-          cell.textContent = `Running… ${elapsed}s`;
+          cell.textContent = formatRunningCellText(
+            elapsedSec,
+            expectedDurationMs
+          );
         }
       }
       const btns = tbody.querySelectorAll("[data-bon-running-btn]");
       for (const btn of btns) {
-        if (btn.dataset.bonRunningBtn === r.username) {
-          btn.title = `Investigation running… ${elapsed}s elapsed (large accounts can take 60–90s)`;
+        if (btn.dataset.bonRunningBtn !== r.username) continue;
+        btn.title = formatRunningTitle(elapsedSec, expectedDurationMs);
+        if (btn.classList.contains("bon-progress") && expectedDurationMs) {
+          applyProgressVisual(btn, elapsedMs, expectedDurationMs);
         }
       }
     }
@@ -475,7 +589,13 @@
       const v = r.investigation?.verdict;
       return VERDICT_RANK[v] ?? 5;
     }
-    if (key === "investigatedAt") return r.investigation?.runAt || 0;
+    if (key === "investigatedAt") {
+      const inv = r.investigation;
+      if (!inv) return 0;
+      // While running, runAt isn't written yet — fall back to startedAt so a
+      // freshly-kicked-off investigation sorts to the top instead of the bottom.
+      return inv.runAt || inv.startedAt || 0;
+    }
     if (key === "region") {
       // Sort by region label so same-country rows cluster; rows with no
       // inferred region sink to the bottom.
@@ -636,7 +756,7 @@
       activityRow.className = "bon-row-history";
       activityRow.hidden = startCollapsed;
       const activityCell = document.createElement("td");
-      activityCell.colSpan = 7;
+      activityCell.colSpan = 8;
       if (inflightActivity.has(username) && !report.activityData) {
         activityCell.appendChild(renderActivityLoadingPlaceholder());
       } else {
@@ -653,7 +773,7 @@
       historyRow.className = "bon-row-history";
       historyRow.hidden = startCollapsed;
       const historyCell = document.createElement("td");
-      historyCell.colSpan = 7;
+      historyCell.colSpan = 8;
       const wrap = document.createElement("div");
       wrap.className = "bon-detail-wrap";
       const title = document.createElement("p");
@@ -886,6 +1006,11 @@
     return span;
   }
 
+  // Compact factor strip rendered in the always-visible row cell. Each dot is
+  // a small colored square tinted by its signal leaning. On hover/focus the
+  // dot surfaces a richer card-style popover with reasoning + evidence + a
+  // score bar — see `buildFactorTooltipCard` below. The popover sits in the
+  // dot's DOM so a single CSS rule (`:hover`/`:focus-within`) reveals it.
   function renderFactorDots(investigation) {
     const wrap = document.createElement("span");
     wrap.className = "bon-factors-cell";
@@ -895,34 +1020,186 @@
         if (f?.key) factorsByKey.set(f.key, f);
       }
     }
-    // Treat "missing" specially only when the investigation actually ran (status
-    // done). A never-run investigation gets the plain "missing" gray dots
+    // Treat "missing" specially only when the investigation actually ran
+    // (status done). A never-run investigation gets the plain "missing" dots
     // without the "added after" framing.
     const hasRun = investigation?.status === "done";
     for (const key of FACTOR_KEYS) {
-      const dot = document.createElement("span");
       const f = factorsByKey.get(key);
-      const label = FACTOR_LABELS[key] || key;
-      if (!f && hasRun) {
-        dot.className = "bon-factor-dot bon-factor-dot--new";
-        dot.title = `${label}: added after this investigation ran — re-run to score`;
-      } else if (!f) {
-        dot.className = "bon-factor-dot bon-factor-dot--missing";
-        dot.title = `${label}: not investigated`;
-      } else {
-        const leaning = scoreLeaning(f.score, f.confidence);
-        dot.className = `bon-factor-dot bon-factor-dot--${leaning}`;
-        const scoreText =
-          typeof f.score === "number" ? f.score.toFixed(2) : "—";
-        const confText =
-          typeof f.confidence === "number"
-            ? `${Math.round(f.confidence * 100)}%`
-            : "—";
-        dot.title = `${label}: score ${scoreText}, confidence ${confText}`;
-      }
-      wrap.appendChild(dot);
+      wrap.appendChild(buildFactorDot(key, f, hasRun));
     }
     return wrap;
+  }
+
+  function buildFactorDot(key, f, hasRun) {
+    const fullLabel = FACTOR_LABELS[key] || key;
+
+    const dot = document.createElement("span");
+    dot.className = "bon-factor-dot";
+    dot.tabIndex = 0;
+
+    let leaning;
+    if (f && typeof f.score === "number") {
+      leaning = scoreLeaning(f.score, f.confidence);
+    } else if (!f && hasRun) {
+      leaning = "new";
+    } else if (!f) {
+      leaning = "missing";
+    } else {
+      leaning = "neutral";
+    }
+    dot.classList.add(`bon-factor-dot--${leaning}`);
+
+    // Plain-text fallback for screen readers / no-hover contexts.
+    if (f) {
+      const scoreText = typeof f.score === "number" ? f.score.toFixed(2) : "—";
+      const confText =
+        typeof f.confidence === "number"
+          ? `${Math.round(f.confidence * 100)}%`
+          : "—";
+      dot.setAttribute(
+        "aria-label",
+        `${fullLabel}: score ${scoreText}, confidence ${confText}`
+      );
+    } else if (hasRun) {
+      dot.setAttribute(
+        "aria-label",
+        `${fullLabel}: added after this investigation ran — re-run to score`
+      );
+    } else {
+      dot.setAttribute("aria-label", `${fullLabel}: not investigated`);
+    }
+
+    const card = buildFactorTooltipCard(fullLabel, f, hasRun, leaning);
+    dot.appendChild(card);
+    attachFactorCardPositioning(dot, card);
+
+    return dot;
+  }
+
+  // Factor tooltip is position: fixed and gets hoisted to <body> on first
+  // hover. The dot lives inside a table cell with its own containing block
+  // and overflow rules; appending to body guarantees the card sits directly
+  // under <html> so fixed positioning resolves against the true viewport.
+  // Coords are computed from the dot's bounding rect: above the dot when
+  // there's headroom, flipped below otherwise, and clamped to an 8px margin
+  // on the sides so wide cards don't bleed past the viewport.
+  function attachFactorCardPositioning(dotEl, cardEl) {
+    let mounted = false;
+    const show = () => {
+      if (!mounted) {
+        document.body.appendChild(cardEl);
+        mounted = true;
+      }
+      const dotRect = dotEl.getBoundingClientRect();
+      const cardWidth = cardEl.offsetWidth;
+      const cardHeight = cardEl.offsetHeight;
+      if (!cardWidth || !cardHeight) return;
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+      const margin = 8;
+      const gap = 10;
+
+      let left = dotRect.left + dotRect.width / 2 - cardWidth / 2;
+      left = Math.max(margin, Math.min(left, vw - margin - cardWidth));
+
+      let top = dotRect.top - cardHeight - gap;
+      if (top < margin) top = dotRect.bottom + gap;
+      top = Math.max(margin, Math.min(top, vh - margin - cardHeight));
+
+      cardEl.style.left = `${left}px`;
+      cardEl.style.top = `${top}px`;
+      cardEl.classList.add("bon-factor-card--visible");
+    };
+    const hide = () => {
+      cardEl.classList.remove("bon-factor-card--visible");
+    };
+    dotEl.addEventListener("mouseenter", show);
+    dotEl.addEventListener("mouseleave", hide);
+    dotEl.addEventListener("focus", show);
+    dotEl.addEventListener("blur", hide);
+  }
+
+  // Hover card content for a factor chip. Styled to read like the editorial-
+  // dossier factor cards on the expanded view — same header layout, score bar,
+  // reasoning, evidence list. Always present in the DOM so :hover can reveal
+  // it without JS; browsers handle hundreds of hidden subtrees comfortably.
+  function buildFactorTooltipCard(fullLabel, f, hasRun, leaning) {
+    const card = document.createElement("span");
+    // Leaning modifier carries --bon-factor-accent forward when the card is
+    // hoisted to <body> for positioning; otherwise inheritance from the dot
+    // is severed and the colored top border goes muted.
+    card.className = `bon-factor-card bon-factor-card--${leaning}`;
+    card.setAttribute("role", "tooltip");
+
+    const header = document.createElement("span");
+    header.className = "bon-factor-card-header";
+    const name = document.createElement("span");
+    name.className = "bon-factor-card-name";
+    name.textContent = fullLabel;
+    header.appendChild(name);
+
+    if (f && typeof f.score === "number") {
+      const pillClass =
+        leaning === "likely-bot"
+          ? "bot"
+          : leaning === "likely-human"
+            ? "human"
+            : leaning === "missing"
+              ? "neutral"
+              : leaning;
+      const pill = document.createElement("span");
+      pill.className = `bon-factor-signal bon-factor-signal--${pillClass}`;
+      pill.textContent =
+        leaning === "neutral" || leaning === "missing"
+          ? "Neutral"
+          : formatVerdict(leaning);
+      header.appendChild(pill);
+    }
+    card.appendChild(header);
+
+    if (f && typeof f.score === "number") {
+      card.appendChild(renderScoreBar(f.score, f.confidence));
+    }
+
+    if (f && typeof f.confidence === "number") {
+      const conf = document.createElement("span");
+      conf.className = "bon-factor-card-confidence";
+      conf.textContent = `${Math.round(f.confidence * 100)}% confidence`;
+      card.appendChild(conf);
+    }
+
+    if (f?.reasoning) {
+      const r = document.createElement("span");
+      r.className = "bon-factor-card-reasoning";
+      r.textContent = f.reasoning;
+      card.appendChild(r);
+    } else if (!f && hasRun) {
+      const r = document.createElement("span");
+      r.className =
+        "bon-factor-card-reasoning bon-factor-card-reasoning--muted";
+      r.textContent = "Added after this investigation ran — re-run to score.";
+      card.appendChild(r);
+    } else if (!f) {
+      const r = document.createElement("span");
+      r.className =
+        "bon-factor-card-reasoning bon-factor-card-reasoning--muted";
+      r.textContent = "Not investigated.";
+      card.appendChild(r);
+    }
+
+    if (f && Array.isArray(f.evidence) && f.evidence.length) {
+      const list = document.createElement("ul");
+      list.className = "bon-factor-card-evidence";
+      for (const cite of f.evidence) {
+        const item = document.createElement("li");
+        item.textContent = cite;
+        list.appendChild(item);
+      }
+      card.appendChild(list);
+    }
+
+    return card;
   }
 
   function scoreLeaning(score, confidence) {
@@ -933,6 +1210,33 @@
     if (score >= 0.5) return "human";
     if (score >= 0.2) return "likely-human";
     return "neutral";
+  }
+
+  function buildTopReasonsList(factors) {
+    const top = bonTopReasons(factors, 3);
+    if (!top.length) return null;
+    const ul = document.createElement("ul");
+    ul.className = "bon-top-reasons";
+    for (const f of top) {
+      const li = document.createElement("li");
+      const leaning = scoreLeaning(f.score, f.confidence);
+      li.className = `bon-reason bon-reason--${leaning}`;
+      const bullet = document.createElement("span");
+      bullet.className = "bon-reason__bullet";
+      bullet.setAttribute("aria-hidden", "true");
+      li.appendChild(bullet);
+      const text = document.createElement("span");
+      text.className = "bon-reason__text";
+      const label = document.createElement("strong");
+      label.textContent = FACTOR_LABELS[f.key] || f.name || f.key || "Factor";
+      text.appendChild(label);
+      if (f.reasoning) {
+        text.appendChild(document.createTextNode(` — ${f.reasoning}`));
+      }
+      li.appendChild(text);
+      ul.appendChild(li);
+    }
+    return ul;
   }
 
   function populateInvestigatedCell(cell, investigation) {
@@ -950,7 +1254,7 @@
           0,
           Math.round((Date.now() - investigation.startedAt) / 1000)
         );
-        cell.textContent = `Running… ${elapsed}s`;
+        cell.textContent = formatRunningCellText(elapsed, expectedDurationMs);
       } else {
         cell.textContent = "Running…";
       }
@@ -996,16 +1300,19 @@
     const verdict = investigation?.verdict;
     if (running && !stale) {
       btn.textContent = "";
-      const elapsed = Math.max(
-        0,
-        Math.round(
-          (Date.now() - (investigation.startedAt || Date.now())) / 1000
-        )
-      );
-      btn.title = `Investigation running… ${elapsed}s elapsed (large accounts can take 60–90s)`;
       btn.disabled = true;
-      btn.classList.add("bon-spinning");
       btn.dataset.bonRunningBtn = username;
+      const startedAt = investigation.startedAt || Date.now();
+      btn.dataset.bonRunningStartedAt = String(startedAt);
+      const elapsedMs = Math.max(0, Date.now() - startedAt);
+      const elapsedSec = Math.round(elapsedMs / 1000);
+      if (expectedDurationMs) {
+        btn.classList.add("bon-progress");
+        applyProgressVisual(btn, elapsedMs, expectedDurationMs);
+      } else {
+        btn.classList.add("bon-spinning");
+      }
+      btn.title = formatRunningTitle(elapsedSec, expectedDurationMs);
     } else if (stale) {
       btn.textContent = "🔁";
       btn.title = "Retry stalled investigation";
@@ -1093,11 +1400,32 @@
       return wrap;
     }
 
+    const summaryCol = document.createElement("div");
+    summaryCol.className = "bon-summary-col";
+
     if (investigation.summary) {
       const summary = document.createElement("p");
       summary.className = "bon-verdict-summary";
       summary.textContent = investigation.summary;
-      wrap.appendChild(summary);
+      summaryCol.appendChild(summary);
+    }
+
+    if (Array.isArray(investigation.factors) && investigation.factors.length) {
+      const reasons = buildTopReasonsList(investigation.factors);
+      if (reasons) summaryCol.appendChild(reasons);
+    }
+
+    const personaBlock = renderPersonaBlock(investigation.persona);
+
+    if (personaBlock && summaryCol.childNodes.length) {
+      const row = document.createElement("div");
+      row.className = "bon-summary-row";
+      row.appendChild(summaryCol);
+      row.appendChild(personaBlock);
+      wrap.appendChild(row);
+    } else {
+      if (summaryCol.childNodes.length) wrap.appendChild(summaryCol);
+      if (personaBlock) wrap.appendChild(personaBlock);
     }
 
     const meta = document.createElement("p");
@@ -1149,6 +1477,178 @@
       wrap.appendChild(ul);
     }
 
+    return wrap;
+  }
+
+  // Persona block: radar chart of archetype strengths + dominant label + the
+  // LLM's one-line reasoning. Returns null if the investigation has no persona
+  // data at all. Legacy investigations stored before the radar (no
+  // `archetypes`) still render — just the label + reasoning, no chart.
+  function renderPersonaBlock(persona) {
+    if (!persona || !persona.label) return null;
+
+    const block = document.createElement("aside");
+    block.className = `bon-persona bon-persona--${persona.label}`;
+
+    const heading = document.createElement("p");
+    heading.className = "bon-persona-heading";
+    heading.textContent = "Persona profile";
+    block.appendChild(heading);
+
+    if (persona.archetypes) {
+      const radar = renderPersonaRadar(persona.archetypes);
+      if (radar) block.appendChild(radar);
+    }
+
+    const labelText =
+      persona.label === "normal"
+        ? "Normal"
+        : BON_ARCHETYPES.find((a) => a.key === persona.label)?.label ||
+          persona.label;
+
+    const label = document.createElement("p");
+    label.className = `bon-persona-label bon-persona-label--${persona.label}`;
+    label.textContent = labelText;
+    block.appendChild(label);
+
+    if (persona.reasoning) {
+      const blurb = document.createElement("p");
+      blurb.className = "bon-persona-blurb";
+      blurb.textContent = persona.reasoning;
+      block.appendChild(blurb);
+    }
+
+    return block;
+  }
+
+  function renderPersonaRadar(archetypes) {
+    if (!archetypes) return null;
+    const svgns = "http://www.w3.org/2000/svg";
+    // Vertices are laid out starting at top (12 o'clock) and going clockwise,
+    // one per BON_ARCHETYPES entry — chart grows if a new archetype is added.
+    const v = {
+      size: 220,
+      center: 110,
+      radius: 76,
+      labelPad: 14,
+      gridLevels: 4,
+    };
+    const axes = BON_ARCHETYPES;
+    const N = axes.length;
+    if (N < 3) return null;
+
+    const step = (Math.PI * 2) / N;
+    const angle = (i) => -Math.PI / 2 + i * step;
+    const vertex = (i, scale) => {
+      const θ = angle(i);
+      return {
+        x: v.center + v.radius * scale * Math.cos(θ),
+        y: v.center + v.radius * scale * Math.sin(θ),
+      };
+    };
+    const points = (scale) =>
+      axes
+        .map((_, i) => {
+          const p = vertex(i, scale);
+          return `${p.x.toFixed(2)},${p.y.toFixed(2)}`;
+        })
+        .join(" ");
+
+    const wrap = document.createElement("div");
+    wrap.className = "bon-persona-radar";
+    wrap.title = axes
+      .map((a) => `${a.label} ${Math.round((archetypes[a.key] || 0) * 100)}%`)
+      .join("  ·  ");
+
+    const svg = document.createElementNS(svgns, "svg");
+    svg.setAttribute("viewBox", `0 0 ${v.size} ${v.size}`);
+    svg.setAttribute("class", "bon-radar");
+    svg.setAttribute("role", "img");
+    svg.setAttribute(
+      "aria-label",
+      `Persona radar: ${axes
+        .map((a) => `${a.label} ${Math.round((archetypes[a.key] || 0) * 100)}%`)
+        .join(", ")}`
+    );
+
+    // Concentric grid rings — innermost first so outer rings draw on top.
+    for (let g = 1; g <= v.gridLevels; g++) {
+      const poly = document.createElementNS(svgns, "polygon");
+      poly.setAttribute("points", points(g / v.gridLevels));
+      poly.setAttribute(
+        "class",
+        g === v.gridLevels
+          ? "bon-radar-grid bon-radar-grid--outer"
+          : "bon-radar-grid"
+      );
+      svg.appendChild(poly);
+    }
+
+    // Axis spokes
+    for (let i = 0; i < N; i++) {
+      const p = vertex(i, 1);
+      const line = document.createElementNS(svgns, "line");
+      line.setAttribute("x1", v.center);
+      line.setAttribute("y1", v.center);
+      line.setAttribute("x2", p.x.toFixed(2));
+      line.setAttribute("y2", p.y.toFixed(2));
+      line.setAttribute("class", "bon-radar-axis");
+      svg.appendChild(line);
+    }
+
+    // Data polygon
+    const dataPolyPts = axes
+      .map((a, i) => {
+        const score = Math.max(0, Math.min(1, archetypes[a.key] || 0));
+        const p = vertex(i, score);
+        return `${p.x.toFixed(2)},${p.y.toFixed(2)}`;
+      })
+      .join(" ");
+    const dataPoly = document.createElementNS(svgns, "polygon");
+    dataPoly.setAttribute("points", dataPolyPts);
+    dataPoly.setAttribute("class", "bon-radar-data");
+    svg.appendChild(dataPoly);
+
+    // Tip dots — only for axes with non-trivial signal, to keep the chart
+    // quiet when most axes are near zero.
+    for (let i = 0; i < N; i++) {
+      const score = archetypes[axes[i].key] || 0;
+      if (score <= 0.05) continue;
+      const p = vertex(i, score);
+      const dot = document.createElementNS(svgns, "circle");
+      dot.setAttribute("cx", p.x.toFixed(2));
+      dot.setAttribute("cy", p.y.toFixed(2));
+      dot.setAttribute("r", 3);
+      dot.setAttribute("class", "bon-radar-dot");
+      svg.appendChild(dot);
+    }
+
+    // Axis labels — anchor + baseline picked by quadrant so text reads
+    // outside the chart without colliding with the vertex tip.
+    for (let i = 0; i < N; i++) {
+      const θ = angle(i);
+      const lx = v.center + (v.radius + v.labelPad) * Math.cos(θ);
+      const ly = v.center + (v.radius + v.labelPad) * Math.sin(θ);
+      const cosθ = Math.cos(θ);
+      const sinθ = Math.sin(θ);
+      let anchor = "middle";
+      if (cosθ > 0.3) anchor = "start";
+      else if (cosθ < -0.3) anchor = "end";
+      let dy = "0.35em";
+      if (sinθ > 0.4) dy = "0.85em";
+      else if (sinθ < -0.4) dy = "-0.1em";
+
+      const text = document.createElementNS(svgns, "text");
+      text.setAttribute("x", lx.toFixed(2));
+      text.setAttribute("y", ly.toFixed(2));
+      text.setAttribute("text-anchor", anchor);
+      text.setAttribute("dy", dy);
+      text.setAttribute("class", "bon-radar-label");
+      text.textContent = axes[i].label;
+      svg.appendChild(text);
+    }
+
+    wrap.appendChild(svg);
     return wrap;
   }
 

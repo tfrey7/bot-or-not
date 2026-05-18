@@ -36,38 +36,16 @@ Three execution contexts, communicating via `browser.runtime.sendMessage`:
 
 - Triggered automatically when a user is reported, or on demand from the reports page.
 - `src/bot_analysis.md` is the system prompt sent to Claude. Editing it changes how factors are scored.
-- Claude returns 12 per-factor `{score, confidence, reasoning}` objects on a single bot↔human axis (`-1` = strong human signal, `+1` = strong bot signal).
+- Claude returns 14 per-factor `{score, confidence, reasoning, evidence}` objects on a single bot↔human axis (`-1` = strong human signal, `+1` = strong bot signal), plus a top-level `persona: { label, reasoning }` block where `label` ∈ `{bot, stan, farmer, normal}`.
 - `src/verdict.js` aggregates deterministically: `botProbability = sigmoid(2 × Σ(-score × confidence))`, then bins into one of 5 labels: `bot`, `likely-bot`, `uncertain`, `likely-human`, `human`.
 - Verdict logic lives **only** in `verdict.js`. Don't bake it into the prompt or the background — re-running the aggregator on stored factor scores must reproduce the same verdict.
+- **Persona is an LLM pick, not derived from factor math.** The bot↔human scalar and the persona answer different questions: a Stan or Farmer is still a human, so persona `stan`/`farmer` is consistent with a positive (human-leaning) verdict.
 
 ### Factor-list contract
 
-- `src/factors.js` is the **canonical factor list** — keys, labels, and per-factor metadata (e.g., `triangleVertices` for the beta triangle classifier).
-- All UI surfaces (`reports.js`, `reports_triangle.js`) read from `BON_FACTORS` / `BON_FACTOR_KEYS` / `BON_FACTOR_LABELS` defined there.
-- `src/bot_analysis.md` (the 1D prompt) and `src/triangle/bot_analysis_triangle.md` (the triangle prompt) **must list factors in the same order with the same keys**. If you add/remove/rename a factor in `factors.js`, update both prompt files so Claude's output matches what the UI expects.
-
-### Triangle classifier (beta)
-
-A second, experimental classifier runs in parallel with the 1D bot/not analysis. Files all live under `src/triangle/`:
-
-- `bot_analysis_triangle.md` — the system prompt. Places accounts on a barycentric Bot / Stan / Farmer triangle. Per factor, asks Claude to score only the vertices declared in `factors.js` (e.g., `hidden_post_history` returns just `{bot, confidence}`; `engagement_patterns` returns `{bot, stan, farmer, confidence}`).
-- `bot_analysis_triangle.js` — analyzer. Loads the prompt, calls Claude using shared helpers (`bonCallClaude`, `bonExtractJson` from `bot_analysis.js`), reduces the response via `bonComputeTriangle`.
-- `verdict_triangle.js` — aggregator. Confidence-weighted average per corner across factors *eligible* for that corner (handles the asymmetry where Bot has many more eligible factors than Stan/Farmer).
-- `triangle_widget.js` + `triangle.css` — SVG widget rendered on the beta page.
-
-**Pipeline.** `handleInvestigateUser` in `background.js` fetches the profile once (`bonGatherProfile`), then fires both analyses in parallel:
-
-```js
-const inputs = await bonGatherProfile(username, extra);
-const [oneD, triResult] = await Promise.all([
-  bonRunOneDAnalysis(apiKey, inputs.summary),
-  bonInvestigateUserTriangle(apiKey, inputs.summary).catch(() => null),
-]);
-```
-
-The triangle call's failure is allowed-to-fail — bad JSON shouldn't tank the whole investigation. Investigation storage gets `investigation.triangle` (the `{bot, stan, farmer}` blend) and `investigation.triangleFactors` (per-factor scores) additively; nothing existing changes.
-
-**Beta UI** lives at `src/reports_triangle.html` + `src/reports_triangle.js` and is reachable from the main reports page via the "Triangle view BETA" header button. To delete the beta entirely: remove the `src/triangle/` directory, the two `reports_triangle.*` files, the triangle script entries from `manifest.json` background list, and the header button in `src/reports.html`.
+- `src/factors.js` is the **canonical factor list** — keys and labels.
+- `reports.js` reads from `BON_FACTORS` / `BON_FACTOR_KEYS` / `BON_FACTOR_LABELS` defined there.
+- `src/bot_analysis.md` **must list factors in the same order with the same keys**. If you add/remove/rename a factor in `factors.js`, update the prompt file so Claude's output matches what the UI expects.
 
 ### Storage shape
 
@@ -95,7 +73,8 @@ Investigation shape:
   status: "running" | "done" | "error",
   startedAt, durationMs, error,
   verdict, confidence, botProbability,  // derived by verdict.js
-  factors: [{ name, score, confidence, reasoning }, ...],
+  factors: [{ key, score, confidence, reasoning, evidence }, ...],
+  persona: { label, reasoning } | null,  // LLM-picked archetype
   summary,
 }
 ```

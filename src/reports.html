@@ -11,28 +11,22 @@
       rel="stylesheet"
     />
     <link rel="stylesheet" href="reports.css" />
-    <link rel="stylesheet" href="triangle/triangle.css" />
-    <!--
-      triangle.css stays loaded so the .bon-beta-tag pill in the header link
-      keeps its styling. The triangle widget itself isn't used on this page.
-    -->
     <link rel="stylesheet" href="analytics.css" />
   </head>
   <body>
     <div class="bon-page">
       <header class="bon-header">
-        <img src="../icons/icon.png" width="44" height="44" alt="" />
+        <img
+          src="../icons/chromes.png"
+          width="56"
+          height="80"
+          alt="Sherlock Chromes"
+          class="bon-header-mascot"
+        />
         <div class="bon-header-titles">
           <h1>Bot <em>or</em> Not</h1>
-          <p class="bon-subtitle">Reports · Accounts you've flagged</p>
         </div>
         <div class="bon-header-actions">
-          <a href="reports_triangle.html" class="bon-btn">
-            Triangle view <span class="bon-beta-tag">BETA</span>
-          </a>
-          <button type="button" id="bon-refresh-btn" class="bon-btn">
-            ↻ Refresh
-          </button>
           <button
             type="button"
             id="bon-settings-btn"
@@ -165,7 +159,6 @@
     </div>
 
     <script src="verdict.js"></script>
-    <script src="config.js"></script>
     <script src="factors.js"></script>
     <script src="regions.js"></script>
     <script src="analytics.js"></script>

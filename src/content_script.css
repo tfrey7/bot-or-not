@@ -89,9 +89,6 @@
 }
 
 .bon-profile-panel__header {
-  appearance: none;
-  background: none;
-  border: none;
   width: 100%;
   display: flex;
   align-items: center;
@@ -103,10 +100,20 @@
   text-align: left;
   border-radius: 0.5em;
   transition: background 0.15s;
+  box-sizing: border-box;
 }
 
 .bon-profile-panel__header:hover {
   background: rgba(128, 128, 128, 0.08);
+}
+
+.bon-profile-panel__header:focus-visible {
+  outline: 2px solid rgba(128, 128, 128, 0.55);
+  outline-offset: -2px;
+}
+
+.bon-profile-panel__header > .bon-panel-btn {
+  flex-shrink: 0;
 }
 
 .bon-profile-panel__title {
@@ -127,15 +134,37 @@
   min-width: 0;
 }
 
-.bon-profile-panel__chevron {
-  font-size: 0.7rem;
-  color: rgba(128, 128, 128, 0.75);
-  transition: transform 0.15s;
-  flex-shrink: 0;
+.bon-profile-panel__toggle {
+  appearance: none;
+  background: none;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: rgba(128, 128, 128, 0.95);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+  transition:
+    color 0.15s,
+    opacity 0.15s;
 }
 
-.bon-profile-panel__header[aria-expanded="true"] .bon-profile-panel__chevron {
-  transform: rotate(180deg);
+.bon-profile-panel__toggle:hover,
+.bon-profile-panel__toggle:focus-visible {
+  color: inherit;
+  outline: none;
+}
+
+.bon-profile-panel__toggle-row {
+  padding: 0 0.85em 0.75em;
+}
+
+.bon-profile-panel__preview .bon-profile-panel__toggle {
+  display: inline-block;
+  margin-top: 0.65em;
 }
 
 .bon-stat-pill {
@@ -200,6 +229,51 @@
   font-size: 0.82rem;
   line-height: 1.45;
   margin: 0;
+}
+
+.bon-profile-panel__reasons {
+  list-style: none;
+  padding: 0;
+  margin: 0.5em 0 0;
+  display: grid;
+  gap: 0.3em;
+}
+
+.bon-reason {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5em;
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
+
+.bon-reason__bullet {
+  flex-shrink: 0;
+  width: 0.5em;
+  height: 0.5em;
+  border-radius: 999px;
+  background: #95a5a6;
+  transform: translateY(-0.05em);
+}
+
+.bon-reason--bot .bon-reason__bullet {
+  background: #c0392b;
+}
+
+.bon-reason--likely-bot .bon-reason__bullet {
+  background: #e67e22;
+}
+
+.bon-reason--likely-human .bon-reason__bullet {
+  background: #16a085;
+}
+
+.bon-reason--human .bon-reason__bullet {
+  background: #27ae60;
+}
+
+.bon-reason__text strong {
+  font-weight: 600;
 }
 
 .bon-profile-panel__body {
@@ -307,28 +381,382 @@
   margin: 0 0 0.6em;
 }
 
+.bon-profile-panel__preview-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 14em;
+  gap: 1.1em;
+  align-items: start;
+}
+
+.bon-profile-panel__preview-summary {
+  min-width: 0;
+}
+
+.bon-panel-persona {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 0.65em 0.7em 0.75em;
+  border-radius: 0.45em;
+  background: rgba(128, 128, 128, 0.08);
+  border: 1px solid rgba(128, 128, 128, 0.18);
+  border-top: 3px solid var(--bon-panel-persona-accent, rgba(128, 128, 128, 0.55));
+}
+
+.bon-panel-persona__tag {
+  margin: 0 0 0.35em;
+  font-size: 0.62rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: rgba(128, 128, 128, 0.9);
+}
+
+.bon-panel-persona__label {
+  margin: 0.1em 0 0.4em;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--bon-panel-persona-accent, inherit);
+}
+
+.bon-panel-persona__blurb {
+  font-size: 0.75rem;
+  line-height: 1.45;
+  margin: 0;
+  color: inherit;
+  opacity: 0.85;
+}
+
+.bon-panel-persona--bot {
+  --bon-panel-persona-accent: rgba(160, 160, 160, 0.85);
+}
+.bon-panel-persona--stan {
+  --bon-panel-persona-accent: #f1c40f;
+}
+.bon-panel-persona--farmer {
+  --bon-panel-persona-accent: #3498db;
+}
+.bon-panel-persona--teen {
+  --bon-panel-persona-accent: #16a085;
+}
+.bon-panel-persona--thirst {
+  --bon-panel-persona-accent: #e67e22;
+}
+.bon-panel-persona--crank {
+  --bon-panel-persona-accent: #e74c3c;
+}
+.bon-panel-persona--hustler {
+  --bon-panel-persona-accent: #27ae60;
+}
+.bon-panel-persona--doomer {
+  --bon-panel-persona-accent: #6c7a89;
+}
+.bon-panel-persona--normal {
+  --bon-panel-persona-accent: rgba(160, 160, 160, 0.85);
+}
+
+.bon-panel-persona-radar {
+  width: 100%;
+  max-width: 11em;
+  margin: 0 auto 0.25em;
+  line-height: 0;
+}
+.bon-panel-persona-radar .bon-panel-radar {
+  width: 100%;
+  height: auto;
+  display: block;
+  overflow: visible;
+}
+.bon-panel-radar-grid {
+  fill: rgba(128, 128, 128, 0.05);
+  stroke: rgba(128, 128, 128, 0.3);
+  stroke-width: 1;
+}
+.bon-panel-radar-grid--outer {
+  fill: none;
+  stroke: rgba(128, 128, 128, 0.55);
+  stroke-width: 1.25;
+}
+.bon-panel-radar-axis {
+  stroke: rgba(128, 128, 128, 0.3);
+  stroke-width: 1;
+  stroke-dasharray: 2 3;
+}
+.bon-panel-radar-data {
+  fill: var(--bon-panel-persona-accent, rgba(128, 128, 128, 0.7));
+  fill-opacity: 0.28;
+  stroke: var(--bon-panel-persona-accent, rgba(128, 128, 128, 0.7));
+  stroke-width: 1.6;
+  stroke-linejoin: round;
+}
+.bon-panel-radar-dot {
+  fill: var(--bon-panel-persona-accent, rgba(128, 128, 128, 0.7));
+  stroke: rgba(20, 20, 22, 0.6);
+  stroke-width: 1;
+}
+.bon-panel-radar-label {
+  font-family: inherit;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  fill: rgba(128, 128, 128, 0.9);
+}
+
+@media (max-width: 36em) {
+  .bon-profile-panel__preview-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .bon-panel-persona {
+    max-width: 18em;
+    margin: 0 auto;
+  }
+}
+
+.bon-panel-factor-signals {
+  margin: 0.9em 0 0;
+}
+
+.bon-panel-factor-signals__label {
+  font-size: 0.65rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(128, 128, 128, 0.9);
+  margin: 0 0 0.4em;
+}
+
+.bon-panel-factor-signals .bon-panel-factor-dots {
+  margin: 0;
+}
+
+.bon-panel-factor-dots {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35em;
+  margin: 0.65em 0 0;
+}
+
+.bon-panel-factor-dot {
+  position: relative;
+  width: 0.9em;
+  height: 0.9em;
+  border-radius: 0.2em;
+  background: rgba(128, 128, 128, 0.3);
+  display: inline-block;
+  cursor: default;
+  outline: none;
+  transition: transform 0.15s;
+  /* Picked up by the hover card's border-top so each tooltip carries its
+     leaning's color without redundant per-leaning rules. */
+  --bon-panel-factor-accent: rgba(128, 128, 128, 0.55);
+}
+.bon-panel-factor-dot:hover,
+.bon-panel-factor-dot:focus-visible {
+  transform: scale(1.25);
+  z-index: 5;
+}
+
+.bon-panel-factor-dot--bot {
+  background: #c0392b;
+  --bon-panel-factor-accent: #c0392b;
+}
+
+.bon-panel-factor-dot--likely-bot {
+  background: #e67e22;
+  --bon-panel-factor-accent: #e67e22;
+}
+
+.bon-panel-factor-dot--neutral {
+  background: rgba(128, 128, 128, 0.55);
+  --bon-panel-factor-accent: rgba(128, 128, 128, 0.55);
+}
+
+.bon-panel-factor-dot--likely-human {
+  background: #16a085;
+  --bon-panel-factor-accent: #16a085;
+}
+
+.bon-panel-factor-dot--human {
+  background: #27ae60;
+  --bon-panel-factor-accent: #27ae60;
+}
+
+.bon-panel-factor-dot--missing {
+  background: transparent;
+  border: 1px dashed rgba(128, 128, 128, 0.5);
+  --bon-panel-factor-accent: rgba(128, 128, 128, 0.5);
+}
+
+.bon-panel-factor-dot--new {
+  background: repeating-linear-gradient(
+    135deg,
+    rgba(245, 158, 11, 0.4) 0 3px,
+    rgba(245, 158, 11, 0.7) 3px 6px
+  );
+  --bon-panel-factor-accent: #d97706;
+}
+
+/* ----- Hover card popover ------------------------------------------------
+   Lives inside each dot; CSS-only reveal. Adapts to Reddit's theme via
+   currentColor + transparent rgba — readable on both light and dark surfaces. */
+.bon-panel-factor-card {
+  /* position: fixed escapes every parent stacking/clipping context — Reddit's
+     nested panels, our own profile panel, the factor strip — and positions
+     the tooltip relative to the viewport. attachFactorCardPositioning() in
+     content_script.js sets left/top on mouseenter to keep the card within
+     an 8px viewport margin. */
+  position: fixed;
+  left: 0;
+  top: 0;
+  transform: scale(0.92);
+  transform-origin: center bottom;
+  width: 20em;
+  max-width: 80vw;
+  padding: 0.75em 0.9em 0.85em;
+  background: rgba(20, 20, 22, 0.97);
+  color: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-top: 3px solid var(--bon-panel-factor-accent);
+  border-radius: 0.45em;
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.3),
+    0 16px 36px -10px rgba(0, 0, 0, 0.55);
+  font-size: 0.78rem;
+  font-weight: 400;
+  line-height: 1.5;
+  letter-spacing: normal;
+  text-transform: none;
+  white-space: normal;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45em;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  z-index: 2147483647;
+  transition:
+    opacity 0.12s ease-out,
+    transform 0.12s ease-out,
+    visibility 0s linear 0.12s;
+}
+.bon-panel-factor-card--visible {
+  opacity: 1;
+  visibility: visible;
+  transform: scale(1);
+  transition-delay: 0s;
+}
+
+/* The card is appended to document.body on hover, so it no longer inherits
+   --bon-panel-factor-accent from the dot. Re-declare per leaning here so the
+   colored top border and the signal pill's outline still come through. */
+.bon-panel-factor-card--bot {
+  --bon-panel-factor-accent: #c0392b;
+}
+.bon-panel-factor-card--likely-bot {
+  --bon-panel-factor-accent: #e67e22;
+}
+.bon-panel-factor-card--neutral {
+  --bon-panel-factor-accent: rgba(128, 128, 128, 0.55);
+}
+.bon-panel-factor-card--likely-human {
+  --bon-panel-factor-accent: #16a085;
+}
+.bon-panel-factor-card--human {
+  --bon-panel-factor-accent: #27ae60;
+}
+.bon-panel-factor-card--missing {
+  --bon-panel-factor-accent: rgba(128, 128, 128, 0.5);
+}
+.bon-panel-factor-card--new {
+  --bon-panel-factor-accent: #d97706;
+}
+
+.bon-panel-factor-card__header {
+  display: flex;
+  align-items: center;
+  gap: 0.6em;
+}
+.bon-panel-factor-card__name {
+  font-weight: 700;
+  font-size: 0.8rem;
+}
+.bon-panel-factor-card__signal {
+  margin-left: auto;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 0.22em 0.5em 0.2em;
+  border-radius: 0.25em;
+  border: 1px solid currentColor;
+  color: var(--bon-panel-factor-accent);
+  white-space: nowrap;
+}
+.bon-panel-factor-card__confidence {
+  font-size: 0.68rem;
+  opacity: 0.7;
+  letter-spacing: 0.03em;
+}
+.bon-panel-factor-card__reasoning {
+  font-size: 0.8rem;
+  line-height: 1.5;
+  opacity: 0.92;
+}
+.bon-panel-factor-card__reasoning--muted {
+  opacity: 0.65;
+  font-style: italic;
+}
+.bon-panel-factor-card__evidence {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.28em;
+  font-size: 0.72rem;
+  line-height: 1.45;
+  opacity: 0.85;
+}
+.bon-panel-factor-card__evidence li {
+  position: relative;
+  padding-left: 0.9em;
+}
+.bon-panel-factor-card__evidence li::before {
+  content: "›";
+  position: absolute;
+  left: 0;
+  top: 0;
+  opacity: 0.55;
+  font-weight: 700;
+}
+
 .bon-panel-factors {
   list-style: none;
   padding: 0;
   margin: 0;
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 0.4em;
 }
 
 .bon-panel-factor {
   font-size: 0.75rem;
-  padding: 0.4em 0.55em;
-  background: rgba(128, 128, 128, 0.06);
-  border: 1px solid rgba(128, 128, 128, 0.18);
-  border-radius: 0.35em;
+  padding: 0.5em 0;
+  border-top: 1px solid rgba(128, 128, 128, 0.12);
+}
+
+.bon-panel-factor:first-child {
+  border-top: none;
+  padding-top: 0;
 }
 
 .bon-panel-factor__header {
   display: flex;
-  align-items: center;
-  gap: 0.4em;
-  margin-bottom: 0.2em;
+  align-items: baseline;
+  gap: 0.5em;
+  margin-bottom: 0.15em;
 }
 
 .bon-panel-factor__name {
@@ -338,47 +766,44 @@
 
 .bon-panel-factor__signal {
   margin-left: auto;
-  font-size: 0.62rem;
+  font-size: 0.6rem;
   font-weight: 600;
-  padding: 0.08em 0.35em;
-  border-radius: 0.25em;
-  color: #fff;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(128, 128, 128, 0.95);
 }
 
 .bon-panel-factor__signal--bot {
-  background: #c0392b;
+  color: #e57368;
 }
 
 .bon-panel-factor__signal--likely-bot {
-  background: #e67e22;
+  color: #e89a5a;
 }
 
 .bon-panel-factor__signal--neutral {
-  background: #95a5a6;
+  color: rgba(128, 128, 128, 0.75);
 }
 
 .bon-panel-factor__signal--likely-human {
-  background: #16a085;
+  color: #4cb8a0;
 }
 
 .bon-panel-factor__signal--human {
-  background: #27ae60;
+  color: #4cc26a;
 }
 
 .bon-panel-factor__signal--new {
-  background: #f59e0b;
-  color: #422006;
+  color: #f59e0b;
 }
 
-.bon-panel-factor--new {
-  border-style: dashed;
-  background: rgba(245, 158, 11, 0.08);
+.bon-panel-factor--new .bon-panel-factor__name {
+  opacity: 0.7;
 }
 
 .bon-panel-factor__reasoning {
   color: inherit;
-  opacity: 0.85;
+  opacity: 0.8;
   line-height: 1.4;
   font-size: 0.72rem;
 }

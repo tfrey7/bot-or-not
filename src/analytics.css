@@ -49,9 +49,9 @@
   padding: 2.75em 1em;
   text-align: center;
   color: var(--bon-muted);
-  font-family: var(--bon-font-serif);
-  font-style: italic;
-  font-size: 1.05rem;
+  font-family: var(--bon-font-mono);
+  font-size: 0.82rem;
+  letter-spacing: 0.02em;
 }
 
 .bon-analytics-empty-small {
@@ -288,6 +288,8 @@
   padding: 0.55em 0.75em;
   border-bottom: 1px solid var(--bon-border);
   font-variant-numeric: tabular-nums;
+  font-family: var(--bon-font-mono);
+  font-size: 0.78rem;
   text-align: right;
   white-space: nowrap;
 }
@@ -327,18 +329,21 @@
   list-style: none;
   margin: 0;
   padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.35em;
+  /* Parent grid defines the column tracks once; each <li> uses subgrid so
+     every row's rank/name/meta/bar/cost columns line up regardless of
+     individual username length. */
+  display: grid;
+  grid-template-columns: 1.75em 12em 1fr 1fr auto;
+  row-gap: 0.35em;
   counter-reset: bon-rank;
 }
-
 .bon-analytics-top-list li {
   counter-increment: bon-rank;
   display: grid;
-  grid-template-columns: 1.75em minmax(7em, max-content) 1fr 1fr auto;
+  grid-column: 1 / -1;
+  grid-template-columns: subgrid;
+  column-gap: 0.85em;
   align-items: center;
-  gap: 0.85em;
   padding: 0.55em 0.75em;
   background: var(--bon-surface-soft);
   border-radius: 0.4em;
@@ -356,10 +361,12 @@
 }
 
 .bon-analytics-top-name {
-  font-weight: 600;
+  font-family: var(--bon-font-mono);
+  font-weight: 500;
   color: var(--bon-link);
   text-decoration: none;
-  font-size: 0.9rem;
+  font-size: 0.82rem;
+  letter-spacing: 0.01em;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;

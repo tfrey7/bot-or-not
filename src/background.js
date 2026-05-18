@@ -37,9 +37,6 @@ async function sweepOrphanedInvestigations() {
 }
 
 browser.runtime.onMessage.addListener((message) => {
-  if (message.type === "open-tabs") {
-    return handleOpenTabs(message);
-  }
   if (message.type === "report-user") {
     return handleReportUser(message);
   }
@@ -117,12 +114,6 @@ async function openReportsTab() {
 
 async function handleOpenPopup() {
   await openReportsTab();
-}
-
-function handleOpenTabs(message) {
-  message.urls.forEach((url) => {
-    browser.tabs.create({ url });
-  });
 }
 
 function mergeHistoryEntries(a, b) {
@@ -405,11 +396,47 @@ async function setInvestigationState(username, patch) {
   // reported yet still get tracked.
   const key = findReportKey(reports, username) || username;
   const existing = normalizeReport(reports[key]);
-  reports[key] = {
-    ...existing,
-    investigation: { ...(existing.investigation || {}), ...patch },
-  };
+  const prevInv = existing.investigation || {};
+  const nextInv = { ...prevInv, ...patch };
+
+  // Append a snapshot to runs[] whenever a run terminates. Older records have
+  // only the single most-recent investigation stored — seed runs[] from those
+  // fields on the first re-run so historical timing/cost data survives.
+  const completing =
+    prevInv.status === "running" &&
+    (patch.status === "done" || patch.status === "error");
+  if (completing) {
+    const prevRuns = Array.isArray(prevInv.runs) ? prevInv.runs : [];
+    const seeded =
+      prevRuns.length === 0 &&
+      prevInv.runAt &&
+      typeof prevInv.durationMs === "number"
+        ? [snapshotRun(prevInv, "done")]
+        : prevRuns;
+    nextInv.runs = [...seeded, snapshotRun(nextInv, patch.status)];
+  }
+
+  reports[key] = { ...existing, investigation: nextInv };
   await browser.storage.local.set({ reports });
+}
+
+function snapshotRun(inv, status) {
+  return {
+    runAt: inv.runAt || Date.now(),
+    durationMs: typeof inv.durationMs === "number" ? inv.durationMs : null,
+    status,
+    verdict: inv.verdict || null,
+    confidence: typeof inv.confidence === "number" ? inv.confidence : null,
+    botProbability:
+      typeof inv.botProbability === "number" ? inv.botProbability : null,
+    model: inv.model || null,
+    usage: inv.usage || null,
+    costUsd: typeof inv.costUsd === "number" ? inv.costUsd : null,
+    webSearchCount: inv.webSearchCount || 0,
+    postsFetched: inv.postsFetched || 0,
+    commentsFetched: inv.commentsFetched || 0,
+    error: status === "error" ? inv.error || null : null,
+  };
 }
 
 async function handleInvestigateUser(message) {
@@ -435,23 +462,11 @@ async function handleInvestigateUser(message) {
   );
 
   try {
-    // One Reddit fetch, two parallel Claude calls — 1D bot/not analysis and
-    // the experimental triangle classifier. They share the same profile
-    // summary so the LLMs see identical input.
     const inputs = await bonGatherProfile(username, {
       botBouncerStatus: existingRecord.botBouncerStatus,
       botBouncerCheckedAt: existingRecord.botBouncerCheckedAt,
     });
-    // The triangle analyzer can fail independently of the 1D analyzer (bad
-    // JSON, etc.) — don't let a triangle failure tank the whole investigation.
-    // Settle the 1D call; allow-settle the triangle call.
-    const [oneD, triResult] = await Promise.all([
-      bonRunOneDAnalysis(claudeApiKey, inputs.summary),
-      bonInvestigateUserTriangle(claudeApiKey, inputs.summary).catch((err) => {
-        console.error("[Bot or Not] triangle analysis failed", err);
-        return null;
-      }),
-    ]);
+    const oneD = await bonRunOneDAnalysis(claudeApiKey, inputs.summary);
 
     const durationMs = Date.now() - startedAt;
     console.log(
@@ -471,7 +486,6 @@ async function handleInvestigateUser(message) {
       durationMs,
       ...oneD,
       ...sharedFields,
-      ...(triResult || {}),
     });
 
     if (inputs.activityData) {
@@ -485,7 +499,7 @@ async function handleInvestigateUser(message) {
     }
     return {
       ok: true,
-      result: { ...oneD, ...sharedFields, ...(triResult || {}), durationMs },
+      result: { ...oneD, ...sharedFields, durationMs },
     };
   } catch (err) {
     console.error("[Bot or Not] investigation failed", err);

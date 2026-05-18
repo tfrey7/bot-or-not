@@ -107,6 +107,7 @@
 
     section.appendChild(buildModelTable(runs));
     section.appendChild(buildTopList(runs));
+    section.appendChild(buildRunsTable(runs));
     section.appendChild(buildFootnote(summary));
 
     container.appendChild(section);
@@ -120,46 +121,55 @@
       const inv = r?.investigation;
       if (!inv) continue;
 
-      const calls = [];
-      if (inv.usage) {
-        calls.push({
-          kind: "1d",
-          model: inv.model || null,
-          usage: inv.usage,
-          costUsd:
-            typeof inv.costUsd === "number"
-              ? inv.costUsd
-              : computeCostFallback(inv.usage, inv.model, inv.webSearchCount),
-          webSearchCount: inv.webSearchCount || 0,
-        });
+      // Newer records keep a runs[] history; emit one analytics entry per
+      // historical run so re-investigations don't collapse into a single row.
+      if (Array.isArray(inv.runs) && inv.runs.length > 0) {
+        for (const run of inv.runs) {
+          out.push(buildAnalyticsEntry(r.username, run));
+        }
+        // If a run is currently in flight, runs[] doesn't include it yet —
+        // skip it (analytics only cares about completed runs).
+        continue;
       }
-      if (inv.triangleUsage) {
-        calls.push({
-          kind: "triangle",
-          model: inv.triangleModel || null,
-          usage: inv.triangleUsage,
-          costUsd:
-            typeof inv.triangleCostUsd === "number"
-              ? inv.triangleCostUsd
-              : computeCostFallback(inv.triangleUsage, inv.triangleModel, 0),
-          webSearchCount: 0,
-        });
-      }
-      const totalCost = calls.reduce((s, c) => s + (c.costUsd || 0), 0);
 
-      out.push({
-        username: r.username,
-        status: inv.status,
-        runAt: inv.runAt || null,
-        durationMs: typeof inv.durationMs === "number" ? inv.durationMs : null,
-        verdict: inv.verdict || null,
-        postsFetched: inv.postsFetched || 0,
-        commentsFetched: inv.commentsFetched || 0,
-        calls,
-        totalCost,
-      });
+      // Legacy record (single most-recent run only). Treat the root fields as
+      // one run.
+      out.push(buildAnalyticsEntry(r.username, inv));
     }
     return out;
+  }
+
+  function buildAnalyticsEntry(username, run) {
+    const calls = [];
+    if (run.usage) {
+      calls.push({
+        kind: "1d",
+        model: run.model || null,
+        usage: run.usage,
+        costUsd:
+          typeof run.costUsd === "number"
+            ? run.costUsd
+            : computeCostFallback(run.usage, run.model, run.webSearchCount),
+        webSearchCount: run.webSearchCount || 0,
+      });
+    }
+    const totalCost = calls.reduce((s, c) => s + (c.costUsd || 0), 0);
+    return {
+      username,
+      status: run.status,
+      runAt: run.runAt || null,
+      durationMs: typeof run.durationMs === "number" ? run.durationMs : null,
+      verdict: run.verdict || null,
+      confidence: typeof run.confidence === "number" ? run.confidence : null,
+      botProbability:
+        typeof run.botProbability === "number" ? run.botProbability : null,
+      persona: run.persona?.label || null,
+      summary: typeof run.summary === "string" ? run.summary : "",
+      postsFetched: run.postsFetched || 0,
+      commentsFetched: run.commentsFetched || 0,
+      calls,
+      totalCost,
+    };
   }
 
   // Recomputes cost from raw usage + model if the stored investigation predates
@@ -605,23 +615,32 @@
     marker.appendChild(markerTitle);
     root.appendChild(marker);
 
-    // X axis date labels
-    [0, 0.5, 1].forEach((frac) => {
-      const t = first + frac * span;
-      const x = PAD.l + frac * iw;
+    // X axis time labels — switch to time-of-day when all runs fall within a
+    // single day, otherwise three identical date labels would render.
+    const xFormatter = makeTimeAxisFormatter(last - first);
+    if (last - first < 60_000 || points.length === 1) {
       root.appendChild(
         svgText(
-          x,
+          PAD.l + iw / 2,
           PAD.t + ih + 18,
-          new Date(t).toLocaleDateString(undefined, {
-            month: "short",
-            day: "numeric",
-          }),
+          xFormatter(first),
           null,
           "middle"
         )
       );
-    });
+    } else {
+      [
+        { frac: 0, anchor: "start" },
+        { frac: 0.5, anchor: "middle" },
+        { frac: 1, anchor: "end" },
+      ].forEach(({ frac, anchor }) => {
+        const t = first + frac * span;
+        const x = PAD.l + frac * iw;
+        root.appendChild(
+          svgText(x, PAD.t + ih + 18, xFormatter(t), null, anchor)
+        );
+      });
+    }
 
     // Final value label
     const lastP = points[points.length - 1];
@@ -736,13 +755,12 @@
       root.appendChild(rect);
     }
 
-    [0, 0.5, 1].forEach((frac) => {
-      const ts = startTs + frac * (totalDays - 1) * MS_PER_DAY;
+    if (totalDays === 1) {
       root.appendChild(
         svgText(
-          PAD.l + frac * iw,
+          PAD.l + iw / 2,
           PAD.t + ih + 18,
-          new Date(ts).toLocaleDateString(undefined, {
+          new Date(startTs).toLocaleDateString(undefined, {
             month: "short",
             day: "numeric",
           }),
@@ -750,7 +768,27 @@
           "middle"
         )
       );
-    });
+    } else {
+      [
+        { frac: 0, anchor: "start" },
+        { frac: 0.5, anchor: "middle" },
+        { frac: 1, anchor: "end" },
+      ].forEach(({ frac, anchor }) => {
+        const ts = startTs + frac * (totalDays - 1) * MS_PER_DAY;
+        root.appendChild(
+          svgText(
+            PAD.l + frac * iw,
+            PAD.t + ih + 18,
+            new Date(ts).toLocaleDateString(undefined, {
+              month: "short",
+              day: "numeric",
+            }),
+            null,
+            anchor
+          )
+        );
+      });
+    }
 
     return root;
   }
@@ -969,6 +1007,24 @@
     return svgText(w / 2, h / 2, text, "bon-chart-empty", "middle");
   }
 
+  // Picks date vs. time-of-day formatting based on how much wall-clock the
+  // chart actually spans, so axes stay informative whether the runs are spread
+  // across weeks or clustered in a single afternoon.
+  function makeTimeAxisFormatter(spanMs) {
+    if (spanMs < MS_PER_DAY) {
+      return (t) =>
+        new Date(t).toLocaleTimeString(undefined, {
+          hour: "numeric",
+          minute: "2-digit",
+        });
+    }
+    return (t) =>
+      new Date(t).toLocaleDateString(undefined, {
+        month: "short",
+        day: "numeric",
+      });
+  }
+
   // ---------- Per-model table ----------
 
   function buildModelTable(runs) {
@@ -1144,6 +1200,177 @@
     }
     wrap.appendChild(list);
     return wrap;
+  }
+
+  // ---------- Run log table ----------
+  //
+  // One row per completed investigation — the raw per-run record behind the
+  // aggregations above. Newest first. Cap at MAX_RUN_ROWS so a chatty user
+  // doesn't blow up the page; older runs are still counted in the summary.
+
+  const MAX_RUN_ROWS = 100;
+
+  function buildRunsTable(runs) {
+    const wrap = document.createElement("div");
+    wrap.className = "bon-analytics-table-card";
+
+    const title = document.createElement("h3");
+    title.className = "bon-analytics-section-title";
+    title.textContent = "Run log";
+    wrap.appendChild(title);
+
+    if (!runs.length) {
+      const p = document.createElement("p");
+      p.className = "bon-analytics-empty-small";
+      p.textContent = "No runs to list.";
+      wrap.appendChild(p);
+      return wrap;
+    }
+
+    const sorted = [...runs].sort((a, b) => (b.runAt || 0) - (a.runAt || 0));
+    const rows = sorted.slice(0, MAX_RUN_ROWS);
+
+    const table = document.createElement("table");
+    table.className = "bon-analytics-table";
+
+    const thead = document.createElement("thead");
+    const headRow = document.createElement("tr");
+    [
+      "When",
+      "User",
+      "Verdict",
+      "Persona",
+      "Model",
+      "Duration",
+      "Calls",
+      "Tokens",
+      "Cost",
+    ].forEach((label) => {
+      const th = document.createElement("th");
+      th.textContent = label;
+      headRow.appendChild(th);
+    });
+    thead.appendChild(headRow);
+    table.appendChild(thead);
+
+    const tbody = document.createElement("tbody");
+    for (const r of rows) {
+      const tr = document.createElement("tr");
+
+      const tdWhen = document.createElement("td");
+      tdWhen.textContent = r.runAt ? fmtTimestamp(r.runAt) : "—";
+      tr.appendChild(tdWhen);
+
+      const tdUser = document.createElement("td");
+      const a = document.createElement("a");
+      a.className = "bon-analytics-top-name";
+      a.href = `https://www.reddit.com/user/${encodeURIComponent(r.username)}`;
+      a.target = "_blank";
+      a.rel = "noopener noreferrer";
+      a.textContent = `u/${r.username}`;
+      tdUser.appendChild(a);
+      tr.appendChild(tdUser);
+
+      const tdVerdict = document.createElement("td");
+      tdVerdict.textContent = formatVerdictCell(r);
+      tr.appendChild(tdVerdict);
+
+      const tdPersona = document.createElement("td");
+      tdPersona.textContent = r.persona || "—";
+      tr.appendChild(tdPersona);
+
+      const tdModel = document.createElement("td");
+      const primaryModel = r.calls[0]?.model || null;
+      if (primaryModel) {
+        const code = document.createElement("code");
+        code.textContent = shortModelName(primaryModel);
+        tdModel.appendChild(code);
+      } else {
+        tdModel.textContent = "—";
+      }
+      tr.appendChild(tdModel);
+
+      const tdDuration = document.createElement("td");
+      tdDuration.textContent = fmtDuration(r.durationMs);
+      tr.appendChild(tdDuration);
+
+      const tdCalls = document.createElement("td");
+      tdCalls.textContent = String(r.calls.length);
+      tr.appendChild(tdCalls);
+
+      const tdTokens = document.createElement("td");
+      const tokenTotal = sumRunTokens(r);
+      tdTokens.textContent = tokenTotal > 0 ? fmtThousands(tokenTotal) : "—";
+      tr.appendChild(tdTokens);
+
+      const tdCost = document.createElement("td");
+      tdCost.textContent = fmtUsd(r.totalCost);
+      tr.appendChild(tdCost);
+
+      if (r.summary) {
+        tr.title = r.summary;
+      }
+
+      tbody.appendChild(tr);
+    }
+    table.appendChild(tbody);
+
+    const scroll = document.createElement("div");
+    scroll.className = "bon-analytics-table-scroll";
+    scroll.appendChild(table);
+    wrap.appendChild(scroll);
+
+    if (sorted.length > rows.length) {
+      const note = document.createElement("p");
+      note.className = "bon-analytics-empty-small";
+      note.style.marginTop = "0.75em";
+      note.textContent = `Showing ${rows.length} most recent of ${sorted.length} runs.`;
+      wrap.appendChild(note);
+    }
+
+    return wrap;
+  }
+
+  function sumRunTokens(r) {
+    let total = 0;
+    for (const c of r.calls) {
+      const u = c.usage || {};
+      total +=
+        (u.input_tokens || 0) +
+        (u.output_tokens || 0) +
+        (u.cache_read_input_tokens || 0) +
+        (u.cache_creation_input_tokens || 0);
+    }
+    return total;
+  }
+
+  function formatVerdictCell(r) {
+    if (!r.verdict) return "—";
+    const label = r.verdict.replace(/-/g, " ");
+    if (typeof r.botProbability === "number") {
+      return `${label} · ${fmtPercent(r.botProbability)} bot`;
+    }
+    if (typeof r.confidence === "number") {
+      return `${label} · ${fmtPercent(r.confidence)} conf`;
+    }
+    return label;
+  }
+
+  function shortModelName(model) {
+    return model.replace(/^claude-/, "").replace(/-\d{8}$/, "");
+  }
+
+  function fmtTimestamp(ts) {
+    const d = new Date(ts);
+    const date = d.toLocaleDateString(undefined, {
+      month: "short",
+      day: "numeric",
+    });
+    const time = d.toLocaleTimeString(undefined, {
+      hour: "numeric",
+      minute: "2-digit",
+    });
+    return `${date} ${time}`;
   }
 
   globalThis.bonRenderAnalytics = bonRenderAnalytics;

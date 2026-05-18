@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Bot or Not",
-  "version": "1.1.0",
+  "version": "2.0.0",
   "description": "Flag suspicious Reddit accounts",
   "browser_specific_settings": {
     "gecko": {
@@ -12,10 +12,8 @@
     "scripts": [
       "src/factors.js",
       "src/verdict.js",
-      "src/triangle/verdict_triangle.js",
       "src/regions.js",
       "src/bot_analysis.js",
-      "src/triangle/bot_analysis_triangle.js",
       "src/background.js"
     ]
   },
@@ -27,7 +25,7 @@
   "content_scripts": [
     {
       "matches": ["*://reddit.com/*", "*://old.reddit.com/*", "*://www.reddit.com/*"],
-      "js": ["src/verdict.js", "src/content_script.js"],
+      "js": ["src/factors.js", "src/verdict.js", "src/content_script.js"],
       "css": ["src/content_script.css"]
     }
   ],

@@ -1,4 +1,4 @@
-/* Bot or Not — shared design system for the Reports + Triangle pages.
+/* Bot or Not — design system for the Reports page.
    Editorial dossier aesthetic: warm parchment surface, Instrument Serif
    masthead, JetBrains Mono labels, classification-stamp verdict badges. */
 
@@ -44,6 +44,7 @@
   --bon-stamp-forest: #1f6644;
   --bon-stamp-charcoal: #4d4538;
   --bon-stamp-blue: #1f4673;
+  --bon-stamp-slate: #3d4a5c;
   --bon-danger: #8b1e1e;
 
   /* Shadows */
@@ -57,6 +58,19 @@
 
 * {
   box-sizing: border-box;
+}
+
+/* Browsers' UA stylesheets give <table>, <input>, <button>, <select>, and
+   <textarea> their own default font instead of inheriting from body — which
+   causes inline-styled table cells / inputs to fall back to a serif. Force
+   the page font onto them so individual rules only need to override (mono
+   for labels, serif for display headings) instead of re-asserting sans. */
+table,
+button,
+input,
+select,
+textarea {
+  font-family: inherit;
 }
 
 body {
@@ -81,7 +95,7 @@ body {
 .bon-page {
   max-width: 78em;
   margin: 0 auto;
-  padding: 3em 2em 5em;
+  padding: 1.5em 2em 5em;
 }
 
 /* ============================================================
@@ -91,7 +105,7 @@ body {
 .bon-header {
   display: flex;
   align-items: flex-end;
-  gap: 1.25em;
+  gap: 0.4em;
   padding-bottom: 1.5em;
   margin-bottom: 2.25em;
   position: relative;
@@ -108,9 +122,12 @@ body {
   background: var(--bon-rule);
   opacity: 0.5;
 }
-.bon-header img {
-  border-radius: 0.4em;
-  box-shadow: var(--bon-shadow-md);
+.bon-header-mascot {
+  display: block;
+  height: 5em;
+  width: auto;
+  flex-shrink: 0;
+  margin-bottom: -0.2em;
 }
 .bon-header-titles {
   display: flex;
@@ -131,15 +148,6 @@ body {
   color: var(--bon-stamp-red);
   padding: 0 0.04em;
 }
-.bon-header .bon-subtitle {
-  margin: 0.55em 0 0;
-  font-family: var(--bon-font-mono);
-  font-size: 0.68rem;
-  color: var(--bon-muted);
-  font-weight: 600;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-}
 .bon-header-actions {
   margin-left: auto;
   display: flex;
@@ -157,9 +165,10 @@ body {
   border: 1px solid var(--bon-border-strong);
   border-radius: 0.4em;
   padding: 0.55em 1em;
-  font-family: inherit;
-  font-size: 0.82rem;
+  font-family: var(--bon-font-mono);
+  font-size: 0.78rem;
   font-weight: 500;
+  letter-spacing: 0.02em;
   cursor: pointer;
   color: var(--bon-text);
   box-shadow: var(--bon-shadow-xs);
@@ -204,8 +213,9 @@ body {
 .bon-search {
   flex: 1;
   min-width: 14em;
-  font-family: inherit;
-  font-size: 0.9rem;
+  font-family: var(--bon-font-mono);
+  font-size: 0.82rem;
+  letter-spacing: 0.01em;
   padding: 0.7em 0.95em;
   border: 1px solid var(--bon-border-strong);
   border-radius: 0.45em;
@@ -233,7 +243,9 @@ body {
   background: var(--bon-surface);
   border: 1px solid var(--bon-border);
   border-radius: 0.5em;
-  overflow: hidden;
+  /* Allow factor-chip hover cards to escape the table without being clipped.
+     The table fills the wrap so nothing else routinely overflows. */
+  overflow: visible;
   box-shadow: var(--bon-shadow-md);
 }
 table.bon-table {
@@ -253,6 +265,12 @@ table.bon-table {
   background: var(--bon-surface-soft);
   border-bottom: 1.5px solid var(--bon-rule);
   white-space: nowrap;
+}
+.bon-table thead th:first-child {
+  border-top-left-radius: 0.5em;
+}
+.bon-table thead th:last-child {
+  border-top-right-radius: 0.5em;
 }
 .bon-table thead th.bon-sortable {
   cursor: pointer;
@@ -296,9 +314,12 @@ table.bon-table {
   min-width: 0;
 }
 .bon-username-cell a {
+  font-family: var(--bon-font-mono);
+  font-size: 0.85rem;
+  font-weight: 500;
+  letter-spacing: 0.01em;
   color: var(--bon-link);
   text-decoration: none;
-  font-weight: 600;
 }
 .bon-username-cell a:hover {
   text-decoration: underline;
@@ -426,44 +447,206 @@ table.bon-table {
 }
 
 /* ============================================================
-   Factor strip + dots
+   Factor strip — compact dots in the always-visible row, each
+   with a card-style hover popover (the popover lives inside the
+   dot so a single :hover/:focus-within reveals it).
    ============================================================ */
 
 .bon-factors-cell {
   display: inline-grid;
   grid-template-columns: repeat(7, auto);
-  gap: 0.2em;
+  gap: 0.25em;
 }
+
 .bon-factor-dot {
+  position: relative;
   width: 0.85em;
   height: 0.85em;
-  border-radius: 0.18em;
+  border-radius: 0.2em;
   background: var(--bon-border);
   display: inline-block;
-  position: relative;
+  cursor: default;
+  outline: none;
+  transition: transform 0.15s;
+  /* Colored border var picked up by .bon-factor-card border-top — keeps the
+     popover's accent in sync with the dot's leaning without duplicating the
+     per-leaning rule for the card. */
+  --bon-factor-accent: var(--bon-border-strong);
+  color: var(--bon-border-strong);
 }
+.bon-factor-dot:hover,
+.bon-factor-dot:focus-visible {
+  transform: scale(1.18);
+  z-index: 4;
+}
+
 .bon-factor-dot--bot {
   background: var(--bon-stamp-red);
+  --bon-factor-accent: var(--bon-stamp-red);
+  color: var(--bon-stamp-red);
 }
 .bon-factor-dot--likely-bot {
   background: var(--bon-stamp-rust);
+  --bon-factor-accent: var(--bon-stamp-rust);
+  color: var(--bon-stamp-rust);
 }
 .bon-factor-dot--neutral {
   background: var(--bon-border-strong);
+  --bon-factor-accent: var(--bon-stamp-charcoal);
+  color: var(--bon-stamp-charcoal);
 }
 .bon-factor-dot--likely-human {
   background: var(--bon-stamp-moss);
+  --bon-factor-accent: var(--bon-stamp-moss);
+  color: var(--bon-stamp-moss);
 }
 .bon-factor-dot--human {
   background: var(--bon-stamp-forest);
+  --bon-factor-accent: var(--bon-stamp-forest);
+  color: var(--bon-stamp-forest);
 }
 .bon-factor-dot--missing {
   background: transparent;
   border: 1px dashed var(--bon-border-strong);
+  --bon-factor-accent: var(--bon-border-strong);
+  color: var(--bon-muted);
 }
 .bon-factor-dot--new {
   background: repeating-linear-gradient(135deg, #f4e3b8 0 3px, #d8b574 3px 6px);
   border: 1px solid #a07418;
+  --bon-factor-accent: #a07418;
+  color: #884d12;
+}
+
+/* ----- Hover card popover -------------------------------------------------
+   Anchored above the dot; CSS-only reveal. Mirrors the editorial-dossier
+   look of the expanded factor cards: cream surface, stamp-accent border-top,
+   mono header + signal pill. */
+.bon-factor-card {
+  /* position: fixed + JS-computed left/top (attachFactorCardPositioning in
+     reports.js) so the card escapes the table and flips below the dot when
+     the row is too close to the top of the viewport. */
+  position: fixed;
+  left: 0;
+  top: 0;
+  transform: scale(0.92);
+  transform-origin: center bottom;
+  width: 22em;
+  max-width: 80vw;
+  padding: 0.85em 1em 0.9em;
+  background: var(--bon-surface);
+  border: 1px solid var(--bon-border);
+  border-top: 3px solid var(--bon-factor-accent);
+  border-radius: 0.5em;
+  box-shadow: var(--bon-shadow-lg);
+  color: var(--bon-text);
+  font-family: var(--bon-font-sans);
+  font-size: 0.78rem;
+  font-weight: 400;
+  line-height: 1.5;
+  letter-spacing: 0;
+  text-transform: none;
+  white-space: normal;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  z-index: 2147483647;
+  transition:
+    opacity 0.12s ease-out,
+    transform 0.12s ease-out,
+    visibility 0s linear 0.12s;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55em;
+  text-align: left;
+}
+.bon-factor-card--visible {
+  opacity: 1;
+  visibility: visible;
+  transform: scale(1);
+  transition-delay: 0s;
+}
+
+/* Hoisted to <body> for positioning, so the card no longer inherits
+   --bon-factor-accent from the dot. Re-declare per leaning here. */
+.bon-factor-card--bot {
+  --bon-factor-accent: var(--bon-stamp-red);
+}
+.bon-factor-card--likely-bot {
+  --bon-factor-accent: var(--bon-stamp-rust);
+}
+.bon-factor-card--neutral {
+  --bon-factor-accent: var(--bon-stamp-charcoal);
+}
+.bon-factor-card--likely-human {
+  --bon-factor-accent: var(--bon-stamp-moss);
+}
+.bon-factor-card--human {
+  --bon-factor-accent: var(--bon-stamp-forest);
+}
+.bon-factor-card--missing {
+  --bon-factor-accent: var(--bon-border-strong);
+}
+.bon-factor-card--new {
+  --bon-factor-accent: #a07418;
+}
+
+.bon-factor-card-header {
+  display: flex;
+  align-items: center;
+  gap: 0.6em;
+}
+.bon-factor-card-name {
+  font-family: var(--bon-font-mono);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  color: var(--bon-text);
+}
+.bon-factor-card-header .bon-factor-signal {
+  margin-left: auto;
+}
+.bon-factor-card-confidence {
+  font-family: var(--bon-font-mono);
+  font-size: 0.66rem;
+  color: var(--bon-muted);
+  letter-spacing: 0.04em;
+}
+.bon-factor-card-reasoning {
+  color: var(--bon-text-soft);
+  font-size: 0.8rem;
+  line-height: 1.55;
+}
+.bon-factor-card-reasoning--muted {
+  color: var(--bon-muted);
+  font-style: italic;
+}
+.bon-factor-card-evidence {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3em;
+  font-family: var(--bon-font-mono);
+  font-size: 0.72rem;
+  color: var(--bon-text-soft);
+  line-height: 1.5;
+}
+.bon-factor-card-evidence li {
+  position: relative;
+  padding-left: 0.95em;
+}
+.bon-factor-card-evidence li::before {
+  content: "›";
+  position: absolute;
+  left: 0;
+  top: 0;
+  color: var(--bon-muted-soft);
+  font-weight: 700;
+}
+.bon-factor-card .bon-factor-bar {
+  margin: 0;
 }
 
 /* ============================================================
@@ -527,6 +710,48 @@ table.bon-table {
   transform: none;
   opacity: 1;
 }
+
+.bon-investigate-btn.bon-progress {
+  width: 1.1em;
+  height: 1.1em;
+  box-sizing: border-box;
+  border-radius: 50%;
+  background: conic-gradient(
+    var(--bon-stamp-blue) var(--bon-progress, 0%),
+    var(--bon-border-strong) 0
+  );
+  vertical-align: middle;
+  color: transparent;
+  position: relative;
+  transition: background 0.4s linear;
+}
+.bon-investigate-btn.bon-progress::after {
+  content: "";
+  position: absolute;
+  inset: 0.22em;
+  background: var(--bon-surface);
+  border-radius: 50%;
+}
+.bon-investigate-btn.bon-progress--overtime {
+  background: conic-gradient(
+    var(--bon-stamp-rust) 100%,
+    var(--bon-stamp-rust) 0
+  );
+  animation: bon-pulse 1.4s ease-in-out infinite;
+}
+.bon-investigate-btn.bon-progress:hover {
+  transform: none;
+  opacity: 1;
+}
+@keyframes bon-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.55;
+  }
+}
 @keyframes bon-spin {
   from {
     transform: rotate(0deg);
@@ -543,7 +768,6 @@ table.bon-table {
 .bon-detail-wrap {
   padding: 1.4em 1.75em 1.75em 3.5em;
   background: var(--bon-surface-soft);
-  border-top: 1px solid var(--bon-border);
 }
 .bon-detail-wrap + .bon-detail-wrap {
   padding-top: 0.4em;
@@ -559,12 +783,18 @@ table.bon-table {
 }
 .bon-verdict-summary {
   font-family: var(--bon-font-serif);
-  font-size: 1.2rem;
-  line-height: 1.45;
+  font-style: italic;
+  font-size: 1.4rem;
+  line-height: 1.32;
   margin: 0 0 0.75em;
-  color: var(--bon-text-soft);
+  color: var(--bon-text);
   font-weight: 400;
-  letter-spacing: 0.002em;
+  letter-spacing: -0.005em;
+}
+.bon-verdict-summary::first-letter {
+  font-style: normal;
+  font-weight: 400;
+  color: var(--bon-stamp-blue);
 }
 .bon-verdict-meta {
   font-family: var(--bon-font-mono);
@@ -573,6 +803,46 @@ table.bon-table {
   margin: 0 0 1.15em;
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.04em;
+}
+.bon-top-reasons {
+  list-style: none;
+  padding: 0.75em 0 0;
+  margin: 0;
+  display: grid;
+  gap: 0.5em;
+  border-top: 1px solid var(--bon-border);
+}
+.bon-top-reasons .bon-reason {
+  display: flex;
+  align-items: baseline;
+  gap: 0.65em;
+  font-family: var(--bon-font-mono);
+  font-size: 0.78rem;
+  line-height: 1.5;
+  color: var(--bon-text-soft);
+}
+.bon-top-reasons .bon-reason__bullet {
+  flex-shrink: 0;
+  width: 0.55em;
+  height: 0.55em;
+  border-radius: 999px;
+  background: var(--bon-border-strong);
+  transform: translateY(-0.05em);
+}
+.bon-top-reasons .bon-reason--bot .bon-reason__bullet {
+  background: var(--bon-stamp-red);
+}
+.bon-top-reasons .bon-reason--likely-bot .bon-reason__bullet {
+  background: var(--bon-stamp-rust);
+}
+.bon-top-reasons .bon-reason--likely-human .bon-reason__bullet {
+  background: var(--bon-stamp-moss);
+}
+.bon-top-reasons .bon-reason--human .bon-reason__bullet {
+  background: var(--bon-stamp-forest);
+}
+.bon-top-reasons .bon-reason__text strong {
+  font-weight: 600;
 }
 .bon-verdict-error {
   color: var(--bon-danger);
@@ -587,7 +857,8 @@ table.bon-table {
   gap: 1em;
 }
 .bon-factor {
-  font-size: 0.875rem;
+  font-family: var(--bon-font-mono);
+  font-size: 0.78rem;
   padding: 1.1em 1.3em 1.2em;
   background: var(--bon-surface);
   border: 1px solid var(--bon-border);
@@ -608,9 +879,10 @@ table.bon-table {
   margin-bottom: 0.7em;
 }
 .bon-factor-name {
-  font-weight: 600;
-  font-size: 0.95rem;
-  letter-spacing: -0.005em;
+  font-family: var(--bon-font-mono);
+  font-weight: 700;
+  font-size: 0.82rem;
+  letter-spacing: 0;
 }
 .bon-factor-signal {
   margin-left: auto;
@@ -688,7 +960,7 @@ table.bon-table {
   margin: 0.9em 0 0;
   padding-left: 1.25em;
   color: var(--bon-muted);
-  font-size: 0.82rem;
+  font-size: 0.74rem;
   line-height: 1.65;
 }
 .bon-factor-evidence li {
@@ -751,15 +1023,33 @@ table.bon-table {
   text-align: center;
   padding: 4em 1em;
   color: var(--bon-muted);
-  font-family: var(--bon-font-serif);
-  font-style: italic;
-  font-size: 1.05rem;
+  font-family: var(--bon-font-mono);
+  font-size: 0.82rem;
+  letter-spacing: 0.02em;
   background: var(--bon-surface);
   border: 1px dashed var(--bon-border-strong);
   border-radius: 0.5em;
 }
 .bon-empty-text {
   margin: 0;
+}
+.bon-empty-text + .bon-empty-text {
+  margin-top: 0.75em;
+}
+.bon-empty-detail {
+  font-size: 0.78rem;
+  color: var(--bon-ink);
+  word-break: break-word;
+  max-width: 48em;
+  margin-left: auto;
+  margin-right: auto;
+}
+.bon-empty-hint {
+  font-size: 0.78rem;
+  font-style: italic;
+  max-width: 48em;
+  margin-left: auto;
+  margin-right: auto;
 }
 .bon-empty-action {
   margin-top: 1.25em;
@@ -789,7 +1079,9 @@ table.bon-table {
 }
 .bon-modal p {
   margin: 0 0 1.25em;
-  font-size: 0.95rem;
+  font-family: var(--bon-font-mono);
+  font-size: 0.85rem;
+  line-height: 1.55;
 }
 .bon-modal-actions {
   display: flex;
@@ -854,7 +1146,9 @@ table.bon-table {
   border: 1px solid var(--bon-border-strong);
   border-radius: 0.35em;
   padding: 0.4em 0.8em;
-  font-size: 0.82rem;
+  font-family: var(--bon-font-mono);
+  font-size: 0.76rem;
+  letter-spacing: 0.02em;
   cursor: pointer;
   color: var(--bon-text);
 }
@@ -898,7 +1192,9 @@ table.bon-table {
   border: none;
   color: var(--bon-link);
   cursor: pointer;
-  font-size: 0.76rem;
+  font-family: var(--bon-font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.02em;
   padding: 0;
 }
 .bon-heatmap-refresh:hover {
@@ -1039,4 +1335,163 @@ table.bon-table {
   height: 12px;
   border-radius: 2px;
   background: var(--bon-bg-tint);
+}
+
+/* ============================================================
+   Persona side panel — radar chart of archetype strengths +
+   dominant label + LLM's one-line reasoning. Sits next to summary.
+   ============================================================ */
+
+.bon-summary-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 16em;
+  gap: 1.75em;
+  align-items: start;
+  margin-bottom: 1.15em;
+}
+.bon-summary-col {
+  min-width: 0;
+  padding-right: 1.75em;
+  border-right: 1px solid var(--bon-border);
+}
+.bon-summary-col > :last-child {
+  margin-bottom: 0;
+}
+
+.bon-persona {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 0.9em 1em 1.1em;
+  background: var(--bon-surface);
+  border: 1px solid var(--bon-border);
+  border-top: 3px solid var(--bon-border-strong);
+  border-radius: 0.5em;
+  box-shadow: var(--bon-shadow-sm);
+  /* Per-archetype accent — overridden by .bon-persona--<label> below. The
+     radar polygon picks this up via currentColor + opacity, so a single var
+     swap re-tints the whole chart. */
+  --bon-persona-accent: var(--bon-stamp-charcoal);
+}
+.bon-persona--bot {
+  border-top-color: var(--bon-stamp-charcoal);
+  --bon-persona-accent: var(--bon-stamp-charcoal);
+}
+.bon-persona--stan {
+  border-top-color: var(--bon-stamp-amber);
+  --bon-persona-accent: var(--bon-stamp-amber);
+}
+.bon-persona--farmer {
+  border-top-color: var(--bon-stamp-blue);
+  --bon-persona-accent: var(--bon-stamp-blue);
+}
+.bon-persona--teen {
+  border-top-color: var(--bon-stamp-moss);
+  --bon-persona-accent: var(--bon-stamp-moss);
+}
+.bon-persona--thirst {
+  border-top-color: var(--bon-stamp-rust);
+  --bon-persona-accent: var(--bon-stamp-rust);
+}
+.bon-persona--crank {
+  border-top-color: var(--bon-stamp-red);
+  --bon-persona-accent: var(--bon-stamp-red);
+}
+.bon-persona--hustler {
+  border-top-color: var(--bon-stamp-forest);
+  --bon-persona-accent: var(--bon-stamp-forest);
+}
+.bon-persona--doomer {
+  border-top-color: var(--bon-stamp-slate);
+  --bon-persona-accent: var(--bon-stamp-slate);
+}
+.bon-persona--normal {
+  border-top-color: var(--bon-border-strong);
+  --bon-persona-accent: var(--bon-stamp-charcoal);
+}
+
+.bon-persona-heading {
+  margin: 0 0 0.35em;
+  font-family: var(--bon-font-mono);
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: var(--bon-muted);
+  font-weight: 700;
+}
+
+.bon-persona-radar {
+  width: 100%;
+  max-width: 12.5em;
+  margin: 0 auto 0.2em;
+  line-height: 0;
+}
+.bon-persona-radar .bon-radar {
+  width: 100%;
+  height: auto;
+  display: block;
+  overflow: visible;
+}
+
+.bon-radar-grid {
+  fill: var(--bon-bg);
+  stroke: var(--bon-border);
+  stroke-width: 1;
+}
+.bon-radar-grid--outer {
+  fill: none;
+  stroke: var(--bon-border-strong);
+  stroke-width: 1.25;
+}
+.bon-radar-axis {
+  stroke: var(--bon-border);
+  stroke-width: 1;
+  stroke-dasharray: 2 3;
+}
+.bon-radar-data {
+  fill: var(--bon-persona-accent);
+  fill-opacity: 0.22;
+  stroke: var(--bon-persona-accent);
+  stroke-width: 1.6;
+  stroke-linejoin: round;
+}
+.bon-radar-dot {
+  fill: var(--bon-persona-accent);
+  stroke: var(--bon-surface);
+  stroke-width: 1.2;
+}
+.bon-radar-label {
+  font-family: var(--bon-font-mono);
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  fill: var(--bon-muted);
+}
+
+.bon-persona-label {
+  margin: 0.1em 0 0.45em;
+  font-family: var(--bon-font-mono);
+  font-size: 0.88rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--bon-persona-accent);
+}
+.bon-persona-blurb {
+  margin: 0;
+  font-size: 0.8rem;
+  line-height: 1.45;
+  color: var(--bon-text-soft);
+}
+
+@media (max-width: 56em) {
+  .bon-summary-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .bon-persona {
+    max-width: 24em;
+    margin: 0 auto;
+  }
 }

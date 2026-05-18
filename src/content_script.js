@@ -268,26 +268,13 @@
 
   // --- Profile panel injection (profile pages only, SPA-aware) ---
 
-  // Source of truth for currently active factors. Stored investigations may
-  // contain factor keys not in this list (deprecated) — those are dropped.
-  // Keys in this list missing from a stored investigation render as "added
-  // after" placeholders so old reports stay readable without re-running.
-  const FACTOR_LABELS = {
-    account_age_vs_activity: "Account age vs activity",
-    dormant_account_revival: "Dormant account revival",
-    karma_farming_subs: "Karma-farming subreddits",
-    fake_political_subs: "Fake political subreddits",
-    llm_content_style: "LLM-generated content style",
-    timestamp_patterns: "Posting timestamp patterns",
-    topical_drift: "Topical drift / inconsistency",
-    engagement_patterns: "Engagement patterns",
-    username_pattern: "Username pattern",
-    hidden_post_history: "Hidden post history",
-    bot_bouncer_status: "Bot Bouncer status",
-    moderator_removal_history: "Moderator removal history",
-  };
-
-  const FACTOR_ORDER = Object.keys(FACTOR_LABELS);
+  // Canonical factor metadata lives in factors.js (loaded before this script
+  // in manifest.json). Stored investigations may contain keys not in this
+  // list (deprecated) — those are dropped. Keys in this list missing from a
+  // stored investigation render as "added after" placeholders so old reports
+  // stay readable without re-running.
+  const FACTOR_LABELS = BON_FACTOR_LABELS;
+  const FACTOR_ORDER = BON_FACTOR_KEYS;
 
   // Cache last-known report per user so MutationObserver-driven re-inserts
   // can render synchronously instead of waiting on a round-trip to the
@@ -546,9 +533,15 @@
     panel.className = "bon-profile-panel";
     panel.dataset.username = username;
 
-    const header = document.createElement("button");
-    header.type = "button";
+    const investigation = bonNormalizeInvestigation(report?.investigation);
+
+    // Nested <button> is invalid HTML, and we want the re-investigate button
+    // sitting inside the header — so the toggle target is a div with button
+    // semantics rather than a real <button> element.
+    const header = document.createElement("div");
     header.className = "bon-profile-panel__header";
+    header.setAttribute("role", "button");
+    header.setAttribute("tabindex", "0");
     header.setAttribute("aria-expanded", String(expanded));
 
     const title = document.createElement("span");
@@ -561,10 +554,7 @@
     appendStatPills(stats, report);
     header.appendChild(stats);
 
-    const chevron = document.createElement("span");
-    chevron.className = "bon-profile-panel__chevron";
-    chevron.textContent = "▼";
-    header.appendChild(chevron);
+    header.appendChild(buildInvestigateBtn(username, investigation));
 
     const preview = buildPanelPreview(username, report);
 
@@ -577,44 +567,293 @@
     bodyInner.appendChild(buildReportsSection(report));
     body.appendChild(bodyInner);
 
+    const toggleLink = document.createElement("button");
+    toggleLink.type = "button";
+    toggleLink.className = "bon-profile-panel__toggle";
+    toggleLink.textContent = expanded ? "Show less" : "Show more";
+
     const toggle = () => {
       const isExpanded = header.getAttribute("aria-expanded") === "true";
       const next = !isExpanded;
       header.setAttribute("aria-expanded", String(next));
       body.classList.toggle("bon-profile-panel__body--expanded", next);
+      toggleLink.textContent = next ? "Show less" : "Show more";
     };
 
-    header.addEventListener("click", toggle);
-    preview.addEventListener("click", (e) => {
+    header.addEventListener("click", (e) => {
       if (e.target.closest("button, a")) return;
+      toggle();
+    });
+    header.addEventListener("keydown", (e) => {
+      if (e.target !== header) return;
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        toggle();
+      }
+    });
+    if (preview) {
+      preview.addEventListener("click", (e) => {
+        if (e.target.closest("button, a")) return;
+        toggle();
+      });
+    }
+    toggleLink.addEventListener("click", (e) => {
+      e.stopPropagation();
       toggle();
     });
 
     panel.appendChild(header);
-    panel.appendChild(preview);
+    if (preview) {
+      preview.appendChild(toggleLink);
+      panel.appendChild(preview);
+    } else {
+      const toggleRow = document.createElement("div");
+      toggleRow.className = "bon-profile-panel__toggle-row";
+      toggleRow.appendChild(toggleLink);
+      panel.appendChild(toggleRow);
+    }
     panel.appendChild(body);
     return panel;
   }
 
   function buildPanelPreview(username, report) {
     const investigation = bonNormalizeInvestigation(report?.investigation);
+    const hasFactors =
+      Array.isArray(investigation?.factors) && investigation.factors.length > 0;
+    if (!investigation?.summary && !hasFactors) return null;
+
     const preview = document.createElement("div");
     preview.className = "bon-profile-panel__preview";
 
-    if (investigation?.summary) {
+    const summaryCol = document.createElement("div");
+    summaryCol.className = "bon-profile-panel__preview-summary";
+    if (investigation.summary) {
       const p = document.createElement("p");
       p.className = "bon-profile-panel__summary";
       p.textContent = investigation.summary;
-      preview.appendChild(p);
-      return preview;
+      summaryCol.appendChild(p);
+    }
+    if (hasFactors) {
+      const reasons = buildTopReasonsList(investigation.factors);
+      if (reasons) summaryCol.appendChild(reasons);
+    }
+    // Factor dot strip lives in the always-visible preview so the at-a-glance
+    // signal map is readable without expanding the panel. Each dot carries a
+    // hover-card popover with the full factor reasoning + evidence. Tucked
+    // under the summary in the left column so it fills the vertical space
+    // the persona card claims on the right.
+    if (investigation?.status === "done") {
+      const dotsGroup = document.createElement("div");
+      dotsGroup.className = "bon-panel-factor-signals";
+      const dotsLabel = document.createElement("p");
+      dotsLabel.className = "bon-panel-factor-signals__label";
+      dotsLabel.textContent = "Factor signals — hover for details";
+      dotsGroup.appendChild(dotsLabel);
+      dotsGroup.appendChild(buildFactorDots(investigation));
+      summaryCol.appendChild(dotsGroup);
     }
 
-    const actions = document.createElement("div");
-    actions.className = "bon-panel-actions";
-    actions.appendChild(buildInvestigateBtn(username, investigation));
-    actions.appendChild(buildExternalCheckBtn(username));
-    preview.appendChild(actions);
+    const personaBlock = investigation?.persona?.label
+      ? buildPersonaStrip(investigation.persona)
+      : null;
+
+    if (personaBlock && summaryCol.childNodes.length) {
+      const row = document.createElement("div");
+      row.className = "bon-profile-panel__preview-row";
+      row.appendChild(summaryCol);
+      row.appendChild(personaBlock);
+      preview.appendChild(row);
+    } else {
+      if (summaryCol.childNodes.length) preview.appendChild(summaryCol);
+      if (personaBlock) preview.appendChild(personaBlock);
+    }
+
     return preview;
+  }
+
+  function buildPersonaStrip(persona) {
+    const wrap = document.createElement("aside");
+    wrap.className = `bon-panel-persona bon-panel-persona--${persona.label}`;
+
+    const tag = document.createElement("p");
+    tag.className = "bon-panel-persona__tag";
+    tag.textContent = "Persona profile";
+    wrap.appendChild(tag);
+
+    if (persona.archetypes) {
+      const radar = buildPersonaRadar(persona.archetypes);
+      if (radar) wrap.appendChild(radar);
+    }
+
+    const label = document.createElement("p");
+    label.className = "bon-panel-persona__label";
+    const labelText =
+      persona.label === "normal"
+        ? "Normal"
+        : BON_ARCHETYPES.find((a) => a.key === persona.label)?.label ||
+          persona.label;
+    label.textContent = labelText;
+    wrap.appendChild(label);
+
+    if (persona.reasoning) {
+      const blurb = document.createElement("p");
+      blurb.className = "bon-panel-persona__blurb";
+      blurb.textContent = persona.reasoning;
+      wrap.appendChild(blurb);
+    }
+
+    return wrap;
+  }
+
+  const BON_PANEL_RADAR_VIEW = {
+    size: 220,
+    center: 110,
+    radius: 76,
+    labelPad: 14,
+    gridLevels: 4,
+  };
+
+  function buildPersonaRadar(archetypes) {
+    if (!archetypes) return null;
+    const svgns = "http://www.w3.org/2000/svg";
+    const v = BON_PANEL_RADAR_VIEW;
+    const axes = BON_ARCHETYPES;
+    const N = axes.length;
+    if (N < 3) return null;
+
+    const step = (Math.PI * 2) / N;
+    const angle = (i) => -Math.PI / 2 + i * step;
+    const vertex = (i, scale) => {
+      const θ = angle(i);
+      return {
+        x: v.center + v.radius * scale * Math.cos(θ),
+        y: v.center + v.radius * scale * Math.sin(θ),
+      };
+    };
+    const points = (scale) =>
+      axes
+        .map((_, i) => {
+          const p = vertex(i, scale);
+          return `${p.x.toFixed(2)},${p.y.toFixed(2)}`;
+        })
+        .join(" ");
+
+    const wrap = document.createElement("div");
+    wrap.className = "bon-panel-persona-radar";
+    wrap.title = axes
+      .map((a) => `${a.label} ${Math.round((archetypes[a.key] || 0) * 100)}%`)
+      .join("  ·  ");
+
+    const svg = document.createElementNS(svgns, "svg");
+    svg.setAttribute("viewBox", `0 0 ${v.size} ${v.size}`);
+    svg.setAttribute("class", "bon-panel-radar");
+    svg.setAttribute("role", "img");
+    svg.setAttribute(
+      "aria-label",
+      `Persona radar: ${axes
+        .map((a) => `${a.label} ${Math.round((archetypes[a.key] || 0) * 100)}%`)
+        .join(", ")}`
+    );
+
+    for (let g = 1; g <= v.gridLevels; g++) {
+      const poly = document.createElementNS(svgns, "polygon");
+      poly.setAttribute("points", points(g / v.gridLevels));
+      poly.setAttribute(
+        "class",
+        g === v.gridLevels
+          ? "bon-panel-radar-grid bon-panel-radar-grid--outer"
+          : "bon-panel-radar-grid"
+      );
+      svg.appendChild(poly);
+    }
+
+    for (let i = 0; i < N; i++) {
+      const p = vertex(i, 1);
+      const line = document.createElementNS(svgns, "line");
+      line.setAttribute("x1", v.center);
+      line.setAttribute("y1", v.center);
+      line.setAttribute("x2", p.x.toFixed(2));
+      line.setAttribute("y2", p.y.toFixed(2));
+      line.setAttribute("class", "bon-panel-radar-axis");
+      svg.appendChild(line);
+    }
+
+    const dataPolyPts = axes
+      .map((a, i) => {
+        const score = Math.max(0, Math.min(1, archetypes[a.key] || 0));
+        const p = vertex(i, score);
+        return `${p.x.toFixed(2)},${p.y.toFixed(2)}`;
+      })
+      .join(" ");
+    const dataPoly = document.createElementNS(svgns, "polygon");
+    dataPoly.setAttribute("points", dataPolyPts);
+    dataPoly.setAttribute("class", "bon-panel-radar-data");
+    svg.appendChild(dataPoly);
+
+    for (let i = 0; i < N; i++) {
+      const score = archetypes[axes[i].key] || 0;
+      if (score <= 0.05) continue;
+      const p = vertex(i, score);
+      const dot = document.createElementNS(svgns, "circle");
+      dot.setAttribute("cx", p.x.toFixed(2));
+      dot.setAttribute("cy", p.y.toFixed(2));
+      dot.setAttribute("r", 3);
+      dot.setAttribute("class", "bon-panel-radar-dot");
+      svg.appendChild(dot);
+    }
+
+    for (let i = 0; i < N; i++) {
+      const θ = angle(i);
+      const lx = v.center + (v.radius + v.labelPad) * Math.cos(θ);
+      const ly = v.center + (v.radius + v.labelPad) * Math.sin(θ);
+      const cosθ = Math.cos(θ);
+      const sinθ = Math.sin(θ);
+      let anchor = "middle";
+      if (cosθ > 0.3) anchor = "start";
+      else if (cosθ < -0.3) anchor = "end";
+      let dy = "0.35em";
+      if (sinθ > 0.4) dy = "0.85em";
+      else if (sinθ < -0.4) dy = "-0.1em";
+
+      const text = document.createElementNS(svgns, "text");
+      text.setAttribute("x", lx.toFixed(2));
+      text.setAttribute("y", ly.toFixed(2));
+      text.setAttribute("text-anchor", anchor);
+      text.setAttribute("dy", dy);
+      text.setAttribute("class", "bon-panel-radar-label");
+      text.textContent = axes[i].label;
+      svg.appendChild(text);
+    }
+
+    wrap.appendChild(svg);
+    return wrap;
+  }
+
+  function buildTopReasonsList(factors) {
+    const top = bonTopReasons(factors, 3);
+    if (!top.length) return null;
+    const ul = document.createElement("ul");
+    ul.className = "bon-profile-panel__reasons";
+    for (const f of top) {
+      const li = document.createElement("li");
+      const leaning = scoreLeaning(f.score, f.confidence);
+      li.className = `bon-reason bon-reason--${leaning}`;
+      const bullet = document.createElement("span");
+      bullet.className = "bon-reason__bullet";
+      bullet.setAttribute("aria-hidden", "true");
+      li.appendChild(bullet);
+      const text = document.createElement("span");
+      text.className = "bon-reason__text";
+      const label = document.createElement("strong");
+      label.textContent = FACTOR_LABELS[f.key] || f.name || f.key || "Factor";
+      text.appendChild(label);
+      if (f.reasoning) {
+        text.appendChild(document.createTextNode(` — ${f.reasoning}`));
+      }
+      li.appendChild(text);
+      ul.appendChild(li);
+    }
+    return ul;
   }
 
   function appendStatPills(container, report) {
@@ -658,13 +897,6 @@
     const label = document.createElement("span");
     label.textContent = "AI investigation";
     title.appendChild(label);
-
-    const actions = document.createElement("span");
-    actions.className = "bon-panel-actions";
-    actions.appendChild(buildInvestigateBtn(username, investigation));
-    actions.appendChild(buildExternalCheckBtn(username));
-    title.appendChild(actions);
-
     section.appendChild(title);
 
     if (!investigation) {
@@ -724,11 +956,183 @@
       section.appendChild(meta);
     }
 
+    // Factor dots have moved up to the always-visible preview — the body
+    // section keeps the detailed per-factor cards only.
     if (Array.isArray(investigation.factors) && investigation.factors.length) {
       section.appendChild(buildFactorsList(investigation.factors));
     }
 
     return section;
+  }
+
+  function buildFactorDots(investigation) {
+    const wrap = document.createElement("div");
+    wrap.className = "bon-panel-factor-dots";
+    const byKey = new Map();
+    if (Array.isArray(investigation?.factors)) {
+      for (const f of investigation.factors) {
+        if (f?.key) byKey.set(f.key, f);
+      }
+    }
+    const hasRun = investigation?.status === "done";
+    for (const key of FACTOR_ORDER) {
+      wrap.appendChild(buildFactorDot(key, byKey.get(key), hasRun));
+    }
+    return wrap;
+  }
+
+  function buildFactorDot(key, f, hasRun) {
+    const fullLabel = FACTOR_LABELS[key] || key;
+
+    const dot = document.createElement("span");
+    dot.className = "bon-panel-factor-dot";
+    dot.tabIndex = 0;
+
+    let leaning;
+    if (f && typeof f.score === "number") {
+      leaning = scoreLeaning(f.score, f.confidence);
+    } else if (!f && hasRun) {
+      leaning = "new";
+    } else if (!f) {
+      leaning = "missing";
+    } else {
+      leaning = "neutral";
+    }
+    dot.classList.add(`bon-panel-factor-dot--${leaning}`);
+
+    if (f) {
+      const confText =
+        typeof f.confidence === "number"
+          ? `${Math.round(f.confidence * 100)}%`
+          : "—";
+      dot.setAttribute(
+        "aria-label",
+        `${fullLabel}: ${leaning === "neutral" ? "neutral" : formatVerdict(leaning)} · ${confText} confidence`
+      );
+    } else if (hasRun) {
+      dot.setAttribute(
+        "aria-label",
+        `${fullLabel}: added after this investigation ran — re-run to score`
+      );
+    } else {
+      dot.setAttribute("aria-label", `${fullLabel}: not investigated`);
+    }
+
+    const card = buildFactorDotCard(fullLabel, f, hasRun, leaning);
+    dot.appendChild(card);
+    attachFactorCardPositioning(dot, card);
+    return dot;
+  }
+
+  // position: fixed alone isn't enough: any transform/filter on an ancestor
+  // (Reddit's chrome is full of them) re-roots the fixed-position containing
+  // block to that ancestor, breaking viewport coordinates. So on first hover
+  // we move the card out of the dot and into document.body — guaranteed to
+  // sit under <html>, so fixed positioning lands in true viewport space.
+  // Show/hide is then class-toggled (the CSS :hover rule wouldn't fire on a
+  // card that's no longer a descendant of the dot).
+  function attachFactorCardPositioning(dotEl, cardEl) {
+    let mounted = false;
+    const show = () => {
+      if (!mounted) {
+        document.body.appendChild(cardEl);
+        mounted = true;
+      }
+      const dotRect = dotEl.getBoundingClientRect();
+      const cardWidth = cardEl.offsetWidth;
+      const cardHeight = cardEl.offsetHeight;
+      if (!cardWidth || !cardHeight) return;
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+      const margin = 8;
+      const gap = 10;
+
+      let left = dotRect.left + dotRect.width / 2 - cardWidth / 2;
+      left = Math.max(margin, Math.min(left, vw - margin - cardWidth));
+
+      let top = dotRect.top - cardHeight - gap;
+      if (top < margin) top = dotRect.bottom + gap;
+      top = Math.max(margin, Math.min(top, vh - margin - cardHeight));
+
+      cardEl.style.left = `${left}px`;
+      cardEl.style.top = `${top}px`;
+      cardEl.classList.add("bon-panel-factor-card--visible");
+    };
+    const hide = () => {
+      cardEl.classList.remove("bon-panel-factor-card--visible");
+    };
+    dotEl.addEventListener("mouseenter", show);
+    dotEl.addEventListener("mouseleave", hide);
+    dotEl.addEventListener("focus", show);
+    dotEl.addEventListener("blur", hide);
+  }
+
+  // Hover card popover for a factor dot. Mirrors the structure of the
+  // expanded factor cards (name + signal pill + reasoning + evidence) but
+  // sized for a tooltip and lives inside the dot so a single :hover/:focus-
+  // within rule reveals it. CSS in content_script.css.
+  function buildFactorDotCard(fullLabel, f, hasRun, leaning) {
+    const card = document.createElement("span");
+    // The leaning modifier carries the --bon-panel-factor-accent custom
+    // property forward when the card is hoisted to document.body for
+    // positioning — at that point inheritance from the dot is severed.
+    card.className = `bon-panel-factor-card bon-panel-factor-card--${leaning}`;
+    card.setAttribute("role", "tooltip");
+
+    const header = document.createElement("span");
+    header.className = "bon-panel-factor-card__header";
+    const name = document.createElement("span");
+    name.className = "bon-panel-factor-card__name";
+    name.textContent = fullLabel;
+    header.appendChild(name);
+
+    if (f && typeof f.score === "number") {
+      const pill = document.createElement("span");
+      pill.className = `bon-panel-factor-card__signal bon-panel-factor-card__signal--${leaning}`;
+      pill.textContent =
+        leaning === "neutral" ? "Neutral" : formatVerdict(leaning);
+      header.appendChild(pill);
+    }
+    card.appendChild(header);
+
+    if (f && typeof f.confidence === "number") {
+      const conf = document.createElement("span");
+      conf.className = "bon-panel-factor-card__confidence";
+      conf.textContent = `${Math.round(f.confidence * 100)}% confidence`;
+      card.appendChild(conf);
+    }
+
+    if (f?.reasoning) {
+      const r = document.createElement("span");
+      r.className = "bon-panel-factor-card__reasoning";
+      r.textContent = f.reasoning;
+      card.appendChild(r);
+    } else if (!f && hasRun) {
+      const r = document.createElement("span");
+      r.className =
+        "bon-panel-factor-card__reasoning bon-panel-factor-card__reasoning--muted";
+      r.textContent = "Added after this investigation ran — re-run to score.";
+      card.appendChild(r);
+    } else if (!f) {
+      const r = document.createElement("span");
+      r.className =
+        "bon-panel-factor-card__reasoning bon-panel-factor-card__reasoning--muted";
+      r.textContent = "Not investigated.";
+      card.appendChild(r);
+    }
+
+    if (f && Array.isArray(f.evidence) && f.evidence.length) {
+      const list = document.createElement("ul");
+      list.className = "bon-panel-factor-card__evidence";
+      for (const cite of f.evidence) {
+        const item = document.createElement("li");
+        item.textContent = cite;
+        list.appendChild(item);
+      }
+      card.appendChild(list);
+    }
+
+    return card;
   }
 
   function buildFactorsList(factors) {
@@ -794,9 +1198,7 @@
       const pill = document.createElement("span");
       pill.className = `bon-panel-factor__signal bon-panel-factor__signal--${leaning}`;
       pill.textContent =
-        leaning === "neutral"
-          ? "Neutral"
-          : `${formatVerdict(leaning)} ${Math.abs(f.score).toFixed(2)}`;
+        leaning === "neutral" ? "Neutral" : formatVerdict(leaning);
       header.appendChild(pill);
     }
     li.appendChild(header);
@@ -977,27 +1379,6 @@
         btn.classList.remove("bon-spinning");
         btn.textContent = verdict ? "🔁 Re-investigate" : "🤖 Investigate";
       }
-    });
-    return btn;
-  }
-
-  function buildExternalCheckBtn(username) {
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.className = "bon-panel-btn";
-    btn.textContent = "🔍 External check";
-    btn.title = `Check Bot Bouncer, RedditMetis, ProfileProbe, Google for ${username}`;
-    btn.addEventListener("click", (e) => {
-      e.stopPropagation();
-      browser.runtime.sendMessage({
-        type: "open-tabs",
-        urls: [
-          `https://www.reddit.com/r/BotBouncer/search/?q=${encodeURIComponent(username)}&restrict_sr=true`,
-          `https://redditmetis.com/user/${encodeURIComponent(username)}`,
-          `https://profileprobe.com/botornot/?u=${encodeURIComponent(username)}`,
-          `https://www.google.com/search?q=${encodeURIComponent(`reddit "${username}"`)}`,
-        ],
-      });
     });
     return btn;
   }
