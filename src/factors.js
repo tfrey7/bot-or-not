@@ -1,12 +1,11 @@
 // Canonical factor list — single source of truth for factor metadata across
-// the extension's UI and analyzer. Plain script (no ES modules) so it can be
-// loaded by background scripts and HTML pages alike.
+// the extension's UI and analyzer.
 //
 // CONTRACT: bot_analysis.md must list factors in this exact order, with these
 // exact keys. If you add/remove/rename a factor here, update the prompt file
 // so the data Claude returns matches what the UI expects.
 
-var BON_FACTORS = [
+export const BON_FACTORS = [
   { key: "account_age_vs_activity", label: "Account age vs activity" },
   { key: "dormant_account_revival", label: "Dormant account revival" },
   { key: "karma_farming_subs", label: "Karma-farming subreddits" },
@@ -23,9 +22,9 @@ var BON_FACTORS = [
   { key: "moderated_subreddits", label: "Moderated subreddits" },
 ];
 
-var BON_FACTOR_KEYS = BON_FACTORS.map((f) => f.key);
+export const BON_FACTOR_KEYS = BON_FACTORS.map((f) => f.key);
 
-var BON_FACTOR_LABELS = Object.fromEntries(
+export const BON_FACTOR_LABELS = Object.fromEntries(
   BON_FACTORS.map((f) => [f.key, f.label])
 );
 
@@ -42,7 +41,7 @@ var BON_FACTOR_LABELS = Object.fromEntries(
 // double-count. `bot` and `normal` remain valid `persona.label` values though
 // (an account that isn't a flavor of human is still labelled, just with an
 // empty radar).
-var BON_ARCHETYPES = [
+export const BON_ARCHETYPES = [
   { key: "stan", label: "Stan", color: "var(--bon-stamp-amber)" },
   { key: "farmer", label: "Farmer", color: "var(--bon-stamp-blue)" },
   { key: "teen", label: "Teen", color: "var(--bon-stamp-moss)" },
@@ -52,16 +51,9 @@ var BON_ARCHETYPES = [
   { key: "doomer", label: "Doomer", color: "var(--bon-stamp-slate)" },
 ];
 
-var BON_ARCHETYPE_KEYS = BON_ARCHETYPES.map((a) => a.key);
+export const BON_ARCHETYPE_KEYS = BON_ARCHETYPES.map((a) => a.key);
 
 // `bot` and `normal` are valid persona labels but not radar axes — the chart
 // only plots human-flavor archetypes. `bot` = automated; `normal` = a genuine,
 // low-key human with no strong pull toward any of the named archetypes.
-var BON_PERSONA_LABELS = [...BON_ARCHETYPE_KEYS, "bot", "normal"];
-
-globalThis.BON_FACTORS = BON_FACTORS;
-globalThis.BON_FACTOR_KEYS = BON_FACTOR_KEYS;
-globalThis.BON_FACTOR_LABELS = BON_FACTOR_LABELS;
-globalThis.BON_ARCHETYPES = BON_ARCHETYPES;
-globalThis.BON_ARCHETYPE_KEYS = BON_ARCHETYPE_KEYS;
-globalThis.BON_PERSONA_LABELS = BON_PERSONA_LABELS;
+export const BON_PERSONA_LABELS = [...BON_ARCHETYPE_KEYS, "bot", "normal"];

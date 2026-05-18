@@ -1,9 +1,13 @@
 // Investigation pipeline: Reddit fetch -> Claude API -> structured verdict.
-// Loaded before background.js; functions are attached to globalThis so the
-// background message handlers can call them.
 
 // Vite inlines the .md as a string at build time — no runtime fetch needed.
 import BON_ANALYSIS_PROMPT from "./bot_analysis.md?raw";
+import { bonEstimateCostUsd } from "./utils/cost.js";
+import { bonShortUrl } from "./utils/format_text.js";
+import { bonExtractJson } from "./utils/json.js";
+import { bonNormalizePersona } from "./utils/persona.js";
+import { bonExtractActivityData } from "./utils/reddit_activity.js";
+import { bonComputeVerdict } from "./verdict.js";
 
 const BON_CLAUDE_MODEL = "claude-sonnet-4-6";
 const BON_CLAUDE_API_URL = "https://api.anthropic.com/v1/messages";
@@ -25,10 +29,6 @@ async function bonTimed(label, fn) {
     console.log(`[Bot or Not] timing: ${label} ${ms}ms (failed)`);
     throw err;
   }
-}
-
-async function bonLoadAnalysisPrompt() {
-  return BON_ANALYSIS_PROMPT;
 }
 
 async function bonFetchJson(url) {
@@ -90,7 +90,7 @@ async function bonFetchRedditProfile(username) {
   return { about, submitted, comments, moderated };
 }
 
-async function bonFetchUserActivity(username) {
+export async function bonFetchUserActivity(username) {
   const safe = encodeURIComponent(username);
   const [submitted, comments, moderated] = await Promise.all([
     bonFetchJson(
@@ -254,7 +254,7 @@ function bonSummarizeProfile(username, raw, extra = {}) {
   };
 }
 
-async function bonCallClaude(
+export async function bonCallClaude(
   apiKey,
   systemPrompt,
   profileSummary,
@@ -378,7 +378,7 @@ async function bonCallClaude(
 
 // Fetch + summarize the account once so the analyzer works from a single
 // Reddit fetch per investigation.
-async function bonGatherProfile(username, extra = {}) {
+export async function bonGatherProfile(username, extra = {}) {
   const [raw, freshBotBouncerStatus] = await Promise.all([
     bonFetchRedditProfile(username),
     bonFetchBotBouncerStatus(username),
@@ -403,12 +403,15 @@ async function bonGatherProfile(username, extra = {}) {
 }
 
 // Runs the existing 1D bot↔human analysis against an already-built summary.
-async function bonRunOneDAnalysis(apiKey, profileSummary) {
-  const systemPrompt = await bonLoadAnalysisPrompt();
+export async function bonRunOneDAnalysis(apiKey, profileSummary) {
   const { rawText, usage, model, webSearchCount, costUsd } =
-    await bonCallClaude(apiKey, systemPrompt, profileSummary, "claude 1D", {
-      webSearch: true,
-    });
+    await bonCallClaude(
+      apiKey,
+      BON_ANALYSIS_PROMPT,
+      profileSummary,
+      "claude 1D",
+      { webSearch: true }
+    );
   const verdict = bonExtractJson(rawText);
   if (!verdict) {
     throw new Error("Could not parse verdict JSON from Claude response");
@@ -432,7 +435,7 @@ async function bonRunOneDAnalysis(apiKey, profileSummary) {
 
 // Single-call entry point: fetch the profile, run the 1D analyzer, return the
 // combined investigation object.
-async function bonInvestigateUser(username, apiKey, extra = {}) {
+export async function bonInvestigateUser(username, apiKey, extra = {}) {
   const inputs = await bonGatherProfile(username, extra);
   const oneD = await bonRunOneDAnalysis(apiKey, inputs.summary);
   return {
@@ -446,9 +449,3 @@ async function bonInvestigateUser(username, apiKey, extra = {}) {
     botBouncerCheckedAt: inputs.botBouncerCheckedAt,
   };
 }
-
-globalThis.bonGatherProfile = bonGatherProfile;
-globalThis.bonRunOneDAnalysis = bonRunOneDAnalysis;
-globalThis.bonInvestigateUser = bonInvestigateUser;
-globalThis.bonFetchUserActivity = bonFetchUserActivity;
-globalThis.bonCallClaude = bonCallClaude;

@@ -13,11 +13,15 @@
 // Combined, they disambiguate each other: UTC+5 alone could be Pakistan,
 // India (≈+5.5 → rounds to either), Kazakhstan, Maldives. Pair with heavy
 // r/india activity and you have India with high confidence.
-//
-// Loaded after features/regions/data.js, which provides the BON_REGION_INFO,
-// BON_REGION_SUBS, BON_SCRIPT_RANGES, BON_LANGUAGE_MARKERS lookup tables.
 
-function bonNormalizeSubName(s) {
+import {
+  BON_LANGUAGE_MARKERS,
+  BON_REGION_INFO,
+  BON_REGION_SUBS,
+  BON_SCRIPT_RANGES,
+} from "./data.js";
+
+export function bonNormalizeSubName(s) {
   return String(s || "")
     .toLowerCase()
     .replace(/^r\//, "")
@@ -27,7 +31,7 @@ function bonNormalizeSubName(s) {
 // Returns null if no flagged subs touched, otherwise:
 //   { region, count, totalFlagged, share, hits, runnerUp }
 // where hits is the per-sub breakdown for the top region, sorted.
-function bonInferRegionFromSubreddits(subredditCounts) {
+export function bonInferRegionFromSubreddits(subredditCounts) {
   if (!subredditCounts) {
     return null;
   }
@@ -98,14 +102,14 @@ function bonDetectLanguageMarkers(text) {
 
 // One-shot scan over a concatenated text corpus. Used by bot_analysis.js
 // during fetch — output is stored in activityData.{scriptSignals,languageSignals}.
-function bonScanTextSignals(text) {
+export function bonScanTextSignals(text) {
   return {
     scripts: bonDetectScripts(text),
     languages: bonDetectLanguageMarkers(text),
   };
 }
 
-function bonInferRegionFromScripts(scriptCounts) {
+export function bonInferRegionFromScripts(scriptCounts) {
   if (!scriptCounts) {
     return null;
   }
@@ -133,7 +137,7 @@ function bonInferRegionFromScripts(scriptCounts) {
   return { region: ranked[0][0], score: ranked[0][1], hits };
 }
 
-function bonInferRegionFromLanguage(languageCounts) {
+export function bonInferRegionFromLanguage(languageCounts) {
   if (!languageCounts) {
     return null;
   }
@@ -167,7 +171,7 @@ function bonInferRegionFromLanguage(languageCounts) {
 
 // Coarse UTC-offset → region-band label for the inferred-timezone strip.
 // Returns "" for offsets outside the commonly-populated bands.
-function bonRegionForOffset(offset) {
+export function bonRegionForOffset(offset) {
   if (offset === 0) {
     return "UK, Portugal, West Africa";
   }
@@ -240,7 +244,7 @@ function bonRegionForOffset(offset) {
   return "";
 }
 
-function bonInferRegionFromModerated(moderatedSubs) {
+export function bonInferRegionFromModerated(moderatedSubs) {
   if (!Array.isArray(moderatedSubs) || moderatedSubs.length === 0) {
     return null;
   }
@@ -270,7 +274,7 @@ function bonInferRegionFromModerated(moderatedSubs) {
 //     languageSignal, moderator, tzOffset, tzMatch, runnerUp }
 //   { kind: "timezone-only", offsetHours, possibleRegions }
 //   null
-function bonInferRegion(activityData, tzInferred) {
+export function bonInferRegion(activityData, tzInferred) {
   const subResult = activityData
     ? bonInferRegionFromSubreddits(activityData.subredditCounts)
     : null;
@@ -355,12 +359,3 @@ function bonInferRegion(activityData, tzInferred) {
   }
   return null;
 }
-
-globalThis.bonInferRegion = bonInferRegion;
-globalThis.bonInferRegionFromSubreddits = bonInferRegionFromSubreddits;
-globalThis.bonInferRegionFromScripts = bonInferRegionFromScripts;
-globalThis.bonInferRegionFromLanguage = bonInferRegionFromLanguage;
-globalThis.bonInferRegionFromModerated = bonInferRegionFromModerated;
-globalThis.bonScanTextSignals = bonScanTextSignals;
-globalThis.bonNormalizeSubName = bonNormalizeSubName;
-globalThis.bonRegionForOffset = bonRegionForOffset;

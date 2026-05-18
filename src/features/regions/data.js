@@ -7,7 +7,7 @@
 // country dominates (r/cricket, r/worldnews) are NOT included — too noisy.
 // Diaspora/regional umbrella subs (r/desimemes covers IN+PK+BD) are skipped.
 
-var BON_REGION_INFO = {
+export const BON_REGION_INFO = {
   IN: { flag: "🇮🇳", label: "India", utcOffsets: [5, 6] }, // IST is +5:30
   PK: { flag: "🇵🇰", label: "Pakistan", utcOffsets: [5] },
   BD: { flag: "🇧🇩", label: "Bangladesh", utcOffsets: [6] },
@@ -54,7 +54,7 @@ var BON_REGION_INFO = {
 };
 
 // Lower-cased sub names (without "r/") -> region code from BON_REGION_INFO.
-var BON_REGION_SUBS = {
+export const BON_REGION_SUBS = {
   // India
   india: "IN",
   indiaspeaks: "IN",
@@ -384,7 +384,7 @@ var BON_REGION_SUBS = {
 // Tokens are word-boundary matched, case-insensitive. Pick distinctive tokens
 // 4+ chars long where possible to keep false positives down.
 
-var BON_SCRIPT_RANGES = [
+export const BON_SCRIPT_RANGES = [
   { name: "devanagari", range: [0x0900, 0x097f], regions: ["IN"] },
   { name: "bengali", range: [0x0980, 0x09ff], regions: ["IN", "BD"] },
   { name: "gurmukhi", range: [0x0a00, 0x0a7f], regions: ["IN"] }, // Punjabi
@@ -411,7 +411,7 @@ var BON_SCRIPT_RANGES = [
   { name: "hebrew", range: [0x0590, 0x05ff], regions: ["IL"] },
 ];
 
-var BON_LANGUAGE_MARKERS = {
+export const BON_LANGUAGE_MARKERS = {
   hinglish: {
     label: "Hinglish",
     regions: ["IN"],
@@ -454,8 +454,3 @@ var BON_LANGUAGE_MARKERS = {
       /\b(che|boludo|pelotudo|quilombo|laburar|pibe|guacho|bondi|chamuyo)\b/gi,
   },
 };
-
-globalThis.BON_REGION_INFO = BON_REGION_INFO;
-globalThis.BON_REGION_SUBS = BON_REGION_SUBS;
-globalThis.BON_SCRIPT_RANGES = BON_SCRIPT_RANGES;
-globalThis.BON_LANGUAGE_MARKERS = BON_LANGUAGE_MARKERS;
