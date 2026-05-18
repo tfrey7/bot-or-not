@@ -1,38 +1,57 @@
 /* Investigation analytics dashboard styles. Loaded by reports.html alongside
-   analytics.js. Inherits the --bon-* tokens defined in reports.html. */
+   analytics.js. Inherits the --bon-* tokens defined in reports.css. */
 
 .bon-analytics {
-  margin-top: 3em;
+  margin-top: 3.5em;
   padding-top: 2em;
-  border-top: 1px solid var(--bon-border);
+  border-top: 2px solid var(--bon-rule);
+  position: relative;
+}
+.bon-analytics::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 5px;
+  height: 1px;
+  background: var(--bon-rule);
+  opacity: 0.5;
 }
 
 .bon-analytics-header {
-  margin-bottom: 1.5em;
+  margin-bottom: 1.75em;
 }
 
 .bon-analytics-header h2 {
-  font-size: 1.35rem;
-  font-weight: 700;
-  letter-spacing: -0.018em;
-  margin: 0 0 0.2em;
+  font-family: var(--bon-font-serif);
+  font-size: 2rem;
+  font-weight: 400;
+  letter-spacing: -0.01em;
+  margin: 0 0 0.15em;
   color: var(--bon-text);
+  line-height: 1.05;
 }
 
 .bon-analytics-subtitle {
-  margin: 0;
-  font-size: 0.875rem;
+  margin: 0.3em 0 0;
+  font-family: var(--bon-font-mono);
+  font-size: 0.7rem;
   color: var(--bon-muted);
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
 }
 
 .bon-analytics-empty {
   background: var(--bon-surface);
   border: 1px dashed var(--bon-border-strong);
-  border-radius: 0.625em;
-  padding: 2.5em 1em;
+  border-radius: 0.5em;
+  padding: 2.75em 1em;
   text-align: center;
   color: var(--bon-muted);
-  font-size: 0.95rem;
+  font-family: var(--bon-font-serif);
+  font-style: italic;
+  font-size: 1.05rem;
 }
 
 .bon-analytics-empty-small {
@@ -53,37 +72,42 @@
 .bon-analytics-stat {
   background: var(--bon-surface);
   border: 1px solid var(--bon-border);
-  border-radius: 0.625em;
-  padding: 0.9em 1em 0.95em;
+  border-radius: 0.5em;
+  padding: 0.95em 1.1em 1em;
   box-shadow: var(--bon-shadow-sm);
   min-width: 0;
+  border-top: 3px solid var(--bon-border-strong);
 }
 
 .bon-stat-label {
-  font-size: 0.68rem;
+  font-family: var(--bon-font-mono);
+  font-size: 0.62rem;
   text-transform: uppercase;
-  letter-spacing: 0.07em;
+  letter-spacing: 0.14em;
   color: var(--bon-muted);
-  font-weight: 600;
-  margin-bottom: 0.4em;
+  font-weight: 700;
+  margin-bottom: 0.45em;
 }
 
 .bon-stat-value {
-  font-size: 1.35rem;
-  font-weight: 700;
-  letter-spacing: -0.018em;
+  font-family: var(--bon-font-serif);
+  font-size: 1.85rem;
+  font-weight: 400;
+  letter-spacing: -0.012em;
   color: var(--bon-text);
   font-variant-numeric: tabular-nums;
-  line-height: 1.15;
+  line-height: 1.05;
   word-break: break-word;
 }
 
 .bon-stat-sub {
-  font-size: 0.72rem;
+  font-family: var(--bon-font-mono);
+  font-size: 0.7rem;
   color: var(--bon-muted);
-  margin-top: 0.3em;
+  margin-top: 0.4em;
   font-variant-numeric: tabular-nums;
   line-height: 1.35;
+  letter-spacing: 0.02em;
 }
 
 /* ---------- Chart cards ---------- */
@@ -98,8 +122,8 @@
 .bon-chart-card {
   background: var(--bon-surface);
   border: 1px solid var(--bon-border);
-  border-radius: 0.625em;
-  padding: 1em 1.1em 1.1em;
+  border-radius: 0.5em;
+  padding: 1.05em 1.2em 1.15em;
   box-shadow: var(--bon-shadow-sm);
   display: flex;
   flex-direction: column;
@@ -107,22 +131,25 @@
 }
 
 .bon-chart-head {
-  margin-bottom: 0.65em;
+  margin-bottom: 0.75em;
 }
 
 .bon-chart-title {
-  font-size: 0.74rem;
+  font-family: var(--bon-font-mono);
+  font-size: 0.68rem;
   text-transform: uppercase;
-  letter-spacing: 0.07em;
+  letter-spacing: 0.14em;
   color: var(--bon-muted);
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .bon-chart-sub {
-  font-size: 0.78rem;
+  font-family: var(--bon-font-mono);
+  font-size: 0.74rem;
   color: var(--bon-muted-soft);
   font-variant-numeric: tabular-nums;
-  margin-top: 0.25em;
+  margin-top: 0.3em;
+  letter-spacing: 0.02em;
 }
 
 .bon-chart-svg {
@@ -134,32 +161,32 @@
 /* SVG element styles — referenced via class= attribute on SVG nodes. */
 
 .bon-chart-grid {
-  stroke: #f3f4f6;
+  stroke: var(--bon-border);
   stroke-width: 1;
 }
 
 .bon-chart-area {
-  fill: rgba(3, 102, 214, 0.12);
+  fill: rgba(31, 70, 115, 0.12);
   stroke: none;
 }
 
 .bon-chart-line {
   fill: none;
-  stroke: #0366d6;
+  stroke: var(--bon-accent);
   stroke-width: 1.75;
   stroke-linejoin: round;
   stroke-linecap: round;
 }
 
 .bon-chart-marker {
-  fill: #e67e22;
-  stroke: #fff;
+  fill: var(--bon-stamp-rust);
+  stroke: var(--bon-surface);
   stroke-width: 1.5;
 }
 
 .bon-chart-endpoint {
-  fill: #0366d6;
-  stroke: #fff;
+  fill: var(--bon-accent);
+  stroke: var(--bon-surface);
   stroke-width: 1.25;
 }
 
@@ -172,15 +199,15 @@
 }
 
 .bon-chart-bar--blue {
-  fill: #0366d6;
+  fill: var(--bon-accent);
 }
 
 .bon-chart-bar--teal {
-  fill: #16a085;
+  fill: var(--bon-stamp-forest);
 }
 
 .bon-chart-median-line {
-  stroke: #c0392b;
+  stroke: var(--bon-stamp-red);
   stroke-width: 1;
   stroke-dasharray: 3 3;
 }
@@ -200,7 +227,7 @@
 
 .bon-chart-inbar {
   font-size: 11px;
-  fill: #fff;
+  fill: var(--bon-surface);
   font-family: var(--bon-font-sans);
   font-weight: 600;
 }
@@ -230,19 +257,20 @@
 .bon-analytics-table-card {
   background: var(--bon-surface);
   border: 1px solid var(--bon-border);
-  border-radius: 0.625em;
-  padding: 1.1em 1.2em 1.2em;
+  border-radius: 0.5em;
+  padding: 1.15em 1.3em 1.25em;
   margin-bottom: 1em;
   box-shadow: var(--bon-shadow-sm);
 }
 
 .bon-analytics-section-title {
-  font-size: 0.74rem;
+  font-family: var(--bon-font-mono);
+  font-size: 0.68rem;
   text-transform: uppercase;
-  letter-spacing: 0.07em;
+  letter-spacing: 0.14em;
   color: var(--bon-muted);
-  font-weight: 600;
-  margin: 0 0 0.85em;
+  font-weight: 700;
+  margin: 0 0 0.95em;
 }
 
 .bon-analytics-table-scroll {
@@ -270,12 +298,14 @@
 }
 
 .bon-analytics-table th {
-  font-size: 0.7rem;
+  font-family: var(--bon-font-mono);
+  font-size: 0.66rem;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.12em;
   color: var(--bon-muted);
-  font-weight: 600;
-  border-bottom-color: var(--bon-border-strong);
+  font-weight: 700;
+  border-bottom-color: var(--bon-rule);
+  border-bottom-width: 1.5px;
 }
 
 .bon-analytics-table tr:last-child td {
@@ -309,22 +339,24 @@
   grid-template-columns: 1.75em minmax(7em, max-content) 1fr 1fr auto;
   align-items: center;
   gap: 0.85em;
-  padding: 0.5em 0.7em;
-  background: #fafbfc;
-  border-radius: 0.45em;
+  padding: 0.55em 0.75em;
+  background: var(--bon-surface-soft);
+  border-radius: 0.4em;
 }
 
 .bon-analytics-top-list li::before {
   content: counter(bon-rank);
+  font-family: var(--bon-font-serif);
   font-variant-numeric: tabular-nums;
-  font-weight: 700;
+  font-weight: 400;
   color: var(--bon-muted-soft);
-  font-size: 0.85rem;
+  font-size: 1.1rem;
   text-align: right;
+  line-height: 1;
 }
 
 .bon-analytics-top-name {
-  font-weight: 500;
+  font-weight: 600;
   color: var(--bon-link);
   text-decoration: none;
   font-size: 0.9rem;
@@ -335,20 +367,23 @@
 
 .bon-analytics-top-name:hover {
   text-decoration: underline;
+  color: var(--bon-link-hover);
 }
 
 .bon-analytics-top-meta {
-  font-size: 0.78rem;
+  font-family: var(--bon-font-mono);
+  font-size: 0.74rem;
   color: var(--bon-muted);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  letter-spacing: 0.02em;
 }
 
 .bon-analytics-top-bar {
   height: 6px;
-  background: #eef2f5;
+  background: var(--bon-bg-tint);
   border-radius: 3px;
   overflow: hidden;
   min-width: 4em;
@@ -356,7 +391,11 @@
 
 .bon-analytics-top-bar-fill {
   height: 100%;
-  background: linear-gradient(90deg, #16a085, #e67e22);
+  background: linear-gradient(
+    90deg,
+    var(--bon-stamp-forest),
+    var(--bon-stamp-rust)
+  );
   border-radius: 3px;
 }
 
@@ -367,14 +406,16 @@
   font-size: 0.92rem;
   text-align: right;
   white-space: nowrap;
+  font-family: var(--bon-font-mono);
 }
 
 /* ---------- Footnote ---------- */
 
 .bon-analytics-footnote {
   margin: 0.75em 0 0;
-  font-size: 0.75rem;
+  font-size: 0.78rem;
   color: var(--bon-muted-soft);
   text-align: center;
   font-style: italic;
+  font-family: var(--bon-font-serif);
 }

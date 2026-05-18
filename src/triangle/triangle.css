@@ -1,28 +1,35 @@
-.bon-triangle-col {
-  width: 6.5em;
-  text-align: center;
-}
+/* Styles for the triangle classifier: SVG widget, beta tag, plus the
+   page-specific scaffolding (banner, legend, detail bars) shared by
+   the triangle reports page. Inherits --bon-* tokens from reports.css. */
+
+/* ---------- Beta tag (used in masthead subtitle + page header) ---------- */
 
 .bon-beta-tag {
   display: inline-block;
   margin-left: 0.35em;
-  padding: 0.05em 0.4em;
+  padding: 0.1em 0.4em 0.05em;
+  font-family: var(--bon-font-mono, ui-monospace, monospace);
   font-size: 0.6rem;
   font-weight: 700;
-  letter-spacing: 0.04em;
-  color: #b45309;
-  background: #fef3c7;
-  border: 1px solid #fcd34d;
-  border-radius: 0.25em;
+  letter-spacing: 0.12em;
+  color: #8a5a0e;
+  background: #f4e3b8;
+  border: 1px solid #d8b574;
+  border-radius: 0.2em;
   vertical-align: middle;
   text-transform: uppercase;
 }
 
+/* ---------- SVG widget ---------- */
+
+.bon-triangle-col {
+  width: 6.5em;
+  text-align: center;
+}
 .bon-triangle-cell {
   text-align: center;
   vertical-align: middle;
 }
-
 .bon-triangle {
   display: inline-flex;
   align-items: center;
@@ -30,44 +37,180 @@
   vertical-align: middle;
   transition: transform 0.15s ease;
 }
-
 .bon-triangle:hover {
   transform: scale(1.08);
 }
-
 .bon-triangle-svg {
   display: block;
   overflow: visible;
 }
-
 .bon-triangle-base {
-  fill: #ffffff;
+  fill: var(--bon-surface, #fbf7ec);
   stroke: none;
 }
-
 .bon-triangle-outline {
   fill: none;
-  stroke: rgba(15, 23, 42, 0.18);
+  stroke: rgba(26, 22, 18, 0.22);
   stroke-width: 0.7;
   stroke-linejoin: round;
 }
-
 .bon-triangle-label {
   font-size: 7px;
-  font-family:
-    "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
   font-weight: 700;
-  letter-spacing: 0.02em;
-  fill: #94a3b8;
+  letter-spacing: 0.05em;
+  fill: var(--bon-muted-soft, #a59c87);
   text-anchor: middle;
+  text-transform: uppercase;
 }
-
 .bon-triangle-halo {
-  fill: rgba(255, 255, 255, 0.85);
+  fill: rgba(251, 247, 236, 0.85);
+}
+.bon-triangle-dot {
+  fill: var(--bon-text, #1a1612);
+  stroke: var(--bon-surface, #fbf7ec);
+  stroke-width: 0.7;
 }
 
-.bon-triangle-dot {
-  fill: #1e293b;
-  stroke: #ffffff;
-  stroke-width: 0.7;
+/* ---------- Triangle reports page scaffolding ---------- */
+
+.bon-placeholder-banner {
+  margin-bottom: 1.25em;
+  padding: 0.9em 1.1em;
+  background: #faf0d4;
+  border: 1px solid #d8b574;
+  border-left: 3px solid var(--bon-stamp-amber, #b8861a);
+  border-radius: 0.4em;
+  font-size: 0.85rem;
+  color: #5e3d0e;
+  line-height: 1.5;
+}
+.bon-placeholder-banner strong {
+  color: #4d2f08;
+  font-family: var(--bon-font-mono, monospace);
+  font-size: 0.78rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.bon-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.25em;
+  margin-bottom: 1em;
+  padding: 0.5em 0;
+  font-size: 0.82rem;
+  color: var(--bon-muted, #6e6553);
+}
+.bon-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45em;
+}
+.bon-legend-swatch {
+  width: 0.7em;
+  height: 0.7em;
+  border-radius: 50%;
+  display: inline-block;
+}
+/* Triangle corner colors: tuned to feel painted rather than neon so they
+   sit on the parchment without clashing. */
+.bon-legend-swatch--bot {
+  background: #b8332a;
+}
+.bon-legend-swatch--stan {
+  background: #c43d7a;
+}
+.bon-legend-swatch--farmer {
+  background: #6e4ac2;
+}
+.bon-legend-center {
+  color: var(--bon-muted-soft, #a59c87);
+  font-style: italic;
+}
+
+.bon-triangle-dominant {
+  margin-top: 0.4em;
+  font-family: var(--bon-font-mono, monospace);
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--bon-muted, #6e6553);
+}
+.bon-triangle-dominant--bot {
+  color: #8b1e1e;
+}
+.bon-triangle-dominant--stan {
+  color: #963760;
+}
+.bon-triangle-dominant--farmer {
+  color: #5839a0;
+}
+.bon-triangle-dominant--normal {
+  color: var(--bon-muted-soft, #a59c87);
+  font-style: italic;
+}
+
+.bon-triangle-th {
+  text-align: center;
+}
+
+.bon-detail-triangle-wrap {
+  display: flex;
+  gap: 1.5em;
+  align-items: center;
+  padding: 1.1em 1.5em 1.25em;
+  border-bottom: 1px solid var(--bon-border, #ddd1b3);
+}
+.bon-detail-triangle-bars {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45em;
+}
+.bon-detail-triangle-bar-row {
+  display: grid;
+  grid-template-columns: 5em 1fr 3em;
+  align-items: center;
+  gap: 0.75em;
+  font-size: 0.82rem;
+}
+.bon-detail-triangle-bar-label {
+  color: var(--bon-muted, #6e6553);
+  font-weight: 500;
+  font-family: var(--bon-font-mono, monospace);
+  font-size: 0.72rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.bon-detail-triangle-bar-track {
+  position: relative;
+  height: 0.55em;
+  background: var(--bon-bg-tint, #e8ddc6);
+  border-radius: 0.3em;
+  overflow: hidden;
+}
+.bon-detail-triangle-bar-fill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  border-radius: 0.3em;
+}
+.bon-detail-triangle-bar-fill--bot {
+  background: #b8332a;
+}
+.bon-detail-triangle-bar-fill--stan {
+  background: #c43d7a;
+}
+.bon-detail-triangle-bar-fill--farmer {
+  background: #6e4ac2;
+}
+.bon-detail-triangle-bar-value {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: var(--bon-text, #1a1612);
+  font-weight: 600;
+  font-family: var(--bon-font-mono, monospace);
 }
