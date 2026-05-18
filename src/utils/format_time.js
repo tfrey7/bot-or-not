@@ -3,13 +3,21 @@
 
 (function () {
   function bonFmtDuration(ms) {
-    if (ms == null || !isFinite(ms)) return "—";
-    if (ms < 1000) return `${Math.round(ms)}ms`;
+    if (ms == null || !isFinite(ms)) {
+      return "—";
+    }
+    if (ms < 1000) {
+      return `${Math.round(ms)}ms`;
+    }
     const s = ms / 1000;
-    if (s < 60) return `${s.toFixed(s < 10 ? 1 : 0)}s`;
+    if (s < 60) {
+      return `${s.toFixed(s < 10 ? 1 : 0)}s`;
+    }
     const m = Math.floor(s / 60);
     const rem = Math.round(s % 60);
-    if (m < 60) return rem ? `${m}m ${rem}s` : `${m}m`;
+    if (m < 60) {
+      return rem ? `${m}m ${rem}s` : `${m}m`;
+    }
     const h = Math.floor(m / 60);
     return `${h}h ${m % 60}m`;
   }
@@ -20,10 +28,18 @@
     const min = 60_000;
     const hour = 60 * min;
     const day = 24 * hour;
-    if (diffMs < min) return "now";
-    if (diffMs < hour) return `${Math.floor(diffMs / min)}m ago`;
-    if (diffMs < day) return `${Math.floor(diffMs / hour)}h ago`;
-    if (diffMs < 7 * day) return `${Math.floor(diffMs / day)}d ago`;
+    if (diffMs < min) {
+      return "now";
+    }
+    if (diffMs < hour) {
+      return `${Math.floor(diffMs / min)}m ago`;
+    }
+    if (diffMs < day) {
+      return `${Math.floor(diffMs / hour)}h ago`;
+    }
+    if (diffMs < 7 * day) {
+      return `${Math.floor(diffMs / day)}d ago`;
+    }
     const sameYear = d.getFullYear() === new Date().getFullYear();
     return d.toLocaleDateString(undefined, {
       year: sameYear ? undefined : "2-digit",
@@ -39,10 +55,18 @@
     const min = 60_000;
     const hour = 60 * min;
     const day = 24 * hour;
-    if (diffMs < min) return "now";
-    if (diffMs < hour) return `${Math.floor(diffMs / min)}m`;
-    if (diffMs < day) return `${Math.floor(diffMs / hour)}h`;
-    if (diffMs < 7 * day) return `${Math.floor(diffMs / day)}d`;
+    if (diffMs < min) {
+      return "now";
+    }
+    if (diffMs < hour) {
+      return `${Math.floor(diffMs / min)}m`;
+    }
+    if (diffMs < day) {
+      return `${Math.floor(diffMs / hour)}h`;
+    }
+    if (diffMs < 7 * day) {
+      return `${Math.floor(diffMs / day)}d`;
+    }
     const d = new Date(ts);
     const sameYear = d.getFullYear() === new Date().getFullYear();
     return d.toLocaleDateString(undefined, {

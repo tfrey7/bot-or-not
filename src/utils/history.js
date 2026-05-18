@@ -22,7 +22,9 @@
         const idx = seen.get(key);
         out[idx] = bonMergeHistoryEntries(out[idx], entry);
       } else {
-        if (key) seen.set(key, out.length);
+        if (key) {
+          seen.set(key, out.length);
+        }
         out.push({ ...entry });
       }
     }
@@ -63,10 +65,14 @@
   // Case-insensitive username lookup — Reddit's routing is case-insensitive but
   // our storage keys preserve whatever casing was first seen.
   function bonFindReportKey(reports, username) {
-    if (reports[username]) return username;
+    if (reports[username]) {
+      return username;
+    }
     const target = username.toLowerCase();
     for (const k of Object.keys(reports)) {
-      if (k.toLowerCase() === target) return k;
+      if (k.toLowerCase() === target) {
+        return k;
+      }
     }
     return null;
   }

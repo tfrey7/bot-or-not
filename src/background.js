@@ -13,7 +13,9 @@ async function sweepOrphanedInvestigations() {
     let changed = false;
     for (const [username, value] of Object.entries(reports)) {
       const inv = value?.investigation;
-      if (inv?.status !== "running") continue;
+      if (inv?.status !== "running") {
+        continue;
+      }
       const startedAt = inv.startedAt || 0;
       reports[username] = {
         ...value,
@@ -139,11 +141,15 @@ async function maybeAutoInvestigate(username) {
   try {
     const { claudeApiKey = "" } =
       await browser.storage.local.get("claudeApiKey");
-    if (!claudeApiKey) return;
+    if (!claudeApiKey) {
+      return;
+    }
     const { reports = {} } = await browser.storage.local.get("reports");
     const key = bonFindReportKey(reports, username) || username;
     const inv = bonNormalizeReport(reports[key]).investigation;
-    if (inv?.status === "running" && !bonIsInvestigationStale(inv)) return;
+    if (inv?.status === "running" && !bonIsInvestigationStale(inv)) {
+      return;
+    }
     if (
       inv?.runAt &&
       Date.now() - inv.runAt < BON_AUTO_INVESTIGATE_FRESHNESS_MS
@@ -162,11 +168,15 @@ async function maybeAutoInvestigate(username) {
 // running are left alone; the user can retry errors via the panel button.
 async function handleAutoInvestigateOnView(message) {
   const username = (message.username || "").trim();
-  if (!username) return { ok: false, error: "missing-username" };
+  if (!username) {
+    return { ok: false, error: "missing-username" };
+  }
   try {
     const { claudeApiKey = "" } =
       await browser.storage.local.get("claudeApiKey");
-    if (!claudeApiKey) return { ok: true, started: false };
+    if (!claudeApiKey) {
+      return { ok: true, started: false };
+    }
     const { reports = {} } = await browser.storage.local.get("reports");
     const key = bonFindReportKey(reports, username) || username;
     const inv = bonNormalizeReport(reports[key]).investigation;
@@ -183,9 +193,13 @@ async function handleAutoInvestigateOnView(message) {
 
 async function handleUpdateUserCreatedAt(message) {
   const { reports = {} } = await browser.storage.local.get("reports");
-  if (!reports[message.username]) return;
+  if (!reports[message.username]) {
+    return;
+  }
   const existing = bonNormalizeReport(reports[message.username]);
-  if (existing.createdAt) return;
+  if (existing.createdAt) {
+    return;
+  }
   reports[message.username] = {
     ...existing,
     createdAt: message.createdAt,
@@ -196,9 +210,13 @@ async function handleUpdateUserCreatedAt(message) {
 async function handleUpdateUserStatus(message) {
   const { reports = {} } = await browser.storage.local.get("reports");
   // Only update users we've already reported
-  if (!reports[message.username]) return;
+  if (!reports[message.username]) {
+    return;
+  }
   const existing = bonNormalizeReport(reports[message.username]);
-  if (existing.userStatus === message.status) return;
+  if (existing.userStatus === message.status) {
+    return;
+  }
   reports[message.username] = {
     ...existing,
     userStatus: message.status,
@@ -210,9 +228,13 @@ async function handleUpdateUserStatus(message) {
 async function handleUpdateBotBouncerStatus(message) {
   const { reports = {} } = await browser.storage.local.get("reports");
   const key = bonFindReportKey(reports, message.username);
-  if (!key) return;
+  if (!key) {
+    return;
+  }
   const existing = bonNormalizeReport(reports[key]);
-  if (existing.botBouncerStatus === message.status) return;
+  if (existing.botBouncerStatus === message.status) {
+    return;
+  }
   reports[key] = {
     ...existing,
     botBouncerStatus: message.status,
@@ -257,7 +279,9 @@ async function handleGetUserTags() {
   const tags = {};
   for (const [username, value] of Object.entries(reports)) {
     const tag = summarizeUserTag(username, value);
-    if (tag) tags[username] = tag;
+    if (tag) {
+      tags[username] = tag;
+    }
   }
   return { tags };
 }
@@ -273,7 +297,9 @@ function summarizeUserTag(username, value) {
     r.userStatus ||
     r.botBouncerStatus ||
     investigationStatus === "running";
-  if (!hasSignal) return null;
+  if (!hasSignal) {
+    return null;
+  }
   return {
     username,
     count: r.count,
@@ -302,9 +328,13 @@ async function handleClearAllReports() {
 
 async function handleDeleteReport(message) {
   const username = (message.username || "").trim();
-  if (!username) return { ok: false, error: "missing-username" };
+  if (!username) {
+    return { ok: false, error: "missing-username" };
+  }
   const { reports = {} } = await browser.storage.local.get("reports");
-  if (!(username in reports)) return { ok: true, removed: false };
+  if (!(username in reports)) {
+    return { ok: true, removed: false };
+  }
   delete reports[username];
   await browser.storage.local.set({ reports });
   return { ok: true, removed: true };
@@ -357,7 +387,9 @@ async function setInvestigationState(username, patch) {
 
 async function handleInvestigateUser(message) {
   const { username } = message;
-  if (!username) return { ok: false, error: "missing username" };
+  if (!username) {
+    return { ok: false, error: "missing username" };
+  }
 
   const { claudeApiKey = "" } = await browser.storage.local.get("claudeApiKey");
   if (!claudeApiKey) {
@@ -439,7 +471,9 @@ async function saveActivityData(username, activityData) {
 
 async function handleFetchActivity(message) {
   const { username } = message;
-  if (!username) return { ok: false, error: "missing username" };
+  if (!username) {
+    return { ok: false, error: "missing username" };
+  }
   try {
     const activityData = await bonFetchUserActivity(username);
     await saveActivityData(username, activityData);
@@ -459,6 +493,8 @@ async function handleGetUserState(message) {
 async function handleGetUserReport(message) {
   const { reports = {} } = await browser.storage.local.get("reports");
   const key = bonFindReportKey(reports, message.username);
-  if (!key) return { report: null };
+  if (!key) {
+    return { report: null };
+  }
   return { report: bonNormalizeReport(reports[key]) };
 }

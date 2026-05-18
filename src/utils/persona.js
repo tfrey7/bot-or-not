@@ -10,11 +10,15 @@
   // Axis list is the canonical one in factors.js so reports.js can trust the
   // shape: every known axis present, clamped to [0,1], or null for legacy data.
   function bonNormalizePersona(raw) {
-    if (!raw || typeof raw !== "object") return null;
+    if (!raw || typeof raw !== "object") {
+      return null;
+    }
     const label = String(raw.label || "")
       .toLowerCase()
       .trim();
-    if (!BON_PERSONA_LABELS.includes(label)) return null;
+    if (!BON_PERSONA_LABELS.includes(label)) {
+      return null;
+    }
     const reasoning =
       typeof raw.reasoning === "string" ? raw.reasoning.trim() : "";
     return {

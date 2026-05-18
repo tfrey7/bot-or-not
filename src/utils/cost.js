@@ -32,10 +32,16 @@
   // Look up a pricing row by the model id the API echoed back. The API often
   // returns a dated suffix (e.g. "claude-sonnet-4-6-20251022"); match by prefix.
   function bonLookupPricing(model) {
-    if (!model) return null;
-    if (BON_MODEL_PRICING[model]) return BON_MODEL_PRICING[model];
+    if (!model) {
+      return null;
+    }
+    if (BON_MODEL_PRICING[model]) {
+      return BON_MODEL_PRICING[model];
+    }
     for (const key of Object.keys(BON_MODEL_PRICING)) {
-      if (model.startsWith(key)) return BON_MODEL_PRICING[key];
+      if (model.startsWith(key)) {
+        return BON_MODEL_PRICING[key];
+      }
     }
     return null;
   }
@@ -44,7 +50,9 @@
   // so callers can distinguish "free" from "unpriced".
   function bonEstimateCostUsd(usage, model, webSearchCount = 0) {
     const p = bonLookupPricing(model);
-    if (!p || !usage) return null;
+    if (!p || !usage) {
+      return null;
+    }
     const inTok = usage.input_tokens || 0;
     const outTok = usage.output_tokens || 0;
     const cacheRead = usage.cache_read_input_tokens || 0;

@@ -26,7 +26,9 @@
       )
         .toString()
         .toLowerCase();
-      if (!sub) continue;
+      if (!sub) {
+        continue;
+      }
       subredditCounts[sub] = (subredditCounts[sub] || 0) + 1;
     }
     // Concatenate all visible user-authored text and scan for region signals

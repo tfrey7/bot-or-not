@@ -16,10 +16,14 @@
             el.tagName.toLowerCase() === "shreddit-comment") &&
           el.getAttribute("author")
       );
-    if (!authorEl) return null;
+    if (!authorEl) {
+      return null;
+    }
 
     const username = authorEl.getAttribute("author");
-    if (!username) return null;
+    if (!username) {
+      return null;
+    }
 
     const tag = authorEl.tagName.toLowerCase();
     const context = {
@@ -51,7 +55,9 @@
         // Reddit's subsequent report-dialog clicks happen outside the post
         // element, so this initial capture is our only chance.
         const cached = buildReportContext(e);
-        if (cached) pendingReport = cached;
+        if (cached) {
+          pendingReport = cached;
+        }
 
         const reportSpan = e
           .composedPath()
@@ -112,16 +118,28 @@
   }
 
   function tagVariant(info) {
-    if (info.verdict) return info.verdict;
-    if (info.investigationStatus === "running") return "running";
-    if (info.count > 0) return "reported";
-    if (info.botBouncerStatus === "banned") return "bot";
-    if (info.userStatus === "suspended") return "bot";
+    if (info.verdict) {
+      return info.verdict;
+    }
+    if (info.investigationStatus === "running") {
+      return "running";
+    }
+    if (info.count > 0) {
+      return "reported";
+    }
+    if (info.botBouncerStatus === "banned") {
+      return "bot";
+    }
+    if (info.userStatus === "suspended") {
+      return "bot";
+    }
     return "reported";
   }
 
   function tagLabel(info, variant) {
-    if (variant === "running") return "Investigating";
+    if (variant === "running") {
+      return "Investigating";
+    }
     if (variant === "reported") {
       return info.count > 0
         ? `${info.count} report${info.count === 1 ? "" : "s"}`
@@ -171,12 +189,16 @@
     // Avatar-wrapping anchors have no visible text — just an image/icon.
     // Tagging them puts the pill in the wrong layout slot (often a column
     // flex container), so it wraps to its own line below the username row.
-    if (el.textContent && el.textContent.trim()) return false;
+    if (el.textContent && el.textContent.trim()) {
+      return false;
+    }
     return !!el.querySelector("img, svg, shreddit-avatar, faceplate-img");
   }
 
   function markUsers() {
-    if (!tagsLoaded) return;
+    if (!tagsLoaded) {
+      return;
+    }
     document
       .querySelectorAll(
         'a[href*="/user/"]:not([data-bon-marked]), a[href*="/u/"]:not([data-bon-marked])'
@@ -184,12 +206,20 @@
       .forEach((el) => {
         const href = el.getAttribute("href");
         const match = href.match(/\/(?:user|u)\/([^/?#]+)/i);
-        if (!match) return;
-        if (el.closest('[id^="profile-tab"]')) return;
+        if (!match) {
+          return;
+        }
+        if (el.closest('[id^="profile-tab"]')) {
+          return;
+        }
         el.dataset.bonMarked = "true";
-        if (isAvatarLink(el)) return;
+        if (isAvatarLink(el)) {
+          return;
+        }
         const info = userTags.get(match[1].toLowerCase());
-        if (!info) return;
+        if (!info) {
+          return;
+        }
         const key = match[1].toLowerCase();
         // Skip if a tag for this user already sits next to this link (Reddit
         // sometimes re-parents anchors, dropping the data-bon-marked flag).
@@ -227,7 +257,9 @@
       .forEach((el) => {
         const href = el.getAttribute("href");
         const match = href.match(/\/(?:user|u)\/([^/?#]+)/i);
-        if (!match || match[1].toLowerCase() !== key) return;
+        if (!match || match[1].toLowerCase() !== key) {
+          return;
+        }
         delete el.dataset.bonMarked;
       });
     markUsers();
@@ -247,7 +279,9 @@
     "click",
     (e) => {
       const tag = e.target?.closest?.(".bon-user-tag");
-      if (!tag) return;
+      if (!tag) {
+        return;
+      }
       e.preventDefault();
       e.stopPropagation();
       browser.runtime.sendMessage({ type: "open-popup" });
@@ -271,7 +305,9 @@
   const reportCache = new Map();
 
   function ensureProfilePanel(username) {
-    if (document.getElementById("bon-profile-panel")) return;
+    if (document.getElementById("bon-profile-panel")) {
+      return;
+    }
     if (reportCache.has(username)) {
       renderProfilePanel(username, reportCache.get(username));
     } else {
@@ -298,7 +334,9 @@
     // Not on a profile page — remove panel if present
     if (!profileMatch) {
       const existingPanel = document.getElementById("bon-profile-panel");
-      if (existingPanel) existingPanel.remove();
+      if (existingPanel) {
+        existingPanel.remove();
+      }
       return;
     }
 
@@ -309,11 +347,15 @@
       // If Reddit's reconciliation moved the panel inside a post/comment in
       // the user's feed below, treat it as missing and re-inject up top.
       const misplaced = isPanelMisplaced(existingPanel);
-      if (!misplaced && existingPanel.dataset.username === username) return;
+      if (!misplaced && existingPanel.dataset.username === username) {
+        return;
+      }
       existingPanel.remove();
     }
 
-    if (!findProfileH1()) return;
+    if (!findProfileH1()) {
+      return;
+    }
 
     ensureProfilePanel(username);
   }
@@ -324,7 +366,9 @@
     // re-render where the header h1 is briefly detached, we can grab a post
     // title h1 instead and anchor the panel inside that post.
     for (const h1 of document.querySelectorAll("h1")) {
-      if (h1.closest("shreddit-post, shreddit-comment, article")) continue;
+      if (h1.closest("shreddit-post, shreddit-comment, article")) {
+        continue;
+      }
       return h1;
     }
     return null;
@@ -342,7 +386,9 @@
     // Not on a post detail page — remove panel if present
     if (!postMatch) {
       const existingPanel = document.getElementById("bon-post-author-panel");
-      if (existingPanel) existingPanel.remove();
+      if (existingPanel) {
+        existingPanel.remove();
+      }
       return;
     }
 
@@ -359,17 +405,22 @@
     if (!postEl) {
       // Drop any stale panel sitting on a feed post we're navigating away from.
       const existingPanel = document.getElementById("bon-post-author-panel");
-      if (existingPanel) existingPanel.remove();
+      if (existingPanel) {
+        existingPanel.remove();
+      }
       return;
     }
     const username = postEl.getAttribute("author");
-    if (!username || username === "[deleted]" || username === "AutoModerator")
+    if (!username || username === "[deleted]" || username === "AutoModerator") {
       return;
+    }
 
     const existingPanel = document.getElementById("bon-post-author-panel");
     if (existingPanel) {
       const onCorrectPost = existingPanel.closest("shreddit-post") === postEl;
-      if (onCorrectPost && existingPanel.dataset.username === username) return;
+      if (onCorrectPost && existingPanel.dataset.username === username) {
+        return;
+      }
       existingPanel.remove();
     }
 
@@ -380,7 +431,9 @@
     const profileMatch = window.location.pathname.match(
       /^\/(?:user|u)\/([^/?#]+)/i
     );
-    if (!profileMatch || profileMatch[1] !== username) return;
+    if (!profileMatch || profileMatch[1] !== username) {
+      return;
+    }
     let report = null;
     try {
       const res = await browser.runtime.sendMessage({
@@ -400,7 +453,9 @@
 
   function renderProfilePanel(username, report) {
     const h1 = findProfileH1();
-    if (!h1) return;
+    if (!h1) {
+      return;
+    }
 
     const existing = document.getElementById("bon-profile-panel");
     const wasExpanded =
@@ -418,7 +473,9 @@
     }
     // Misplaced (e.g., Reddit reparented it inside a feed post) — drop the
     // stale node so the wrapper logic below re-anchors at the header.
-    if (existing) existing.remove();
+    if (existing) {
+      existing.remove();
+    }
 
     // Reddit's new profile UI wraps the header row (avatar + text column) in
     // a passthrough <div class="min-w-0 max-w-full overflow-x-clip"> whose
@@ -435,7 +492,9 @@
   }
 
   function ensurePostAuthorPanel(username, postEl) {
-    if (document.getElementById("bon-post-author-panel")) return;
+    if (document.getElementById("bon-post-author-panel")) {
+      return;
+    }
     if (reportCache.has(username)) {
       renderPostAuthorPanel(username, postEl, reportCache.get(username));
     } else {
@@ -447,7 +506,9 @@
     const postMatch = window.location.pathname.match(
       /^\/r\/[^/]+\/comments\/[^/]+/i
     );
-    if (!postMatch) return;
+    if (!postMatch) {
+      return;
+    }
     let report = null;
     try {
       const res = await browser.runtime.sendMessage({
@@ -469,7 +530,9 @@
     // postEl may have been detached by Reddit's SPA re-render; re-resolve it
     if (!postEl || !postEl.isConnected) {
       postEl = document.querySelector("shreddit-post");
-      if (!postEl) return;
+      if (!postEl) {
+        return;
+      }
     }
 
     const existing = document.getElementById("bon-post-author-panel");
@@ -492,11 +555,15 @@
       // here the fresh node falls into the unnamed slot and renders below
       // the post body.
       const slot = existing.getAttribute("slot");
-      if (slot) fresh.setAttribute("slot", slot);
+      if (slot) {
+        fresh.setAttribute("slot", slot);
+      }
       existing.replaceWith(fresh);
       return;
     }
-    if (existing) existing.remove();
+    if (existing) {
+      existing.remove();
+    }
 
     // shreddit-post uses named slots; the byline lives in slot="credit-bar".
     // Adding another child with the same slot name renders it at the slot's
@@ -570,11 +637,15 @@
     };
 
     header.addEventListener("click", (e) => {
-      if (e.target.closest("button, a")) return;
+      if (e.target.closest("button, a")) {
+        return;
+      }
       toggle();
     });
     header.addEventListener("keydown", (e) => {
-      if (e.target !== header) return;
+      if (e.target !== header) {
+        return;
+      }
       if (e.key === "Enter" || e.key === " ") {
         e.preventDefault();
         toggle();
@@ -582,7 +653,9 @@
     });
     if (preview) {
       preview.addEventListener("click", (e) => {
-        if (e.target.closest("button, a")) return;
+        if (e.target.closest("button, a")) {
+          return;
+        }
         toggle();
       });
     }
@@ -609,7 +682,9 @@
     const investigation = bonNormalizeInvestigation(report?.investigation);
     const hasFactors =
       Array.isArray(investigation?.factors) && investigation.factors.length > 0;
-    if (!investigation?.summary && !hasFactors) return null;
+    if (!investigation?.summary && !hasFactors) {
+      return null;
+    }
 
     const preview = document.createElement("div");
     preview.className = "bon-profile-panel__preview";
@@ -624,7 +699,9 @@
     }
     if (hasFactors) {
       const reasons = buildTopReasonsList(investigation.factors);
-      if (reasons) summaryCol.appendChild(reasons);
+      if (reasons) {
+        summaryCol.appendChild(reasons);
+      }
     }
     // Factor dot strip lives in the always-visible preview so the at-a-glance
     // signal map is readable without expanding the panel. Each dot carries a
@@ -653,8 +730,12 @@
       row.appendChild(personaBlock);
       preview.appendChild(row);
     } else {
-      if (summaryCol.childNodes.length) preview.appendChild(summaryCol);
-      if (personaBlock) preview.appendChild(personaBlock);
+      if (summaryCol.childNodes.length) {
+        preview.appendChild(summaryCol);
+      }
+      if (personaBlock) {
+        preview.appendChild(personaBlock);
+      }
     }
 
     return preview;
@@ -671,7 +752,9 @@
 
     if (persona.archetypes) {
       const radar = buildPersonaRadar(persona.archetypes);
-      if (radar) wrap.appendChild(radar);
+      if (radar) {
+        wrap.appendChild(radar);
+      }
     }
 
     const label = document.createElement("p");
@@ -703,12 +786,16 @@
   };
 
   function buildPersonaRadar(archetypes) {
-    if (!archetypes) return null;
+    if (!archetypes) {
+      return null;
+    }
     const svgns = "http://www.w3.org/2000/svg";
     const v = BON_PANEL_RADAR_VIEW;
     const axes = BON_ARCHETYPES;
     const N = axes.length;
-    if (N < 3) return null;
+    if (N < 3) {
+      return null;
+    }
 
     const step = (Math.PI * 2) / N;
     const angle = (i) => -Math.PI / 2 + i * step;
@@ -781,7 +868,9 @@
 
     for (let i = 0; i < N; i++) {
       const score = archetypes[axes[i].key] || 0;
-      if (score <= 0.05) continue;
+      if (score <= 0.05) {
+        continue;
+      }
       const p = vertex(i, score);
       const dot = document.createElementNS(svgns, "circle");
       dot.setAttribute("cx", p.x.toFixed(2));
@@ -798,11 +887,17 @@
       const cosθ = Math.cos(θ);
       const sinθ = Math.sin(θ);
       let anchor = "middle";
-      if (cosθ > 0.3) anchor = "start";
-      else if (cosθ < -0.3) anchor = "end";
+      if (cosθ > 0.3) {
+        anchor = "start";
+      } else if (cosθ < -0.3) {
+        anchor = "end";
+      }
       let dy = "0.35em";
-      if (sinθ > 0.4) dy = "0.85em";
-      else if (sinθ < -0.4) dy = "-0.1em";
+      if (sinθ > 0.4) {
+        dy = "0.85em";
+      } else if (sinθ < -0.4) {
+        dy = "-0.1em";
+      }
 
       const text = document.createElementNS(svgns, "text");
       text.setAttribute("x", lx.toFixed(2));
@@ -820,7 +915,9 @@
 
   function buildTopReasonsList(factors) {
     const top = bonTopReasons(factors, 3);
-    if (!top.length) return null;
+    if (!top.length) {
+      return null;
+    }
     const ul = document.createElement("ul");
     ul.className = "bon-profile-panel__reasons";
     for (const f of top) {
@@ -847,11 +944,15 @@
 
   function appendStatPills(container, report) {
     const verdictPill = buildVerdictPill(report?.investigation);
-    if (verdictPill) container.appendChild(verdictPill);
+    if (verdictPill) {
+      container.appendChild(verdictPill);
+    }
   }
 
   function buildVerdictPill(investigation) {
-    if (!investigation) return null;
+    if (!investigation) {
+      return null;
+    }
     const span = document.createElement("span");
     if (investigation.status === "running") {
       const stale = bonIsInvestigationStale(investigation);
@@ -869,7 +970,9 @@
       return span;
     }
     const norm = bonNormalizeInvestigation(investigation);
-    if (!norm.verdict) return null;
+    if (!norm.verdict) {
+      return null;
+    }
     span.className = `bon-stat-pill bon-stat-pill--verdict-${norm.verdict}`;
     span.textContent = `🤖 ${bonFormatVerdict(norm.verdict)}`;
     span.title = norm.summary || norm.verdict;
@@ -960,7 +1063,9 @@
     const byKey = new Map();
     if (Array.isArray(investigation?.factors)) {
       for (const f of investigation.factors) {
-        if (f?.key) byKey.set(f.key, f);
+        if (f?.key) {
+          byKey.set(f.key, f);
+        }
       }
     }
     const hasRun = investigation?.status === "done";
@@ -1030,7 +1135,9 @@
       const dotRect = dotEl.getBoundingClientRect();
       const cardWidth = cardEl.offsetWidth;
       const cardHeight = cardEl.offsetHeight;
-      if (!cardWidth || !cardHeight) return;
+      if (!cardWidth || !cardHeight) {
+        return;
+      }
       const vw = window.innerWidth;
       const vh = window.innerHeight;
       const margin = 8;
@@ -1040,7 +1147,9 @@
       left = Math.max(margin, Math.min(left, vw - margin - cardWidth));
 
       let top = dotRect.top - cardHeight - gap;
-      if (top < margin) top = dotRect.bottom + gap;
+      if (top < margin) {
+        top = dotRect.bottom + gap;
+      }
       top = Math.max(margin, Math.min(top, vh - margin - cardHeight));
 
       cardEl.style.left = `${left}px`;
@@ -1227,7 +1336,9 @@
 
     const sorted = [...history].sort((a, b) => (b.at || 0) - (a.at || 0));
     const visible = sorted.slice(0, 8);
-    for (const entry of visible) ul.appendChild(buildReportEntry(entry));
+    for (const entry of visible) {
+      ul.appendChild(buildReportEntry(entry));
+    }
     section.appendChild(ul);
 
     if (sorted.length > visible.length) {
@@ -1264,8 +1375,12 @@
     const prefix = [statusIcon, kindIcon].filter(Boolean).join(" ");
 
     const labelParts = [];
-    if (entry.subreddit) labelParts.push(entry.subreddit);
-    if (entry.postTitle) labelParts.push(entry.postTitle);
+    if (entry.subreddit) {
+      labelParts.push(entry.subreddit);
+    }
+    if (entry.postTitle) {
+      labelParts.push(entry.postTitle);
+    }
     const labelText =
       (prefix ? `${prefix} ` : "") + (labelParts.join(" · ") || "report");
 
@@ -1289,9 +1404,15 @@
   }
 
   function resolveReportUrl(permalink) {
-    if (!permalink) return null;
-    if (/^https?:\/\//i.test(permalink)) return permalink;
-    if (permalink.startsWith("/")) return `https://www.reddit.com${permalink}`;
+    if (!permalink) {
+      return null;
+    }
+    if (/^https?:\/\//i.test(permalink)) {
+      return permalink;
+    }
+    if (permalink.startsWith("/")) {
+      return `https://www.reddit.com${permalink}`;
+    }
     return `https://www.reddit.com/${permalink}`;
   }
 
@@ -1350,10 +1471,14 @@
         `https://www.reddit.com/user/${encodeURIComponent(username)}/about.json`,
         { credentials: "same-origin" }
       );
-      if (!res.ok) return;
+      if (!res.ok) {
+        return;
+      }
       const data = await res.json();
       const createdUtc = data?.data?.created_utc;
-      if (!createdUtc) return;
+      if (!createdUtc) {
+        return;
+      }
       browser.runtime.sendMessage({
         type: "update-user-created-at",
         username,
@@ -1367,7 +1492,9 @@
   injectPanel();
 
   browser.storage.onChanged.addListener((changes, area) => {
-    if (area !== "local" || !changes.reports) return;
+    if (area !== "local" || !changes.reports) {
+      return;
+    }
     loadUserTags();
     const profilePanel = document.getElementById("bon-profile-panel");
     if (profilePanel?.dataset.username) {
@@ -1391,7 +1518,9 @@
     const profileMatch = window.location.pathname.match(
       /^\/(?:user|u)\/([^/?#]+)/i
     );
-    if (!profileMatch) return;
+    if (!profileMatch) {
+      return;
+    }
     const username = profileMatch[1];
     const bodyText = document.body?.textContent || "";
 
@@ -1402,9 +1531,13 @@
       status = "deleted";
     }
 
-    if (!status) return;
+    if (!status) {
+      return;
+    }
     const key = `${username}#${status}`;
-    if (lastUserStatusReported === key) return;
+    if (lastUserStatusReported === key) {
+      return;
+    }
     lastUserStatusReported = key;
     browser.runtime.sendMessage({
       type: "update-user-status",
@@ -1414,8 +1547,12 @@
   }
 
   function reportPostStatus(permalink, status) {
-    if (!permalink || !status) return;
-    if (reportedPostPermalinks.has(permalink)) return;
+    if (!permalink || !status) {
+      return;
+    }
+    if (reportedPostPermalinks.has(permalink)) {
+      return;
+    }
     reportedPostPermalinks.add(permalink);
     console.log("[Bot or Not] post status detected", { permalink, status });
     browser.runtime.sendMessage({
@@ -1428,7 +1565,9 @@
   function detectPostStatuses() {
     document.querySelectorAll("shreddit-post").forEach((post) => {
       const permalink = post.getAttribute("permalink");
-      if (!permalink) return;
+      if (!permalink) {
+        return;
+      }
       const removedBy = post.getAttribute("removed-by-category");
       const author = post.getAttribute("author");
       let status = null;
@@ -1437,7 +1576,9 @@
       } else if (author === "[deleted]") {
         status = "deleted";
       }
-      if (status) reportPostStatus(permalink, status);
+      if (status) {
+        reportPostStatus(permalink, status);
+      }
     });
   }
 
@@ -1445,7 +1586,9 @@
     const m = window.location.pathname.match(
       /^(\/r\/[^/]+\/comments\/[^/]+\/[^/?#]+\/?)/i
     );
-    if (!m) return;
+    if (!m) {
+      return;
+    }
     const permalink = m[1].endsWith("/") ? m[1] : `${m[1]}/`;
     const bodyText = document.body?.textContent || "";
     let status = null;
@@ -1458,7 +1601,9 @@
     ) {
       status = "deleted";
     }
-    if (status) reportPostStatus(permalink, status);
+    if (status) {
+      reportPostStatus(permalink, status);
+    }
   }
 
   function detectBotBouncerStatuses() {
@@ -1468,11 +1613,15 @@
         post.getAttribute("subreddit-name") ||
         ""
       ).toLowerCase();
-      if (!/(^|\/)botbouncer$/.test(subreddit)) return;
+      if (!/(^|\/)botbouncer$/.test(subreddit)) {
+        return;
+      }
 
       const title = post.getAttribute("post-title") || "";
       const titleMatch = title.match(/^Overview for (\S+)/);
-      if (!titleMatch) return;
+      if (!titleMatch) {
+        return;
+      }
       const username = titleMatch[1];
 
       let flairText = (
@@ -1494,10 +1643,14 @@
       const status = ["banned", "pending", "organic"].find(
         (s) => s === flairText
       );
-      if (!status) return;
+      if (!status) {
+        return;
+      }
 
       const key = `${username.toLowerCase()}#${status}`;
-      if (reportedBotBouncerKeys.has(key)) return;
+      if (reportedBotBouncerKeys.has(key)) {
+        return;
+      }
       reportedBotBouncerKeys.add(key);
 
       browser.runtime.sendMessage({
@@ -1520,7 +1673,9 @@
   // Reset detection state on SPA navigation
   let lastUrl = window.location.href;
   function maybeResetForNavigation() {
-    if (window.location.href === lastUrl) return;
+    if (window.location.href === lastUrl) {
+      return;
+    }
     lastUrl = window.location.href;
     lastUserStatusReported = null;
     reportedPostPermalinks.clear();

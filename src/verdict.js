@@ -16,9 +16,13 @@
   const BON_STALE_INVESTIGATION_MS = 5 * 60 * 1000;
 
   function bonIsInvestigationStale(investigation) {
-    if (!investigation || investigation.status !== "running") return false;
+    if (!investigation || investigation.status !== "running") {
+      return false;
+    }
     const startedAt = investigation.startedAt || 0;
-    if (!startedAt) return true;
+    if (!startedAt) {
+      return true;
+    }
     return Date.now() - startedAt > BON_STALE_INVESTIGATION_MS;
   }
 
@@ -40,11 +44,17 @@
     const botProbability = 1 / (1 + Math.exp(-2 * evidenceSum));
 
     let verdict;
-    if (botProbability >= 0.85) verdict = "bot";
-    else if (botProbability >= 0.65) verdict = "likely-bot";
-    else if (botProbability > 0.35) verdict = "uncertain";
-    else if (botProbability > 0.15) verdict = "likely-human";
-    else verdict = "human";
+    if (botProbability >= 0.85) {
+      verdict = "bot";
+    } else if (botProbability >= 0.65) {
+      verdict = "likely-bot";
+    } else if (botProbability > 0.35) {
+      verdict = "uncertain";
+    } else if (botProbability > 0.15) {
+      verdict = "likely-human";
+    } else {
+      verdict = "human";
+    }
 
     const confidence = Math.max(botProbability, 1 - botProbability);
     return { verdict, confidence, botProbability, evidenceSum };
@@ -53,7 +63,9 @@
   // Returns a shallow copy of `investigation` with verdict/confidence overridden
   // from the factor math. Leaves status: "running" / "error" untouched.
   function bonNormalizeInvestigation(investigation) {
-    if (!investigation) return investigation;
+    if (!investigation) {
+      return investigation;
+    }
     if (
       investigation.status === "running" ||
       investigation.status === "error"
@@ -80,7 +92,9 @@
   // that carried real signal. Neutrals and low-confidence factors are filtered
   // out so the bullets don't include "no signal" filler.
   function bonTopReasons(factors, count = 3) {
-    if (!Array.isArray(factors)) return [];
+    if (!Array.isArray(factors)) {
+      return [];
+    }
     return factors
       .filter((f) => {
         const s = typeof f?.score === "number" ? f.score : 0;

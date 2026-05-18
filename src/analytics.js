@@ -15,7 +15,9 @@
   // ---------- Public ----------
 
   function bonRenderAnalytics(reports, container) {
-    if (!container) return;
+    if (!container) {
+      return;
+    }
     container.replaceChildren();
 
     const investigations = collectInvestigations(reports);
@@ -84,7 +86,9 @@
     const out = [];
     for (const r of reports || []) {
       const inv = r?.investigation;
-      if (!inv) continue;
+      if (!inv) {
+        continue;
+      }
 
       // Newer records keep a runs[] history; emit one analytics entry per
       // historical run so re-investigations don't collapse into a single row.
@@ -228,7 +232,9 @@
     let savings = 0;
     for (const m of Object.values(s.models)) {
       const p = bonLookupPricing(m.model);
-      if (!p) continue;
+      if (!p) {
+        continue;
+      }
       savings += (m.cacheRead * (p.input - p.cacheRead)) / 1_000_000;
     }
     s.cacheSavingsUsd = savings;
@@ -410,7 +416,9 @@
 
   function svgText(x, y, text, cls, anchor) {
     const t = svgEl("text", { x, y, class: cls || "bon-chart-tick" });
-    if (anchor) t.setAttribute("text-anchor", anchor);
+    if (anchor) {
+      t.setAttribute("text-anchor", anchor);
+    }
     t.textContent = text;
     return t;
   }
@@ -484,7 +492,9 @@
     // Highlight the most expensive single run
     let maxIdx = 0;
     for (let i = 1; i < points.length; i++) {
-      if (sorted[i].totalCost > sorted[maxIdx].totalCost) maxIdx = i;
+      if (sorted[i].totalCost > sorted[maxIdx].totalCost) {
+        maxIdx = i;
+      }
     }
     const mp = points[maxIdx];
     const my = PAD.t + ih - (mp.cum / maxCum) * ih;
@@ -621,7 +631,9 @@
     for (let i = 0; i < totalDays; i++) {
       const ts = startTs + i * MS_PER_DAY;
       const b = buckets.get(ts);
-      if (!b) continue;
+      if (!b) {
+        continue;
+      }
       const h = (b.count / maxCount) * ih;
       const x = PAD.l + i * barW + 1;
       const y = PAD.t + ih - h;
@@ -707,7 +719,9 @@
     const counts = new Array(buckets.length).fill(0);
     for (const d of durations) {
       let idx = buckets.findIndex((b) => d < b.max);
-      if (idx === -1) idx = buckets.length - 1;
+      if (idx === -1) {
+        idx = buckets.length - 1;
+      }
       counts[idx]++;
     }
     const maxCount = Math.max(1, ...counts);
@@ -776,7 +790,9 @@
       0.5
     );
     let medianBucket = buckets.findIndex((b) => medianMs < b.max);
-    if (medianBucket === -1) medianBucket = buckets.length - 1;
+    if (medianBucket === -1) {
+      medianBucket = buckets.length - 1;
+    }
     const medianX = PAD.l + medianBucket * barW + barW / 2;
     const medianLine = svgEl("line", {
       x1: medianX,
@@ -831,7 +847,9 @@
     let x = PAD;
     for (const seg of segments) {
       const w = (seg.value / total) * innerW;
-      if (w <= 0) continue;
+      if (w <= 0) {
+        continue;
+      }
       const rect = svgEl("rect", {
         x: x.toFixed(2),
         y: BAR_Y,
@@ -944,14 +962,18 @@
         byModel.set(key, row);
 
         if (typeof r.durationMs === "number") {
-          if (!durationsByModel.has(key)) durationsByModel.set(key, []);
+          if (!durationsByModel.has(key)) {
+            durationsByModel.set(key, []);
+          }
           durationsByModel.get(key).push(r.durationMs);
         }
       }
     }
 
     const rows = Array.from(byModel.values()).sort((a, b) => b.cost - a.cost);
-    if (!rows.length) return wrap;
+    if (!rows.length) {
+      return wrap;
+    }
 
     const table = document.createElement("table");
     table.className = "bon-analytics-table";
@@ -972,7 +994,9 @@
     ].forEach((c) => {
       const th = document.createElement("th");
       th.textContent = c.label;
-      if (c.align) th.style.textAlign = c.align;
+      if (c.align) {
+        th.style.textAlign = c.align;
+      }
       headRow.appendChild(th);
     });
     thead.appendChild(headRow);
@@ -1060,10 +1084,16 @@
       const meta = document.createElement("span");
       meta.className = "bon-analytics-top-meta";
       const metaBits = [];
-      if (r.verdict) metaBits.push(r.verdict.replace(/-/g, " "));
-      if (r.durationMs != null) metaBits.push(bonFmtDuration(r.durationMs));
+      if (r.verdict) {
+        metaBits.push(r.verdict.replace(/-/g, " "));
+      }
+      if (r.durationMs != null) {
+        metaBits.push(bonFmtDuration(r.durationMs));
+      }
       metaBits.push(`${r.calls.length} call${r.calls.length === 1 ? "" : "s"}`);
-      if (r.runAt) metaBits.push(new Date(r.runAt).toLocaleDateString());
+      if (r.runAt) {
+        metaBits.push(new Date(r.runAt).toLocaleDateString());
+      }
       meta.textContent = metaBits.join(" · ");
       li.appendChild(meta);
 
@@ -1229,7 +1259,9 @@
   }
 
   function formatVerdictCell(r) {
-    if (!r.verdict) return "—";
+    if (!r.verdict) {
+      return "—";
+    }
     const label = r.verdict.replace(/-/g, " ");
     if (typeof r.botProbability === "number") {
       return `${label} · ${bonFmtPercent(r.botProbability)} bot`;

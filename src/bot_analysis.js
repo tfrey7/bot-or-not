@@ -27,11 +27,14 @@ async function bonTimed(label, fn) {
 }
 
 async function bonLoadAnalysisPrompt() {
-  if (bonCachedPrompt) return bonCachedPrompt;
+  if (bonCachedPrompt) {
+    return bonCachedPrompt;
+  }
   const url = browser.runtime.getURL("src/bot_analysis.md");
   const res = await fetch(url);
-  if (!res.ok)
+  if (!res.ok) {
     throw new Error(`Failed to load bot_analysis.md (${res.status})`);
+  }
   bonCachedPrompt = await res.text();
   return bonCachedPrompt;
 }
@@ -68,7 +71,9 @@ async function bonFetchBotBouncerStatus(username) {
     const match = posts.find(
       (p) => (p.title || "").toLowerCase().trim() === target
     );
-    if (!match) return null;
+    if (!match) {
+      return null;
+    }
     const flair = (match.link_flair_text || "").toLowerCase().trim();
     if (flair === "banned" || flair === "pending" || flair === "organic") {
       return flair;
@@ -156,7 +161,9 @@ function bonSummarizeProfile(username, raw, extra = {}) {
   const removalCounts = { total: 0, by_category: {} };
   for (const item of [...posts, ...comments]) {
     const cat = item.removed_by_category;
-    if (!cat) continue;
+    if (!cat) {
+      continue;
+    }
     removalCounts.total++;
     removalCounts.by_category[cat] = (removalCounts.by_category[cat] || 0) + 1;
   }

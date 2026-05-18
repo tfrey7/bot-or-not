@@ -36,8 +36,12 @@
   }
 
   async function loadActivityIfStale(username, activityData) {
-    if (isActivityFresh(activityData)) return;
-    if (inflightActivity.has(username)) return;
+    if (isActivityFresh(activityData)) {
+      return;
+    }
+    if (inflightActivity.has(username)) {
+      return;
+    }
     inflightActivity.add(username);
     try {
       await browser.runtime.sendMessage({ type: "fetch-activity", username });
@@ -102,7 +106,9 @@
   const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
   browser.storage.onChanged.addListener((changes, area) => {
-    if (area === "local" && changes.reports) load();
+    if (area === "local" && changes.reports) {
+      load();
+    }
   });
 
   searchInput.addEventListener("input", render);
@@ -129,12 +135,20 @@
   });
   cancelBtn.addEventListener("click", closeConfirmModal);
   modal.addEventListener("click", (e) => {
-    if (e.target === modal) closeConfirmModal();
+    if (e.target === modal) {
+      closeConfirmModal();
+    }
   });
   document.addEventListener("keydown", (e) => {
-    if (e.key !== "Escape") return;
-    if (!modal.hidden) closeConfirmModal();
-    if (!settingsModal.hidden) settingsModal.hidden = true;
+    if (e.key !== "Escape") {
+      return;
+    }
+    if (!modal.hidden) {
+      closeConfirmModal();
+    }
+    if (!settingsModal.hidden) {
+      settingsModal.hidden = true;
+    }
   });
 
   settingsBtn.addEventListener("click", openSettings);
@@ -142,7 +156,9 @@
     settingsModal.hidden = true;
   });
   settingsModal.addEventListener("click", (e) => {
-    if (e.target === settingsModal) settingsModal.hidden = true;
+    if (e.target === settingsModal) {
+      settingsModal.hidden = true;
+    }
   });
   settingsSave.addEventListener("click", saveApiKey);
 
@@ -203,7 +219,9 @@
     }
   }
   confirmBtn.addEventListener("click", async () => {
-    if (!pendingConfirmAction) return;
+    if (!pendingConfirmAction) {
+      return;
+    }
     const action = pendingConfirmAction;
     confirmBtn.disabled = true;
     cancelBtn.disabled = true;
@@ -308,8 +326,12 @@
   // react to the search input or to every poll tick — only when the underlying
   // data actually changes.
   function renderAnalytics() {
-    if (!analyticsContainer) return;
-    if (typeof bonRenderAnalytics !== "function") return;
+    if (!analyticsContainer) {
+      return;
+    }
+    if (typeof bonRenderAnalytics !== "function") {
+      return;
+    }
     bonRenderAnalytics(allReports, analyticsContainer);
   }
 
@@ -319,7 +341,9 @@
     const durs = [];
     for (const r of allReports) {
       const inv = r.investigation;
-      if (!inv) continue;
+      if (!inv) {
+        continue;
+      }
       if (Array.isArray(inv.runs) && inv.runs.length > 0) {
         for (const run of inv.runs) {
           if (run.status === "done" && typeof run.durationMs === "number") {
@@ -330,7 +354,9 @@
         durs.push(inv.durationMs);
       }
     }
-    if (durs.length < 3) return null;
+    if (durs.length < 3) {
+      return null;
+    }
     durs.sort((a, b) => a - b);
     return durs[Math.floor(durs.length / 2)];
   }
@@ -340,7 +366,9 @@
   }
 
   function formatRunningCellText(elapsedSec, expectedMs) {
-    if (!expectedMs) return `Running… ${elapsedSec}s`;
+    if (!expectedMs) {
+      return `Running… ${elapsedSec}s`;
+    }
     return `Running… ${elapsedSec}s / ~${formatExpectedSec(expectedMs)}s`;
   }
 
@@ -357,7 +385,9 @@
   }
 
   function applyProgressVisual(btn, elapsedMs, expectedMs) {
-    if (!expectedMs) return;
+    if (!expectedMs) {
+      return;
+    }
     const pct = Math.min(100, (elapsedMs / expectedMs) * 100);
     btn.style.setProperty("--bon-progress", `${pct.toFixed(1)}%`);
     btn.classList.toggle("bon-progress--overtime", elapsedMs > expectedMs);
@@ -368,7 +398,9 @@
     const query = searchInput.value.trim().toLowerCase();
 
     const filtered = allReports.filter((r) => {
-      if (!query) return true;
+      if (!query) {
+        return true;
+      }
       const haystack = [
         r.username,
         ...(r.history || []).flatMap((h) => [h.subreddit, h.postTitle]),
@@ -400,7 +432,9 @@
     for (const report of filtered) {
       const { summary, detailRows } = renderReportRow(report);
       tbody.appendChild(summary);
-      for (const row of detailRows) tbody.appendChild(row);
+      for (const row of detailRows) {
+        tbody.appendChild(row);
+      }
     }
 
     ensurePolling();
@@ -408,7 +442,9 @@
 
   function sanitizeUsernameQuery(raw) {
     const trimmed = (raw || "").trim().replace(/^\/?u\//i, "");
-    if (!/^[A-Za-z0-9_-]{3,20}$/.test(trimmed)) return null;
+    if (!/^[A-Za-z0-9_-]{3,20}$/.test(trimmed)) {
+      return null;
+    }
     return trimmed;
   }
 
@@ -424,9 +460,13 @@
     }
     emptyEl.appendChild(text);
 
-    if (!query) return;
+    if (!query) {
+      return;
+    }
     const username = sanitizeUsernameQuery(query);
-    if (!username) return;
+    if (!username) {
+      return;
+    }
 
     const btn = document.createElement("button");
     btn.type = "button";
@@ -496,22 +536,36 @@
   }
 
   function hasStructuralChange(prev, next) {
-    if (prev.length !== next.length) return true;
+    if (prev.length !== next.length) {
+      return true;
+    }
     const prevByUser = new Map(prev.map((r) => [r.username, r]));
     for (const r of next) {
       const p = prevByUser.get(r.username);
-      if (!p) return true;
+      if (!p) {
+        return true;
+      }
       const ps = p.investigation?.status;
       const ns = r.investigation?.status;
-      if (ps !== ns) return true;
-      if (p.investigation?.verdict !== r.investigation?.verdict) return true;
-      if (p.count !== r.count) return true;
-      if (p.lastReportedAt !== r.lastReportedAt) return true;
+      if (ps !== ns) {
+        return true;
+      }
+      if (p.investigation?.verdict !== r.investigation?.verdict) {
+        return true;
+      }
+      if (p.count !== r.count) {
+        return true;
+      }
+      if (p.lastReportedAt !== r.lastReportedAt) {
+        return true;
+      }
       const pStale =
         ps === "running" && bonIsInvestigationStale(p.investigation);
       const nStale =
         ns === "running" && bonIsInvestigationStale(r.investigation);
-      if (pStale !== nStale) return true;
+      if (pStale !== nStale) {
+        return true;
+      }
     }
     return false;
   }
@@ -522,9 +576,15 @@
     expectedDurationMs = computeExpectedDurationMs();
     for (const r of allReports) {
       const inv = r.investigation;
-      if (inv?.status !== "running") continue;
-      if (bonIsInvestigationStale(inv)) continue;
-      if (!inv.startedAt) continue;
+      if (inv?.status !== "running") {
+        continue;
+      }
+      if (bonIsInvestigationStale(inv)) {
+        continue;
+      }
+      if (!inv.startedAt) {
+        continue;
+      }
       const elapsedMs = Math.max(0, Date.now() - inv.startedAt);
       const elapsedSec = Math.round(elapsedMs / 1000);
       const cells = tbody.querySelectorAll("[data-bon-running-cell]");
@@ -538,7 +598,9 @@
       }
       const btns = tbody.querySelectorAll("[data-bon-running-btn]");
       for (const btn of btns) {
-        if (btn.dataset.bonRunningBtn !== r.username) continue;
+        if (btn.dataset.bonRunningBtn !== r.username) {
+          continue;
+        }
         btn.title = formatRunningTitle(elapsedSec, expectedDurationMs);
         if (btn.classList.contains("bon-progress") && expectedDurationMs) {
           applyProgressVisual(btn, elapsedMs, expectedDurationMs);
@@ -570,11 +632,21 @@
     return (a, b) => {
       const av = sortValue(a, key);
       const bv = sortValue(b, key);
-      if (av == null && bv == null) return 0;
-      if (av == null) return 1;
-      if (bv == null) return -1;
-      if (av < bv) return -1 * mult;
-      if (av > bv) return 1 * mult;
+      if (av == null && bv == null) {
+        return 0;
+      }
+      if (av == null) {
+        return 1;
+      }
+      if (bv == null) {
+        return -1;
+      }
+      if (av < bv) {
+        return -1 * mult;
+      }
+      if (av > bv) {
+        return 1 * mult;
+      }
       const aTime = a.lastReportedAt || 0;
       const bTime = b.lastReportedAt || 0;
       return bTime - aTime;
@@ -582,16 +654,24 @@
   }
 
   function sortValue(r, key) {
-    if (key === "username") return r.username.toLowerCase();
-    if (key === "count") return r.count || 0;
-    if (key === "lastReportedAt") return r.lastReportedAt || 0;
+    if (key === "username") {
+      return r.username.toLowerCase();
+    }
+    if (key === "count") {
+      return r.count || 0;
+    }
+    if (key === "lastReportedAt") {
+      return r.lastReportedAt || 0;
+    }
     if (key === "verdict") {
       const v = r.investigation?.verdict;
       return VERDICT_RANK[v] ?? 5;
     }
     if (key === "investigatedAt") {
       const inv = r.investigation;
-      if (!inv) return 0;
+      if (!inv) {
+        return 0;
+      }
       // While running, runAt isn't written yet — fall back to startedAt so a
       // freshly-kicked-off investigation sorts to the top instead of the bottom.
       return inv.runAt || inv.startedAt || 0;
@@ -600,7 +680,9 @@
       // Sort by region label so same-country rows cluster; rows with no
       // inferred region sink to the bottom.
       const region = computeRegionForReport(r);
-      if (!region) return "￿";
+      if (!region) {
+        return "￿";
+      }
       if (region.kind === "deterministic") {
         return (BON_REGION_INFO[region.region]?.label || region.region) + "_a";
       }
@@ -654,7 +736,9 @@
         const isExpanded = expandBtn.getAttribute("aria-expanded") === "true";
         const next = !isExpanded;
         expandBtn.setAttribute("aria-expanded", String(next));
-        for (const row of detailRows) row.hidden = !next;
+        for (const row of detailRows) {
+          row.hidden = !next;
+        }
         if (next) {
           expanded.add(username);
           if (
@@ -832,14 +916,20 @@
     const kindCell = document.createElement("td");
     const leadIcon =
       statusIcon(entry.status, "post") || kindIconFor(entry.kind);
-    if (leadIcon) kindCell.appendChild(leadIcon);
+    if (leadIcon) {
+      kindCell.appendChild(leadIcon);
+    }
     tr.appendChild(kindCell);
 
     const labelCell = document.createElement("td");
     const targetUrl = resolveUrl(entry.permalink) || entry.sourceUrl;
     const labelParts = [];
-    if (entry.subreddit) labelParts.push(entry.subreddit);
-    if (entry.postTitle) labelParts.push(entry.postTitle);
+    if (entry.subreddit) {
+      labelParts.push(entry.subreddit);
+    }
+    if (entry.postTitle) {
+      labelParts.push(entry.postTitle);
+    }
     const label = labelParts.join(" · ") || targetUrl || "report";
     if (targetUrl) {
       const a = document.createElement("a");
@@ -859,7 +949,9 @@
   }
 
   function verdictBadge(rawInvestigation) {
-    if (!rawInvestigation) return null;
+    if (!rawInvestigation) {
+      return null;
+    }
     if (rawInvestigation.status === "running") {
       const stale = bonIsInvestigationStale(rawInvestigation);
       const span = document.createElement("span");
@@ -878,7 +970,9 @@
       return span;
     }
     const investigation = bonNormalizeInvestigation(rawInvestigation);
-    if (!investigation.verdict) return null;
+    if (!investigation.verdict) {
+      return null;
+    }
     const span = document.createElement("span");
     span.className = `bon-verdict-badge bon-verdict-badge--${investigation.verdict}`;
     span.textContent = bonFormatVerdict(investigation.verdict);
@@ -969,9 +1063,11 @@
       };
       const badge = document.createElement("span");
       let tzClass = "";
-      if (region.tzMatch === true) tzClass = " bon-region-badge--tz-match";
-      else if (region.tzMatch === false)
+      if (region.tzMatch === true) {
+        tzClass = " bon-region-badge--tz-match";
+      } else if (region.tzMatch === false) {
         tzClass = " bon-region-badge--tz-mismatch";
+      }
       badge.className = `bon-region-badge${tzClass}`;
 
       const flag = document.createElement("span");
@@ -1017,7 +1113,9 @@
     const factorsByKey = new Map();
     if (Array.isArray(investigation?.factors)) {
       for (const f of investigation.factors) {
-        if (f?.key) factorsByKey.set(f.key, f);
+        if (f?.key) {
+          factorsByKey.set(f.key, f);
+        }
       }
     }
     // Treat "missing" specially only when the investigation actually ran
@@ -1094,7 +1192,9 @@
       const dotRect = dotEl.getBoundingClientRect();
       const cardWidth = cardEl.offsetWidth;
       const cardHeight = cardEl.offsetHeight;
-      if (!cardWidth || !cardHeight) return;
+      if (!cardWidth || !cardHeight) {
+        return;
+      }
       const vw = window.innerWidth;
       const vh = window.innerHeight;
       const margin = 8;
@@ -1104,7 +1204,9 @@
       left = Math.max(margin, Math.min(left, vw - margin - cardWidth));
 
       let top = dotRect.top - cardHeight - gap;
-      if (top < margin) top = dotRect.bottom + gap;
+      if (top < margin) {
+        top = dotRect.bottom + gap;
+      }
       top = Math.max(margin, Math.min(top, vh - margin - cardHeight));
 
       cardEl.style.left = `${left}px`;
@@ -1204,7 +1306,9 @@
 
   function buildTopReasonsList(factors) {
     const top = bonTopReasons(factors, 3);
-    if (!top.length) return null;
+    if (!top.length) {
+      return null;
+    }
     const ul = document.createElement("ul");
     ul.className = "bon-top-reasons";
     for (const f of top) {
@@ -1393,7 +1497,9 @@
 
     if (Array.isArray(investigation.factors) && investigation.factors.length) {
       const reasons = buildTopReasonsList(investigation.factors);
-      if (reasons) summaryCol.appendChild(reasons);
+      if (reasons) {
+        summaryCol.appendChild(reasons);
+      }
     }
 
     const personaBlock = renderPersonaBlock(investigation.persona);
@@ -1405,8 +1511,12 @@
       row.appendChild(personaBlock);
       wrap.appendChild(row);
     } else {
-      if (summaryCol.childNodes.length) wrap.appendChild(summaryCol);
-      if (personaBlock) wrap.appendChild(personaBlock);
+      if (summaryCol.childNodes.length) {
+        wrap.appendChild(summaryCol);
+      }
+      if (personaBlock) {
+        wrap.appendChild(personaBlock);
+      }
     }
 
     const meta = document.createElement("p");
@@ -1417,7 +1527,9 @@
         `overall confidence ${Math.round(investigation.confidence * 100)}%`
       );
     }
-    if (investigation.model) metaParts.push(investigation.model);
+    if (investigation.model) {
+      metaParts.push(investigation.model);
+    }
     if (investigation.runAt) {
       const ts = new Date(investigation.runAt).toLocaleString();
       metaParts.push(`run ${ts}`);
@@ -1466,7 +1578,9 @@
   // data at all. Legacy investigations stored before the radar (no
   // `archetypes`) still render — just the label + reasoning, no chart.
   function renderPersonaBlock(persona) {
-    if (!persona || !persona.label) return null;
+    if (!persona || !persona.label) {
+      return null;
+    }
 
     const block = document.createElement("aside");
     block.className = `bon-persona bon-persona--${persona.label}`;
@@ -1478,7 +1592,9 @@
 
     if (persona.archetypes) {
       const radar = renderPersonaRadar(persona.archetypes);
-      if (radar) block.appendChild(radar);
+      if (radar) {
+        block.appendChild(radar);
+      }
     }
 
     const labelText =
@@ -1503,7 +1619,9 @@
   }
 
   function renderPersonaRadar(archetypes) {
-    if (!archetypes) return null;
+    if (!archetypes) {
+      return null;
+    }
     const svgns = "http://www.w3.org/2000/svg";
     // Vertices are laid out starting at top (12 o'clock) and going clockwise,
     // one per BON_ARCHETYPES entry — chart grows if a new archetype is added.
@@ -1516,7 +1634,9 @@
     };
     const axes = BON_ARCHETYPES;
     const N = axes.length;
-    if (N < 3) return null;
+    if (N < 3) {
+      return null;
+    }
 
     const step = (Math.PI * 2) / N;
     const angle = (i) => -Math.PI / 2 + i * step;
@@ -1594,7 +1714,9 @@
     // quiet when most axes are near zero.
     for (let i = 0; i < N; i++) {
       const score = archetypes[axes[i].key] || 0;
-      if (score <= 0.05) continue;
+      if (score <= 0.05) {
+        continue;
+      }
       const p = vertex(i, score);
       const dot = document.createElementNS(svgns, "circle");
       dot.setAttribute("cx", p.x.toFixed(2));
@@ -1613,11 +1735,17 @@
       const cosθ = Math.cos(θ);
       const sinθ = Math.sin(θ);
       let anchor = "middle";
-      if (cosθ > 0.3) anchor = "start";
-      else if (cosθ < -0.3) anchor = "end";
+      if (cosθ > 0.3) {
+        anchor = "start";
+      } else if (cosθ < -0.3) {
+        anchor = "end";
+      }
       let dy = "0.35em";
-      if (sinθ > 0.4) dy = "0.85em";
-      else if (sinθ < -0.4) dy = "-0.1em";
+      if (sinθ > 0.4) {
+        dy = "0.85em";
+      } else if (sinθ < -0.4) {
+        dy = "-0.1em";
+      }
 
       const text = document.createElementNS(svgns, "text");
       text.setAttribute("x", lx.toFixed(2));
@@ -1669,8 +1797,12 @@
   }
 
   function factorLabel(f) {
-    if (f.key && FACTOR_LABELS[f.key]) return FACTOR_LABELS[f.key];
-    if (f.name) return f.name.replace(/_/g, " ");
+    if (f.key && FACTOR_LABELS[f.key]) {
+      return FACTOR_LABELS[f.key];
+    }
+    if (f.name) {
+      return f.name.replace(/_/g, " ");
+    }
     return f.key || "Factor";
   }
 
@@ -1776,7 +1908,9 @@
   }
 
   function kindIconFor(kind) {
-    if (!kind) return null;
+    if (!kind) {
+      return null;
+    }
     const span = document.createElement("span");
     span.className = `bon-kind-icon bon-kind-icon--${kind}`;
     if (kind === "post") {
@@ -1792,7 +1926,9 @@
   }
 
   function statusIcon(status, scope) {
-    if (!status) return null;
+    if (!status) {
+      return null;
+    }
     const span = document.createElement("span");
     span.className = `bon-status-icon bon-status-icon--${status}`;
     if (status === "suspended") {
@@ -1814,9 +1950,15 @@
   }
 
   function resolveUrl(permalink) {
-    if (!permalink) return null;
-    if (/^https?:\/\//i.test(permalink)) return permalink;
-    if (permalink.startsWith("/")) return `https://www.reddit.com${permalink}`;
+    if (!permalink) {
+      return null;
+    }
+    if (/^https?:\/\//i.test(permalink)) {
+      return permalink;
+    }
+    if (permalink.startsWith("/")) {
+      return `https://www.reddit.com${permalink}`;
+    }
     return `https://www.reddit.com/${permalink}`;
   }
 
@@ -1879,7 +2021,9 @@
     }
 
     const banner = renderApiLimitBanner(activityData);
-    if (banner) wrap.appendChild(banner);
+    if (banner) {
+      wrap.appendChild(banner);
+    }
 
     const meta = document.createElement("p");
     meta.className = "bon-heatmap-row";
@@ -1936,14 +2080,20 @@
 
   function renderApiLimitBanner(activityData) {
     const { postsLimited, commentsLimited } = activityData;
-    if (!postsLimited && !commentsLimited) return null;
+    if (!postsLimited && !commentsLimited) {
+      return null;
+    }
 
     const earliestVisible = computeEarliestFullyVisible(activityData);
     const div = document.createElement("div");
     div.className = "bon-heatmap-banner";
     const limitedKinds = [];
-    if (postsLimited) limitedKinds.push("posts");
-    if (commentsLimited) limitedKinds.push("comments");
+    if (postsLimited) {
+      limitedKinds.push("posts");
+    }
+    if (commentsLimited) {
+      limitedKinds.push("comments");
+    }
     const limitedText = limitedKinds.join(" and ");
     const dateText = earliestVisible
       ? new Date(earliestVisible).toLocaleDateString()
@@ -1960,9 +2110,15 @@
     const { postsLimited, commentsLimited, earliestPostAt, earliestCommentAt } =
       activityData;
     const bounds = [];
-    if (postsLimited && earliestPostAt) bounds.push(earliestPostAt);
-    if (commentsLimited && earliestCommentAt) bounds.push(earliestCommentAt);
-    if (bounds.length === 0) return null;
+    if (postsLimited && earliestPostAt) {
+      bounds.push(earliestPostAt);
+    }
+    if (commentsLimited && earliestCommentAt) {
+      bounds.push(earliestCommentAt);
+    }
+    if (bounds.length === 0) {
+      return null;
+    }
     return Math.max(...bounds);
   }
 
@@ -2071,7 +2227,9 @@
     for (let i = 0; i <= 5; i++) {
       const cell = document.createElement("span");
       cell.className = "bon-heatmap-legend-cell";
-      if (i > 0) cell.classList.add(`bon-heatmap-cell--lvl${i}`);
+      if (i > 0) {
+        cell.classList.add(`bon-heatmap-cell--lvl${i}`);
+      }
       legend.appendChild(cell);
     }
     legend.appendChild(document.createTextNode("More"));
@@ -2148,7 +2306,9 @@
     }
 
     const utcCounts = new Array(24).fill(0);
-    for (const t of timestamps) utcCounts[new Date(t).getUTCHours()]++;
+    for (const t of timestamps) {
+      utcCounts[new Date(t).getUTCHours()]++;
+    }
 
     const WINDOW = 6;
     let minSum = Infinity;
@@ -2156,12 +2316,16 @@
     let minStart = 0;
     for (let start = 0; start < 24; start++) {
       let sum = 0;
-      for (let i = 0; i < WINDOW; i++) sum += utcCounts[(start + i) % 24];
+      for (let i = 0; i < WINDOW; i++) {
+        sum += utcCounts[(start + i) % 24];
+      }
       if (sum < minSum) {
         minSum = sum;
         minStart = start;
       }
-      if (sum > maxSum) maxSum = sum;
+      if (sum > maxSum) {
+        maxSum = sum;
+      }
     }
 
     const total = utcCounts.reduce((a, b) => a + b, 0);
@@ -2174,8 +2338,12 @@
 
     const sleepMidUtc = (minStart + WINDOW / 2) % 24;
     let offset = 3 - sleepMidUtc;
-    if (offset > 12) offset -= 24;
-    if (offset <= -12) offset += 24;
+    if (offset > 12) {
+      offset -= 24;
+    }
+    if (offset <= -12) {
+      offset += 24;
+    }
     const rounded = Math.round(offset);
     return {
       kind: "inferred",
@@ -2322,7 +2490,9 @@
         cell.className = "bon-hour-cell";
         const c = counts[d * 24 + h];
         const lvl = bonBucketLevel(c);
-        if (lvl > 0) cell.classList.add(`bon-heatmap-cell--lvl${lvl}`);
+        if (lvl > 0) {
+          cell.classList.add(`bon-heatmap-cell--lvl${lvl}`);
+        }
         cell.title = `${DAY_NAMES[d]} ${String(h).padStart(2, "0")}:00 — ${c} item${c === 1 ? "" : "s"}`;
         grid.appendChild(cell);
       }

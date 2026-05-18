@@ -395,19 +395,27 @@ function bonNormalizeSubName(s) {
 //   { region, count, totalFlagged, share, hits, runnerUp }
 // where hits is the per-sub breakdown for the top region, sorted.
 function bonInferRegionFromSubreddits(subredditCounts) {
-  if (!subredditCounts) return null;
+  if (!subredditCounts) {
+    return null;
+  }
   const totals = Object.create(null);
   const hitsByRegion = Object.create(null);
   let totalFlagged = 0;
   for (const [sub, count] of Object.entries(subredditCounts)) {
-    if (!count) continue;
+    if (!count) {
+      continue;
+    }
     const region = BON_REGION_SUBS[bonNormalizeSubName(sub)];
-    if (!region) continue;
+    if (!region) {
+      continue;
+    }
     totals[region] = (totals[region] || 0) + count;
     (hitsByRegion[region] = hitsByRegion[region] || []).push({ sub, count });
     totalFlagged += count;
   }
-  if (totalFlagged === 0) return null;
+  if (totalFlagged === 0) {
+    return null;
+  }
   const ranked = Object.entries(totals).sort((a, b) => b[1] - a[1]);
   const [topRegion, topCount] = ranked[0];
   const runnerUp = ranked[1]
@@ -508,7 +516,9 @@ var BON_LANGUAGE_MARKERS = {
 };
 
 function bonDetectScripts(text) {
-  if (!text) return {};
+  if (!text) {
+    return {};
+  }
   const counts = {};
   for (let i = 0; i < text.length; ) {
     const cp = text.codePointAt(i);
@@ -524,7 +534,9 @@ function bonDetectScripts(text) {
 }
 
 function bonDetectLanguageMarkers(text) {
-  if (!text) return {};
+  if (!text) {
+    return {};
+  }
   const counts = {};
   for (const [name, def] of Object.entries(BON_LANGUAGE_MARKERS)) {
     const matches = text.match(def.pattern);
@@ -545,13 +557,19 @@ function bonScanTextSignals(text) {
 }
 
 function bonInferRegionFromScripts(scriptCounts) {
-  if (!scriptCounts) return null;
+  if (!scriptCounts) {
+    return null;
+  }
   const votes = {};
   const hits = [];
   for (const [name, count] of Object.entries(scriptCounts)) {
-    if (!count) continue;
+    if (!count) {
+      continue;
+    }
     const def = BON_SCRIPT_RANGES.find((r) => r.name === name);
-    if (!def) continue;
+    if (!def) {
+      continue;
+    }
     hits.push({ script: name, count, regions: def.regions });
     // Split votes across plausible regions for ambiguous scripts.
     const share = count / def.regions.length;
@@ -559,19 +577,27 @@ function bonInferRegionFromScripts(scriptCounts) {
       votes[region] = (votes[region] || 0) + share;
     }
   }
-  if (Object.keys(votes).length === 0) return null;
+  if (Object.keys(votes).length === 0) {
+    return null;
+  }
   const ranked = Object.entries(votes).sort((a, b) => b[1] - a[1]);
   return { region: ranked[0][0], score: ranked[0][1], hits };
 }
 
 function bonInferRegionFromLanguage(languageCounts) {
-  if (!languageCounts) return null;
+  if (!languageCounts) {
+    return null;
+  }
   const votes = {};
   const hits = [];
   for (const [name, count] of Object.entries(languageCounts)) {
-    if (!count) continue;
+    if (!count) {
+      continue;
+    }
     const def = BON_LANGUAGE_MARKERS[name];
-    if (!def) continue;
+    if (!def) {
+      continue;
+    }
     hits.push({
       language: name,
       label: def.label,
@@ -583,7 +609,9 @@ function bonInferRegionFromLanguage(languageCounts) {
       votes[region] = (votes[region] || 0) + share;
     }
   }
-  if (Object.keys(votes).length === 0) return null;
+  if (Object.keys(votes).length === 0) {
+    return null;
+  }
   const ranked = Object.entries(votes).sort((a, b) => b[1] - a[1]);
   return { region: ranked[0][0], score: ranked[0][1], hits };
 }
@@ -591,43 +619,95 @@ function bonInferRegionFromLanguage(languageCounts) {
 // Coarse UTC-offset → region-band label for the inferred-timezone strip.
 // Returns "" for offsets outside the commonly-populated bands.
 function bonRegionForOffset(offset) {
-  if (offset === 0) return "UK, Portugal, West Africa";
-  if (offset === 1) return "Western/Central Europe";
-  if (offset === 2) return "Eastern Europe, South Africa";
-  if (offset === 3) return "Moscow, Eastern Europe, East Africa";
-  if (offset === 4) return "Gulf, Caucasus";
-  if (offset === 5) return "Pakistan, West Asia";
-  if (offset === 6) return "India, Bangladesh";
-  if (offset === 7) return "Thailand, Vietnam, Indonesia";
-  if (offset === 8) return "China, Singapore, Philippines";
-  if (offset === 9) return "Japan, Korea";
-  if (offset === 10) return "Eastern Australia";
-  if (offset === 11) return "Solomon Islands";
-  if (offset === 12) return "New Zealand";
-  if (offset === -1) return "Azores, Cape Verde";
-  if (offset === -2) return "Mid-Atlantic";
-  if (offset === -3) return "Brazil, Argentina";
-  if (offset === -4) return "Atlantic, Eastern Caribbean";
-  if (offset === -5) return "US Eastern, Colombia, Peru";
-  if (offset === -6) return "US Central, Mexico";
-  if (offset === -7) return "US Mountain";
-  if (offset === -8) return "US Pacific";
-  if (offset === -9) return "Alaska";
-  if (offset === -10) return "Hawaii";
+  if (offset === 0) {
+    return "UK, Portugal, West Africa";
+  }
+  if (offset === 1) {
+    return "Western/Central Europe";
+  }
+  if (offset === 2) {
+    return "Eastern Europe, South Africa";
+  }
+  if (offset === 3) {
+    return "Moscow, Eastern Europe, East Africa";
+  }
+  if (offset === 4) {
+    return "Gulf, Caucasus";
+  }
+  if (offset === 5) {
+    return "Pakistan, West Asia";
+  }
+  if (offset === 6) {
+    return "India, Bangladesh";
+  }
+  if (offset === 7) {
+    return "Thailand, Vietnam, Indonesia";
+  }
+  if (offset === 8) {
+    return "China, Singapore, Philippines";
+  }
+  if (offset === 9) {
+    return "Japan, Korea";
+  }
+  if (offset === 10) {
+    return "Eastern Australia";
+  }
+  if (offset === 11) {
+    return "Solomon Islands";
+  }
+  if (offset === 12) {
+    return "New Zealand";
+  }
+  if (offset === -1) {
+    return "Azores, Cape Verde";
+  }
+  if (offset === -2) {
+    return "Mid-Atlantic";
+  }
+  if (offset === -3) {
+    return "Brazil, Argentina";
+  }
+  if (offset === -4) {
+    return "Atlantic, Eastern Caribbean";
+  }
+  if (offset === -5) {
+    return "US Eastern, Colombia, Peru";
+  }
+  if (offset === -6) {
+    return "US Central, Mexico";
+  }
+  if (offset === -7) {
+    return "US Mountain";
+  }
+  if (offset === -8) {
+    return "US Pacific";
+  }
+  if (offset === -9) {
+    return "Alaska";
+  }
+  if (offset === -10) {
+    return "Hawaii";
+  }
   return "";
 }
 
 function bonInferRegionFromModerated(moderatedSubs) {
-  if (!Array.isArray(moderatedSubs) || moderatedSubs.length === 0) return null;
+  if (!Array.isArray(moderatedSubs) || moderatedSubs.length === 0) {
+    return null;
+  }
   const votes = {};
   const hits = [];
   for (const sub of moderatedSubs) {
     const region = BON_REGION_SUBS[bonNormalizeSubName(sub)];
-    if (!region) continue;
+    if (!region) {
+      continue;
+    }
     votes[region] = (votes[region] || 0) + 1;
     hits.push({ sub, region });
   }
-  if (Object.keys(votes).length === 0) return null;
+  if (Object.keys(votes).length === 0) {
+    return null;
+  }
   const ranked = Object.entries(votes).sort((a, b) => b[1] - a[1]);
   return { region: ranked[0][0], score: ranked[0][1], hits };
 }
@@ -685,7 +765,9 @@ function bonInferRegion(activityData, tzInferred) {
   if (tzOffset != null) {
     for (const region of Object.keys(scores)) {
       const offsets = BON_REGION_INFO[region]?.utcOffsets || [];
-      if (offsets.includes(tzOffset)) scores[region] += 1;
+      if (offsets.includes(tzOffset)) {
+        scores[region] += 1;
+      }
     }
   }
 

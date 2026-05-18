@@ -3,7 +3,9 @@
 (function () {
   // Turns "likely-bot" into "Likely bot" for display.
   function bonFormatVerdict(verdict) {
-    if (!verdict) return "";
+    if (!verdict) {
+      return "";
+    }
     const spaced = verdict.replace(/-/g, " ");
     return spaced.charAt(0).toUpperCase() + spaced.slice(1);
   }

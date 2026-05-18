@@ -12,9 +12,14 @@ export default [
         MutationObserver: 'readonly',
       },
     },
-    rules: {
-      curly: 'error',
-    },
   },
   prettier,
+  {
+    // After prettier — eslint-config-prettier disables `curly` as a "special
+    // rule," so re-enable it explicitly with the "all" option (the only
+    // setting prettier considers compatible).
+    rules: {
+      curly: ['error', 'all'],
+    },
+  },
 ];
