@@ -12,7 +12,8 @@
     "scripts": [
       "src/factors.js",
       "src/verdict.js",
-      "src/regions.js",
+      "src/features/regions/data.js",
+      "src/features/regions/index.js",
       "src/utils/format_text.js",
       "src/utils/json.js",
       "src/utils/persona.js",

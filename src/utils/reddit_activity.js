@@ -1,6 +1,6 @@
 // Pure transform: raw Reddit JSON → activity summary used by the analyzer
-// and the heatmap. Depends on bonScanTextSignals (regions.js) — load
-// regions.js before this file.
+// and the heatmap. Depends on bonScanTextSignals from the regions feature —
+// load src/features/regions/* before this file.
 
 (function () {
   const BON_REDDIT_FETCH_LIMIT = 100;
@@ -33,7 +33,7 @@
     }
     // Concatenate all visible user-authored text and scan for region signals
     // (non-Latin scripts, dialect/transliteration markers). The scanner lives
-    // in regions.js so the script/marker tables stay in one place.
+    // in features/regions so the script/marker tables stay in one place.
     const corpus = [
       ...posts.map((p) => `${p.title || ""}\n${p.selftext || ""}`),
       ...comments.map((c) => c.body || ""),
