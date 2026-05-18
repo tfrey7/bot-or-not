@@ -1,0 +1,352 @@
+.bon-inline-bot-icon {
+  width: 0.85em;
+  height: 0.85em;
+  vertical-align: middle;
+  position: relative;
+  top: 6px;
+  margin-left: 3px;
+  display: inline;
+  cursor: pointer;
+  transition: opacity 0.15s, transform 0.15s;
+}
+
+.bon-inline-bot-icon:hover {
+  opacity: 0.75;
+  transform: scale(1.1);
+}
+
+.bon-profile-panel {
+  display: block;
+  width: 100%;
+  flex: 0 0 100%;
+  margin: 0.75em 0 1em;
+  border: 1px solid rgba(128, 128, 128, 0.3);
+  border-radius: 0.5em;
+  background: rgba(128, 128, 128, 0.06);
+  font-family: inherit;
+  font-size: 0.875rem;
+  box-sizing: border-box;
+  /* Defensive resets — the panel may be anchored inside <h1> as a fallback,
+     and would otherwise inherit bold/uppercase/large styling from it. */
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: normal;
+  line-height: 1.4;
+  text-align: left;
+}
+
+.bon-profile-panel__header {
+  appearance: none;
+  background: none;
+  border: none;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.6em;
+  padding: 0.55em 0.75em;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  border-radius: 0.5em;
+  transition: background 0.15s;
+}
+
+.bon-profile-panel__header:hover {
+  background: rgba(128, 128, 128, 0.08);
+}
+
+.bon-profile-panel__title {
+  font-weight: 600;
+  font-size: 0.78rem;
+  color: rgba(128, 128, 128, 0.95);
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+
+.bon-profile-panel__stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4em;
+  flex: 1;
+  align-items: center;
+  min-width: 0;
+}
+
+.bon-profile-panel__chevron {
+  font-size: 0.7rem;
+  color: rgba(128, 128, 128, 0.75);
+  transition: transform 0.15s;
+  flex-shrink: 0;
+}
+
+.bon-profile-panel__header[aria-expanded="true"] .bon-profile-panel__chevron {
+  transform: rotate(180deg);
+}
+
+.bon-stat-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25em;
+  font-size: 0.72rem;
+  padding: 0.18em 0.55em;
+  border-radius: 0.9em;
+  background: rgba(128, 128, 128, 0.15);
+  color: inherit;
+  white-space: nowrap;
+  line-height: 1.4;
+  font-weight: 500;
+}
+
+.bon-stat-pill--verdict-bot {
+  background: #c0392b;
+  color: #fff;
+}
+
+.bon-stat-pill--verdict-likely-bot {
+  background: #e67e22;
+  color: #fff;
+}
+
+.bon-stat-pill--verdict-uncertain {
+  background: #7f8c8d;
+  color: #fff;
+}
+
+.bon-stat-pill--verdict-likely-human {
+  background: #16a085;
+  color: #fff;
+}
+
+.bon-stat-pill--verdict-human {
+  background: #27ae60;
+  color: #fff;
+}
+
+.bon-stat-pill--verdict-running {
+  background: #3498db;
+  color: #fff;
+}
+
+.bon-stat-pill--verdict-error {
+  background: #555;
+  color: #fff;
+}
+
+.bon-stat-pill__conf {
+  opacity: 0.85;
+  font-weight: 400;
+  margin-left: 0.25em;
+}
+
+.bon-profile-panel__body {
+  padding: 0 0.85em 0.85em;
+  border-top: 1px solid rgba(128, 128, 128, 0.18);
+}
+
+.bon-profile-panel__body[hidden] {
+  display: none;
+}
+
+.bon-panel-section {
+  padding-top: 0.75em;
+}
+
+.bon-panel-section + .bon-panel-section {
+  border-top: 1px dashed rgba(128, 128, 128, 0.2);
+  margin-top: 0.75em;
+}
+
+.bon-panel-section__title {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: rgba(128, 128, 128, 0.9);
+  margin: 0 0 0.5em;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5em;
+}
+
+.bon-panel-actions {
+  display: flex;
+  gap: 0.4em;
+  flex-wrap: wrap;
+}
+
+.bon-panel-btn {
+  appearance: none;
+  background: rgba(128, 128, 128, 0.12);
+  border: 1px solid rgba(128, 128, 128, 0.2);
+  border-radius: 0.3em;
+  padding: 0.3em 0.6em;
+  font-size: 0.75rem;
+  cursor: pointer;
+  color: inherit;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3em;
+  transition: opacity 0.15s, transform 0.15s, background 0.15s;
+  font-family: inherit;
+}
+
+.bon-panel-btn:hover {
+  background: rgba(128, 128, 128, 0.2);
+}
+
+.bon-panel-btn:disabled {
+  cursor: progress;
+  opacity: 0.6;
+}
+
+.bon-panel-btn.bon-spinning {
+  animation: bon-panel-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes bon-panel-pulse {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.bon-panel-empty {
+  font-size: 0.8rem;
+  color: rgba(128, 128, 128, 0.85);
+  font-style: italic;
+  margin: 0 0 0.5em;
+}
+
+.bon-panel-summary {
+  font-size: 0.82rem;
+  line-height: 1.45;
+  margin: 0 0 0.4em;
+}
+
+.bon-panel-meta {
+  font-size: 0.7rem;
+  color: rgba(128, 128, 128, 0.85);
+  margin: 0 0 0.6em;
+}
+
+.bon-panel-factors {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(16em, 1fr));
+  gap: 0.4em;
+}
+
+.bon-panel-factor {
+  font-size: 0.75rem;
+  padding: 0.4em 0.55em;
+  background: rgba(128, 128, 128, 0.06);
+  border: 1px solid rgba(128, 128, 128, 0.18);
+  border-radius: 0.35em;
+}
+
+.bon-panel-factor__header {
+  display: flex;
+  align-items: center;
+  gap: 0.4em;
+  margin-bottom: 0.2em;
+}
+
+.bon-panel-factor__name {
+  font-weight: 600;
+  font-size: 0.75rem;
+}
+
+.bon-panel-factor__signal {
+  margin-left: auto;
+  font-size: 0.62rem;
+  font-weight: 600;
+  padding: 0.08em 0.35em;
+  border-radius: 0.25em;
+  color: #fff;
+  text-transform: lowercase;
+  letter-spacing: 0.02em;
+}
+
+.bon-panel-factor__signal--bot {
+  background: #c0392b;
+}
+
+.bon-panel-factor__signal--likely-bot {
+  background: #e67e22;
+}
+
+.bon-panel-factor__signal--neutral {
+  background: #95a5a6;
+}
+
+.bon-panel-factor__signal--likely-human {
+  background: #16a085;
+}
+
+.bon-panel-factor__signal--human {
+  background: #27ae60;
+}
+
+.bon-panel-factor__reasoning {
+  color: inherit;
+  opacity: 0.85;
+  line-height: 1.4;
+  font-size: 0.72rem;
+}
+
+.bon-panel-reports {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  font-size: 0.78rem;
+  max-height: 14em;
+  overflow-y: auto;
+}
+
+.bon-panel-reports li {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5em;
+  padding: 0.2em 0;
+  border-bottom: 1px solid rgba(128, 128, 128, 0.1);
+}
+
+.bon-panel-reports li:last-child {
+  border-bottom: none;
+}
+
+.bon-panel-reports time {
+  flex-shrink: 0;
+  color: rgba(128, 128, 128, 0.85);
+  font-size: 0.7rem;
+  min-width: 4.5em;
+}
+
+.bon-panel-reports a {
+  color: #0366d6;
+  text-decoration: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  min-width: 0;
+}
+
+.bon-panel-reports a:hover {
+  text-decoration: underline;
+}
+
+.bon-panel-reports__more {
+  font-size: 0.7rem;
+  color: rgba(128, 128, 128, 0.85);
+  font-style: italic;
+  padding: 0.3em 0 0;
+}

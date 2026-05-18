@@ -1,2 +1,7 @@
 node_modules/
 .env
+.DS_Store
+.amo-upload-uuid
+web-ext-artifacts/
+icons/source/*@source.png
+.playwright-mcp/

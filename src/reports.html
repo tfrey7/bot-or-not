@@ -1,0 +1,896 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Bot or Not — Reports</title>
+    <link rel="icon" type="image/png" href="../icons/icon-32.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bon-font-sans:
+          "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI Variable",
+          "Segoe UI", system-ui, "Helvetica Neue", Arial, sans-serif;
+        --bon-font-mono:
+          ui-monospace, "SF Mono", Menlo, "Cascadia Code", "Roboto Mono",
+          monospace;
+        --bon-border: #e5e7eb;
+        --bon-border-strong: #d1d5db;
+        --bon-muted: #6b7280;
+        --bon-muted-soft: #9ca3af;
+        --bon-bg: #f6f7f9;
+        --bon-surface: #ffffff;
+        --bon-row-hover: #f3f4f6;
+        --bon-link: #0366d6;
+        --bon-danger: #c0392b;
+        --bon-text: #0f172a;
+        --bon-shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.04);
+        --bon-shadow-md:
+          0 1px 3px rgba(15, 23, 42, 0.06), 0 1px 2px rgba(15, 23, 42, 0.04);
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        font-family: var(--bon-font-sans);
+        font-feature-settings: "cv11", "ss01", "ss03";
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        margin: 0;
+        background: var(--bon-bg);
+        color: var(--bon-text);
+        line-height: 1.5;
+      }
+      .bon-page {
+        max-width: 78em;
+        margin: 0 auto;
+        padding: 2.5em 2em 5em;
+      }
+      .bon-header {
+        display: flex;
+        align-items: center;
+        gap: 1em;
+        padding-bottom: 1.5em;
+        margin-bottom: 1.75em;
+        border-bottom: 1px solid var(--bon-border);
+      }
+      .bon-header img {
+        border-radius: 0.5em;
+      }
+      .bon-header h1 {
+        font-size: 1.5rem;
+        font-weight: 700;
+        letter-spacing: -0.015em;
+        margin: 0 0 0.15em;
+        color: var(--bon-text);
+      }
+      .bon-header .bon-subtitle {
+        margin: 0;
+        font-size: 0.875rem;
+        color: var(--bon-muted);
+      }
+      .bon-header-actions {
+        margin-left: auto;
+        display: flex;
+        gap: 0.5em;
+      }
+      .bon-btn {
+        appearance: none;
+        background: var(--bon-surface);
+        border: 1px solid var(--bon-border-strong);
+        border-radius: 0.5em;
+        padding: 0.55em 1em;
+        font-family: inherit;
+        font-size: 0.85rem;
+        font-weight: 500;
+        cursor: pointer;
+        color: var(--bon-text);
+        box-shadow: var(--bon-shadow-sm);
+        transition:
+          opacity 0.15s,
+          transform 0.15s,
+          background 0.15s,
+          border-color 0.15s,
+          box-shadow 0.15s;
+      }
+      .bon-btn:hover {
+        background: var(--bon-row-hover);
+        border-color: #b6bcc4;
+      }
+      .bon-btn:active {
+        transform: translateY(1px);
+      }
+      .bon-btn--danger {
+        color: var(--bon-danger);
+        border-color: #f3c8c2;
+      }
+      .bon-btn--danger:hover {
+        background: var(--bon-danger);
+        color: #fff;
+        border-color: var(--bon-danger);
+      }
+      .bon-btn[hidden] {
+        display: none;
+      }
+      .bon-toolbar {
+        display: flex;
+        align-items: center;
+        gap: 0.75em;
+        margin-bottom: 1em;
+        flex-wrap: wrap;
+      }
+      .bon-search {
+        flex: 1;
+        min-width: 14em;
+        font-family: inherit;
+        font-size: 0.9rem;
+        padding: 0.65em 0.9em;
+        border: 1px solid var(--bon-border-strong);
+        border-radius: 0.5em;
+        background: var(--bon-surface);
+        color: var(--bon-text);
+        box-shadow: var(--bon-shadow-sm);
+        transition:
+          border-color 0.15s,
+          box-shadow 0.15s;
+      }
+      .bon-search::placeholder {
+        color: var(--bon-muted-soft);
+      }
+      .bon-search:focus {
+        outline: none;
+        border-color: var(--bon-link);
+        box-shadow: 0 0 0 3px rgba(3, 102, 214, 0.15);
+      }
+      .bon-table-wrap {
+        background: var(--bon-surface);
+        border: 1px solid var(--bon-border);
+        border-radius: 0.625em;
+        overflow: hidden;
+        box-shadow: var(--bon-shadow-md);
+      }
+      table.bon-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.875rem;
+      }
+      .bon-table thead th {
+        text-align: left;
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--bon-muted);
+        font-weight: 600;
+        padding: 0.85em 1em;
+        background: #fafbfc;
+        border-bottom: 1px solid var(--bon-border);
+        white-space: nowrap;
+      }
+      .bon-table thead th.bon-sortable {
+        cursor: pointer;
+        user-select: none;
+        transition: color 0.15s;
+      }
+      .bon-table thead th.bon-sortable:hover {
+        color: var(--bon-text);
+      }
+      .bon-sort-indicator {
+        display: inline-block;
+        margin-left: 0.25em;
+        color: var(--bon-muted-soft);
+      }
+      .bon-table tbody td {
+        padding: 0.75em 1em;
+        border-bottom: 1px solid var(--bon-border);
+        vertical-align: middle;
+      }
+      .bon-table tbody tr:last-child td {
+        border-bottom: none;
+      }
+      .bon-table tbody tr.bon-row-summary {
+        transition: background 0.1s;
+      }
+      .bon-table tbody tr.bon-row-summary:hover {
+        background: var(--bon-row-hover);
+      }
+      .bon-row-history > td {
+        background: #fafbfc;
+        padding: 0;
+      }
+      .bon-row-history[hidden] {
+        display: none;
+      }
+      .bon-username-cell {
+        display: inline-flex;
+        align-items: baseline;
+        gap: 0.4em;
+        min-width: 0;
+      }
+      .bon-username-cell a {
+        color: var(--bon-link);
+        text-decoration: none;
+        font-weight: 500;
+      }
+      .bon-username-cell a:hover {
+        text-decoration: underline;
+      }
+      .bon-cell-muted {
+        color: var(--bon-muted);
+        font-size: 0.82rem;
+        font-variant-numeric: tabular-nums;
+      }
+      .bon-cell-numeric {
+        text-align: right;
+        font-variant-numeric: tabular-nums;
+        font-weight: 500;
+      }
+      .bon-expand-btn {
+        background: none;
+        border: none;
+        cursor: pointer;
+        color: var(--bon-muted);
+        font-size: 0.85rem;
+        padding: 0;
+        line-height: 1;
+        width: 1.25em;
+        transition: transform 0.15s;
+      }
+      .bon-expand-btn[aria-expanded="true"] {
+        transform: rotate(90deg);
+      }
+      .bon-status-icon {
+        font-size: 0.85rem;
+        line-height: 1;
+      }
+      .bon-kind-icon {
+        font-size: 0.85rem;
+        line-height: 1;
+        margin-right: 0.25em;
+      }
+      .bon-bb-empty {
+        color: var(--bon-muted-soft);
+        font-size: 0.78rem;
+      }
+      .bon-verdict-badge {
+        display: inline-block;
+        font-size: 0.65rem;
+        font-weight: 600;
+        padding: 0.15em 0.5em;
+        border-radius: 0.4em;
+        color: #fff;
+        line-height: 1.3;
+        text-transform: lowercase;
+        letter-spacing: 0.02em;
+        white-space: nowrap;
+      }
+      .bon-verdict-badge--bot {
+        background: #c0392b;
+      }
+      .bon-verdict-badge--likely-bot {
+        background: #e67e22;
+      }
+      .bon-verdict-badge--uncertain {
+        background: #7f8c8d;
+      }
+      .bon-verdict-badge--likely-human {
+        background: #16a085;
+      }
+      .bon-verdict-badge--human {
+        background: #27ae60;
+      }
+      .bon-verdict-badge--error {
+        background: #c0392b;
+      }
+      .bon-verdict-badge--running {
+        background: #3498db;
+      }
+      .bon-verdict-conf {
+        font-weight: 400;
+        opacity: 0.85;
+        margin-left: 0.3em;
+      }
+      .bon-factors-cell {
+        display: inline-flex;
+        gap: 0.18em;
+      }
+      .bon-factor-dot {
+        width: 0.85em;
+        height: 0.85em;
+        border-radius: 0.18em;
+        background: #e5e7eb;
+        display: inline-block;
+        position: relative;
+      }
+      .bon-factor-dot--bot {
+        background: #c0392b;
+      }
+      .bon-factor-dot--likely-bot {
+        background: #e67e22;
+      }
+      .bon-factor-dot--neutral {
+        background: #d1d5db;
+      }
+      .bon-factor-dot--likely-human {
+        background: #16a085;
+      }
+      .bon-factor-dot--human {
+        background: #27ae60;
+      }
+      .bon-factor-dot--missing {
+        background: transparent;
+        border: 1px dashed #d1d5db;
+      }
+      .bon-investigated-cell {
+        white-space: nowrap;
+        font-size: 0.82rem;
+        line-height: 1.3;
+        font-variant-numeric: tabular-nums;
+      }
+      .bon-investigated-cell .bon-duration {
+        display: block;
+        color: var(--bon-muted);
+        font-size: 0.72rem;
+      }
+      .bon-actions-cell {
+        white-space: nowrap;
+        text-align: right;
+      }
+      .bon-actions-cell > button {
+        vertical-align: middle;
+      }
+      .bon-actions-cell > button + button {
+        margin-left: 0.4em;
+      }
+      .bon-investigate-btn {
+        appearance: none;
+        background: none;
+        border: none;
+        cursor: pointer;
+        font-size: 1rem;
+        padding: 0;
+        line-height: 1;
+        transition:
+          opacity 0.15s,
+          transform 0.15s;
+      }
+      .bon-investigate-btn:hover {
+        transform: scale(1.15);
+        opacity: 0.85;
+      }
+      .bon-investigate-btn:disabled {
+        cursor: default;
+        opacity: 0.6;
+      }
+      .bon-investigate-btn.bon-spinning {
+        width: 0.95em;
+        height: 0.95em;
+        box-sizing: border-box;
+        border: 0.14em solid #cbd5e1;
+        border-top-color: #64748b;
+        border-radius: 50%;
+        vertical-align: middle;
+        color: transparent;
+        animation: bon-spin 0.8s linear infinite;
+      }
+      .bon-investigate-btn.bon-spinning:hover {
+        transform: none;
+        opacity: 1;
+      }
+      @keyframes bon-spin {
+        from {
+          transform: rotate(0deg);
+        }
+        to {
+          transform: rotate(360deg);
+        }
+      }
+      .bon-detail-wrap {
+        padding: 1.25em 1.5em 1.5em 3.5em;
+        background: #fafbfc;
+      }
+      .bon-detail-wrap + .bon-detail-wrap {
+        padding-top: 0.25em;
+      }
+      .bon-detail-title {
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--bon-muted);
+        margin: 0 0 0.75em;
+        font-weight: 600;
+      }
+      .bon-verdict-summary {
+        margin: 0 0 0.65em;
+        font-size: 0.95rem;
+        line-height: 1.55;
+        color: #1f2937;
+      }
+      .bon-verdict-meta {
+        font-size: 0.75rem;
+        color: var(--bon-muted);
+        margin: 0 0 1em;
+        font-variant-numeric: tabular-nums;
+      }
+      .bon-verdict-error {
+        color: var(--bon-danger);
+        font-size: 0.85rem;
+      }
+      .bon-verdict-factors {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(24em, 1fr));
+        gap: 1em;
+      }
+      .bon-factor {
+        font-size: 0.875rem;
+        padding: 1.1em 1.25em 1.15em;
+        background: var(--bon-surface);
+        border: 1px solid var(--bon-border);
+        border-radius: 0.625em;
+        box-shadow: var(--bon-shadow-sm);
+      }
+      .bon-factor-header {
+        display: flex;
+        align-items: center;
+        gap: 0.6em;
+        margin-bottom: 0.65em;
+      }
+      .bon-factor-name {
+        font-weight: 600;
+        font-size: 0.95rem;
+        letter-spacing: -0.005em;
+      }
+      .bon-factor-signal {
+        margin-left: auto;
+        font-size: 0.68rem;
+        font-weight: 600;
+        padding: 0.2em 0.55em;
+        border-radius: 0.35em;
+        color: #fff;
+        text-transform: lowercase;
+        letter-spacing: 0.02em;
+        white-space: nowrap;
+      }
+      .bon-factor-signal--bot {
+        background: #c0392b;
+      }
+      .bon-factor-signal--neutral {
+        background: #95a5a6;
+      }
+      .bon-factor-signal--human {
+        background: #27ae60;
+      }
+      .bon-factor-bar {
+        position: relative;
+        height: 5px;
+        background: #eef2f5;
+        border-radius: 3px;
+        margin: 0 0 0.4em;
+        overflow: hidden;
+      }
+      .bon-factor-bar-fill {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        border-radius: 3px;
+      }
+      .bon-factor-bar-fill--bot {
+        background: #c0392b;
+      }
+      .bon-factor-bar-fill--neutral {
+        background: #95a5a6;
+      }
+      .bon-factor-bar-fill--human {
+        background: #27ae60;
+      }
+      .bon-factor-confidence {
+        font-size: 0.72rem;
+        color: var(--bon-muted);
+        margin: 0 0 0.85em;
+        font-variant-numeric: tabular-nums;
+      }
+      .bon-factor-reasoning {
+        color: #374151;
+        margin: 0;
+        line-height: 1.6;
+      }
+      .bon-factor-evidence {
+        margin: 0.85em 0 0;
+        padding-left: 1.25em;
+        color: var(--bon-muted);
+        font-size: 0.82rem;
+        line-height: 1.65;
+      }
+      .bon-factor-evidence li {
+        margin-bottom: 0.15em;
+      }
+      .bon-history-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.86rem;
+      }
+      .bon-history-table td {
+        padding: 0.65em 0.9em;
+        border-bottom: 1px solid var(--bon-border);
+        vertical-align: top;
+      }
+      .bon-history-table tr:last-child td {
+        border-bottom: none;
+      }
+      .bon-history-table td:first-child {
+        padding-left: 0;
+        color: var(--bon-muted);
+        white-space: nowrap;
+        width: 8em;
+        font-variant-numeric: tabular-nums;
+        line-height: 1.35;
+      }
+      .bon-history-date {
+        display: block;
+        color: var(--bon-text);
+      }
+      .bon-history-time {
+        display: block;
+        font-size: 0.72rem;
+        color: var(--bon-muted-soft);
+      }
+      .bon-history-table td:nth-child(2) {
+        width: 1.5em;
+      }
+      .bon-history-table a {
+        color: var(--bon-link);
+        text-decoration: none;
+      }
+      .bon-history-table a:hover {
+        text-decoration: underline;
+      }
+      .bon-empty {
+        text-align: center;
+        padding: 4em 1em;
+        color: var(--bon-muted);
+        font-size: 0.95rem;
+        background: var(--bon-surface);
+        border: 1px dashed var(--bon-border-strong);
+        border-radius: 0.625em;
+      }
+      .bon-modal-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.4);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 1em;
+        z-index: 10;
+      }
+      .bon-modal-backdrop[hidden] {
+        display: none;
+      }
+      .bon-modal {
+        background: var(--bon-surface);
+        border-radius: 0.75em;
+        padding: 1.5em;
+        box-shadow:
+          0 1.5em 3em rgba(15, 23, 42, 0.18),
+          0 0.5em 1em rgba(15, 23, 42, 0.08);
+        max-width: 26em;
+        width: 100%;
+      }
+      .bon-modal p {
+        margin: 0 0 1.25em;
+        font-size: 0.95rem;
+      }
+      .bon-modal-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 0.5em;
+      }
+      .bon-heatmap-empty {
+        font-size: 0.82rem;
+        color: var(--bon-muted);
+        margin: 0;
+      }
+      .bon-heatmap-load {
+        appearance: none;
+        background: #fff;
+        border: 1px solid var(--bon-border-strong);
+        border-radius: 0.375em;
+        padding: 0.4em 0.8em;
+        font-size: 0.82rem;
+        cursor: pointer;
+        color: #111827;
+      }
+      .bon-heatmap-load:hover {
+        background: var(--bon-row-hover);
+      }
+      .bon-heatmap-load:disabled {
+        opacity: 0.6;
+        cursor: default;
+      }
+      .bon-heatmap-banner {
+        background: #fff7ed;
+        border: 1px solid #fed7aa;
+        color: #9a3412;
+        border-radius: 0.4em;
+        padding: 0.5em 0.75em;
+        font-size: 0.78rem;
+        line-height: 1.4;
+        margin: 0 0 0.75em;
+      }
+      .bon-heatmap-row {
+        display: flex;
+        align-items: center;
+        gap: 0.75em;
+        flex-wrap: wrap;
+        margin: 0 0 0.4em;
+        font-size: 0.76rem;
+        color: var(--bon-muted);
+      }
+      .bon-heatmap-row strong {
+        color: #111827;
+        font-weight: 600;
+      }
+      .bon-heatmap-advisory {
+        margin-top: -0.2em;
+        opacity: 0.85;
+      }
+      .bon-heatmap-refresh {
+        margin-left: auto;
+        background: none;
+        border: none;
+        color: var(--bon-link);
+        cursor: pointer;
+        font-size: 0.76rem;
+        padding: 0;
+      }
+      .bon-heatmap-refresh:hover {
+        text-decoration: underline;
+      }
+      .bon-heatmap-refresh:disabled {
+        opacity: 0.6;
+        cursor: default;
+      }
+      .bon-cal {
+        display: flex;
+        gap: 0.4em;
+        align-items: flex-start;
+        margin-bottom: 0.6em;
+      }
+      .bon-cal-days {
+        display: grid;
+        grid-template-rows: repeat(7, 12px);
+        row-gap: 2px;
+        font-size: 0.62rem;
+        color: var(--bon-muted);
+        margin-top: 1.5em;
+      }
+      .bon-cal-days > div {
+        height: 12px;
+        line-height: 12px;
+      }
+      .bon-cal-right {
+        overflow-x: auto;
+        max-width: 100%;
+      }
+      .bon-cal-months {
+        display: grid;
+        grid-template-columns: repeat(53, 14px);
+        height: 1em;
+        margin-bottom: 0.5em;
+        font-size: 0.62rem;
+        color: var(--bon-muted);
+      }
+      .bon-cal-months > span {
+        white-space: nowrap;
+      }
+      .bon-cal-grid {
+        display: grid;
+        grid-template-columns: repeat(53, 14px);
+        grid-template-rows: repeat(7, 12px);
+        grid-auto-flow: column;
+        gap: 2px;
+      }
+      .bon-cal-cell {
+        width: 12px;
+        height: 12px;
+        border-radius: 2px;
+        background: #eef2f5;
+      }
+      .bon-cal-cell--future {
+        background: transparent;
+      }
+      .bon-cal-cell--unknown {
+        background: repeating-linear-gradient(
+          45deg,
+          #eef2f5,
+          #eef2f5 3px,
+          #dbe2e6 3px,
+          #dbe2e6 6px
+        );
+      }
+      .bon-hour {
+        display: flex;
+        gap: 0.4em;
+        align-items: flex-start;
+        max-width: 30em;
+        margin-bottom: 0.4em;
+      }
+      .bon-hour-days {
+        display: grid;
+        grid-template-rows: repeat(7, 14px);
+        row-gap: 2px;
+        font-size: 0.62rem;
+        color: var(--bon-muted);
+        margin-top: 1.5em;
+      }
+      .bon-hour-days > div {
+        height: 14px;
+        line-height: 14px;
+      }
+      .bon-hour-right {
+        flex: 1;
+        min-width: 0;
+      }
+      .bon-hour-hours {
+        display: grid;
+        grid-template-columns: repeat(24, 1fr);
+        height: 1em;
+        margin-bottom: 0.5em;
+        font-size: 0.62rem;
+        color: var(--bon-muted);
+      }
+      .bon-hour-hours > span {
+        text-align: left;
+      }
+      .bon-hour-grid {
+        display: grid;
+        grid-template-columns: repeat(24, 1fr);
+        grid-template-rows: repeat(7, 14px);
+        gap: 2px;
+      }
+      .bon-hour-cell {
+        height: 14px;
+        border-radius: 2px;
+        background: #eef2f5;
+      }
+      .bon-heatmap-cell--lvl1 {
+        background: #c9e7d4;
+      }
+      .bon-heatmap-cell--lvl2 {
+        background: #8fd0a8;
+      }
+      .bon-heatmap-cell--lvl3 {
+        background: #4cbf7a;
+      }
+      .bon-heatmap-cell--lvl4 {
+        background: #27ae60;
+      }
+      .bon-heatmap-cell--lvl5 {
+        background: #1d8f4f;
+      }
+      .bon-heatmap-legend {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.3em;
+        font-size: 0.7rem;
+        color: var(--bon-muted);
+        margin-top: 0.2em;
+      }
+      .bon-heatmap-legend-cell {
+        width: 12px;
+        height: 12px;
+        border-radius: 2px;
+        background: #eef2f5;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="bon-page">
+      <header class="bon-header">
+        <img src="../icons/icon.png" width="40" height="40" alt="" />
+        <div>
+          <h1>Bot or Not — Reports</h1>
+          <p class="bon-subtitle">All accounts you've flagged on Reddit</p>
+        </div>
+        <div class="bon-header-actions">
+          <button type="button" id="bon-refresh-btn" class="bon-btn">
+            ↻ Refresh
+          </button>
+          <button
+            type="button"
+            id="bon-clear-btn"
+            class="bon-btn bon-btn--danger"
+            hidden
+          >
+            Clear all
+          </button>
+        </div>
+      </header>
+
+      <div class="bon-toolbar">
+        <input
+          type="search"
+          id="bon-search"
+          class="bon-search"
+          placeholder="Search username, subreddit, or post title…"
+          autocomplete="off"
+        />
+      </div>
+
+      <div class="bon-table-wrap" id="bon-table-wrap">
+        <table class="bon-table" id="bon-table">
+          <thead>
+            <tr>
+              <th style="width: 2em"></th>
+              <th class="bon-sortable" data-sort="username">
+                User <span class="bon-sort-indicator"></span>
+              </th>
+              <th class="bon-sortable" data-sort="verdict">
+                AI verdict <span class="bon-sort-indicator"></span>
+              </th>
+              <th>Factors</th>
+              <th
+                class="bon-sortable"
+                data-sort="investigatedAt"
+                data-default-dir="desc"
+              >
+                Investigated <span class="bon-sort-indicator"></span>
+              </th>
+              <th class="bon-sortable bon-cell-numeric" data-sort="count">
+                Reports <span class="bon-sort-indicator"></span>
+              </th>
+              <th
+                class="bon-sortable"
+                data-sort="lastReportedAt"
+                data-default-dir="desc"
+              >
+                Last reported <span class="bon-sort-indicator">▼</span>
+              </th>
+              <th style="width: 5em"></th>
+            </tr>
+          </thead>
+          <tbody id="bon-tbody"></tbody>
+        </table>
+      </div>
+
+      <div id="bon-empty" class="bon-empty" hidden>
+        No reports yet. Flag a Reddit user from their profile page to start
+        tracking.
+      </div>
+    </div>
+
+    <div id="bon-confirm-modal" class="bon-modal-backdrop" hidden>
+      <div
+        class="bon-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="bon-modal-text"
+      >
+        <p id="bon-modal-text">
+          Clear all reported users? This can't be undone.
+        </p>
+        <div class="bon-modal-actions">
+          <button type="button" id="bon-cancel-clear" class="bon-btn">
+            Cancel
+          </button>
+          <button
+            type="button"
+            id="bon-confirm-clear"
+            class="bon-btn bon-btn--danger"
+          >
+            Clear all
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <script src="verdict.js"></script>
+    <script src="reports.js"></script>
+  </body>
+</html>
