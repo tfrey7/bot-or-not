@@ -2,14 +2,14 @@
 
 ## Dev Workflow
 
-| Command | Purpose |
-|---|---|
-| `npm run dev` | Launch extension in Firefox (hot-reloads via web-ext) |
-| `npm run lint` | Lint all `src/**/*.{ts,js}` with typescript-eslint |
-| `npm run format` | Format all `src/**/*.{ts,js}` with Prettier |
-| `npm run typecheck` | Run `tsc --noEmit` against `src/**/*.ts` |
-| `npm run build` | Build an unsigned extension zip into `web-ext-artifacts/` |
-| `npm run sign` | Sign and publish to AMO (self-distribution, unlisted). Reads `AMO_API_KEY`/`AMO_API_SECRET` from `.env` |
+| Command             | Purpose                                                                                                 |
+| ------------------- | ------------------------------------------------------------------------------------------------------- |
+| `npm run dev`       | Launch extension in Firefox (hot-reloads via web-ext)                                                   |
+| `npm run lint`      | Lint all `src/**/*.{ts,js}` with typescript-eslint                                                      |
+| `npm run format`    | Format all `src/**/*.{ts,js}` with Prettier                                                             |
+| `npm run typecheck` | Run `tsc --noEmit` against `src/**/*.ts`                                                                |
+| `npm run build`     | Build an unsigned extension zip into `web-ext-artifacts/`                                               |
+| `npm run sign`      | Sign and publish to AMO (self-distribution, unlisted). Reads `AMO_API_KEY`/`AMO_API_SECRET` from `.env` |
 
 Run `npm run typecheck`, `npm run lint`, and `npm run format` before committing.
 
@@ -22,19 +22,26 @@ Run `npm run typecheck`, `npm run lint`, and `npm run format` before committing.
 
 1. Bump the version in **both** `manifest.json` and `package.json` (keep them in sync).
 2. Run `npm run sign`.
-3. Commit.
-4. Tag the commit: `git tag vX.Y.Z` (matching the version you bumped to).
-5. Push when ready: `git push && git push origin vX.Y.Z` (push the tag explicitly rather than `--tags` so stray local tags don't leak).
+3. Run `npm run updates-json` to append the new version to `updates.json` (auto-update manifest for self-hosted installs).
+4. Commit (`manifest.json`, `package.json`, `updates.json`).
+5. Tag the commit: `git tag vX.Y.Z` (matching the version you bumped to).
+6. Push: `git push && git push origin vX.Y.Z` (push the tag explicitly rather than `--tags` so stray local tags don't leak).
+7. Create the GitHub release with the signed `.xpi` attached:
+   `gh release create vX.Y.Z web-ext-artifacts/*-X.Y.Z.xpi --title "vX.Y.Z" --generate-notes`
+
+The `.xpi` lives in GitHub Releases (versioned, doesn't bloat the repo); `updates.json` lives at the repo root and is served by GitHub Pages at `https://tfrey7.github.io/bot-or-not/updates.json`. Firefox polls that URL for installed unlisted copies and auto-updates within ~24h. The `update_url` baked into `manifest.json` is what wires the two together.
+
+**One-time setup:** GitHub Pages must be enabled (repo Settings → Pages → Deploy from `main` branch, `/` root) for the auto-update URL to resolve.
 
 ## Architecture
 
 Three execution contexts, communicating via `browser.runtime.sendMessage`:
 
-| Context | Files | Job |
-|---|---|---|
-| **Content script** | `src/content_script.ts`, `src/content_script.css` | Runs on every Reddit page. Captures clicks on the report dialog, renders inline username tags in feeds/comments, injects the profile-page badge. |
-| **Background (service worker)** | `src/background.ts`, `src/features/investigation/*`, `src/verdict.ts` | Owns all storage I/O. Runs AI investigations via the Claude API. Sweeps orphaned in-flight investigations on startup. |
-| **UI surfaces** | `src/reports.html` + `src/features/reports/*.ts` | Reports page (sort/filter/history) and its Settings modal (Claude API key). The toolbar button opens this page directly — there is no separate popup. Read state via background messages — never touch storage directly. |
+| Context                         | Files                                                                 | Job                                                                                                                                                                                                                      |
+| ------------------------------- | --------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Content script**              | `src/content_script.ts`, `src/content_script.css`                     | Runs on every Reddit page. Captures clicks on the report dialog, renders inline username tags in feeds/comments, injects the profile-page badge.                                                                         |
+| **Background (service worker)** | `src/background.ts`, `src/features/investigation/*`, `src/verdict.ts` | Owns all storage I/O. Runs AI investigations via the Claude API. Sweeps orphaned in-flight investigations on startup.                                                                                                    |
+| **UI surfaces**                 | `src/reports.html` + `src/features/reports/*.ts`                      | Reports page (sort/filter/history) and its Settings modal (Claude API key). The toolbar button opens this page directly — there is no separate popup. Read state via background messages — never touch storage directly. |
 
 ### Bot analysis pipeline
 
@@ -72,6 +79,7 @@ Two top-level keys in `browser.storage.local`: `reports` and `claudeApiKey`.
 ```
 
 Investigation shape:
+
 ```js
 {
   status: "running" | "done" | "error",
@@ -100,13 +108,13 @@ Current features: `analytics/`, `regions/`, `inline-tags/`, `reporting/`, `profi
 
 ### File roles inside a feature
 
-| File | Purpose |
-|---|---|
-| `index.ts` | Public entry point. The renderer (`bonRenderX(...)`) for UI features, or the main public function for library features. May hold tiny render helpers (≤15 lines, called only from the entry function). |
-| `logic.ts` | Pure data transforms / aggregations — no DOM, no I/O. Feature-internal types live here too. |
-| `data.ts` | Static lookup tables / constants. |
-| `styles.css` | Feature CSS. |
-| `<widget>.ts` | One file per visible widget — e.g. `chart_cost.ts`, `table_run_log.ts`, `stat_grid.ts`. One render function per file, named for what it builds. |
+| File          | Purpose                                                                                                                                                                                                |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `index.ts`    | Public entry point. The renderer (`bonRenderX(...)`) for UI features, or the main public function for library features. May hold tiny render helpers (≤15 lines, called only from the entry function). |
+| `logic.ts`    | Pure data transforms / aggregations — no DOM, no I/O. Feature-internal types live here too.                                                                                                            |
+| `data.ts`     | Static lookup tables / constants.                                                                                                                                                                      |
+| `styles.css`  | Feature CSS.                                                                                                                                                                                           |
+| `<widget>.ts` | One file per visible widget — e.g. `chart_cost.ts`, `table_run_log.ts`, `stat_grid.ts`. One render function per file, named for what it builds.                                                        |
 
 **Avoid grab-bag files.** If a file needs `// ---------- Section name ----------` dividers to navigate, the sections want to be separate files. Treat any such divider as a TODO to split. Splitting one file into many is fine — even small files. The locatability win (the IDE file tree becomes a TOC) outweighs the file-count cost.
 
