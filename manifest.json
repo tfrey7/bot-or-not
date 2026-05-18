@@ -1,24 +1,29 @@
 {
   "manifest_version": 3,
   "name": "Bot or Not",
-  "version": "3.10.0",
+  "version": "3.10.2",
   "description": "Flag suspicious Reddit accounts",
   "browser_specific_settings": {
     "gecko": {
-      "id": "bot-or-not@timothyfrey"
+      "id": "bot-or-not@timothyfrey",
+      "update_url": "https://tfrey7.github.io/bot-or-not/updates.json"
     }
   },
   "background": {
     "scripts": ["src/background.ts"]
   },
-  "permissions": ["storage", "tabs"],
+  "permissions": ["storage", "unlimitedStorage", "tabs"],
   "host_permissions": [
     "https://api.anthropic.com/*",
     "https://www.reddit.com/*"
   ],
   "content_scripts": [
     {
-      "matches": ["*://reddit.com/*", "*://old.reddit.com/*", "*://www.reddit.com/*"],
+      "matches": [
+        "*://reddit.com/*",
+        "*://old.reddit.com/*",
+        "*://www.reddit.com/*"
+      ],
       "js": ["src/content_script.ts"],
       "css": ["src/content_script.css"]
     }
@@ -35,7 +40,11 @@
   "web_accessible_resources": [
     {
       "resources": ["icons/icon.png", "icons/icon-bot.png"],
-      "matches": ["*://reddit.com/*", "*://old.reddit.com/*", "*://www.reddit.com/*"]
+      "matches": [
+        "*://reddit.com/*",
+        "*://old.reddit.com/*",
+        "*://www.reddit.com/*"
+      ]
     }
   ],
   "icons": {
