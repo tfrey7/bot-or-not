@@ -19,8 +19,11 @@ Run `npm run lint` and `npm run format` before committing.
 
 ### Release
 
-- Bump the version in **both** `manifest.json` and `package.json` (keep them in sync).
-- Run `npm run sign`, then commit.
+1. Bump the version in **both** `manifest.json` and `package.json` (keep them in sync).
+2. Run `npm run sign`.
+3. Commit.
+4. Tag the commit: `git tag vX.Y.Z` (matching the version you bumped to).
+5. Push when ready: `git push && git push origin vX.Y.Z` (push the tag explicitly rather than `--tags` so stray local tags don't leak).
 
 ## Architecture
 
