@@ -56,6 +56,7 @@ export function bonInlineTagTitle(
   variant: TagVariant
 ): string {
   const parts = [`@${info.username}`];
+
   if (info.verdict) {
     const conf =
       typeof info.confidence === "number"
@@ -65,6 +66,7 @@ export function bonInlineTagTitle(
   } else if (variant === "running") {
     parts.push("AI investigation in progress");
   }
+
   if (info.count > 0) {
     parts.push(
       `${info.count} report${info.count === 1 ? "" : "s"} from this extension`
@@ -76,6 +78,7 @@ export function bonInlineTagTitle(
   if (info.userStatus) {
     parts.push(`Account: ${info.userStatus}`);
   }
+
   return parts.join(" — ");
 }
 

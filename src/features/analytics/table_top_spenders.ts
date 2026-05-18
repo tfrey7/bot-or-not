@@ -10,6 +10,7 @@ export function bonAnalyticsTopSpenders(
 ): HTMLDivElement {
   const wrap = document.createElement("div");
   wrap.className = "bon-analytics-table-card";
+
   const title = document.createElement("h3");
   title.className = "bon-analytics-section-title";
   title.textContent = "Most expensive investigations";
@@ -19,6 +20,7 @@ export function bonAnalyticsTopSpenders(
     .filter((r) => r.totalCost > 0)
     .sort((a, b) => b.totalCost - a.totalCost)
     .slice(0, 10);
+
   if (!top.length) {
     const p = document.createElement("p");
     p.className = "bon-analytics-empty-small";
@@ -30,6 +32,7 @@ export function bonAnalyticsTopSpenders(
   const maxCost = top[0].totalCost;
   const list = document.createElement("ol");
   list.className = "bon-analytics-top-list";
+
   for (const r of top) {
     const li = document.createElement("li");
 
@@ -44,16 +47,21 @@ export function bonAnalyticsTopSpenders(
     const meta = document.createElement("span");
     meta.className = "bon-analytics-top-meta";
     const metaBits: string[] = [];
+
     if (r.verdict) {
       metaBits.push(r.verdict.replace(/-/g, " "));
     }
+
     if (r.durationMs != null) {
       metaBits.push(bonFmtDuration(r.durationMs));
     }
+
     metaBits.push(`${r.calls.length} call${r.calls.length === 1 ? "" : "s"}`);
+
     if (r.runAt) {
       metaBits.push(new Date(r.runAt).toLocaleDateString());
     }
+
     meta.textContent = metaBits.join(" · ");
     li.appendChild(meta);
 
@@ -72,6 +80,7 @@ export function bonAnalyticsTopSpenders(
 
     list.appendChild(li);
   }
+
   wrap.appendChild(list);
   return wrap;
 }

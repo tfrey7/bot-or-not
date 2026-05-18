@@ -22,12 +22,14 @@ function buildPersonaRadar(
   const v = RADAR_VIEW;
   const axes = BON_ARCHETYPES;
   const N = axes.length;
+
   if (N < 3) {
     return null;
   }
 
   const step = (Math.PI * 2) / N;
   const angle = (i: number): number => -Math.PI / 2 + i * step;
+
   const vertex = (i: number, scale: number): { x: number; y: number } => {
     const t = angle(i);
     return {
@@ -35,6 +37,7 @@ function buildPersonaRadar(
       y: v.center + v.radius * scale * Math.sin(t),
     };
   };
+
   const points = (scale: number): string =>
     axes
       .map((_, i) => {
@@ -74,6 +77,7 @@ function buildPersonaRadar(
 
   for (let i = 0; i < N; i++) {
     const p = vertex(i, 1);
+
     const line = document.createElementNS(svgns, "line");
     line.setAttribute("x1", String(v.center));
     line.setAttribute("y1", String(v.center));
@@ -90,6 +94,7 @@ function buildPersonaRadar(
       return `${p.x.toFixed(2)},${p.y.toFixed(2)}`;
     })
     .join(" ");
+
   const dataPoly = document.createElementNS(svgns, "polygon");
   dataPoly.setAttribute("points", dataPolyPts);
   dataPoly.setAttribute("class", "bon-panel-radar-data");
@@ -100,7 +105,9 @@ function buildPersonaRadar(
     if (score <= 0.05) {
       continue;
     }
+
     const p = vertex(i, score);
+
     const dot = document.createElementNS(svgns, "circle");
     dot.setAttribute("cx", p.x.toFixed(2));
     dot.setAttribute("cy", p.y.toFixed(2));
@@ -115,12 +122,14 @@ function buildPersonaRadar(
     const ly = v.center + (v.radius + v.labelPad) * Math.sin(t);
     const cosT = Math.cos(t);
     const sinT = Math.sin(t);
+
     let anchor = "middle";
     if (cosT > 0.3) {
       anchor = "start";
     } else if (cosT < -0.3) {
       anchor = "end";
     }
+
     let dy = "0.35em";
     if (sinT > 0.4) {
       dy = "0.85em";
@@ -160,11 +169,13 @@ export function bonPanelBuildPersonaStrip(persona: Persona): HTMLElement {
 
   const label = document.createElement("p");
   label.className = "bon-panel-persona__label";
+
   const labelText =
     persona.label === "normal"
       ? "Normal"
       : BON_ARCHETYPES.find((a) => a.key === persona.label)?.label ||
         persona.label;
+
   label.textContent = labelText;
   wrap.appendChild(label);
 

@@ -15,34 +15,45 @@ function buildTopReasonsList(
   factors: Factor[] | null | undefined
 ): HTMLUListElement | null {
   const top = bonTopReasons(factors, 3);
+
   if (!top.length) {
     return null;
   }
+
   const ul = document.createElement("ul");
   ul.className = "bon-profile-panel__reasons";
+
   for (const f of top) {
     const li = document.createElement("li");
     const leaning = bonScoreLeaning(f.score, f.confidence);
+
     li.className = `bon-reason bon-reason--${leaning}`;
+
     const bullet = document.createElement("span");
     bullet.className = "bon-reason__bullet";
     bullet.setAttribute("aria-hidden", "true");
     li.appendChild(bullet);
+
     const text = document.createElement("span");
     text.className = "bon-reason__text";
+
     const label = document.createElement("strong");
     label.textContent =
       BON_FACTOR_LABELS[f.key] ||
       (f as { name?: string }).name ||
       f.key ||
       "Factor";
+
     text.appendChild(label);
+
     if (f.reasoning) {
       text.appendChild(document.createTextNode(` — ${f.reasoning}`));
     }
+
     li.appendChild(text);
     ul.appendChild(li);
   }
+
   return ul;
 }
 
@@ -53,6 +64,7 @@ export function bonPanelBuildPreview(
   const investigation = bonNormalizeInvestigation(report?.investigation);
   const hasFactors =
     Array.isArray(investigation?.factors) && investigation.factors.length > 0;
+
   if (!investigation?.summary && !hasFactors) {
     return null;
   }
@@ -62,18 +74,21 @@ export function bonPanelBuildPreview(
 
   const summaryCol = document.createElement("div");
   summaryCol.className = "bon-profile-panel__preview-summary";
+
   if (investigation?.summary) {
     const p = document.createElement("p");
     p.className = "bon-profile-panel__summary";
     p.textContent = investigation.summary;
     summaryCol.appendChild(p);
   }
+
   if (hasFactors) {
     const reasons = buildTopReasonsList(investigation?.factors);
     if (reasons) {
       summaryCol.appendChild(reasons);
     }
   }
+
   // Factor dot strip lives in the always-visible preview so the at-a-glance
   // signal map is readable without expanding the panel. Each dot carries a
   // hover-card popover with the full factor reasoning + evidence. Tucked
@@ -82,10 +97,12 @@ export function bonPanelBuildPreview(
   if (investigation?.status === "done") {
     const dotsGroup = document.createElement("div");
     dotsGroup.className = "bon-panel-factor-signals";
+
     const dotsLabel = document.createElement("p");
     dotsLabel.className = "bon-panel-factor-signals__label";
     dotsLabel.textContent = "Factor signals — hover for details";
     dotsGroup.appendChild(dotsLabel);
+
     dotsGroup.appendChild(bonPanelBuildFactorDots(investigation));
     summaryCol.appendChild(dotsGroup);
   }

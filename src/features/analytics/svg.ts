@@ -41,9 +41,11 @@ export function bonAnalyticsSvgText(
     y,
     class: cls || "bon-chart-tick",
   });
+
   if (anchor) {
     t.setAttribute("text-anchor", anchor);
   }
+
   t.textContent = text;
   return t;
 }

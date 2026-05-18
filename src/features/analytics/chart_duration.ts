@@ -25,6 +25,7 @@ export function bonAnalyticsDurationChart(
   const durations = runs
     .map((r) => r.durationMs)
     .filter((d): d is number => typeof d === "number");
+
   if (!durations.length) {
     root.appendChild(bonAnalyticsEmptyChart(W, H, "No duration data."));
     return root;
@@ -40,13 +41,17 @@ export function bonAnalyticsDurationChart(
     { label: "3m+", max: Infinity },
   ];
   const counts: number[] = new Array(buckets.length).fill(0);
+
   for (const d of durations) {
     let idx = buckets.findIndex((b) => d < b.max);
+
     if (idx === -1) {
       idx = buckets.length - 1;
     }
+
     counts[idx]++;
   }
+
   const maxCount = Math.max(1, ...counts);
   const barW = iw / buckets.length;
 
@@ -78,6 +83,7 @@ export function bonAnalyticsDurationChart(
     const c = counts[i];
     const x = PAD.l + i * barW + 5;
     const w = barW - 10;
+
     if (c > 0) {
       const h = (c / maxCount) * ih;
       const y = PAD.t + ih - h;
@@ -94,6 +100,7 @@ export function bonAnalyticsDurationChart(
       rect.appendChild(t);
       root.appendChild(rect);
     }
+
     root.appendChild(
       bonAnalyticsSvgText(
         PAD.l + i * barW + barW / 2,
@@ -113,9 +120,11 @@ export function bonAnalyticsDurationChart(
     0.5
   );
   let medianBucket = buckets.findIndex((b) => medianMs < b.max);
+
   if (medianBucket === -1) {
     medianBucket = buckets.length - 1;
   }
+
   const medianX = PAD.l + medianBucket * barW + barW / 2;
   const medianLine = bonAnalyticsSvgEl("line", {
     x1: medianX,
@@ -128,6 +137,5 @@ export function bonAnalyticsDurationChart(
   medianTitle.textContent = `Median run: ${bonFmtDuration(medianMs)}`;
   medianLine.appendChild(medianTitle);
   root.appendChild(medianLine);
-
   return root;
 }

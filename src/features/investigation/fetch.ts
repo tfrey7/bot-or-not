@@ -19,6 +19,7 @@ export async function bonTimed<T>(
   fn: () => Promise<T>
 ): Promise<T> {
   const t0 = performance.now();
+
   try {
     const result = await fn();
     const ms = Math.round(performance.now() - t0);
@@ -37,9 +38,11 @@ export async function bonFetchJson<T = unknown>(url: string): Promise<T> {
       headers: { Accept: "application/json" },
       credentials: "include",
     });
+
     if (!res.ok) {
       throw new Error(`Reddit fetch ${res.status} for ${url}`);
     }
+
     return res.json() as Promise<T>;
   });
 }
@@ -49,6 +52,7 @@ export async function bonFetchBotBouncerStatus(
 ): Promise<BotBouncerStatus> {
   const q = encodeURIComponent(`Overview for ${username}`);
   const url = `https://www.reddit.com/r/BotBouncer/search.json?q=${q}&restrict_sr=true&sort=new&limit=10&raw_json=1`;
+
   try {
     const json = await bonFetchJson<{
       data?: {
@@ -66,13 +70,17 @@ export async function bonFetchBotBouncerStatus(
     const match = posts.find(
       (p) => (p.title || "").toLowerCase().trim() === target
     );
+
     if (!match) {
       return null;
     }
+
     const flair = (match.link_flair_text || "").toLowerCase().trim();
+
     if (flair === "banned" || flair === "pending" || flair === "organic") {
       return flair;
     }
+
     return null;
   } catch (err) {
     console.error("[Bot or Not] BotBouncer lookup failed", err);
@@ -96,6 +104,7 @@ export async function bonFetchRedditProfile(
       `https://www.reddit.com/user/${safe}/moderated_subreddits.json?raw_json=1`
     ).catch(() => null),
   ]);
+
   return {
     about: about as RedditProfile["about"],
     submitted: submitted as RedditProfile["submitted"],
@@ -122,6 +131,7 @@ export async function bonFetchRedditActivity(
       `https://www.reddit.com/user/${safe}/moderated_subreddits.json?raw_json=1`
     ).catch(() => null),
   ]);
+
   return {
     submitted: submitted as RedditActivityFetch["submitted"],
     comments: comments as RedditActivityFetch["comments"],

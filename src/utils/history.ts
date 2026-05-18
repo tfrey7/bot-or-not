@@ -14,6 +14,7 @@ export function bonMergeHistoryEntries(
 ): HistoryEntry {
   const newer = (b?.at || 0) >= (a?.at || 0) ? b : a;
   const older = newer === a ? b : a;
+
   return {
     ...older,
     ...newer,
@@ -25,6 +26,7 @@ export function bonMergeHistoryEntries(
 export function bonDedupeHistory(history: HistoryEntry[]): HistoryEntry[] {
   const seen = new Map<string, number>();
   const out: HistoryEntry[] = [];
+
   for (const entry of history) {
     const key = entry?.permalink;
     if (key && seen.has(key)) {
@@ -37,6 +39,7 @@ export function bonDedupeHistory(history: HistoryEntry[]): HistoryEntry[] {
       out.push({ ...entry });
     }
   }
+
   return out;
 }
 
@@ -54,6 +57,7 @@ export function bonNormalizeReport(value: unknown): Report {
       investigation: null,
     };
   }
+
   const v = (value && typeof value === "object" ? value : {}) as Partial<
     Record<string, unknown>
   >;
@@ -62,6 +66,7 @@ export function bonNormalizeReport(value: unknown): Report {
   );
   const rawCount = typeof v.count === "number" ? v.count : 0;
   const count = history.length > 0 ? history.length : rawCount;
+
   return {
     count,
     lastReportedAt: (v.lastReportedAt as number) ?? 0,
@@ -86,12 +91,14 @@ export function bonFindReportKey(
   if (reports[username]) {
     return username;
   }
+
   const target = username.toLowerCase();
   for (const k of Object.keys(reports)) {
     if (k.toLowerCase() === target) {
       return k;
     }
   }
+
   return null;
 }
 

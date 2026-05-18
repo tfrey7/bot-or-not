@@ -49,6 +49,7 @@ export async function bonCallClaude(
 ): Promise<ClaudeCallResult> {
   const t0 = performance.now();
   const webSearchOn = !!options.webSearch;
+
   const body: Record<string, unknown> = {
     model: BON_CLAUDE_MODEL,
     // Bumped from 4096 — with web_search the response can include
@@ -78,6 +79,7 @@ export async function bonCallClaude(
       },
     ],
   };
+
   if (webSearchOn) {
     body.tools = [
       {
@@ -107,12 +109,14 @@ export async function bonCallClaude(
   } catch (err) {
     const ms = Math.round(performance.now() - t0);
     console.log(`[Bot or Not] timing: ${label} ${ms}ms (failed)`);
+
     if ((err as { name?: string })?.name === "AbortError") {
       throw new Error(
         `Claude API timed out after ${BON_CLAUDE_TIMEOUT_MS / 1000}s`,
         { cause: err }
       );
     }
+
     throw err;
   } finally {
     clearTimeout(timeoutId);
@@ -124,6 +128,7 @@ export async function bonCallClaude(
     const errText = await res.text().catch(() => "");
     throw new Error(`Claude API ${res.status}: ${errText.slice(0, 300)}`);
   }
+
   const json = (await res.json()) as ClaudeResponse;
   const text = (json.content || [])
     .filter((c) => c.type === "text")
@@ -145,6 +150,7 @@ export async function bonCallClaude(
   const model = json.model || BON_CLAUDE_MODEL;
   const costUsd = bonEstimateCostUsd(json.usage, model, webSearchCount);
   const costStr = costUsd != null ? ` $${costUsd.toFixed(4)}` : "";
+
   console.log(
     `[Bot or Not] timing: ${label} ${ms}ms (in=${inTok} out=${outTok}${webSearchCount ? ` web=${webSearchCount}` : ""})${costStr}`
   );

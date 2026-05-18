@@ -52,29 +52,37 @@ export function bonInferRegionFromSubreddits(
   if (!subredditCounts) {
     return null;
   }
+
   const totals: Record<string, number> = Object.create(null);
   const hitsByRegion: Record<string, SubRegionHit[]> = Object.create(null);
   let totalFlagged = 0;
+
   for (const [sub, count] of Object.entries(subredditCounts)) {
     if (!count) {
       continue;
     }
+
     const region = BON_REGION_SUBS[bonNormalizeSubName(sub)];
     if (!region) {
       continue;
     }
+
     totals[region] = (totals[region] || 0) + count;
     (hitsByRegion[region] = hitsByRegion[region] || []).push({ sub, count });
     totalFlagged += count;
   }
+
   if (totalFlagged === 0) {
     return null;
   }
+
   const ranked = Object.entries(totals).sort((a, b) => b[1] - a[1]);
   const [topRegion, topCount] = ranked[0];
+
   const runnerUp = ranked[1]
     ? { region: ranked[1][0], count: ranked[1][1] }
     : null;
+
   return {
     region: topRegion,
     count: topCount,
@@ -89,7 +97,9 @@ function bonDetectScripts(text: string): Record<string, number> {
   if (!text) {
     return {};
   }
+
   const counts: Record<string, number> = {};
+
   for (let i = 0; i < text.length; ) {
     const cp = text.codePointAt(i)!;
     i += cp > 0xffff ? 2 : 1;
@@ -107,7 +117,9 @@ function bonDetectLanguageMarkers(text: string): Record<string, number> {
   if (!text) {
     return {};
   }
+
   const counts: Record<string, number> = {};
+
   for (const [name, def] of Object.entries(BON_LANGUAGE_MARKERS)) {
     const matches = text.match(def.pattern);
     if (matches && matches.length > 0) {
@@ -141,26 +153,33 @@ export function bonInferRegionFromScripts(
   if (!scriptCounts) {
     return null;
   }
+
   const votes: Record<string, number> = {};
   const hits: ScriptInference["hits"] = [];
+
   for (const [name, count] of Object.entries(scriptCounts)) {
     if (!count) {
       continue;
     }
+
     const def = BON_SCRIPT_RANGES.find((r) => r.name === name);
     if (!def) {
       continue;
     }
+
     hits.push({ script: name, count, regions: def.regions });
+
     // Split votes across plausible regions for ambiguous scripts.
     const share = count / def.regions.length;
     for (const region of def.regions) {
       votes[region] = (votes[region] || 0) + share;
     }
   }
+
   if (Object.keys(votes).length === 0) {
     return null;
   }
+
   const ranked = Object.entries(votes).sort((a, b) => b[1] - a[1]);
   return { region: ranked[0][0], score: ranked[0][1], hits };
 }
@@ -182,30 +201,37 @@ export function bonInferRegionFromLanguage(
   if (!languageCounts) {
     return null;
   }
+
   const votes: Record<string, number> = {};
   const hits: LanguageInference["hits"] = [];
+
   for (const [name, count] of Object.entries(languageCounts)) {
     if (!count) {
       continue;
     }
+
     const def = BON_LANGUAGE_MARKERS[name];
     if (!def) {
       continue;
     }
+
     hits.push({
       language: name,
       label: def.label,
       count,
       regions: def.regions,
     });
+
     const share = count / def.regions.length;
     for (const region of def.regions) {
       votes[region] = (votes[region] || 0) + share;
     }
   }
+
   if (Object.keys(votes).length === 0) {
     return null;
   }
+
   const ranked = Object.entries(votes).sort((a, b) => b[1] - a[1]);
   return { region: ranked[0][0], score: ranked[0][1], hits };
 }
@@ -297,19 +323,24 @@ export function bonInferRegionFromModerated(
   if (!Array.isArray(moderatedSubs) || moderatedSubs.length === 0) {
     return null;
   }
+
   const votes: Record<string, number> = {};
   const hits: ModeratedInference["hits"] = [];
+
   for (const sub of moderatedSubs) {
     const region = BON_REGION_SUBS[bonNormalizeSubName(sub)];
     if (!region) {
       continue;
     }
+
     votes[region] = (votes[region] || 0) + 1;
     hits.push({ sub, region });
   }
+
   if (Object.keys(votes).length === 0) {
     return null;
   }
+
   const ranked = Object.entries(votes).sort((a, b) => b[1] - a[1]);
   return { region: ranked[0][0], score: ranked[0][1], hits };
 }
@@ -378,6 +409,7 @@ export function bonInferRegion(
   function add(region: string, points: number): void {
     scores[region] = (scores[region] || 0) + points;
   }
+
   if (subResult) {
     add(subResult.region, 3 + Math.min(subResult.count - 1, 5));
   }
@@ -392,6 +424,7 @@ export function bonInferRegion(
   if (modResult) {
     add(modResult.region, 6 + Math.min(modResult.score - 1, 5));
   }
+
   if (tzOffset != null) {
     for (const region of Object.keys(scores)) {
       const offsets = BON_REGION_INFO[region]?.utcOffsets || [];
@@ -404,10 +437,12 @@ export function bonInferRegion(
   if (Object.keys(scores).length > 0) {
     const ranked = Object.entries(scores).sort((a, b) => b[1] - a[1]);
     const [topRegion, topScore] = ranked[0];
+
     const tzMatch =
       tzOffset != null
         ? !!BON_REGION_INFO[topRegion]?.utcOffsets?.includes(tzOffset)
         : null;
+
     return {
       kind: "deterministic",
       region: topRegion,
@@ -429,6 +464,7 @@ export function bonInferRegion(
     const possibleRegions = Object.entries(BON_REGION_INFO)
       .filter(([, info]) => info.utcOffsets.includes(offsetHours))
       .map(([code]) => code);
+
     return {
       kind: "timezone-only",
       offsetHours,

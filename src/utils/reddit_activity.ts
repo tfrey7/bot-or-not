@@ -27,12 +27,14 @@ export function bonExtractActivityData(raw: RedditActivityFetch): ActivityData {
   const comments: RedditComment[] = (raw.comments?.data?.children || [])
     .map((c) => c.data as RedditComment | undefined)
     .filter((c): c is RedditComment => Boolean(c));
+
   const postTimestamps = posts
     .map((p) => (p.created_utc ? p.created_utc * 1000 : null))
     .filter((t): t is number => typeof t === "number");
   const commentTimestamps = comments
     .map((c) => (c.created_utc ? c.created_utc * 1000 : null))
     .filter((t): t is number => typeof t === "number");
+
   const subredditCounts: Record<string, number> = {};
   for (const item of [...posts, ...comments]) {
     const sub = (
@@ -46,6 +48,7 @@ export function bonExtractActivityData(raw: RedditActivityFetch): ActivityData {
     }
     subredditCounts[sub] = (subredditCounts[sub] || 0) + 1;
   }
+
   // Concatenate all visible user-authored text and scan for region signals
   // (non-Latin scripts, dialect/transliteration markers). The scanner lives
   // in features/regions so the script/marker tables stay in one place.
@@ -54,6 +57,7 @@ export function bonExtractActivityData(raw: RedditActivityFetch): ActivityData {
     ...comments.map((c) => c.body || ""),
   ].join("\n");
   const scanned = bonScanTextSignals(corpus);
+
   // moderated_subreddits.json: { "data": [{ "sr": "name", ... }, ...] } when
   // the user has the "show moderated subs publicly" setting on; otherwise it
   // 403s and the caller catches → null. Either case is fine.
@@ -62,6 +66,7 @@ export function bonExtractActivityData(raw: RedditActivityFetch): ActivityData {
         .map((m) => m.sr || m.display_name || null)
         .filter((s): s is string => Boolean(s))
     : [];
+
   return {
     postTimestamps,
     commentTimestamps,

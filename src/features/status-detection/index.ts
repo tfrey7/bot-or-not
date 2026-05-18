@@ -16,6 +16,7 @@ function detectUserStatus(): void {
   if (!profileMatch) {
     return;
   }
+
   const username = profileMatch[1];
   const bodyText = document.body?.textContent || "";
 
@@ -29,10 +30,12 @@ function detectUserStatus(): void {
   if (!status) {
     return;
   }
+
   const key = `${username}#${status}`;
   if (lastUserStatusReported === key) {
     return;
   }
+
   lastUserStatusReported = key;
   browser.runtime.sendMessage({
     type: "update-user-status",
@@ -51,6 +54,7 @@ function reportPostStatus(
   if (reportedPostPermalinks.has(permalink)) {
     return;
   }
+
   reportedPostPermalinks.add(permalink);
   console.log("[Bot or Not] post status detected", { permalink, status });
   browser.runtime.sendMessage({
@@ -66,14 +70,17 @@ function detectPostStatuses(): void {
     if (!permalink) {
       return;
     }
+
     const removedBy = post.getAttribute("removed-by-category");
     const author = post.getAttribute("author");
+
     let status: string | null = null;
     if (removedBy && removedBy !== "" && removedBy !== "none") {
       status = "removed";
     } else if (author === "[deleted]") {
       status = "deleted";
     }
+
     if (status) {
       reportPostStatus(permalink, status);
     }
@@ -87,8 +94,10 @@ function detectStandalonePostStatus(): void {
   if (!m) {
     return;
   }
+
   const permalink = m[1].endsWith("/") ? m[1] : `${m[1]}/`;
   const bodyText = document.body?.textContent || "";
+
   let status: string | null = null;
   if (/removed by the moderators of/i.test(bodyText)) {
     status = "removed";
@@ -99,6 +108,7 @@ function detectStandalonePostStatus(): void {
   ) {
     status = "deleted";
   }
+
   if (status) {
     reportPostStatus(permalink, status);
   }
@@ -120,6 +130,7 @@ function detectBotBouncerStatuses(): void {
     if (!titleMatch) {
       return;
     }
+
     const username = titleMatch[1];
 
     let flairText = (
@@ -149,6 +160,7 @@ function detectBotBouncerStatuses(): void {
     if (reportedBotBouncerKeys.has(key)) {
       return;
     }
+
     reportedBotBouncerKeys.add(key);
 
     browser.runtime.sendMessage({

@@ -77,19 +77,24 @@ function addStat(
 ): void {
   const card = document.createElement("div");
   card.className = "bon-analytics-stat";
+
   const l = document.createElement("div");
   l.className = "bon-stat-label";
   l.textContent = label;
+
   const v = document.createElement("div");
   v.className = "bon-stat-value";
   v.textContent = value;
+
   card.appendChild(l);
   card.appendChild(v);
+
   if (sub) {
     const sb = document.createElement("div");
     sb.className = "bon-stat-sub";
     sb.textContent = sub;
     card.appendChild(sb);
   }
+
   parent.appendChild(card);
 }

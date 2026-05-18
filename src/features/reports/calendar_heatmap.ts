@@ -16,13 +16,16 @@ export function bonReportsCalendarHeatmap(
 
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
   const currentWeekSunday = new Date(today);
   currentWeekSunday.setDate(today.getDate() - today.getDay());
+
   const startSunday = new Date(currentWeekSunday);
   startSunday.setDate(currentWeekSunday.getDate() - 52 * 7);
 
   const dayKey = (d: Date): string =>
     `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+
   const counts = new Map<string, number>();
   for (const t of timestamps) {
     const d = new Date(t);
@@ -60,6 +63,7 @@ export function bonReportsCalendarHeatmap(
     }
   }
   monthRuns.push({ startWeek: 53, month: -1 });
+
   const monthLabelByWeek = new Map<number, number>();
   for (let i = 0; i < monthRuns.length - 1; i++) {
     const length = monthRuns[i + 1].startWeek - monthRuns[i].startWeek;
@@ -85,8 +89,10 @@ export function bonReportsCalendarHeatmap(
     for (let d = 0; d < 7; d++) {
       const date = new Date(startSunday);
       date.setDate(startSunday.getDate() + w * 7 + d);
+
       const cell = document.createElement("div");
       cell.className = "bon-cal-cell";
+
       if (date > today) {
         cell.classList.add("bon-cal-cell--future");
       } else {
@@ -94,6 +100,7 @@ export function bonReportsCalendarHeatmap(
         const lvl = bonBucketLevel(c);
         const inUnknownZone =
           earliestVisible && date.getTime() < earliestVisible && c === 0;
+
         if (inUnknownZone) {
           cell.classList.add("bon-cal-cell--unknown");
           cell.title = `${date.toLocaleDateString()} — beyond Reddit's API window (unknown)`;

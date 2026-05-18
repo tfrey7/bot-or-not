@@ -36,6 +36,7 @@ const observer = new MutationObserver(() => {
     bonReportingResetNav();
     bonStatusDetectionResetNav();
   }
+
   bonProfilePanelInject();
   bonInlineTagsMark();
   bonStatusDetectionScan();

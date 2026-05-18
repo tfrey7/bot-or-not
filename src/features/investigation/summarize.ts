@@ -105,11 +105,14 @@ export function bonSummarizeProfile(
 
   const removalCounts: { total: number; by_category: Record<string, number> } =
     { total: 0, by_category: {} };
+
   for (const item of [...posts, ...comments]) {
     const cat = item.removed_by_category;
+
     if (!cat) {
       continue;
     }
+
     removalCounts.total++;
     removalCounts.by_category[cat] = (removalCounts.by_category[cat] || 0) + 1;
   }
@@ -122,12 +125,15 @@ export function bonSummarizeProfile(
   const allTimestamps: number[] = [...posts, ...comments]
     .map((it) => (it.created_utc ? it.created_utc * 1000 : null))
     .filter((t): t is number => typeof t === "number");
+
   let postingRate: ProfileSummary["activity"]["posting_rate"] = null;
+
   if (allTimestamps.length >= 2) {
     const newest = Math.max(...allTimestamps);
     const oldest = Math.min(...allTimestamps);
     const windowMs = Math.max(newest - oldest, 1);
     const windowDays = windowMs / 86_400_000;
+
     postingRate = {
       visible_window_days: Number(windowDays.toFixed(2)),
       visible_items_per_day: Number(
@@ -176,6 +182,7 @@ export function bonSummarizeProfile(
   };
 
   const subredditCounts: Record<string, number> = {};
+
   for (const p of posts) {
     const k = p.subreddit_name_prefixed || `r/${p.subreddit}`;
     subredditCounts[k] = (subredditCounts[k] || 0) + 1;
@@ -184,6 +191,7 @@ export function bonSummarizeProfile(
     const k = c.subreddit_name_prefixed || `r/${c.subreddit}`;
     subredditCounts[k] = (subredditCounts[k] || 0) + 1;
   }
+
   const topSubreddits = Object.entries(subredditCounts)
     .sort((a, b) => b[1] - a[1])
     .slice(0, 25)

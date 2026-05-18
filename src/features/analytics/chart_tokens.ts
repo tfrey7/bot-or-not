@@ -23,6 +23,7 @@ export function bonAnalyticsTokenMix(s: AnalyticsSummary): SVGSVGElement {
     { label: "Output", value: s.totalOutput, color: "#8b5cf6" },
   ];
   const total = segments.reduce((a, b) => a + b.value, 0);
+
   if (total === 0) {
     root.appendChild(bonAnalyticsEmptyChart(W, H, "No token usage recorded."));
     return root;
@@ -45,11 +46,14 @@ export function bonAnalyticsTokenMix(s: AnalyticsSummary): SVGSVGElement {
   );
 
   let x = PAD;
+
   for (const seg of segments) {
     const w = (seg.value / total) * innerW;
+
     if (w <= 0) {
       continue;
     }
+
     const rect = bonAnalyticsSvgEl("rect", {
       x: x.toFixed(2),
       y: BAR_Y,
@@ -73,12 +77,14 @@ export function bonAnalyticsTokenMix(s: AnalyticsSummary): SVGSVGElement {
         )
       );
     }
+
     x += w;
   }
 
   // Legend grid (2x2)
   const legendStartY = BAR_Y + BAR_H + 28;
   const legendColW = innerW / 2;
+
   segments.forEach((seg, i) => {
     const lx = PAD + (i % 2) * legendColW;
     const ly = legendStartY + Math.floor(i / 2) * 22;

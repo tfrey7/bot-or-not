@@ -89,8 +89,10 @@ export function bonAnalyticsCollect(
   reports: Array<Report & { username: string }> | null | undefined
 ): AnalyticsEntry[] {
   const out: AnalyticsEntry[] = [];
+
   for (const r of reports || []) {
     const inv = r?.investigation;
+
     if (!inv) {
       continue;
     }
@@ -115,6 +117,7 @@ export function bonAnalyticsCollect(
 
 function buildAnalyticsEntry(username: string, run: RunLike): AnalyticsEntry {
   const calls: AnalyticsCall[] = [];
+
   if (run.usage) {
     calls.push({
       kind: "1d",
@@ -127,11 +130,13 @@ function buildAnalyticsEntry(username: string, run: RunLike): AnalyticsEntry {
       webSearchCount: run.webSearchCount || 0,
     });
   }
+
   const totalCost = calls.reduce((s, c) => s + (c.costUsd || 0), 0);
   const personaLabel =
     "persona" in run && run.persona && typeof run.persona === "object"
       ? (run.persona as { label?: string }).label || null
       : null;
+
   return {
     username,
     status: (run.status || "done") as AnalyticsEntry["status"],
@@ -190,18 +195,22 @@ export function bonAnalyticsSummarize(
 
   for (const r of runs) {
     s.totalCost += r.totalCost;
+
     if (typeof r.durationMs === "number") {
       s.totalDuration += r.durationMs;
       durations.push(r.durationMs);
     }
+
     s.totalPosts += r.postsFetched;
     s.totalComments += r.commentsFetched;
+
     if (r.runAt) {
       firstRun = Math.min(firstRun, r.runAt);
       lastRun = Math.max(lastRun, r.runAt);
       const d = new Date(r.runAt);
       days.add(`${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`);
     }
+
     for (const c of r.calls) {
       s.totalApiCalls++;
       s.totalWebSearches += c.webSearchCount || 0;
@@ -210,6 +219,7 @@ export function bonAnalyticsSummarize(
       s.totalOutput += u.output_tokens || 0;
       s.totalCacheRead += u.cache_read_input_tokens || 0;
       s.totalCacheWrite += u.cache_creation_input_tokens || 0;
+
       if (c.model) {
         const m = s.models[c.model] || {
           model: c.model,
@@ -254,16 +264,22 @@ export function bonAnalyticsSummarize(
       ? s.totalCacheRead / (s.totalInput + s.totalCacheRead)
       : 0;
   s.runsPerActiveDay = s.daysActive ? s.count / s.daysActive : 0;
+
   // Estimate dollars saved by cache reads vs. paying full input price.
   let savings = 0;
+
   for (const m of Object.values(s.models)) {
     const p = bonLookupPricing(m.model);
+
     if (!p) {
       continue;
     }
+
     savings += (m.cacheRead * (p.input - p.cacheRead)) / 1_000_000;
   }
+
   s.cacheSavingsUsd = savings;
+
   // Burn rate over last 7 days of activity (only counting days with runs
   // to avoid a misleadingly low rate for sporadic use).
   s.recentCost = bonRecentCost(runs, 7);

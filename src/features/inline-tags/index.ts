@@ -22,10 +22,12 @@ async function loadUserTags(): Promise<void> {
   const { tags = {} } = (await browser.runtime.sendMessage({
     type: "get-user-tags",
   })) as { tags?: Record<string, UserTagInfo> };
+
   userTags = new Map();
   for (const [username, info] of Object.entries(tags)) {
     userTags.set(username.toLowerCase(), { ...info, username });
   }
+
   tagsLoaded = true;
   resetAndMarkAll();
 }
@@ -33,6 +35,7 @@ async function loadUserTags(): Promise<void> {
 function buildUserTag(info: UserTagInfo): HTMLSpanElement {
   const variant = bonInlineTagVariant(info);
   const tag = document.createElement("span");
+
   tag.className = `bon-user-tag bon-user-tag--${variant}`;
   tag.dataset.bonTagFor = info.username.toLowerCase();
   tag.setAttribute("role", "button");
@@ -46,6 +49,7 @@ export function bonInlineTagsMark(): void {
   if (!tagsLoaded) {
     return;
   }
+
   document
     .querySelectorAll<HTMLAnchorElement>(
       'a[href*="/user/"]:not([data-bon-marked]), a[href*="/u/"]:not([data-bon-marked])'
@@ -55,22 +59,29 @@ export function bonInlineTagsMark(): void {
       if (!href) {
         return;
       }
+
       const match = href.match(/\/(?:user|u)\/([^/?#]+)/i);
       if (!match) {
         return;
       }
+
       if (el.closest('[id^="profile-tab"]')) {
         return;
       }
+
       el.dataset.bonMarked = "true";
+
       if (bonInlineTagIsAvatarLink(el)) {
         return;
       }
+
       const info = userTags.get(match[1].toLowerCase());
       if (!info) {
         return;
       }
+
       const key = match[1].toLowerCase();
+
       // Skip if a tag for this user already sits next to this link (Reddit
       // sometimes re-parents anchors, dropping the data-bon-marked flag).
       const sibling = el.nextElementSibling as HTMLElement | null;
@@ -80,6 +91,7 @@ export function bonInlineTagsMark(): void {
       ) {
         return;
       }
+
       // Scoped dedup: post headers often contain multiple anchors for the
       // same user (avatar + username link). Only one pill per header.
       const scope =
@@ -92,15 +104,18 @@ export function bonInlineTagsMark(): void {
       ) {
         return;
       }
+
       el.insertAdjacentElement("afterend", buildUserTag(info));
     });
 }
 
 function refreshUserTag(username: string): void {
   const key = username.toLowerCase();
+
   document
     .querySelectorAll(`.bon-user-tag[data-bon-tag-for="${bonCssEscape(key)}"]`)
     .forEach((t) => t.remove());
+
   document
     .querySelectorAll<HTMLAnchorElement>('a[href*="/user/"], a[href*="/u/"]')
     .forEach((el) => {
@@ -108,12 +123,15 @@ function refreshUserTag(username: string): void {
       if (!href) {
         return;
       }
+
       const match = href.match(/\/(?:user|u)\/([^/?#]+)/i);
       if (!match || match[1].toLowerCase() !== key) {
         return;
       }
+
       delete el.dataset.bonMarked;
     });
+
   bonInlineTagsMark();
 }
 
@@ -131,6 +149,7 @@ function resetAndMarkAll(): void {
 export function bonInlineTagsBumpReport(username: string): void {
   const key = username.toLowerCase();
   const existing = userTags.get(key);
+
   userTags.set(key, {
     username,
     count: (existing?.count || 0) + 1,
@@ -155,6 +174,7 @@ export function bonInlineTagsInit(): void {
       if (!tag) {
         return;
       }
+
       e.preventDefault();
       e.stopPropagation();
       browser.runtime.sendMessage({ type: "open-popup" });
@@ -166,6 +186,7 @@ export function bonInlineTagsInit(): void {
     if (area !== "local" || !changes.reports) {
       return;
     }
+
     void loadUserTags();
   });
 }

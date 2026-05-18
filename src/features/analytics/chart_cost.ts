@@ -26,6 +26,7 @@ export function bonAnalyticsCostChart(
   const sorted = runs
     .filter((r): r is AnalyticsEntry & { runAt: number } => r.runAt != null)
     .sort((a, b) => a.runAt - b.runAt);
+
   if (!sorted.length) {
     root.appendChild(
       bonAnalyticsEmptyChart(W, H, "No timestamped runs to plot.")
@@ -81,7 +82,9 @@ export function bonAnalyticsCostChart(
         `${p.x.toFixed(2)},${(PAD.t + ih - (p.cum / maxCum) * ih).toFixed(2)}`
     )
     .join(" L ");
+
   const area = `M ${PAD.l},${PAD.t + ih} L ${lineCoords} L ${(PAD.l + iw).toFixed(2)},${PAD.t + ih} Z`;
+
   root.appendChild(
     bonAnalyticsSvgEl("path", { d: area, class: "bon-chart-area" })
   );
@@ -99,6 +102,7 @@ export function bonAnalyticsCostChart(
       maxIdx = i;
     }
   }
+
   const mp = points[maxIdx];
   const my = PAD.t + ih - (mp.cum / maxCum) * ih;
   const marker = bonAnalyticsSvgEl("circle", {
@@ -115,6 +119,7 @@ export function bonAnalyticsCostChart(
   // X axis time labels — switch to time-of-day when all runs fall within a
   // single day, otherwise three identical date labels would render.
   const xFormatter = bonAnalyticsTimeAxisFormatter(last - first);
+
   if (last - first < 60_000 || points.length === 1) {
     root.appendChild(
       bonAnalyticsSvgText(
@@ -169,6 +174,5 @@ export function bonAnalyticsCostChart(
     hit.appendChild(t);
     root.appendChild(hit);
   }
-
   return root;
 }

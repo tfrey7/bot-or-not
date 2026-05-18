@@ -55,6 +55,7 @@ export function bonPanelBuildProfilePanel(
   const body = document.createElement("div");
   body.className = "bon-profile-panel__body";
   body.classList.toggle("bon-profile-panel__body--expanded", expanded);
+
   const bodyInner = document.createElement("div");
   bodyInner.className = "bon-profile-panel__body-inner";
   bodyInner.appendChild(bonPanelBuildInvestigationSection(username, report));
@@ -69,6 +70,7 @@ export function bonPanelBuildProfilePanel(
   const toggle = (): void => {
     const isExpanded = header.getAttribute("aria-expanded") === "true";
     const next = !isExpanded;
+
     header.setAttribute("aria-expanded", String(next));
     body.classList.toggle("bon-profile-panel__body--expanded", next);
     toggleLink.textContent = next ? "Show less" : "Show more";
@@ -81,6 +83,7 @@ export function bonPanelBuildProfilePanel(
     }
     toggle();
   });
+
   header.addEventListener("keydown", (e) => {
     if (e.target !== header) {
       return;
@@ -90,6 +93,7 @@ export function bonPanelBuildProfilePanel(
       toggle();
     }
   });
+
   if (preview) {
     preview.addEventListener("click", (e) => {
       const target = e.target as Element | null;
@@ -99,12 +103,14 @@ export function bonPanelBuildProfilePanel(
       toggle();
     });
   }
+
   toggleLink.addEventListener("click", (e) => {
     e.stopPropagation();
     toggle();
   });
 
   panel.appendChild(header);
+
   if (preview) {
     preview.appendChild(toggleLink);
     panel.appendChild(preview);
@@ -114,6 +120,7 @@ export function bonPanelBuildProfilePanel(
     toggleRow.appendChild(toggleLink);
     panel.appendChild(toggleRow);
   }
+
   panel.appendChild(body);
   return panel;
 }

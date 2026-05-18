@@ -19,9 +19,11 @@ function factorLabel(f: FactorWithExtras): string {
   if (f.key && BON_FACTOR_LABELS[f.key]) {
     return BON_FACTOR_LABELS[f.key];
   }
+
   if (f.name) {
     return f.name.replace(/_/g, " ");
   }
+
   return f.key || "Factor";
 }
 
@@ -44,16 +46,18 @@ function renderMissingFactor(key: string): HTMLLIElement {
   pill.className = "bon-factor-signal bon-factor-signal--new";
   pill.textContent = "Added later";
   header.appendChild(pill);
-  meta.appendChild(header);
 
+  meta.appendChild(header);
   li.appendChild(meta);
 
   const note = document.createElement("div");
   note.className = "bon-factor-content";
+
   const inner = document.createElement("div");
   inner.className = "bon-factor-reasoning bon-factor-reasoning--muted";
   inner.textContent =
     "Added after this investigation ran. Re-run the investigation to include this factor in the verdict.";
+
   note.appendChild(inner);
   li.appendChild(note);
 
@@ -77,6 +81,7 @@ function renderFactor(f: FactorWithExtras): HTMLLIElement {
 
   if (typeof f.score === "number") {
     const leaning = bonScoreLeaning(f.score, f.confidence);
+
     const pill = document.createElement("span");
     const pillClass =
       leaning === "likely-bot"
@@ -84,6 +89,7 @@ function renderFactor(f: FactorWithExtras): HTMLLIElement {
         : leaning === "likely-human"
           ? "human"
           : leaning;
+
     pill.className = `bon-factor-signal bon-factor-signal--${pillClass}`;
     pill.textContent =
       leaning === "neutral" ? "Neutral" : bonFormatVerdict(leaning);
@@ -99,6 +105,7 @@ function renderFactor(f: FactorWithExtras): HTMLLIElement {
   if (typeof f.confidence === "number") {
     subMetaParts.push(`${Math.round(f.confidence * 100)}% confidence`);
   }
+
   if (subMetaParts.length) {
     const sm = document.createElement("div");
     sm.className = "bon-factor-confidence";
@@ -130,16 +137,17 @@ function renderFactor(f: FactorWithExtras): HTMLLIElement {
   }
 
   li.appendChild(content);
-
   return li;
 }
 
 export function bonReportsFactorsList(factors: Factor[]): HTMLUListElement {
   const ul = document.createElement("ul");
   ul.className = "bon-verdict-factors";
+
   const byKey = new Map<string, FactorWithExtras>(
     factors.map((f) => [f.key, f as FactorWithExtras])
   );
+
   for (const key of BON_FACTOR_KEYS) {
     const f = byKey.get(key);
     if (f) {

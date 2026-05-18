@@ -16,6 +16,7 @@ export function bonReportsInvestigationDetail(
   rawInvestigation: Investigation
 ): HTMLDivElement {
   const investigation = bonNormalizeInvestigation(rawInvestigation);
+
   const wrap = document.createElement("div");
   wrap.className = "bon-detail-wrap";
 
@@ -26,8 +27,10 @@ export function bonReportsInvestigationDetail(
 
   if (investigation.status === "running") {
     const stale = bonIsInvestigationStale(investigation);
+
     const p = document.createElement("p");
     p.className = "bon-verdict-meta";
+
     if (stale) {
       p.textContent = investigation.startedAt
         ? `Stalled — started ${new Date(investigation.startedAt).toLocaleString()}, never completed. Click the retry button above to re-run.`
@@ -37,6 +40,7 @@ export function bonReportsInvestigationDetail(
         ? `Running since ${new Date(investigation.startedAt).toLocaleString()}…`
         : "Running…";
     }
+
     wrap.appendChild(p);
     return wrap;
   }
@@ -85,6 +89,7 @@ export function bonReportsInvestigationDetail(
 
   const meta = document.createElement("p");
   meta.className = "bon-verdict-meta";
+
   const metaParts: string[] = [];
   if (typeof investigation.confidence === "number") {
     metaParts.push(
@@ -113,6 +118,7 @@ export function bonReportsInvestigationDetail(
         : "🌐 web search: skipped"
     );
   }
+
   meta.textContent = metaParts.join(" · ");
   wrap.appendChild(meta);
 

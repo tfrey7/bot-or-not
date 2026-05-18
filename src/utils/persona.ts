@@ -14,6 +14,7 @@ export function bonNormalizePersona(raw: unknown): Persona | null {
   if (!raw || typeof raw !== "object") {
     return null;
   }
+
   const obj = raw as Record<string, unknown>;
   const label = String(obj.label || "")
     .toLowerCase()
@@ -21,8 +22,10 @@ export function bonNormalizePersona(raw: unknown): Persona | null {
   if (!(BON_PERSONA_LABELS as readonly string[]).includes(label)) {
     return null;
   }
+
   const reasoning =
     typeof obj.reasoning === "string" ? obj.reasoning.trim() : "";
+
   return {
     label: label as PersonaLabel,
     reasoning,
@@ -39,6 +42,7 @@ export function bonNormalizeArchetypes(
     unknown
   >;
   let anyPresent = false;
+
   for (const axis of BON_ARCHETYPE_KEYS) {
     const v = src[axis];
     if (typeof v === "number" && Number.isFinite(v)) {
@@ -48,6 +52,7 @@ export function bonNormalizeArchetypes(
       out[axis] = 0;
     }
   }
+
   // Legacy investigations (and any pre-archetype model output) have no axes —
   // return null so the renderer can fall back to the text-only persona panel
   // instead of drawing a flat zero radar.

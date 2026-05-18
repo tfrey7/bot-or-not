@@ -17,8 +17,10 @@ export function bonReportsPopulateInvestigatedCell(
     cell.classList.add("bon-cell-muted");
     return;
   }
+
   if (investigation.status === "running") {
     const stale = bonIsInvestigationStale(investigation);
+
     if (stale) {
       cell.textContent = "Stalled";
     } else if (investigation.startedAt) {
@@ -26,6 +28,7 @@ export function bonReportsPopulateInvestigatedCell(
         0,
         Math.round((Date.now() - investigation.startedAt) / 1000)
       );
+
       cell.textContent = bonReportsFormatRunningCellText(
         elapsed,
         expectedDurationMs
@@ -33,22 +36,28 @@ export function bonReportsPopulateInvestigatedCell(
     } else {
       cell.textContent = "Running…";
     }
+
     if (investigation.startedAt) {
       const started = new Date(investigation.startedAt).toLocaleString();
       cell.title = stale
         ? `Stalled — started ${started}, never completed`
         : `Started ${started}`;
     }
+
     return;
   }
+
   const when = document.createElement("span");
   when.textContent = investigation.runAt
     ? bonFormatDate(investigation.runAt)
     : "—";
+
   if (investigation.runAt) {
     when.title = new Date(investigation.runAt).toLocaleString();
   }
+
   cell.appendChild(when);
+
   if (typeof investigation.durationMs === "number") {
     const dur = document.createElement("span");
     dur.className = "bon-duration";

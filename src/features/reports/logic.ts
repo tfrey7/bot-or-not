@@ -23,6 +23,7 @@ export function bonReportsExpectedDurationMs(
     if (!inv) {
       continue;
     }
+
     if (Array.isArray(inv.runs) && inv.runs.length > 0) {
       for (const run of inv.runs) {
         if (run.status === "done" && typeof run.durationMs === "number") {
@@ -33,9 +34,11 @@ export function bonReportsExpectedDurationMs(
       durs.push(inv.durationMs);
     }
   }
+
   if (durs.length < 3) {
     return null;
   }
+
   durs.sort((a, b) => a - b);
   return durs[Math.floor(durs.length / 2)];
 }
@@ -61,10 +64,12 @@ export function bonReportsFormatRunningTitle(
   if (!expectedMs) {
     return `Investigation running… ${elapsedSec}s elapsed (large accounts can take 60–90s)`;
   }
+
   const expSec = bonReportsFormatExpectedSec(expectedMs);
   if (elapsedSec > expSec) {
     return `Running ${elapsedSec}s — longer than the typical ${expSec}s. Hang tight.`;
   }
+
   const remaining = Math.max(0, expSec - elapsedSec);
   return `Running ${elapsedSec}s · ~${remaining}s left (typical ${expSec}s)`;
 }
@@ -84,9 +89,11 @@ export function bonReportsSanitizeUsernameQuery(
   raw: string | null | undefined
 ): string | null {
   const trimmed = (raw || "").trim().replace(/^\/?u\//i, "");
+
   if (!/^[A-Za-z0-9_-]{3,20}$/.test(trimmed)) {
     return null;
   }
+
   return trimmed;
 }
 
@@ -94,6 +101,7 @@ export function bonReportsDiagnoseLoadError(
   message: string | null | undefined
 ): string {
   const msg = (message || "").toLowerCase();
+
   if (
     msg.includes("receiving end does not exist") ||
     msg.includes("could not establish connection") ||
@@ -101,12 +109,15 @@ export function bonReportsDiagnoseLoadError(
   ) {
     return "The extension background worker isn't responding. This usually happens after the extension was reloaded or updated while this page was open. Reload the page to reconnect.";
   }
+
   if (msg.includes("quota") || msg.includes("storage")) {
     return "Browser storage may be full or unavailable. Try clearing some reports or checking your browser's extension storage permissions.";
   }
+
   if (msg.includes("undefined") || msg.includes("cannot read")) {
     return "Stored report data may be corrupted. Check the browser console for details, or clear all reports from Settings as a last resort.";
   }
+
   return "Open the browser console (F12) for more details, then try reloading the page.";
 }
 
@@ -117,12 +128,15 @@ export function bonReportsHasStructuralChange(
   if (prev.length !== next.length) {
     return true;
   }
+
   const prevByUser = new Map(prev.map((r) => [r.username, r]));
+
   for (const r of next) {
     const p = prevByUser.get(r.username);
     if (!p) {
       return true;
     }
+
     const ps = p.investigation?.status;
     const ns = r.investigation?.status;
     if (ps !== ns) {
@@ -137,6 +151,7 @@ export function bonReportsHasStructuralChange(
     if (p.lastReportedAt !== r.lastReportedAt) {
       return true;
     }
+
     const pStale = ps === "running" && bonIsInvestigationStale(p.investigation);
     const nStale = ns === "running" && bonIsInvestigationStale(r.investigation);
     if (pStale !== nStale) {
@@ -177,6 +192,7 @@ export function bonReportsInferTimezoneFromTimestamps(
   let minSum = Infinity;
   let maxSum = -Infinity;
   let minStart = 0;
+
   for (let start = 0; start < 24; start++) {
     let sum = 0;
     for (let i = 0; i < WINDOW; i++) {
@@ -193,6 +209,7 @@ export function bonReportsInferTimezoneFromTimestamps(
 
   const total = utcCounts.reduce((a, b) => a + b, 0);
   const ratio = maxSum > 0 ? minSum / maxSum : 1;
+
   // If the quietest 6h window holds more than half what the busiest does,
   // there's no clear sleep period — flag it (a documented bot signal).
   if (ratio > 0.5) {
@@ -200,6 +217,7 @@ export function bonReportsInferTimezoneFromTimestamps(
   }
 
   const sleepMidUtc = (minStart + WINDOW / 2) % 24;
+
   let offset = 3 - sleepMidUtc;
   if (offset > 12) {
     offset -= 24;
@@ -207,6 +225,7 @@ export function bonReportsInferTimezoneFromTimestamps(
   if (offset <= -12) {
     offset += 24;
   }
+
   const rounded = Math.round(offset);
   return {
     kind: "inferred",
@@ -226,6 +245,7 @@ export function bonReportsComputeRegionForReport(
     ...(activityData?.postTimestamps || []),
     ...(activityData?.commentTimestamps || []),
   ];
+
   const tz = bonReportsInferTimezoneFromTimestamps(timestamps);
   return bonInferRegion(activityData, tz);
 }
@@ -235,6 +255,7 @@ export function bonReportsComputeEarliestFullyVisible(
 ): number | null {
   const { postsLimited, commentsLimited, earliestPostAt, earliestCommentAt } =
     activityData;
+
   const bounds: number[] = [];
   if (postsLimited && earliestPostAt) {
     bounds.push(earliestPostAt);
@@ -242,9 +263,11 @@ export function bonReportsComputeEarliestFullyVisible(
   if (commentsLimited && earliestCommentAt) {
     bounds.push(earliestCommentAt);
   }
+
   if (bounds.length === 0) {
     return null;
   }
+
   return Math.max(...bounds);
 }
 
@@ -262,6 +285,7 @@ export function bonReportsDefaultDirFor(key: SortKey): SortDir {
   if (key === "username" || key === "verdict") {
     return "asc";
   }
+
   return "desc";
 }
 
@@ -290,6 +314,7 @@ export function bonReportsSortValue(
     if (!inv) {
       return 0;
     }
+
     // While running, runAt isn't written yet — fall back to startedAt so a
     // freshly-kicked-off investigation sorts to the top instead of the
     // bottom.
@@ -302,9 +327,11 @@ export function bonReportsSortValue(
     if (!region) {
       return "￿";
     }
+
     if (region.kind === "deterministic") {
       return (regionLabels[region.region] || region.region) + "_a";
     }
+
     return "￾_" + (region.offsetHours ?? 99);
   }
   return null;
@@ -316,9 +343,11 @@ export function bonReportsCompareBy(
   regionLabels: Record<string, string>
 ): (a: ReportRow, b: ReportRow) => number {
   const mult = dir === "asc" ? 1 : -1;
+
   return (a, b) => {
     const av = bonReportsSortValue(a, key, regionLabels);
     const bv = bonReportsSortValue(b, key, regionLabels);
+
     if (av == null && bv == null) {
       return 0;
     }
@@ -334,6 +363,7 @@ export function bonReportsCompareBy(
     if (av > bv) {
       return 1 * mult;
     }
+
     const aTime = a.lastReportedAt || 0;
     const bTime = b.lastReportedAt || 0;
     return bTime - aTime;

@@ -36,6 +36,7 @@ export function bonRenderAnalytics(
   if (!container) {
     return;
   }
+
   container.replaceChildren();
 
   const investigations = bonAnalyticsCollect(reports);
@@ -53,11 +54,11 @@ export function bonRenderAnalytics(
   }
 
   const summary = bonAnalyticsSummarize(runs);
-
   section.appendChild(bonAnalyticsStatGrid(summary));
 
   const charts = document.createElement("div");
   charts.className = "bon-analytics-charts";
+
   charts.appendChild(
     bonAnalyticsChartCard(
       "Cumulative spend",
@@ -105,21 +106,27 @@ export function bonRenderAnalytics(
 function buildHeader(count: number, errors: number): HTMLElement {
   const header = document.createElement("header");
   header.className = "bon-analytics-header";
+
   const h2 = document.createElement("h2");
   h2.textContent = "Investigation analytics";
   header.appendChild(h2);
+
   const sub = document.createElement("p");
   sub.className = "bon-analytics-subtitle";
+
   if (count > 0) {
     let text = `Cost, timing, and token usage across ${count} completed investigation${count === 1 ? "" : "s"}`;
+
     if (errors) {
       text += ` (${errors} failed run${errors === 1 ? "" : "s"} excluded)`;
     }
+
     sub.textContent = text + ".";
   } else {
     sub.textContent =
       "Cost, timing, and token usage across all completed investigations.";
   }
+
   header.appendChild(sub);
   return header;
 }
@@ -135,15 +142,21 @@ function buildEmptyState(): HTMLDivElement {
 function buildFootnote(s: AnalyticsSummary): HTMLParagraphElement {
   const p = document.createElement("p");
   p.className = "bon-analytics-footnote";
-  const parts: string[] = [];
+
+  const parts: string[] = [
+    `Bot or Not v${browser.runtime.getManifest().version}`,
+  ];
+
   if (s.firstRunAt) {
-    parts.push(`Earliest run ${new Date(s.firstRunAt).toLocaleDateString()}`);
+    parts.push(`earliest run ${new Date(s.firstRunAt).toLocaleDateString()}`);
   }
+
   if (s.lastRunAt) {
     parts.push(`latest ${new Date(s.lastRunAt).toLocaleDateString()}`);
   }
+
   parts.push(
-    "Costs are estimated from per-token pricing; check your Anthropic console for billed amounts"
+    "costs are estimated from per-token pricing; check your Anthropic console for billed amounts"
   );
   p.textContent = parts.join(" · ") + ".";
   return p;

@@ -47,14 +47,17 @@ export function bonLookupPricing(
   if (!model) {
     return null;
   }
+
   if (BON_MODEL_PRICING[model]) {
     return BON_MODEL_PRICING[model];
   }
+
   for (const key of Object.keys(BON_MODEL_PRICING)) {
     if (model.startsWith(key)) {
       return BON_MODEL_PRICING[key];
     }
   }
+
   return null;
 }
 
@@ -69,6 +72,7 @@ export function bonEstimateCostUsd(
   if (!p || !usage) {
     return null;
   }
+
   const inTok = usage.input_tokens || 0;
   const outTok = usage.output_tokens || 0;
   const cacheRead = usage.cache_read_input_tokens || 0;
@@ -78,6 +82,7 @@ export function bonEstimateCostUsd(
   // Prefer the split if present; otherwise treat all cache creation as 5m.
   const w5 = write5m != null ? write5m : cacheCreate;
   const w1 = write1h != null ? write1h : 0;
+
   const usd =
     (inTok * p.input +
       outTok * p.output +
@@ -86,6 +91,7 @@ export function bonEstimateCostUsd(
       w1 * p.cacheWrite1h) /
       1_000_000 +
     (webSearchCount || 0) * BON_WEB_SEARCH_USD_PER_REQUEST;
+
   return usd;
 }
 

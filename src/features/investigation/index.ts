@@ -76,16 +76,19 @@ export async function bonGatherProfile(
     bonFetchRedditProfile(username),
     bonFetchBotBouncerStatus(username),
   ]);
+
   const botBouncerStatus: BotBouncerStatus =
     freshBotBouncerStatus || extra.botBouncerStatus || null;
   const botBouncerCheckedAt = freshBotBouncerStatus
     ? Date.now()
     : extra.botBouncerCheckedAt || null;
+
   const summary = bonSummarizeProfile(username, raw, {
     botBouncerStatus,
     botBouncerCheckedAt,
   });
   const activityData = bonExtractActivityData(raw);
+
   return {
     summary,
     activityData,
@@ -108,16 +111,20 @@ export async function bonRunOneDAnalysis(
       "claude 1D",
       { webSearch: true }
     );
+
   const verdict = bonExtractJson(rawText) as {
     factors?: Factor[];
     summary?: string;
     persona?: unknown;
   } | null;
+
   if (!verdict) {
     throw new Error("Could not parse verdict JSON from Claude response");
   }
+
   const factors = Array.isArray(verdict.factors) ? verdict.factors : [];
   const derived = bonComputeVerdict(factors);
+
   return {
     verdict: derived.verdict,
     confidence: derived.confidence,
@@ -152,6 +159,7 @@ export async function bonInvestigateUser(
 ): Promise<InvestigateUserResult> {
   const inputs = await bonGatherProfile(username, extra);
   const oneD = await bonRunOneDAnalysis(apiKey, inputs.summary);
+
   return {
     ...oneD,
     postsFetched: inputs.raw.submitted?.data?.children?.length || 0,

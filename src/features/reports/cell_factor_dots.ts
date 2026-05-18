@@ -35,17 +35,20 @@ function attachFactorCardPositioning(
   cardEl: HTMLElement
 ): void {
   let mounted = false;
+
   const show = (): void => {
     if (!mounted) {
       document.body.appendChild(cardEl);
       mounted = true;
     }
+
     const dotRect = dotEl.getBoundingClientRect();
     const cardWidth = cardEl.offsetWidth;
     const cardHeight = cardEl.offsetHeight;
     if (!cardWidth || !cardHeight) {
       return;
     }
+
     const vw = window.innerWidth;
     const vh = window.innerHeight;
     const margin = 8;
@@ -64,9 +67,11 @@ function attachFactorCardPositioning(
     cardEl.style.top = `${top}px`;
     cardEl.classList.add("bon-factor-card--visible");
   };
+
   const hide = (): void => {
     cardEl.classList.remove("bon-factor-card--visible");
   };
+
   dotEl.addEventListener("mouseenter", show);
   dotEl.addEventListener("mouseleave", hide);
   dotEl.addEventListener("focus", show);
@@ -88,6 +93,7 @@ function buildFactorTooltipCard(
 
   const header = document.createElement("span");
   header.className = "bon-factor-card-header";
+
   const name = document.createElement("span");
   name.className = "bon-factor-card-name";
   name.textContent = fullLabel;
@@ -102,6 +108,7 @@ function buildFactorTooltipCard(
           : leaning === "missing"
             ? "neutral"
             : leaning;
+
     const pill = document.createElement("span");
     pill.className = `bon-factor-signal bon-factor-signal--${pillClass}`;
     pill.textContent =
@@ -183,6 +190,7 @@ function buildFactorDot(
       typeof f.confidence === "number"
         ? `${Math.round(f.confidence * 100)}%`
         : "—";
+
     dot.setAttribute(
       "aria-label",
       `${fullLabel}: score ${scoreText}, confidence ${confText}`
@@ -208,6 +216,7 @@ export function bonReportsFactorDots(
 ): HTMLSpanElement {
   const wrap = document.createElement("span");
   wrap.className = "bon-factors-cell";
+
   const factorsByKey = new Map<string, FactorWithEvidence>();
   if (Array.isArray(investigation?.factors)) {
     for (const f of investigation.factors) {
@@ -216,6 +225,7 @@ export function bonReportsFactorDots(
       }
     }
   }
+
   // Treat "missing" specially only when the investigation actually ran
   // (status done). A never-run investigation gets the plain "missing" dots
   // without the "added after" framing.

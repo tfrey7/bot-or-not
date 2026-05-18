@@ -15,16 +15,20 @@ export function bonReportsVerdictBadge(
   if (!rawInvestigation) {
     return null;
   }
+
   if (rawInvestigation.status === "running") {
     const stale = bonIsInvestigationStale(rawInvestigation);
+
     const span = document.createElement("span");
     span.className = `bon-verdict-badge bon-verdict-badge--${stale ? "error" : "running"}`;
     span.textContent = stale ? "Stalled" : "Running";
     span.title = stale
       ? "Investigation appears orphaned — click the retry button to re-run"
       : "Investigation in progress";
+
     return span;
   }
+
   if (rawInvestigation.status === "error") {
     const span = document.createElement("span");
     span.className = "bon-verdict-badge bon-verdict-badge--error";
@@ -32,13 +36,17 @@ export function bonReportsVerdictBadge(
     span.title = rawInvestigation.error || "Investigation failed";
     return span;
   }
+
   const investigation = bonNormalizeInvestigation(rawInvestigation);
+
   if (!investigation?.verdict) {
     return null;
   }
+
   const span = document.createElement("span");
   span.className = `bon-verdict-badge bon-verdict-badge--${investigation.verdict}`;
   span.textContent = bonFormatVerdict(investigation.verdict);
   span.title = investigation.summary || investigation.verdict;
+
   return span;
 }

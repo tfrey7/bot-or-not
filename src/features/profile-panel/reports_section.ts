@@ -9,12 +9,15 @@ function resolveReportUrl(permalink: string | undefined): string | null {
   if (!permalink) {
     return null;
   }
+
   if (/^https?:\/\//i.test(permalink)) {
     return permalink;
   }
+
   if (permalink.startsWith("/")) {
     return `https://www.reddit.com${permalink}`;
   }
+
   return `https://www.reddit.com/${permalink}`;
 }
 
@@ -44,6 +47,7 @@ function buildReportEntry(entry: HistoryEntry): HTMLLIElement {
   if (entry.postTitle) {
     labelParts.push(entry.postTitle);
   }
+
   const labelText =
     (prefix ? `${prefix} ` : "") + (labelParts.join(" · ") || "report");
 
@@ -70,14 +74,17 @@ export function bonPanelBuildReportsSection(
   report: Report | null | undefined
 ): HTMLDivElement {
   const history = report?.history || [];
+
   const section = document.createElement("div");
   section.className = "bon-panel-section";
 
   const title = document.createElement("p");
   title.className = "bon-panel-section__title";
+
   const label = document.createElement("span");
   label.textContent = `Reports (${history.length})`;
   title.appendChild(label);
+
   section.appendChild(title);
 
   if (history.length === 0) {
@@ -96,6 +103,7 @@ export function bonPanelBuildReportsSection(
   for (const entry of visible) {
     ul.appendChild(buildReportEntry(entry));
   }
+
   section.appendChild(ul);
 
   if (sorted.length > visible.length) {

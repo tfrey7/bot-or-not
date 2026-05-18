@@ -11,14 +11,18 @@ export async function bonPanelFetchAndStoreCakeDay(
       `https://www.reddit.com/user/${encodeURIComponent(username)}/about.json`,
       { credentials: "same-origin" }
     );
+
     if (!res.ok) {
       return;
     }
+
     const data = (await res.json()) as { data?: { created_utc?: number } };
     const createdUtc = data?.data?.created_utc;
+
     if (!createdUtc) {
       return;
     }
+
     browser.runtime.sendMessage({
       type: "update-user-created-at",
       username,

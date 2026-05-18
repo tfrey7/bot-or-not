@@ -13,6 +13,7 @@ export function bonPanelBuildInvestigateBtn(
   const btn = document.createElement("button");
   btn.type = "button";
   btn.className = "bon-panel-btn";
+
   const running = investigation?.status === "running";
   const stale = running && bonIsInvestigationStale(investigation);
   const verdict = investigation?.verdict;
@@ -34,11 +35,13 @@ export function bonPanelBuildInvestigateBtn(
     btn.disabled = true;
     btn.classList.add("bon-spinning");
     btn.textContent = "⏳ Investigating…";
+
     try {
       const res = (await browser.runtime.sendMessage({
         type: "investigate-user",
         username,
       })) as { ok?: boolean; error?: string };
+
       if (res?.ok === false && res.error === "no-api-key") {
         alert(
           "No Claude API key set. Click the Bot or Not toolbar icon, then open Settings to add one."
@@ -55,5 +58,6 @@ export function bonPanelBuildInvestigateBtn(
       btn.textContent = verdict ? "🔁 Re-investigate" : "🤖 Investigate";
     }
   });
+
   return btn;
 }

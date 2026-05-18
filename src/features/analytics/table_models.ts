@@ -32,6 +32,7 @@ export function bonAnalyticsModelsTable(
 
   const byModel = new Map<string, ModelRow>();
   const durationsByModel = new Map<string, number[]>();
+
   for (const r of runs) {
     for (const c of r.calls) {
       const key = c.model || "(unknown)";
@@ -57,12 +58,14 @@ export function bonAnalyticsModelsTable(
         if (!durationsByModel.has(key)) {
           durationsByModel.set(key, []);
         }
+
         durationsByModel.get(key)!.push(r.durationMs);
       }
     }
   }
 
   const rows = Array.from(byModel.values()).sort((a, b) => b.cost - a.cost);
+
   if (!rows.length) {
     return wrap;
   }
@@ -72,6 +75,7 @@ export function bonAnalyticsModelsTable(
 
   const thead = document.createElement("thead");
   const headRow = document.createElement("tr");
+
   [
     { label: "Model", align: "left" as const },
     { label: "Calls" },
@@ -86,15 +90,18 @@ export function bonAnalyticsModelsTable(
   ].forEach((c) => {
     const th = document.createElement("th");
     th.textContent = c.label;
+
     if (c.align) {
       th.style.textAlign = c.align;
     }
+
     headRow.appendChild(th);
   });
   thead.appendChild(headRow);
   table.appendChild(thead);
 
   const tbody = document.createElement("tbody");
+
   for (const r of rows) {
     const tr = document.createElement("tr");
     const hit = r.in + r.cacheRead > 0 ? r.cacheRead / (r.in + r.cacheRead) : 0;
@@ -132,6 +139,5 @@ export function bonAnalyticsModelsTable(
   scroll.className = "bon-analytics-table-scroll";
   scroll.appendChild(table);
   wrap.appendChild(scroll);
-
   return wrap;
 }

@@ -14,29 +14,36 @@ export function bonPanelBuildInvestigationSection(
   report: Report | null | undefined
 ): HTMLDivElement {
   const investigation = bonNormalizeInvestigation(report?.investigation);
+
   const section = document.createElement("div");
   section.className = "bon-panel-section";
 
   const title = document.createElement("p");
   title.className = "bon-panel-section__title";
+
   const label = document.createElement("span");
   label.textContent = "AI investigation";
   title.appendChild(label);
+
   section.appendChild(title);
 
   if (!investigation) {
     const empty = document.createElement("p");
     empty.className = "bon-panel-empty";
+
     empty.textContent =
       "Not yet investigated. Run the AI investigation for a verdict + factor breakdown.";
+
     section.appendChild(empty);
     return section;
   }
 
   if (investigation.status === "running") {
     const stale = bonIsInvestigationStale(investigation);
+
     const empty = document.createElement("p");
     empty.className = "bon-panel-empty";
+
     if (stale) {
       empty.textContent = investigation.startedAt
         ? `Stalled — started ${new Date(investigation.startedAt).toLocaleTimeString()}, never completed. Click investigate to retry.`
@@ -46,6 +53,7 @@ export function bonPanelBuildInvestigationSection(
         ? `Running since ${new Date(investigation.startedAt).toLocaleTimeString()}…`
         : "Running…";
     }
+
     section.appendChild(empty);
     return section;
   }
@@ -72,6 +80,7 @@ export function bonPanelBuildInvestigationSection(
       `${investigation.postsFetched} posts · ${investigation.commentsFetched ?? 0} comments`
     );
   }
+
   if (metaParts.length) {
     const meta = document.createElement("p");
     meta.className = "bon-panel-meta";

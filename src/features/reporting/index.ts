@@ -33,6 +33,7 @@ function buildReportContext(e: Event): PendingReport | null {
           el.tagName.toLowerCase() === "shreddit-comment") &&
         !!el.getAttribute("author")
     );
+
   if (!authorEl) {
     return null;
   }
@@ -51,6 +52,7 @@ function buildReportContext(e: Event): PendingReport | null {
       authorEl.getAttribute("subreddit-name") ||
       null,
   };
+
   if (tag === "shreddit-post") {
     context.postTitle = authorEl.getAttribute("post-title") || null;
     context.postId = authorEl.id || null;
@@ -81,6 +83,7 @@ export function bonReportingInit(): void {
             el.classList.contains("report-button-content") &&
             el.textContent?.trim() === "Submit"
         );
+
       if (reportSpan && pendingReport) {
         const { username, context } = pendingReport;
         await browser.runtime.sendMessage({

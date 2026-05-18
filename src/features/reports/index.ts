@@ -72,6 +72,7 @@ async function loadActivityIfStale(
   if (inflightActivity.has(username)) {
     return;
   }
+
   inflightActivity.add(username);
   try {
     await browser.runtime.sendMessage({ type: "fetch-activity", username });
@@ -110,6 +111,7 @@ document
       if (!key) {
         return;
       }
+
       if (sortKey === key) {
         sortDir = sortDir === "asc" ? "desc" : "asc";
       } else {
@@ -117,6 +119,7 @@ document
         sortDir =
           (th.dataset.defaultDir as SortDir) || bonReportsDefaultDirFor(key);
       }
+
       render();
     });
   });
@@ -128,10 +131,12 @@ async function load(): Promise<void> {
     const { reports = {} } = (await browser.runtime.sendMessage({
       type: "get-all-reports",
     })) as { reports?: Record<string, Report> };
+
     allReports = Object.entries(reports).map(([username, data]) => ({
       username,
       ...data,
     }));
+
     render();
     renderAnalytics();
   } catch (err) {
@@ -170,9 +175,11 @@ function renderLoadError(err: unknown): void {
   btn.type = "button";
   btn.className = "bon-btn bon-empty-action";
   btn.textContent = "Reload page";
+
   btn.addEventListener("click", () => {
     location.reload();
   });
+
   emptyEl.appendChild(btn);
 }
 
@@ -194,6 +201,7 @@ function render(): void {
     if (!query) {
       return true;
     }
+
     const haystack = [
       r.username,
       ...(r.history || []).flatMap((h) => [
@@ -212,6 +220,7 @@ function render(): void {
   updateSortIndicators();
 
   tbody.replaceChildren();
+
   if (filtered.length === 0) {
     tableWrap.hidden = true;
     emptyEl.hidden = false;
@@ -244,6 +253,7 @@ function render(): void {
 
 function renderEmptyState(query: string): void {
   emptyEl.replaceChildren();
+
   const text = document.createElement("p");
   text.className = "bon-empty-text";
   if (allReports.length === 0 && !query) {
@@ -257,6 +267,7 @@ function renderEmptyState(query: string): void {
   if (!query) {
     return;
   }
+
   const username = bonReportsSanitizeUsernameQuery(query);
   if (!username) {
     return;
@@ -266,6 +277,7 @@ function renderEmptyState(query: string): void {
   btn.type = "button";
   btn.className = "bon-btn bon-empty-action";
   btn.textContent = `Investigate u/${username}`;
+
   btn.addEventListener("click", async () => {
     btn.disabled = true;
     btn.textContent = "Starting…";
@@ -285,6 +297,7 @@ function renderEmptyState(query: string): void {
       btn.textContent = `Investigate u/${username}`;
     }
   });
+
   emptyEl.appendChild(btn);
 }
 
@@ -294,6 +307,7 @@ function ensurePolling(): void {
       r.investigation?.status === "running" &&
       !bonIsInvestigationStale(r.investigation)
   );
+
   if (anyLive && !pollTimer) {
     pollTimer = setInterval(pollTick, POLL_INTERVAL_MS);
   } else if (!anyLive && pollTimer) {
@@ -312,14 +326,17 @@ async function pollTick(): Promise<void> {
     const { reports = {} } = (await browser.runtime.sendMessage({
       type: "get-all-reports",
     })) as { reports?: Record<string, Report> };
+
     const fresh: ReportRow[] = Object.entries(reports).map(
       ([username, data]) => ({
         username,
         ...data,
       })
     );
+
     const structuralChange = bonReportsHasStructuralChange(allReports, fresh);
     allReports = fresh;
+
     if (structuralChange) {
       render();
       renderAnalytics();
@@ -336,6 +353,7 @@ function updateRunningInPlace(): void {
   // Recompute in case a run completed between full renders and we have a
   // new sample for the median (no full re-render fires for that alone).
   expectedDurationMs = bonReportsExpectedDurationMs(allReports);
+
   for (const r of allReports) {
     const inv = r.investigation;
     if (inv?.status !== "running") {
@@ -347,8 +365,10 @@ function updateRunningInPlace(): void {
     if (!inv.startedAt) {
       continue;
     }
+
     const elapsedMs = Math.max(0, Date.now() - inv.startedAt);
     const elapsedSec = Math.round(elapsedMs / 1000);
+
     const cells = tbody.querySelectorAll<HTMLTableCellElement>(
       "[data-bon-running-cell]"
     );
@@ -360,6 +380,7 @@ function updateRunningInPlace(): void {
         );
       }
     }
+
     const btns = tbody.querySelectorAll<HTMLButtonElement>(
       "[data-bon-running-btn]"
     );
@@ -383,6 +404,7 @@ function updateSortIndicators(): void {
       if (!indicator) {
         return;
       }
+
       if (th.dataset.sort === sortKey) {
         indicator.textContent = sortDir === "asc" ? "▲" : "▼";
       } else {

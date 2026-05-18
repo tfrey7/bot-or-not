@@ -22,10 +22,12 @@ export function bonIsInvestigationStale(
   if (!investigation || investigation.status !== "running") {
     return false;
   }
+
   const startedAt = investigation.startedAt || 0;
   if (!startedAt) {
     return true;
   }
+
   return Date.now() - startedAt > BON_STALE_INVESTIGATION_MS;
 }
 
@@ -47,6 +49,7 @@ export function bonComputeVerdict(
       evidenceSum: 0,
     };
   }
+
   let evidenceSum = 0;
   for (const f of factors) {
     const s = typeof f?.score === "number" ? f.score : 0;
@@ -89,6 +92,7 @@ export function bonNormalizeInvestigation<
   ) {
     return investigation;
   }
+
   const derived = bonComputeVerdict(investigation.factors);
   return {
     ...investigation,

@@ -8,8 +8,10 @@ function kindIconFor(kind: string | undefined): HTMLSpanElement | null {
   if (!kind) {
     return null;
   }
+
   const span = document.createElement("span");
   span.className = `bon-kind-icon bon-kind-icon--${kind}`;
+
   if (kind === "post") {
     span.textContent = "📝";
     span.title = "Reported post";
@@ -19,6 +21,7 @@ function kindIconFor(kind: string | undefined): HTMLSpanElement | null {
   } else {
     return null;
   }
+
   return span;
 }
 
@@ -29,8 +32,10 @@ function statusIcon(
   if (!status) {
     return null;
   }
+
   const span = document.createElement("span");
   span.className = `bon-status-icon bon-status-icon--${status}`;
+
   if (status === "suspended") {
     span.textContent = "🚫";
     span.title = "Account suspended by Reddit";
@@ -46,6 +51,7 @@ function statusIcon(
   } else {
     return null;
   }
+
   return span;
 }
 
@@ -53,12 +59,15 @@ function resolveUrl(permalink: string | undefined): string | null {
   if (!permalink) {
     return null;
   }
+
   if (/^https?:\/\//i.test(permalink)) {
     return permalink;
   }
+
   if (permalink.startsWith("/")) {
     return `https://www.reddit.com${permalink}`;
   }
+
   return `https://www.reddit.com/${permalink}`;
 }
 
@@ -69,6 +78,7 @@ function renderHistoryEntry(entry: HistoryEntry): HTMLTableRowElement {
   if (entry.at) {
     const d = new Date(entry.at);
     const sameYear = d.getFullYear() === new Date().getFullYear();
+
     const dateLine = document.createElement("span");
     dateLine.className = "bon-history-date";
     dateLine.textContent = d.toLocaleDateString(undefined, {
@@ -76,12 +86,14 @@ function renderHistoryEntry(entry: HistoryEntry): HTMLTableRowElement {
       day: "numeric",
       year: sameYear ? undefined : "2-digit",
     });
+
     const timeLine = document.createElement("span");
     timeLine.className = "bon-history-time";
     timeLine.textContent = d.toLocaleTimeString(undefined, {
       hour: "numeric",
       minute: "2-digit",
     });
+
     dateCell.appendChild(dateLine);
     dateCell.appendChild(timeLine);
     dateCell.title = d.toLocaleString();
@@ -92,14 +104,17 @@ function renderHistoryEntry(entry: HistoryEntry): HTMLTableRowElement {
 
   const kindCell = document.createElement("td");
   const leadIcon = statusIcon(entry.status, "post") || kindIconFor(entry.kind);
+
   if (leadIcon) {
     kindCell.appendChild(leadIcon);
   }
   tr.appendChild(kindCell);
 
   const labelCell = document.createElement("td");
+
   const targetUrl =
     resolveUrl(entry.permalink) || (entry.sourceUrl as string | undefined);
+
   const labelParts: string[] = [];
   if (entry.subreddit) {
     labelParts.push(entry.subreddit);
@@ -107,7 +122,9 @@ function renderHistoryEntry(entry: HistoryEntry): HTMLTableRowElement {
   if (entry.postTitle) {
     labelParts.push(entry.postTitle);
   }
+
   const label = labelParts.join(" · ") || targetUrl || "report";
+
   if (targetUrl) {
     const a = document.createElement("a");
     a.href = targetUrl;
@@ -130,11 +147,13 @@ export function bonReportsHistoryTable(
 ): HTMLTableElement {
   const table = document.createElement("table");
   table.className = "bon-history-table";
+
   const tbodyEl = document.createElement("tbody");
   const sorted = [...history].sort((a, b) => (b.at || 0) - (a.at || 0));
   for (const entry of sorted) {
     tbodyEl.appendChild(renderHistoryEntry(entry));
   }
+
   table.appendChild(tbodyEl);
   return table;
 }

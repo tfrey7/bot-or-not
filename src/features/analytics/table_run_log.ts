@@ -57,6 +57,7 @@ export function bonAnalyticsRunLog(runs: AnalyticsEntry[]): HTMLDivElement {
   table.appendChild(thead);
 
   const tbody = document.createElement("tbody");
+
   for (const r of rows) {
     const tr = document.createElement("tr");
 
@@ -84,6 +85,7 @@ export function bonAnalyticsRunLog(runs: AnalyticsEntry[]): HTMLDivElement {
 
     const tdModel = document.createElement("td");
     const primaryModel = r.calls[0]?.model || null;
+
     if (primaryModel) {
       const code = document.createElement("code");
       code.textContent = shortModelName(primaryModel);
@@ -91,6 +93,7 @@ export function bonAnalyticsRunLog(runs: AnalyticsEntry[]): HTMLDivElement {
     } else {
       tdModel.textContent = "—";
     }
+
     tr.appendChild(tdModel);
 
     const tdDuration = document.createElement("td");
@@ -130,12 +133,12 @@ export function bonAnalyticsRunLog(runs: AnalyticsEntry[]): HTMLDivElement {
     note.textContent = `Showing ${rows.length} most recent of ${sorted.length} runs.`;
     wrap.appendChild(note);
   }
-
   return wrap;
 }
 
 function sumRunTokens(r: AnalyticsEntry): number {
   let total = 0;
+
   for (const c of r.calls) {
     const u = c.usage || {};
     total +=
@@ -151,10 +154,13 @@ function formatVerdictCell(r: AnalyticsEntry): string {
   if (!r.verdict) {
     return "—";
   }
+
   const label = r.verdict.replace(/-/g, " ");
+
   if (typeof r.botProbability === "number") {
     return `${label} · ${bonFmtPercent(r.botProbability)} bot`;
   }
+
   if (typeof r.confidence === "number") {
     return `${label} · ${bonFmtPercent(r.confidence)} conf`;
   }

@@ -25,6 +25,7 @@ function findProfileH1(): HTMLHeadingElement | null {
     }
     return h1 as HTMLHeadingElement;
   }
+
   return null;
 }
 
@@ -36,11 +37,13 @@ function ensureProfilePanel(username: string): void {
   if (document.getElementById("bon-profile-panel")) {
     return;
   }
+
   if (reportCache.has(username)) {
     renderProfilePanel(username, reportCache.get(username) ?? null);
   } else {
     void refreshProfilePanel(username);
   }
+
   // Visiting a profile is itself a "is this a bot?" signal. Background
   // dedups against existing done/error/running investigations.
   browser.runtime.sendMessage({
@@ -104,6 +107,7 @@ function injectPostAuthorPanel(): void {
   const postEl = Array.from(document.querySelectorAll("shreddit-post")).find(
     (p) => (p.getAttribute("permalink") || "").toLowerCase().startsWith(urlBase)
   ) as HTMLElement | undefined;
+
   if (!postEl) {
     // Drop any stale panel sitting on a feed post we're navigating away from.
     const existingPanel = document.getElementById("bon-post-author-panel");
@@ -112,6 +116,7 @@ function injectPostAuthorPanel(): void {
     }
     return;
   }
+
   const username = postEl.getAttribute("author");
   if (!username || username === "[deleted]" || username === "AutoModerator") {
     return;
@@ -133,9 +138,11 @@ async function refreshProfilePanel(username: string): Promise<void> {
   const profileMatch = window.location.pathname.match(
     /^\/(?:user|u)\/([^/?#]+)/i
   );
+
   if (!profileMatch || profileMatch[1] !== username) {
     return;
   }
+
   let report: Report | null = null;
   try {
     const res = (await browser.runtime.sendMessage({
@@ -147,7 +154,9 @@ async function refreshProfilePanel(username: string): Promise<void> {
   } catch (err) {
     console.error("[Bot or Not] failed to fetch user report", err);
   }
+
   renderProfilePanel(username, report);
+
   if (report && !report.createdAt) {
     void bonPanelFetchAndStoreCakeDay(username);
   }
@@ -169,10 +178,12 @@ function renderProfilePanel(username: string, report: Report | null): void {
     expanded: wasExpanded,
     id: "bon-profile-panel",
   });
+
   if (existing && !isPanelMisplaced(existing)) {
     existing.replaceWith(fresh);
     return;
   }
+
   // Misplaced (e.g., Reddit reparented it inside a feed post) — drop the
   // stale node so the wrapper logic below re-anchors at the header.
   if (existing) {
@@ -190,6 +201,7 @@ function renderProfilePanel(username: string, report: Report | null): void {
     headerWrapper.appendChild(fresh);
     return;
   }
+
   h1.appendChild(fresh);
 }
 
@@ -197,6 +209,7 @@ function ensurePostAuthorPanel(username: string, postEl: HTMLElement): void {
   if (document.getElementById("bon-post-author-panel")) {
     return;
   }
+
   if (reportCache.has(username)) {
     renderPostAuthorPanel(username, postEl, reportCache.get(username) ?? null);
   } else {
@@ -211,9 +224,11 @@ async function refreshPostAuthorPanel(
   const postMatch = window.location.pathname.match(
     /^\/r\/[^/]+\/comments\/[^/]+/i
   );
+
   if (!postMatch) {
     return;
   }
+
   let report: Report | null = null;
   try {
     const res = (await browser.runtime.sendMessage({
@@ -225,7 +240,9 @@ async function refreshPostAuthorPanel(
   } catch (err) {
     console.error("[Bot or Not] failed to fetch user report", err);
   }
+
   renderPostAuthorPanel(username, postEl, report);
+
   if (report && !report.createdAt) {
     void bonPanelFetchAndStoreCakeDay(username);
   }
@@ -270,6 +287,7 @@ function renderPostAuthorPanel(
     existing.replaceWith(fresh);
     return;
   }
+
   if (existing) {
     existing.remove();
   }
@@ -285,6 +303,7 @@ function renderPostAuthorPanel(
     creditBar.parentElement?.insertBefore(fresh, creditBar.nextSibling);
     return;
   }
+
   postEl.parentElement?.insertBefore(fresh, postEl);
 }
 
@@ -300,15 +319,18 @@ export function bonProfilePanelInit(): void {
     if (area !== "local" || !changes.reports) {
       return;
     }
+
     const profilePanel = document.getElementById("bon-profile-panel");
     if (profilePanel?.dataset.username) {
       void refreshProfilePanel(profilePanel.dataset.username);
     }
+
     const postPanel = document.getElementById("bon-post-author-panel");
     if (postPanel?.dataset.username) {
       const postEl = document.querySelector(
         "shreddit-post"
       ) as HTMLElement | null;
+
       void refreshPostAuthorPanel(
         postPanel.dataset.username,
         postEl as HTMLElement

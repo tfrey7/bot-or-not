@@ -25,6 +25,7 @@ export function bonAnalyticsActivityChart(
   const runsWithTime = runs.filter(
     (r): r is AnalyticsEntry & { runAt: number } => r.runAt != null
   );
+
   if (!runsWithTime.length) {
     root.appendChild(
       bonAnalyticsEmptyChart(W, H, "No timestamped runs to plot.")
@@ -34,6 +35,7 @@ export function bonAnalyticsActivityChart(
 
   const buckets = new Map<number, { count: number; cost: number }>();
   let earliest = Infinity;
+
   for (const r of runsWithTime) {
     const d = new Date(r.runAt);
     d.setHours(0, 0, 0, 0);
@@ -44,6 +46,7 @@ export function bonAnalyticsActivityChart(
     b.cost += r.totalCost;
     buckets.set(ts, b);
   }
+
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const todayTs = today.getTime();
@@ -76,9 +79,11 @@ export function bonAnalyticsActivityChart(
   for (let i = 0; i < totalDays; i++) {
     const ts = startTs + i * MS_PER_DAY;
     const b = buckets.get(ts);
+
     if (!b) {
       continue;
     }
+
     const h = (b.count / maxCount) * ih;
     const x = PAD.l + i * barW + 1;
     const y = PAD.t + ih - h;

@@ -17,6 +17,7 @@ export function bonReportsApplyProgressVisual(
   if (!expectedMs) {
     return;
   }
+
   const pct = Math.min(100, (elapsedMs / expectedMs) * 100);
   btn.style.setProperty("--bon-progress", `${pct.toFixed(1)}%`);
   btn.classList.toggle("bon-progress--overtime", elapsedMs > expectedMs);
@@ -35,23 +36,29 @@ export function bonReportsRenderInvestigateButton(
   const btn = document.createElement("button");
   btn.type = "button";
   btn.className = "bon-investigate-btn";
+
   const running = investigation?.status === "running";
   const stale = running && bonIsInvestigationStale(investigation);
   const verdict = investigation?.verdict;
+
   if (running && !stale && investigation) {
     btn.textContent = "";
     btn.disabled = true;
     btn.dataset.bonRunningBtn = username;
+
     const startedAt = investigation.startedAt || Date.now();
     btn.dataset.bonRunningStartedAt = String(startedAt);
+
     const elapsedMs = Math.max(0, Date.now() - startedAt);
     const elapsedSec = Math.round(elapsedMs / 1000);
+
     if (expectedDurationMs) {
       btn.classList.add("bon-progress");
       bonReportsApplyProgressVisual(btn, elapsedMs, expectedDurationMs);
     } else {
       btn.classList.add("bon-spinning");
     }
+
     btn.title = bonReportsFormatRunningTitle(elapsedSec, expectedDurationMs);
   } else if (stale) {
     btn.textContent = "🔁";
@@ -63,7 +70,9 @@ export function bonReportsRenderInvestigateButton(
     btn.textContent = "🤖";
     btn.title = "Run AI investigation";
   }
+
   btn.setAttribute("aria-label", btn.title);
+
   btn.addEventListener("click", async () => {
     btn.disabled = true;
     btn.classList.add("bon-spinning");
@@ -84,6 +93,7 @@ export function bonReportsRenderInvestigateButton(
       btn.textContent = verdict ? "🔁" : "🤖";
     }
   });
+
   return btn;
 }
 
@@ -96,6 +106,7 @@ export function bonReportsRenderDeleteButton(
   btn.textContent = "🗑";
   btn.title = `Delete report for u/${username}`;
   btn.setAttribute("aria-label", btn.title);
+
   btn.addEventListener("click", () => {
     bonReportsOpenConfirmModal({
       text: `Delete the report for u/${username}? This can't be undone.`,
@@ -104,5 +115,6 @@ export function bonReportsRenderDeleteButton(
         browser.runtime.sendMessage({ type: "delete-report", username }),
     });
   });
+
   return btn;
 }

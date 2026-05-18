@@ -11,21 +11,27 @@ export function bonReportsScoreBar(
   confidence: number | null | undefined
 ): HTMLDivElement {
   const clamped = Math.max(-1, Math.min(1, score));
+
   const conf =
     typeof confidence === "number" ? Math.max(0, Math.min(1, confidence)) : 0;
+
   const bar = document.createElement("div");
   bar.className = "bon-factor-bar";
+
   const fill = document.createElement("div");
   const leaning = bonScoreLeaning(clamped, confidence);
+
   const fillClass =
     leaning === "likely-bot"
       ? "bot"
       : leaning === "likely-human"
         ? "human"
         : leaning;
+
   fill.className = `bon-factor-bar-fill bon-factor-bar-fill--${fillClass}`;
   fill.style.left = "0";
   fill.style.width = `${conf * 100}%`;
+
   bar.appendChild(fill);
   return bar;
 }

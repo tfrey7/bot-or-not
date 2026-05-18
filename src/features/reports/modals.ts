@@ -48,6 +48,7 @@ export function bonReportsOpenConfirmModal({
   modalText.textContent = text;
   confirmBtn.textContent = confirmLabel;
   pendingConfirmAction = action;
+
   modal.hidden = false;
   cancelBtn.focus();
 }
@@ -63,18 +64,22 @@ export function bonReportsInitConfirmModal({
   onConfirm: () => Promise<void> | void;
 }): void {
   cancelBtn.addEventListener("click", closeConfirmModal);
+
   modal.addEventListener("click", (e) => {
     if (e.target === modal) {
       closeConfirmModal();
     }
   });
+
   confirmBtn.addEventListener("click", async () => {
     if (!pendingConfirmAction) {
       return;
     }
+
     const action = pendingConfirmAction;
     confirmBtn.disabled = true;
     cancelBtn.disabled = true;
+
     try {
       await action();
       closeConfirmModal();
@@ -106,8 +111,10 @@ export async function bonReportsOpenSettings(): Promise<void> {
   apiKeyInput.value = "";
   apiKeyStatus.textContent = "Loading...";
   apiKeyStatus.className = "bon-settings-status";
+
   settingsModal.hidden = false;
   apiKeyInput.focus();
+
   try {
     const { hasKey } = (await browser.runtime.sendMessage({
       type: "get-claude-api-key",
@@ -121,11 +128,14 @@ export async function bonReportsOpenSettings(): Promise<void> {
 
 async function saveApiKey(): Promise<void> {
   const value = apiKeyInput.value.trim();
+
   if (!value) {
     settingsModal.hidden = true;
     return;
   }
+
   settingsSave.disabled = true;
+
   try {
     const { hasKey } = (await browser.runtime.sendMessage({
       type: "set-claude-api-key",
@@ -144,14 +154,17 @@ async function saveApiKey(): Promise<void> {
 
 export function bonReportsInitSettingsModal(): void {
   settingsBtn.addEventListener("click", bonReportsOpenSettings);
+
   settingsCancel.addEventListener("click", () => {
     settingsModal.hidden = true;
   });
+
   settingsModal.addEventListener("click", (e) => {
     if (e.target === settingsModal) {
       settingsModal.hidden = true;
     }
   });
+
   settingsSave.addEventListener("click", saveApiKey);
 }
 
@@ -160,9 +173,11 @@ export function bonReportsCloseModalsOnEscape(): void {
     if (e.key !== "Escape") {
       return;
     }
+
     if (!modal.hidden) {
       closeConfirmModal();
     }
+
     if (!settingsModal.hidden) {
       settingsModal.hidden = true;
     }
