@@ -1,21 +1,27 @@
 {
   "name": "bot-or-not",
-  "version": "3.0.0",
+  "version": "3.10.0",
   "description": "",
   "scripts": {
     "dev": "vite build --watch --mode development",
     "build": "vite build",
     "sign": "source .env && npm run build && web-ext sign --api-key=$AMO_API_KEY --api-secret=$AMO_API_SECRET --channel unlisted --source-dir dist",
-    "format": "prettier --write \"src/**/*.js\"",
-    "lint": "eslint \"src/**/*.js\"",
+    "format": "prettier --write \"src/**/*.{ts,js}\"",
+    "lint": "eslint \"src/**/*.{ts,js}\"",
+    "typecheck": "tsc --noEmit",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "type": "module",
   "private": true,
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/firefox-webext-browser": "^143.0.0",
+    "@types/node": "^25.9.0",
     "eslint": "^10.2.0",
     "eslint-config-prettier": "^10.1.8",
     "prettier": "^3.8.1",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.59.4",
     "vite": "^8.0.13",
     "vite-plugin-web-extension": "^4.5.1",
     "web-ext": "^10.1.0"

@@ -5,12 +5,13 @@
 | Command | Purpose |
 |---|---|
 | `npm run dev` | Launch extension in Firefox (hot-reloads via web-ext) |
-| `npm run lint` | Lint all `src/*.js` with ESLint |
-| `npm run format` | Format all `src/*.js` with Prettier |
+| `npm run lint` | Lint all `src/**/*.{ts,js}` with typescript-eslint |
+| `npm run format` | Format all `src/**/*.{ts,js}` with Prettier |
+| `npm run typecheck` | Run `tsc --noEmit` against `src/**/*.ts` |
 | `npm run build` | Build an unsigned extension zip into `web-ext-artifacts/` |
 | `npm run sign` | Sign and publish to AMO (self-distribution, unlisted). Reads `AMO_API_KEY`/`AMO_API_SECRET` from `.env` |
 
-Run `npm run lint` and `npm run format` before committing.
+Run `npm run typecheck`, `npm run lint`, and `npm run format` before committing.
 
 ### Branching
 
@@ -31,24 +32,24 @@ Three execution contexts, communicating via `browser.runtime.sendMessage`:
 
 | Context | Files | Job |
 |---|---|---|
-| **Content script** | `src/content_script.js`, `src/content_script.css` | Runs on every Reddit page. Captures clicks on the report dialog, renders inline username tags in feeds/comments, injects the profile-page badge. |
-| **Background (service worker)** | `src/background.js`, `src/bot_analysis.js`, `src/verdict.js` | Owns all storage I/O. Runs AI investigations via the Claude API. Sweeps orphaned in-flight investigations on startup. |
-| **UI surfaces** | `src/reports.html/js` | Reports page (sort/filter/history) and its Settings modal (Claude API key). The toolbar button opens this page directly — there is no separate popup. Read state via background messages — never touch storage directly. |
+| **Content script** | `src/content_script.ts`, `src/content_script.css` | Runs on every Reddit page. Captures clicks on the report dialog, renders inline username tags in feeds/comments, injects the profile-page badge. |
+| **Background (service worker)** | `src/background.ts`, `src/features/investigation/*`, `src/verdict.ts` | Owns all storage I/O. Runs AI investigations via the Claude API. Sweeps orphaned in-flight investigations on startup. |
+| **UI surfaces** | `src/reports.html` + `src/features/reports/*.ts` | Reports page (sort/filter/history) and its Settings modal (Claude API key). The toolbar button opens this page directly — there is no separate popup. Read state via background messages — never touch storage directly. |
 
 ### Bot analysis pipeline
 
 - Triggered automatically when a user is reported, or on demand from the reports page.
-- `src/bot_analysis.md` is the system prompt sent to Claude. Editing it changes how factors are scored.
+- `src/features/investigation/prompt.md` is the system prompt sent to Claude. Editing it changes how factors are scored.
 - Claude returns 14 per-factor `{score, confidence, reasoning, evidence}` objects on a single bot↔human axis (`-1` = strong human signal, `+1` = strong bot signal), plus a top-level `persona: { label, reasoning }` block where `label` ∈ `{bot, stan, farmer, normal}`.
-- `src/verdict.js` aggregates deterministically: `botProbability = sigmoid(2 × Σ(-score × confidence))`, then bins into one of 5 labels: `bot`, `likely-bot`, `uncertain`, `likely-human`, `human`.
-- Verdict logic lives **only** in `verdict.js`. Don't bake it into the prompt or the background — re-running the aggregator on stored factor scores must reproduce the same verdict.
+- `src/verdict.ts` aggregates deterministically: `botProbability = sigmoid(2 × Σ(-score × confidence))`, then bins into one of 5 labels: `bot`, `likely-bot`, `uncertain`, `likely-human`, `human`.
+- Verdict logic lives **only** in `verdict.ts`. Don't bake it into the prompt or the background — re-running the aggregator on stored factor scores must reproduce the same verdict.
 - **Persona is an LLM pick, not derived from factor math.** The bot↔human scalar and the persona answer different questions: a Stan or Farmer is still a human, so persona `stan`/`farmer` is consistent with a positive (human-leaning) verdict.
 
 ### Factor-list contract
 
-- `src/factors.js` is the **canonical factor list** — keys and labels.
-- `reports.js` reads from `BON_FACTORS` / `BON_FACTOR_KEYS` / `BON_FACTOR_LABELS` defined there.
-- `src/bot_analysis.md` **must list factors in the same order with the same keys**. If you add/remove/rename a factor in `factors.js`, update the prompt file so Claude's output matches what the UI expects.
+- `src/factors.ts` is the **canonical factor list** — keys and labels.
+- The reports feature reads from `BON_FACTORS` / `BON_FACTOR_KEYS` / `BON_FACTOR_LABELS` defined there.
+- `src/features/investigation/prompt.md` **must list factors in the same order with the same keys**. If you add/remove/rename a factor in `factors.ts`, update the prompt file so Claude's output matches what the UI expects.
 
 ### Storage shape
 
@@ -85,26 +86,27 @@ Investigation shape:
 ## Patterns
 
 - **Storage I/O is background-only.** Content script, popup, and reports page all message the background (`get-user-report`, `update-user-status`, …). Do not call `browser.storage.local` from anywhere else.
-- All source files are ES modules — Vite bundles each entry point (`background.js`, `content_script.js`, `reports.html`) so content scripts can use `import` despite the manifest treating them as classic scripts.
+- All source files are TypeScript ES modules — Vite bundles each entry point (`background.ts`, `content_script.ts`, `reports.html`) so content scripts can use `import` despite the manifest treating them as classic scripts.
+- Shared domain types (`Report`, `Investigation`, `Factor`, `Persona`, `ActivityData`, etc.) live in `src/types.ts`. Reference them from any file via `import type { ... } from "../types.ts"` (use the `.ts` extension — Vite + `allowImportingTsExtensions` handles it).
 - Profile-page badge injection is **idempotent** — check for `#bon-badge-container` before injecting. A **MutationObserver** handles Reddit's async SPA renders; disconnect it once injection succeeds.
 - On background startup, investigations stuck at `status: "running"` are swept to `status: "error"` — the previous worker died mid-await (web-ext reload, browser restart, service-worker eviction) and won't be back to finish them.
 - Inline username tags are keyed by **lowercase** username (Reddit's routing is case-insensitive).
 
 ## Code organization
 
-Every screen and pipeline lives under `src/features/<feature>/`. Each directory IS the feature — drop the directory, remove the one or two imports from `src/content_script.js` / `src/background.js` / `src/reports.html`, and the feature is gone.
+Every screen and pipeline lives under `src/features/<feature>/`. Each directory IS the feature — drop the directory, remove the one or two imports from `src/content_script.ts` / `src/background.ts` / `src/reports.html`, and the feature is gone.
 
-Current features: `analytics/`, `regions/`, `inline-tags/`, `reporting/`, `profile-panel/`, `status-detection/`, `reports/`, `investigation/`. Top-level survivors are intentional cross-feature contracts: `src/verdict.js` (the verdict-derivation math) and `src/factors.js` (the canonical factor + persona list both the analyzer and every UI consumes), plus the `src/utils/` helpers.
+Current features: `analytics/`, `regions/`, `inline-tags/`, `reporting/`, `profile-panel/`, `status-detection/`, `reports/`, `investigation/`. Top-level survivors are intentional cross-feature contracts: `src/verdict.ts` (the verdict-derivation math), `src/factors.ts` (the canonical factor + persona list), and `src/types.ts` (shared domain types), plus the `src/utils/` helpers.
 
 ### File roles inside a feature
 
 | File | Purpose |
 |---|---|
-| `index.js` | Public entry point. The renderer (`bonRenderX(...)`) for UI features, or the main public function for library features. May hold tiny render helpers (≤15 lines, called only from the entry function). |
-| `logic.js` | Pure data transforms / aggregations — no DOM, no I/O. |
-| `data.js` | Static lookup tables / constants. |
+| `index.ts` | Public entry point. The renderer (`bonRenderX(...)`) for UI features, or the main public function for library features. May hold tiny render helpers (≤15 lines, called only from the entry function). |
+| `logic.ts` | Pure data transforms / aggregations — no DOM, no I/O. Feature-internal types live here too. |
+| `data.ts` | Static lookup tables / constants. |
 | `styles.css` | Feature CSS. |
-| `<widget>.js` | One file per visible widget — e.g. `chart_cost.js`, `table_run_log.js`, `stat_grid.js`. One render function per file, named for what it builds. |
+| `<widget>.ts` | One file per visible widget — e.g. `chart_cost.ts`, `table_run_log.ts`, `stat_grid.ts`. One render function per file, named for what it builds. |
 
 **Avoid grab-bag files.** If a file needs `// ---------- Section name ----------` dividers to navigate, the sections want to be separate files. Treat any such divider as a TODO to split. Splitting one file into many is fine — even small files. The locatability win (the IDE file tree becomes a TOC) outweighs the file-count cost.
 
@@ -116,17 +118,18 @@ ES modules everywhere; cross-file communication is via `import` / `export` (no I
 
 - Every exported name gets the `bon` prefix so it's obvious in import lists where the symbol came from.
 - **Feature-internal helpers** used by other files in the same feature get a `bon<Feature>` prefix (`bonAnalyticsSvgRoot`, `bonReportsRow`). The long name keeps ownership obvious and prevents collisions if another feature grows similar helpers.
-- **Cross-feature utilities** go in `src/utils/<topic>.js` with a short `bon` prefix (`bonFmtUsd`, `bonExtractJson`).
+- **Cross-feature utilities** go in `src/utils/<topic>.ts` with a short `bon` prefix (`bonFmtUsd`, `bonExtractJson`).
+- TypeScript domain types are also `bon`-free (just `Report`, `Investigation`, `Factor`, etc.) since they're already namespaced by the `types.ts` import path.
 
 ### Refactoring guidelines (when asked to "feature-ify" something)
 
 1. Survey the file to identify the seams (one widget = one render function = one file).
-2. `git mv` the main file into `src/features/<feature>/index.js` to preserve history.
-3. Pull pure data into `logic.js` / `data.js` first — these are the easiest extractions.
+2. `git mv` the main file into `src/features/<feature>/index.ts` to preserve history.
+3. Pull pure data into `logic.ts` / `data.ts` first — these are the easiest extractions.
 4. Pull each widget into its own file, exporting one `bon<Feature><Widget>` function.
-5. Slim `index.js` to an orchestrator: data-load → call each widget → assemble. Keep page chrome (header/empty/footnote) inline if tiny.
-6. Update any `import` sites in `background.js` / `content_script.js` / `reports.html` to point at the new feature path.
-7. Run `npm run lint && npm run format && npm run build`. Done.
+5. Slim `index.ts` to an orchestrator: data-load → call each widget → assemble. Keep page chrome (header/empty/footnote) inline if tiny.
+6. Update any `import` sites in `background.ts` / `content_script.ts` / `reports.html` to point at the new feature path.
+7. Run `npm run typecheck && npm run lint && npm run format && npm run build`. Done.
 
 ## Conventions
 
