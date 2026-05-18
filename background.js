@@ -25,7 +25,18 @@ browser.runtime.onMessage.addListener((message) => {
   if (message.type === "clear-all-reports") {
     return handleClearAllReports();
   }
+  if (message.type === "open-popup") {
+    return handleOpenPopup();
+  }
 });
+
+async function handleOpenPopup() {
+  try {
+    await browser.action.openPopup();
+  } catch (err) {
+    console.error("[Bot or Not] openPopup failed", err);
+  }
+}
 
 function handleOpenTabs(message) {
   message.urls.forEach((url) => {

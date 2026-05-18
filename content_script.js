@@ -12,10 +12,6 @@
   let pendingReport = null;
 
   function buildReportContext(e) {
-    const sourceUrl = window.location.href;
-    const profileMatch = window.location.pathname.match(
-      /^\/(?:user|u)\/([^/?#]+)/i
-    );
     const authorEl = e
       .composedPath()
       .find(
@@ -25,41 +21,29 @@
             el.tagName.toLowerCase() === "shreddit-comment") &&
           el.getAttribute("author")
       );
+    if (!authorEl) return null;
 
-    let username = null;
-    const context = { sourceUrl };
+    const username = authorEl.getAttribute("author");
+    if (!username) return null;
 
-    if (profileMatch) {
-      username = profileMatch[1];
-      context.kind = "profile";
-    } else if (authorEl) {
-      username = authorEl.getAttribute("author");
-    }
-
-    if (authorEl) {
-      const tag = authorEl.tagName.toLowerCase();
-      if (!context.kind) {
-        context.kind = tag === "shreddit-post" ? "post" : "comment";
-      }
-      context.permalink = authorEl.getAttribute("permalink") || null;
-      context.subreddit =
+    const tag = authorEl.tagName.toLowerCase();
+    const context = {
+      kind: tag === "shreddit-post" ? "post" : "comment",
+      permalink: authorEl.getAttribute("permalink") || null,
+      subreddit:
         authorEl.getAttribute("subreddit-prefixed-name") ||
         authorEl.getAttribute("subreddit-name") ||
+        null,
+    };
+    if (tag === "shreddit-post") {
+      context.postTitle = authorEl.getAttribute("post-title") || null;
+      context.postId = authorEl.id || null;
+    } else {
+      context.commentId =
+        authorEl.getAttribute("thingid") ||
+        authorEl.getAttribute("comment-id") ||
+        authorEl.id ||
         null;
-      if (tag === "shreddit-post") {
-        context.postTitle = authorEl.getAttribute("post-title") || null;
-        context.postId = authorEl.id || null;
-      } else {
-        context.commentId =
-          authorEl.getAttribute("thingid") ||
-          authorEl.getAttribute("comment-id") ||
-          authorEl.id ||
-          null;
-      }
-    }
-
-    if (!username) {
-      return null;
     }
     return { username, context };
   }
@@ -68,19 +52,11 @@
     document.addEventListener(
       "click",
       async function (e) {
-        // Cache report context from the nearest shreddit element on every click,
-        // so we have it ready if the user proceeds to submit a report.
-        // Don't downgrade a captured post/comment context to profile-only —
-        // Reddit's report dialog clicks happen outside the post element, so the
-        // initial "..." button click is our only chance to capture post info.
+        // Cache report context from the "..." click on a post/comment.
+        // Reddit's subsequent report-dialog clicks happen outside the post
+        // element, so this initial capture is our only chance.
         const cached = buildReportContext(e);
-        if (cached) {
-          const hasRicherInfo = !!cached.context.permalink;
-          const alreadyHavePostInfo = !!pendingReport?.context?.permalink;
-          if (hasRicherInfo || !alreadyHavePostInfo) {
-            pendingReport = cached;
-          }
-        }
+        if (cached) pendingReport = cached;
 
         const reportSpan = e
           .composedPath()
@@ -199,6 +175,18 @@
   }
 
   loadKnownBots();
+
+  document.addEventListener(
+    "click",
+    (e) => {
+      const icon = e.target?.closest?.(".bon-inline-bot-icon");
+      if (!icon) return;
+      e.preventDefault();
+      e.stopPropagation();
+      browser.runtime.sendMessage({ type: "open-popup" });
+    },
+    true
+  );
 
   // --- Badge injection (profile pages only, SPA-aware) ---
 
@@ -322,37 +310,58 @@
     });
   }
 
+  function reportPostStatus(permalink, status) {
+    if (!permalink || !status) return;
+    if (reportedPostPermalinks.has(permalink)) return;
+    reportedPostPermalinks.add(permalink);
+    console.log("[Bot or Not] post status detected", { permalink, status });
+    browser.runtime.sendMessage({
+      type: "update-post-status",
+      permalink,
+      status,
+    });
+  }
+
   function detectPostStatuses() {
-    document
-      .querySelectorAll("shreddit-post:not([data-bon-status-checked])")
-      .forEach((post) => {
-        const permalink = post.getAttribute("permalink");
-        if (!permalink) return;
-        post.dataset.bonStatusChecked = "true";
+    document.querySelectorAll("shreddit-post").forEach((post) => {
+      const permalink = post.getAttribute("permalink");
+      if (!permalink) return;
+      const removedBy = post.getAttribute("removed-by-category");
+      const author = post.getAttribute("author");
+      let status = null;
+      if (removedBy && removedBy !== "" && removedBy !== "none") {
+        status = "removed";
+      } else if (author === "[deleted]") {
+        status = "deleted";
+      }
+      if (status) reportPostStatus(permalink, status);
+    });
+  }
 
-        const removedBy = post.getAttribute("removed-by-category");
-        const author = post.getAttribute("author");
-        let status = null;
-        if (removedBy && removedBy !== "" && removedBy !== "none") {
-          status = "removed";
-        } else if (author === "[deleted]") {
-          status = "deleted";
-        }
-
-        if (!status) return;
-        if (reportedPostPermalinks.has(permalink)) return;
-        reportedPostPermalinks.add(permalink);
-        browser.runtime.sendMessage({
-          type: "update-post-status",
-          permalink,
-          status,
-        });
-      });
+  function detectStandalonePostStatus() {
+    const m = window.location.pathname.match(
+      /^(\/r\/[^/]+\/comments\/[^/]+\/[^/?#]+\/?)/i
+    );
+    if (!m) return;
+    const permalink = m[1].endsWith("/") ? m[1] : `${m[1]}/`;
+    const bodyText = document.body?.textContent || "";
+    let status = null;
+    if (/removed by the moderators of/i.test(bodyText)) {
+      status = "removed";
+    } else if (
+      /Sorry, this post (was|has been) deleted by the (person|user) who originally posted it/i.test(
+        bodyText
+      )
+    ) {
+      status = "deleted";
+    }
+    if (status) reportPostStatus(permalink, status);
   }
 
   function runStatusDetection() {
     detectUserStatus();
     detectPostStatuses();
+    detectStandalonePostStatus();
   }
 
   runStatusDetection();

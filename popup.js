@@ -151,6 +151,7 @@
     if (entry.at) {
       time.dateTime = new Date(entry.at).toISOString();
       time.textContent = formatDate(entry.at);
+      time.title = new Date(entry.at).toLocaleString();
     } else {
       time.textContent = "unknown date";
     }
@@ -159,9 +160,12 @@
     const meta = document.createElement("span");
     meta.className = "bon-report-history-meta";
 
+    const leadIcon =
+      statusIcon(entry.status, "post") || kindIconFor(entry.kind);
+    if (leadIcon) meta.appendChild(leadIcon);
+
     const targetUrl = resolveUrl(entry.permalink) || entry.sourceUrl;
     const labelParts = [];
-    if (entry.kind) labelParts.push(entry.kind);
     if (entry.subreddit) labelParts.push(entry.subreddit);
     if (entry.postTitle) labelParts.push(entry.postTitle);
     const label = labelParts.join(" · ") || targetUrl || "report";
@@ -175,16 +179,31 @@
       a.title = label;
       meta.appendChild(a);
     } else {
-      meta.textContent = label;
-      meta.title = label;
+      const textEl = document.createElement("span");
+      textEl.textContent = label;
+      textEl.title = label;
+      meta.appendChild(textEl);
     }
-
-    const postIcon = statusIcon(entry.status, "post");
-    if (postIcon) meta.appendChild(postIcon);
 
     li.appendChild(meta);
 
     return li;
+  }
+
+  function kindIconFor(kind) {
+    if (!kind) return null;
+    const span = document.createElement("span");
+    span.className = `bon-kind-icon bon-kind-icon--${kind}`;
+    if (kind === "post") {
+      span.textContent = "📝";
+      span.title = "Reported post";
+    } else if (kind === "comment") {
+      span.textContent = "💬";
+      span.title = "Reported comment";
+    } else {
+      return null;
+    }
+    return span;
   }
 
   function statusIcon(status, scope) {
@@ -216,13 +235,19 @@
 
   function formatDate(ts) {
     const d = new Date(ts);
+    const diffMs = Date.now() - ts;
+    const min = 60_000;
+    const hour = 60 * min;
+    const day = 24 * hour;
+    if (diffMs < min) return "now";
+    if (diffMs < hour) return `${Math.floor(diffMs / min)}m`;
+    if (diffMs < day) return `${Math.floor(diffMs / hour)}h`;
+    if (diffMs < 7 * day) return `${Math.floor(diffMs / day)}d`;
     const sameYear = d.getFullYear() === new Date().getFullYear();
-    return d.toLocaleString(undefined, {
-      year: sameYear ? undefined : "numeric",
+    return d.toLocaleDateString(undefined, {
+      year: sameYear ? undefined : "2-digit",
       month: "short",
       day: "numeric",
-      hour: "numeric",
-      minute: "2-digit",
     });
   }
 })();

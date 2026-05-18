@@ -12,6 +12,13 @@
   top: 6px;
   margin-left: 3px;
   display: inline;
+  cursor: pointer;
+  transition: opacity 0.15s, transform 0.15s;
+}
+
+.bon-inline-bot-icon:hover {
+  opacity: 0.75;
+  transform: scale(1.1);
 }
 
 .bon-badge-wrapper {
