@@ -14,6 +14,7 @@ import {
   bonReportsRenderDeleteButton,
   bonReportsRenderInvestigateButton,
 } from "./cell_actions.ts";
+import { bonReportsDossierSection } from "./dossier_section.ts";
 import { bonReportsFactorDots } from "./cell_factor_dots.ts";
 import { bonReportsPopulateInvestigatedCell } from "./cell_investigated.ts";
 import { bonReportsRegionBadge } from "./cell_region.ts";
@@ -29,7 +30,7 @@ export interface RowOptions {
   onNoApiKey: () => void;
   onActivityNeedsLoad: (
     username: string,
-    activityData: ActivityData | null | undefined
+    activityData: ActivityData | null
   ) => Promise<void> | void;
 }
 
@@ -63,19 +64,19 @@ export function bonReportsRow(report: ReportRow, opts: RowOptions): RowResult {
 
   const expandCell = document.createElement("td");
 
-  const expandBtn = document.createElement("button");
-  expandBtn.className = "bon-expand-btn";
-  expandBtn.setAttribute(
+  const expandButton = document.createElement("button");
+  expandButton.className = "bon-expand-btn";
+  expandButton.setAttribute(
     "aria-expanded",
     expanded.has(username) ? "true" : "false"
   );
-  expandBtn.setAttribute("aria-label", "Show details");
-  expandBtn.textContent = "▶";
+  expandButton.setAttribute("aria-label", "Show details");
+  expandButton.textContent = "▶";
 
-  expandBtn.addEventListener("click", () => {
-    const isExpanded = expandBtn.getAttribute("aria-expanded") === "true";
+  expandButton.addEventListener("click", () => {
+    const isExpanded = expandButton.getAttribute("aria-expanded") === "true";
     const next = !isExpanded;
-    expandBtn.setAttribute("aria-expanded", String(next));
+    expandButton.setAttribute("aria-expanded", String(next));
     for (const row of detailRows) {
       row.hidden = !next;
     }
@@ -98,7 +99,7 @@ export function bonReportsRow(report: ReportRow, opts: RowOptions): RowResult {
     }
   });
 
-  expandCell.appendChild(expandBtn);
+  expandCell.appendChild(expandButton);
   summary.appendChild(expandCell);
 
   const userCell = document.createElement("td");
@@ -122,9 +123,9 @@ export function bonReportsRow(report: ReportRow, opts: RowOptions): RowResult {
   summary.appendChild(regionCell);
 
   const verdictCell = document.createElement("td");
-  const verdictEl = bonReportsVerdictBadge(investigation);
-  if (verdictEl) {
-    verdictCell.appendChild(verdictEl);
+  const verdictBadge = bonReportsVerdictBadge(investigation);
+  if (verdictBadge) {
+    verdictCell.appendChild(verdictBadge);
   } else {
     const dash = document.createElement("span");
     dash.className = "bon-bb-empty";
@@ -171,7 +172,6 @@ export function bonReportsRow(report: ReportRow, opts: RowOptions): RowResult {
       onNoApiKey,
     })
   );
-  actionsCell.appendChild(bonReportsRenderDeleteButton(username));
   summary.appendChild(actionsCell);
 
   const startCollapsed = !expanded.has(username);
@@ -183,7 +183,9 @@ export function bonReportsRow(report: ReportRow, opts: RowOptions): RowResult {
 
     const cell = document.createElement("td");
     cell.colSpan = 8;
-    cell.appendChild(bonReportsInvestigationDetail(investigation));
+    cell.appendChild(
+      bonReportsInvestigationDetail(investigation, report.contextItems.length)
+    );
 
     investigationRow.appendChild(cell);
     detailRows.push(investigationRow);
@@ -227,6 +229,38 @@ export function bonReportsRow(report: ReportRow, opts: RowOptions): RowResult {
     historyCell.appendChild(wrap);
     historyRow.appendChild(historyCell);
     detailRows.push(historyRow);
+  }
+
+  {
+    const dossierRow = document.createElement("tr");
+    dossierRow.className = "bon-row-history";
+    dossierRow.hidden = startCollapsed;
+
+    const dossierCell = document.createElement("td");
+    dossierCell.colSpan = 8;
+    dossierCell.appendChild(
+      bonReportsDossierSection(username, report.contextItems)
+    );
+
+    dossierRow.appendChild(dossierCell);
+    detailRows.push(dossierRow);
+  }
+
+  {
+    const footerRow = document.createElement("tr");
+    footerRow.className = "bon-row-history";
+    footerRow.hidden = startCollapsed;
+
+    const footerCell = document.createElement("td");
+    footerCell.colSpan = 8;
+
+    const footer = document.createElement("div");
+    footer.className = "bon-row-footer";
+    footer.appendChild(bonReportsRenderDeleteButton(username));
+    footerCell.appendChild(footer);
+
+    footerRow.appendChild(footerCell);
+    detailRows.push(footerRow);
   }
 
   return { summary, detailRows };

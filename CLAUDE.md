@@ -1,5 +1,7 @@
 # Bot or Not — Claude Guidelines
 
+@~/Development/.claude/languages/typescript.md
+
 ## Dev Workflow
 
 | Command             | Purpose                                                                                                 |

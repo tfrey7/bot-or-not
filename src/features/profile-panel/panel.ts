@@ -76,27 +76,27 @@ export function bonPanelBuildProfilePanel(
     toggleLink.textContent = next ? "Show less" : "Show more";
   };
 
-  header.addEventListener("click", (e) => {
-    const target = e.target as Element | null;
+  header.addEventListener("click", (event) => {
+    const target = event.target as Element | null;
     if (target?.closest("button, a")) {
       return;
     }
     toggle();
   });
 
-  header.addEventListener("keydown", (e) => {
-    if (e.target !== header) {
+  header.addEventListener("keydown", (event) => {
+    if (event.target !== header) {
       return;
     }
-    if (e.key === "Enter" || e.key === " ") {
-      e.preventDefault();
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
       toggle();
     }
   });
 
   if (preview) {
-    preview.addEventListener("click", (e) => {
-      const target = e.target as Element | null;
+    preview.addEventListener("click", (event) => {
+      const target = event.target as Element | null;
       if (target?.closest("button, a")) {
         return;
       }
@@ -104,8 +104,8 @@ export function bonPanelBuildProfilePanel(
     });
   }
 
-  toggleLink.addEventListener("click", (e) => {
-    e.stopPropagation();
+  toggleLink.addEventListener("click", (event) => {
+    event.stopPropagation();
     toggle();
   });
 

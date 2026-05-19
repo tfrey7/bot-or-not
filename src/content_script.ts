@@ -4,22 +4,20 @@
 // independent observers on document.body.
 
 import {
-  bonInlineTagsInit,
-  bonInlineTagsMark,
-} from "./features/inline-tags/index.ts";
+  bonDossierButtonInit,
+  bonDossierButtonMark,
+} from "./features/dossier-button";
+import { bonInlineTagsInit, bonInlineTagsMark } from "./features/inline-tags";
 import {
   bonProfilePanelInit,
   bonProfilePanelInject,
-} from "./features/profile-panel/index.ts";
-import {
-  bonReportingInit,
-  bonReportingResetNav,
-} from "./features/reporting/index.ts";
+} from "./features/profile-panel";
+import { bonReportingInit, bonReportingResetNav } from "./features/reporting";
 import {
   bonStatusDetectionInit,
   bonStatusDetectionResetNav,
   bonStatusDetectionScan,
-} from "./features/status-detection/index.ts";
+} from "./features/status-detection";
 
 const { version } = browser.runtime.getManifest();
 console.log(`[Bot or Not] v${version} loaded`);
@@ -28,6 +26,7 @@ bonInlineTagsInit();
 bonReportingInit();
 bonProfilePanelInit();
 bonStatusDetectionInit();
+bonDossierButtonInit();
 
 // Coalesce scan work to one execution per animation frame. Reddit's SPA
 // can fire hundreds of mutations per second while mounting big comment
@@ -46,6 +45,7 @@ function scheduleScan(): void {
     bonProfilePanelInject();
     bonInlineTagsMark();
     bonStatusDetectionScan();
+    bonDossierButtonMark();
   });
 }
 

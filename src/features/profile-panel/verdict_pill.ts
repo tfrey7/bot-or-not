@@ -32,18 +32,18 @@ function buildVerdictPill(
   if (investigation.status === "error") {
     span.className = "bon-stat-pill bon-stat-pill--verdict-error";
     span.textContent = "🤖 Error";
-    span.title = investigation.error || "Investigation failed";
+    span.title = investigation.error ?? "Investigation failed";
     return span;
   }
 
-  const norm = bonNormalizeInvestigation(investigation);
-  if (!norm?.verdict) {
+  const normalized = bonNormalizeInvestigation(investigation);
+  if (!normalized.verdict) {
     return null;
   }
 
-  span.className = `bon-stat-pill bon-stat-pill--verdict-${norm.verdict}`;
-  span.textContent = `🤖 ${bonFormatVerdict(norm.verdict)}`;
-  span.title = norm.summary || norm.verdict;
+  span.className = `bon-stat-pill bon-stat-pill--verdict-${normalized.verdict}`;
+  span.textContent = `🤖 ${bonFormatVerdict(normalized.verdict)}`;
+  span.title = normalized.summary || normalized.verdict;
   return span;
 }
 

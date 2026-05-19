@@ -7,16 +7,16 @@ export async function bonPanelFetchAndStoreCakeDay(
   username: string
 ): Promise<void> {
   try {
-    const res = await fetch(
+    const response = await fetch(
       `https://www.reddit.com/user/${encodeURIComponent(username)}/about.json`,
       { credentials: "same-origin" }
     );
 
-    if (!res.ok) {
+    if (!response.ok) {
       return;
     }
 
-    const data = (await res.json()) as { data?: { created_utc?: number } };
+    const data = (await response.json()) as { data?: { created_utc?: number } };
     const createdUtc = data?.data?.created_utc;
 
     if (!createdUtc) {
@@ -28,7 +28,7 @@ export async function bonPanelFetchAndStoreCakeDay(
       username,
       createdAt: Math.floor(createdUtc * 1000),
     });
-  } catch (err) {
-    console.error("[Bot or Not] failed to fetch cake day", err);
+  } catch (error) {
+    console.error("[Bot or Not] failed to fetch cake day", error);
   }
 }

@@ -9,45 +9,45 @@ export function bonAnalyticsSvgRoot(
   h: number,
   classes?: string
 ): SVGSVGElement {
-  const el = document.createElementNS(SVG_NS, "svg");
-  el.setAttribute("viewBox", `0 0 ${w} ${h}`);
-  el.setAttribute("preserveAspectRatio", "none");
-  el.setAttribute("class", classes || "bon-chart-svg");
-  return el;
+  const svg = document.createElementNS(SVG_NS, "svg");
+  svg.setAttribute("viewBox", `0 0 ${w} ${h}`);
+  svg.setAttribute("preserveAspectRatio", "none");
+  svg.setAttribute("class", classes || "bon-chart-svg");
+  return svg;
 }
 
 export function bonAnalyticsSvgEl(
   name: string,
   attrs?: Record<string, string | number>
 ): SVGElement {
-  const e = document.createElementNS(SVG_NS, name);
+  const element = document.createElementNS(SVG_NS, name);
   if (attrs) {
-    for (const [k, v] of Object.entries(attrs)) {
-      e.setAttribute(k, String(v));
+    for (const [attrName, attrValue] of Object.entries(attrs)) {
+      element.setAttribute(attrName, String(attrValue));
     }
   }
-  return e;
+  return element;
 }
 
 export function bonAnalyticsSvgText(
   x: number,
   y: number,
   text: string,
-  cls?: string | null,
+  className?: string | null,
   anchor?: string | null
 ): SVGElement {
-  const t = bonAnalyticsSvgEl("text", {
+  const textEl = bonAnalyticsSvgEl("text", {
     x,
     y,
-    class: cls || "bon-chart-tick",
+    class: className || "bon-chart-tick",
   });
 
   if (anchor) {
-    t.setAttribute("text-anchor", anchor);
+    textEl.setAttribute("text-anchor", anchor);
   }
 
-  t.textContent = text;
-  return t;
+  textEl.textContent = text;
+  return textEl;
 }
 
 export function bonAnalyticsEmptyChart(
@@ -63,16 +63,16 @@ export function bonAnalyticsEmptyChart(
 // across weeks or clustered in a single afternoon.
 export function bonAnalyticsTimeAxisFormatter(
   spanMs: number
-): (t: number) => string {
+): (timestamp: number) => string {
   if (spanMs < MS_PER_DAY) {
-    return (t) =>
-      new Date(t).toLocaleTimeString(undefined, {
+    return (timestamp) =>
+      new Date(timestamp).toLocaleTimeString(undefined, {
         hour: "numeric",
         minute: "2-digit",
       });
   }
-  return (t) =>
-    new Date(t).toLocaleDateString(undefined, {
+  return (timestamp) =>
+    new Date(timestamp).toLocaleDateString(undefined, {
       month: "short",
       day: "numeric",
     });

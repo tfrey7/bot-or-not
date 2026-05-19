@@ -47,7 +47,7 @@ export async function bonCallClaude(
   label = "claude",
   options: ClaudeCallOptions = {}
 ): Promise<ClaudeCallResult> {
-  const t0 = performance.now();
+  const startedAt = performance.now();
   const webSearchOn = !!options.webSearch;
 
   const body: Record<string, unknown> = {
@@ -93,9 +93,9 @@ export async function bonCallClaude(
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), BON_CLAUDE_TIMEOUT_MS);
 
-  let res: Response;
+  let response: Response;
   try {
-    res = await fetch(BON_CLAUDE_API_URL, {
+    response = await fetch(BON_CLAUDE_API_URL, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -106,58 +106,63 @@ export async function bonCallClaude(
       body: JSON.stringify(body),
       signal: controller.signal,
     });
-  } catch (err) {
-    const ms = Math.round(performance.now() - t0);
-    console.log(`[Bot or Not] timing: ${label} ${ms}ms (failed)`);
+  } catch (error) {
+    const elapsedMs = Math.round(performance.now() - startedAt);
+    console.log(`[Bot or Not] timing: ${label} ${elapsedMs}ms (failed)`);
 
-    if ((err as { name?: string })?.name === "AbortError") {
+    if ((error as { name?: string })?.name === "AbortError") {
       throw new Error(
         `Claude API timed out after ${BON_CLAUDE_TIMEOUT_MS / 1000}s`,
-        { cause: err }
+        { cause: error }
       );
     }
 
-    throw err;
+    throw error;
   } finally {
     clearTimeout(timeoutId);
   }
 
-  if (!res.ok) {
-    const ms = Math.round(performance.now() - t0);
-    console.log(`[Bot or Not] timing: ${label} ${ms}ms (${res.status})`);
-    const errText = await res.text().catch(() => "");
-    throw new Error(`Claude API ${res.status}: ${errText.slice(0, 300)}`);
+  if (!response.ok) {
+    const elapsedMs = Math.round(performance.now() - startedAt);
+    console.log(
+      `[Bot or Not] timing: ${label} ${elapsedMs}ms (${response.status})`
+    );
+    const errorText = await response.text().catch(() => "");
+    throw new Error(
+      `Claude API ${response.status}: ${errorText.slice(0, 300)}`
+    );
   }
 
-  const json = (await res.json()) as ClaudeResponse;
-  const text = (json.content || [])
-    .filter((c) => c.type === "text")
-    .map((c) => c.text || "")
+  const payload = (await response.json()) as ClaudeResponse;
+  const blocks = payload.content ?? [];
+  const text = blocks
+    .filter((block) => block.type === "text")
+    .map((block) => block.text ?? "")
     .join("\n");
 
   // Count actual web_search invocations so the UI can show whether a
   // search happened (the model may decline to search if it judges the
   // data sufficient).
-  const webSearchCount = (json.content || []).filter(
-    (c) =>
-      (c.type === "server_tool_use" || c.type === "tool_use") &&
-      c.name === "web_search"
+  const webSearchCount = blocks.filter(
+    (block) =>
+      (block.type === "server_tool_use" || block.type === "tool_use") &&
+      block.name === "web_search"
   ).length;
 
-  const ms = Math.round(performance.now() - t0);
-  const inTok = json.usage?.input_tokens ?? "?";
-  const outTok = json.usage?.output_tokens ?? "?";
-  const model = json.model || BON_CLAUDE_MODEL;
-  const costUsd = bonEstimateCostUsd(json.usage, model, webSearchCount);
-  const costStr = costUsd != null ? ` $${costUsd.toFixed(4)}` : "";
+  const elapsedMs = Math.round(performance.now() - startedAt);
+  const inputTokens = payload.usage?.input_tokens ?? "?";
+  const outputTokens = payload.usage?.output_tokens ?? "?";
+  const model = payload.model ?? BON_CLAUDE_MODEL;
+  const costUsd = bonEstimateCostUsd(payload.usage, model, webSearchCount);
+  const costString = costUsd !== null ? ` $${costUsd.toFixed(4)}` : "";
 
   console.log(
-    `[Bot or Not] timing: ${label} ${ms}ms (in=${inTok} out=${outTok}${webSearchCount ? ` web=${webSearchCount}` : ""})${costStr}`
+    `[Bot or Not] timing: ${label} ${elapsedMs}ms (in=${inputTokens} out=${outputTokens}${webSearchCount ? ` web=${webSearchCount}` : ""})${costString}`
   );
 
   return {
     rawText: text,
-    usage: json.usage || null,
+    usage: payload.usage ?? null,
     model,
     webSearchCount,
     costUsd,

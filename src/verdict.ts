@@ -23,12 +23,11 @@ export function bonIsInvestigationStale(
     return false;
   }
 
-  const startedAt = investigation.startedAt || 0;
-  if (!startedAt) {
+  if (investigation.startedAt === null) {
     return true;
   }
 
-  return Date.now() - startedAt > BON_STALE_INVESTIGATION_MS;
+  return Date.now() - investigation.startedAt > BON_STALE_INVESTIGATION_MS;
 }
 
 export interface VerdictResult {
@@ -38,10 +37,8 @@ export interface VerdictResult {
   evidenceSum: number;
 }
 
-export function bonComputeVerdict(
-  factors: Factor[] | null | undefined
-): VerdictResult {
-  if (!Array.isArray(factors) || factors.length === 0) {
+export function bonComputeVerdict(factors: Factor[]): VerdictResult {
+  if (factors.length === 0) {
     return {
       verdict: "uncertain",
       confidence: 0,
@@ -51,10 +48,11 @@ export function bonComputeVerdict(
   }
 
   let evidenceSum = 0;
-  for (const f of factors) {
-    const s = typeof f?.score === "number" ? f.score : 0;
-    const c = typeof f?.confidence === "number" ? f.confidence : 0;
-    evidenceSum += -s * c;
+  for (const factor of factors) {
+    const score = typeof factor?.score === "number" ? factor.score : 0;
+    const confidence =
+      typeof factor?.confidence === "number" ? factor.confidence : 0;
+    evidenceSum += -score * confidence;
   }
   const botProbability = 1 / (1 + Math.exp(-2 * evidenceSum));
 
@@ -86,10 +84,7 @@ export function bonNormalizeInvestigation<
   if (investigation.status === "running" || investigation.status === "error") {
     return investigation;
   }
-  if (
-    !Array.isArray(investigation.factors) ||
-    investigation.factors.length === 0
-  ) {
+  if (investigation.factors.length === 0) {
     return investigation;
   }
 
@@ -110,22 +105,17 @@ export interface RankedFactor extends Factor {
 // bonComputeVerdict uses for the overall verdict) and returns the top N
 // that carried real signal. Neutrals and low-confidence factors are filtered
 // out so the bullets don't include "no signal" filler.
-export function bonTopReasons(
-  factors: Factor[] | null | undefined,
-  count = 3
-): RankedFactor[] {
-  if (!Array.isArray(factors)) {
-    return [];
-  }
+export function bonTopReasons(factors: Factor[], count = 3): RankedFactor[] {
   return factors
-    .filter((f) => {
-      const s = typeof f?.score === "number" ? f.score : 0;
-      const c = typeof f?.confidence === "number" ? f.confidence : 0;
-      return Math.abs(s) >= 0.2 && c >= 0.3;
+    .filter((factor) => {
+      const score = typeof factor?.score === "number" ? factor.score : 0;
+      const confidence =
+        typeof factor?.confidence === "number" ? factor.confidence : 0;
+      return Math.abs(score) >= 0.2 && confidence >= 0.3;
     })
-    .map((f) => ({
-      ...f,
-      weight: Math.abs(f.score) * f.confidence,
+    .map((factor) => ({
+      ...factor,
+      weight: Math.abs(factor.score) * factor.confidence,
     }))
     .sort((a, b) => b.weight - a.weight)
     .slice(0, count);

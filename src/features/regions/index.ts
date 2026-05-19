@@ -18,15 +18,38 @@ import type { ActivityData } from "../../types.ts";
 import {
   BON_LANGUAGE_MARKERS,
   BON_REGION_INFO,
+  BON_REGION_SUB_PATTERNS,
   BON_REGION_SUBS,
   BON_SCRIPT_RANGES,
 } from "./data.ts";
 
-export function bonNormalizeSubName(s: string | null | undefined): string {
-  return String(s || "")
+export function bonNormalizeSubName(name: string | null | undefined): string {
+  return String(name || "")
     .toLowerCase()
     .replace(/^r\//, "")
     .trim();
+}
+
+// Resolves a normalized sub name to a region code. Exact match first (the
+// curated table in data.ts is the canonical truth); falls back to regex
+// patterns for the long tail (r/indian_*, r/pakistani_*, …).
+function lookupSubRegion(normalizedSub: string): string | undefined {
+  if (!normalizedSub) {
+    return undefined;
+  }
+
+  const exact = BON_REGION_SUBS[normalizedSub];
+  if (exact) {
+    return exact;
+  }
+
+  for (const { pattern, region } of BON_REGION_SUB_PATTERNS) {
+    if (pattern.test(normalizedSub)) {
+      return region;
+    }
+  }
+
+  return undefined;
 }
 
 export interface SubRegionHit {
@@ -62,7 +85,7 @@ export function bonInferRegionFromSubreddits(
       continue;
     }
 
-    const region = BON_REGION_SUBS[bonNormalizeSubName(sub)];
+    const region = lookupSubRegion(bonNormalizeSubName(sub));
     if (!region) {
       continue;
     }
@@ -101,11 +124,11 @@ function bonDetectScripts(text: string): Record<string, number> {
   const counts: Record<string, number> = {};
 
   for (let i = 0; i < text.length; ) {
-    const cp = text.codePointAt(i)!;
-    i += cp > 0xffff ? 2 : 1;
-    for (const r of BON_SCRIPT_RANGES) {
-      if (cp >= r.range[0] && cp <= r.range[1]) {
-        counts[r.name] = (counts[r.name] || 0) + 1;
+    const codePoint = text.codePointAt(i)!;
+    i += codePoint > 0xffff ? 2 : 1;
+    for (const range of BON_SCRIPT_RANGES) {
+      if (codePoint >= range.range[0] && codePoint <= range.range[1]) {
+        counts[range.name] = (counts[range.name] || 0) + 1;
         break;
       }
     }
@@ -120,8 +143,8 @@ function bonDetectLanguageMarkers(text: string): Record<string, number> {
 
   const counts: Record<string, number> = {};
 
-  for (const [name, def] of Object.entries(BON_LANGUAGE_MARKERS)) {
-    const matches = text.match(def.pattern);
+  for (const [name, marker] of Object.entries(BON_LANGUAGE_MARKERS)) {
+    const matches = text.match(marker.pattern);
     if (matches && matches.length > 0) {
       counts[name] = matches.length;
     }
@@ -162,16 +185,16 @@ export function bonInferRegionFromScripts(
       continue;
     }
 
-    const def = BON_SCRIPT_RANGES.find((r) => r.name === name);
-    if (!def) {
+    const range = BON_SCRIPT_RANGES.find((entry) => entry.name === name);
+    if (!range) {
       continue;
     }
 
-    hits.push({ script: name, count, regions: def.regions });
+    hits.push({ script: name, count, regions: range.regions });
 
     // Split votes across plausible regions for ambiguous scripts.
-    const share = count / def.regions.length;
-    for (const region of def.regions) {
+    const share = count / range.regions.length;
+    for (const region of range.regions) {
       votes[region] = (votes[region] || 0) + share;
     }
   }
@@ -210,20 +233,20 @@ export function bonInferRegionFromLanguage(
       continue;
     }
 
-    const def = BON_LANGUAGE_MARKERS[name];
-    if (!def) {
+    const marker = BON_LANGUAGE_MARKERS[name];
+    if (!marker) {
       continue;
     }
 
     hits.push({
       language: name,
-      label: def.label,
+      label: marker.label,
       count,
-      regions: def.regions,
+      regions: marker.regions,
     });
 
-    const share = count / def.regions.length;
-    for (const region of def.regions) {
+    const share = count / marker.regions.length;
+    for (const region of marker.regions) {
       votes[region] = (votes[region] || 0) + share;
     }
   }
@@ -328,7 +351,7 @@ export function bonInferRegionFromModerated(
   const hits: ModeratedInference["hits"] = [];
 
   for (const sub of moderatedSubs) {
-    const region = BON_REGION_SUBS[bonNormalizeSubName(sub)];
+    const region = lookupSubRegion(bonNormalizeSubName(sub));
     if (!region) {
       continue;
     }
@@ -381,19 +404,19 @@ export function bonInferRegion(
   activityData: ActivityData | null | undefined,
   tzInferred: TzInferred | { kind: string } | null | undefined
 ): RegionInferenceResult {
-  const subResult = activityData
+  const subredditResult = activityData
     ? bonInferRegionFromSubreddits(activityData.subredditCounts)
     : null;
   const scriptResult = activityData
     ? bonInferRegionFromScripts(activityData.scriptSignals)
     : null;
-  const langResult = activityData
+  const languageResult = activityData
     ? bonInferRegionFromLanguage(activityData.languageSignals)
     : null;
-  const modResult = activityData
+  const moderatorResult = activityData
     ? bonInferRegionFromModerated(activityData.moderatedSubs)
     : null;
-  const tzOffset =
+  const timezoneOffset =
     tzInferred?.kind === "inferred"
       ? (tzInferred as TzInferred).offsetHours
       : null;
@@ -406,29 +429,44 @@ export function bonInferRegion(
   //  - Timezone is a tie-breaker, never a primary signal — it only bonuses
   //    regions already nominated by something else.
   const scores: Record<string, number> = {};
-  function add(region: string, points: number): void {
+  function addScore(region: string, points: number): void {
     scores[region] = (scores[region] || 0) + points;
   }
 
-  if (subResult) {
-    add(subResult.region, 3 + Math.min(subResult.count - 1, 5));
+  if (subredditResult) {
+    addScore(
+      subredditResult.region,
+      3 + Math.min(subredditResult.count - 1, 5)
+    );
   }
+
   if (scriptResult) {
     // 1 point per script char up to 5 bonus, plus 3 base — even 1 Devanagari
     // char is decisive (no organic English text contains it).
-    add(scriptResult.region, 3 + Math.min(Math.floor(scriptResult.score), 5));
-  }
-  if (langResult) {
-    add(langResult.region, 3 + Math.min(Math.floor(langResult.score / 2), 5));
-  }
-  if (modResult) {
-    add(modResult.region, 6 + Math.min(modResult.score - 1, 5));
+    addScore(
+      scriptResult.region,
+      3 + Math.min(Math.floor(scriptResult.score), 5)
+    );
   }
 
-  if (tzOffset != null) {
+  if (languageResult) {
+    addScore(
+      languageResult.region,
+      3 + Math.min(Math.floor(languageResult.score / 2), 5)
+    );
+  }
+
+  if (moderatorResult) {
+    addScore(
+      moderatorResult.region,
+      6 + Math.min(moderatorResult.score - 1, 5)
+    );
+  }
+
+  if (timezoneOffset != null) {
     for (const region of Object.keys(scores)) {
       const offsets = BON_REGION_INFO[region]?.utcOffsets || [];
-      if (offsets.includes(tzOffset)) {
+      if (offsets.includes(timezoneOffset)) {
         scores[region] += 1;
       }
     }
@@ -439,19 +477,19 @@ export function bonInferRegion(
     const [topRegion, topScore] = ranked[0];
 
     const tzMatch =
-      tzOffset != null
-        ? !!BON_REGION_INFO[topRegion]?.utcOffsets?.includes(tzOffset)
+      timezoneOffset != null
+        ? !!BON_REGION_INFO[topRegion]?.utcOffsets?.includes(timezoneOffset)
         : null;
 
     return {
       kind: "deterministic",
       region: topRegion,
       score: topScore,
-      subreddit: subResult,
+      subreddit: subredditResult,
       scriptSignal: scriptResult,
-      languageSignal: langResult,
-      moderator: modResult,
-      tzOffset,
+      languageSignal: languageResult,
+      moderator: moderatorResult,
+      tzOffset: timezoneOffset,
       tzMatch,
       runnerUp: ranked[1]
         ? { region: ranked[1][0], score: ranked[1][1] }

@@ -9,59 +9,63 @@ import {
 import { bonFmtDuration } from "../../utils/format_time.ts";
 import type { AnalyticsSummary } from "./logic.ts";
 
-export function bonAnalyticsStatGrid(s: AnalyticsSummary): HTMLDivElement {
+export function bonAnalyticsStatGrid(
+  summary: AnalyticsSummary
+): HTMLDivElement {
   const grid = document.createElement("div");
   grid.className = "bon-analytics-stats";
 
   addStat(
     grid,
     "Total spent",
-    bonFmtUsd(s.totalCost),
-    `${bonFmtUsd(s.avgCost)} avg · ${bonFmtUsd(s.medianCost)} median · ${bonFmtUsd(s.maxCost)} max`
+    bonFmtUsd(summary.totalCost),
+    `${bonFmtUsd(summary.avgCost)} avg · ${bonFmtUsd(summary.medianCost)} median · ${bonFmtUsd(summary.maxCost)} max`
   );
   addStat(
     grid,
     "Spend last 7d",
-    bonFmtUsd(s.recentCost),
-    s.recentCost > 0
-      ? `~${bonFmtUsd(s.recentCost / s.recentDays)} / day`
+    bonFmtUsd(summary.recentCost),
+    summary.recentCost > 0
+      ? `~${bonFmtUsd(summary.recentCost / summary.recentDays)} / day`
       : "no activity this week"
   );
   addStat(
     grid,
     "API requests",
-    String(s.totalApiCalls + s.totalWebSearches),
-    `${s.totalApiCalls} Claude · ${s.totalWebSearches} web search`
+    String(summary.totalApiCalls + summary.totalWebSearches),
+    `${summary.totalApiCalls} Claude · ${summary.totalWebSearches} web search`
   );
   addStat(
     grid,
     "Total tokens",
-    bonFmtThousands(s.totalTokens),
-    `${bonFmtThousands(s.totalOutput)} output · ${bonFmtPercent(s.cacheHitRate)} cached`
+    bonFmtThousands(summary.totalTokens),
+    `${bonFmtThousands(summary.totalOutput)} output · ${bonFmtPercent(summary.cacheHitRate)} cached`
   );
   addStat(
     grid,
     "Median duration",
-    bonFmtDuration(s.medianDuration),
-    `p95 ${bonFmtDuration(s.p95Duration)} · ${bonFmtDuration(s.totalDuration)} total compute`
+    bonFmtDuration(summary.medianDuration),
+    `p95 ${bonFmtDuration(summary.p95Duration)} · ${bonFmtDuration(summary.totalDuration)} total compute`
   );
   addStat(
     grid,
     "Cache savings",
-    bonFmtUsd(s.cacheSavingsUsd),
+    bonFmtUsd(summary.cacheSavingsUsd),
     "vs. paying full input rate on cached reads"
   );
   addStat(
     grid,
     "Reddit fetched",
-    bonFmtThousands(s.totalPosts + s.totalComments),
-    `${bonFmtThousands(s.totalPosts)} posts · ${bonFmtThousands(s.totalComments)} comments`
+    bonFmtThousands(summary.totalPosts + summary.totalComments),
+    `${bonFmtThousands(summary.totalPosts)} posts · ${bonFmtThousands(summary.totalComments)} comments`
   );
   addStat(
     grid,
     "Cost per Reddit item",
-    s.totalPosts + s.totalComments > 0
-      ? bonFmtUsd(s.totalCost / (s.totalPosts + s.totalComments))
+    summary.totalPosts + summary.totalComments > 0
+      ? bonFmtUsd(
+          summary.totalCost / (summary.totalPosts + summary.totalComments)
+        )
       : "—",
     "post/comment analyzed"
   );
@@ -78,22 +82,22 @@ function addStat(
   const card = document.createElement("div");
   card.className = "bon-analytics-stat";
 
-  const l = document.createElement("div");
-  l.className = "bon-stat-label";
-  l.textContent = label;
+  const labelEl = document.createElement("div");
+  labelEl.className = "bon-stat-label";
+  labelEl.textContent = label;
 
-  const v = document.createElement("div");
-  v.className = "bon-stat-value";
-  v.textContent = value;
+  const valueEl = document.createElement("div");
+  valueEl.className = "bon-stat-value";
+  valueEl.textContent = value;
 
-  card.appendChild(l);
-  card.appendChild(v);
+  card.appendChild(labelEl);
+  card.appendChild(valueEl);
 
   if (sub) {
-    const sb = document.createElement("div");
-    sb.className = "bon-stat-sub";
-    sb.textContent = sub;
-    card.appendChild(sb);
+    const subEl = document.createElement("div");
+    subEl.className = "bon-stat-sub";
+    subEl.textContent = sub;
+    card.appendChild(subEl);
   }
 
   parent.appendChild(card);

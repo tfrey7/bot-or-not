@@ -5,7 +5,7 @@
 // chance to grab them. The actual Submit click then dispatches the stored
 // context to the background.
 
-import { bonInlineTagsBumpReport } from "../inline-tags/index.ts";
+import { bonInlineTagsBumpReport } from "../inline-tags";
 
 interface ReportContext {
   kind: "post" | "comment";
@@ -23,44 +23,44 @@ interface PendingReport {
 
 let pendingReport: PendingReport | null = null;
 
-function buildReportContext(e: Event): PendingReport | null {
-  const authorEl = e
+function buildReportContext(event: Event): PendingReport | null {
+  const authorElement = event
     .composedPath()
     .find(
-      (el): el is HTMLElement =>
-        el instanceof HTMLElement &&
-        (el.tagName.toLowerCase() === "shreddit-post" ||
-          el.tagName.toLowerCase() === "shreddit-comment") &&
-        !!el.getAttribute("author")
+      (element): element is HTMLElement =>
+        element instanceof HTMLElement &&
+        (element.tagName.toLowerCase() === "shreddit-post" ||
+          element.tagName.toLowerCase() === "shreddit-comment") &&
+        !!element.getAttribute("author")
     );
 
-  if (!authorEl) {
+  if (!authorElement) {
     return null;
   }
 
-  const username = authorEl.getAttribute("author");
+  const username = authorElement.getAttribute("author");
   if (!username) {
     return null;
   }
 
-  const tag = authorEl.tagName.toLowerCase();
+  const tagName = authorElement.tagName.toLowerCase();
   const context: ReportContext = {
-    kind: tag === "shreddit-post" ? "post" : "comment",
-    permalink: authorEl.getAttribute("permalink") || null,
+    kind: tagName === "shreddit-post" ? "post" : "comment",
+    permalink: authorElement.getAttribute("permalink") || null,
     subreddit:
-      authorEl.getAttribute("subreddit-prefixed-name") ||
-      authorEl.getAttribute("subreddit-name") ||
+      authorElement.getAttribute("subreddit-prefixed-name") ||
+      authorElement.getAttribute("subreddit-name") ||
       null,
   };
 
-  if (tag === "shreddit-post") {
-    context.postTitle = authorEl.getAttribute("post-title") || null;
-    context.postId = authorEl.id || null;
+  if (tagName === "shreddit-post") {
+    context.postTitle = authorElement.getAttribute("post-title") || null;
+    context.postId = authorElement.id || null;
   } else {
     context.commentId =
-      authorEl.getAttribute("thingid") ||
-      authorEl.getAttribute("comment-id") ||
-      authorEl.id ||
+      authorElement.getAttribute("thingid") ||
+      authorElement.getAttribute("comment-id") ||
+      authorElement.id ||
       null;
   }
   return { username, context };
@@ -69,19 +69,19 @@ function buildReportContext(e: Event): PendingReport | null {
 export function bonReportingInit(): void {
   document.addEventListener(
     "click",
-    async function (e) {
-      const cached = buildReportContext(e);
-      if (cached) {
-        pendingReport = cached;
+    async function (event) {
+      const captured = buildReportContext(event);
+      if (captured) {
+        pendingReport = captured;
       }
 
-      const reportSpan = e
+      const reportSpan = event
         .composedPath()
         .find(
-          (el): el is HTMLElement =>
-            el instanceof HTMLElement &&
-            el.classList.contains("report-button-content") &&
-            el.textContent?.trim() === "Submit"
+          (element): element is HTMLElement =>
+            element instanceof HTMLElement &&
+            element.classList.contains("report-button-content") &&
+            element.textContent?.trim() === "Submit"
         );
 
       if (reportSpan && pendingReport) {

@@ -33,13 +33,13 @@ export function bonReportsVerdictBadge(
     const span = document.createElement("span");
     span.className = "bon-verdict-badge bon-verdict-badge--error";
     span.textContent = "Error";
-    span.title = rawInvestigation.error || "Investigation failed";
+    span.title = rawInvestigation.error ?? "Investigation failed";
     return span;
   }
 
   const investigation = bonNormalizeInvestigation(rawInvestigation);
 
-  if (!investigation?.verdict) {
+  if (!investigation.verdict) {
     return null;
   }
 

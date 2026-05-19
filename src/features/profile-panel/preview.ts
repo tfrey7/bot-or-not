@@ -11,21 +11,19 @@ import { bonScoreLeaning } from "../../utils/scoring.ts";
 import { bonPanelBuildFactorDots } from "./factor_dots.ts";
 import { bonPanelBuildPersonaStrip } from "./persona_radar.ts";
 
-function buildTopReasonsList(
-  factors: Factor[] | null | undefined
-): HTMLUListElement | null {
-  const top = bonTopReasons(factors, 3);
+function buildTopReasonsList(factors: Factor[]): HTMLUListElement | null {
+  const topReasons = bonTopReasons(factors, 3);
 
-  if (!top.length) {
+  if (!topReasons.length) {
     return null;
   }
 
   const ul = document.createElement("ul");
   ul.className = "bon-profile-panel__reasons";
 
-  for (const f of top) {
+  for (const factor of topReasons) {
     const li = document.createElement("li");
-    const leaning = bonScoreLeaning(f.score, f.confidence);
+    const leaning = bonScoreLeaning(factor.score, factor.confidence);
 
     li.className = `bon-reason bon-reason--${leaning}`;
 
@@ -39,15 +37,14 @@ function buildTopReasonsList(
 
     const label = document.createElement("strong");
     label.textContent =
-      BON_FACTOR_LABELS[f.key] ||
-      (f as { name?: string }).name ||
-      f.key ||
-      "Factor";
+      BON_FACTOR_LABELS[factor.key] ??
+      (factor as { name?: string }).name ??
+      factor.key;
 
     text.appendChild(label);
 
-    if (f.reasoning) {
-      text.appendChild(document.createTextNode(` — ${f.reasoning}`));
+    if (factor.reasoning) {
+      text.appendChild(document.createTextNode(` — ${factor.reasoning}`));
     }
 
     li.appendChild(text);
@@ -62,8 +59,7 @@ export function bonPanelBuildPreview(
   report: Report | null | undefined
 ): HTMLDivElement | null {
   const investigation = bonNormalizeInvestigation(report?.investigation);
-  const hasFactors =
-    Array.isArray(investigation?.factors) && investigation.factors.length > 0;
+  const hasFactors = (investigation?.factors.length ?? 0) > 0;
 
   if (!investigation?.summary && !hasFactors) {
     return null;
@@ -76,14 +72,14 @@ export function bonPanelBuildPreview(
   summaryCol.className = "bon-profile-panel__preview-summary";
 
   if (investigation?.summary) {
-    const p = document.createElement("p");
-    p.className = "bon-profile-panel__summary";
-    p.textContent = investigation.summary;
-    summaryCol.appendChild(p);
+    const summary = document.createElement("p");
+    summary.className = "bon-profile-panel__summary";
+    summary.textContent = investigation.summary;
+    summaryCol.appendChild(summary);
   }
 
-  if (hasFactors) {
-    const reasons = buildTopReasonsList(investigation?.factors);
+  if (investigation && hasFactors) {
+    const reasons = buildTopReasonsList(investigation.factors);
     if (reasons) {
       summaryCol.appendChild(reasons);
     }

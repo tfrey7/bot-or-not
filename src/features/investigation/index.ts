@@ -15,6 +15,7 @@ import type {
   ActivityData,
   BotBouncerStatus,
   ClaudeUsage,
+  ContextItem,
   Factor,
   Persona,
   ProfileSummary,
@@ -33,9 +34,13 @@ import {
 } from "./fetch.ts";
 import { bonSummarizeProfile } from "./summarize.ts";
 
+// Caller-supplied context for an investigation. All three keys are
+// independently optional — omit when no signal is on hand. The fields
+// themselves never carry `null`; absence is expressed by omission.
 export interface GatherProfileExtra {
-  botBouncerStatus?: BotBouncerStatus;
-  botBouncerCheckedAt?: number | null;
+  botBouncerStatus?: Exclude<BotBouncerStatus, null>;
+  botBouncerCheckedAt?: number;
+  contextItems?: ContextItem[];
 }
 
 export interface GatheredProfile {
@@ -78,14 +83,15 @@ export async function bonGatherProfile(
   ]);
 
   const botBouncerStatus: BotBouncerStatus =
-    freshBotBouncerStatus || extra.botBouncerStatus || null;
-  const botBouncerCheckedAt = freshBotBouncerStatus
+    freshBotBouncerStatus ?? extra.botBouncerStatus ?? null;
+  const botBouncerCheckedAt: number | null = freshBotBouncerStatus
     ? Date.now()
-    : extra.botBouncerCheckedAt || null;
+    : (extra.botBouncerCheckedAt ?? null);
 
   const summary = bonSummarizeProfile(username, raw, {
-    botBouncerStatus,
-    botBouncerCheckedAt,
+    ...(botBouncerStatus ? { botBouncerStatus } : {}),
+    ...(botBouncerCheckedAt != null ? { botBouncerCheckedAt } : {}),
+    contextItems: extra.contextItems,
   });
   const activityData = bonExtractActivityData(raw);
 
@@ -95,6 +101,37 @@ export async function bonGatherProfile(
     raw,
     botBouncerStatus,
     botBouncerCheckedAt,
+  };
+}
+
+// Shape of the JSON object Claude returns. The prompt mandates every field;
+// parseClaudeVerdict throws if anything is missing. Downstream code can trust
+// the shape — no defensive `?? ""` / `Array.isArray()` checks anywhere else.
+// `persona` stays `unknown` because bonNormalizePersona owns its validation.
+interface ClaudeVerdictPayload {
+  factors: Factor[];
+  summary: string;
+  persona: unknown;
+}
+
+function parseClaudeVerdict(rawText: string): ClaudeVerdictPayload {
+  const extracted = bonExtractJson(rawText);
+  if (!extracted || typeof extracted !== "object") {
+    throw new Error("Could not parse verdict JSON from Claude response");
+  }
+  const payload = extracted as Record<string, unknown>;
+
+  if (!Array.isArray(payload.factors)) {
+    throw new Error("Claude response missing required `factors` array");
+  }
+  if (typeof payload.summary !== "string") {
+    throw new Error("Claude response missing required `summary` string");
+  }
+
+  return {
+    factors: payload.factors as Factor[],
+    summary: payload.summary,
+    persona: payload.persona,
   };
 }
 
@@ -112,30 +149,20 @@ export async function bonRunOneDAnalysis(
       { webSearch: true }
     );
 
-  const verdict = bonExtractJson(rawText) as {
-    factors?: Factor[];
-    summary?: string;
-    persona?: unknown;
-  } | null;
-
-  if (!verdict) {
-    throw new Error("Could not parse verdict JSON from Claude response");
-  }
-
-  const factors = Array.isArray(verdict.factors) ? verdict.factors : [];
-  const derived = bonComputeVerdict(factors);
+  const parsed = parseClaudeVerdict(rawText);
+  const derived = bonComputeVerdict(parsed.factors);
 
   return {
     verdict: derived.verdict,
     confidence: derived.confidence,
     botProbability: derived.botProbability,
-    summary: verdict.summary || "",
-    persona: bonNormalizePersona(verdict.persona),
-    factors,
+    summary: parsed.summary,
+    persona: bonNormalizePersona(parsed.persona),
+    factors: parsed.factors,
     runAt: Date.now(),
     model,
     usage,
-    webSearchCount: webSearchCount || 0,
+    webSearchCount,
     costUsd,
   };
 }
@@ -157,17 +184,17 @@ export async function bonInvestigateUser(
   apiKey: string,
   extra: GatherProfileExtra = {}
 ): Promise<InvestigateUserResult> {
-  const inputs = await bonGatherProfile(username, extra);
-  const oneD = await bonRunOneDAnalysis(apiKey, inputs.summary);
+  const gathered = await bonGatherProfile(username, extra);
+  const analysisResult = await bonRunOneDAnalysis(apiKey, gathered.summary);
 
   return {
-    ...oneD,
-    postsFetched: inputs.raw.submitted?.data?.children?.length || 0,
-    commentsFetched: inputs.raw.comments?.data?.children?.length || 0,
-    accountCreatedAt: inputs.summary.account.created_at,
-    accountAgeDays: inputs.summary.account.age_days,
-    activityData: inputs.activityData,
-    botBouncerStatus: inputs.botBouncerStatus,
-    botBouncerCheckedAt: inputs.botBouncerCheckedAt,
+    ...analysisResult,
+    postsFetched: gathered.raw.submitted.data?.children?.length ?? 0,
+    commentsFetched: gathered.raw.comments.data?.children?.length ?? 0,
+    accountCreatedAt: gathered.summary.account.created_at,
+    accountAgeDays: gathered.summary.account.age_days,
+    activityData: gathered.activityData,
+    botBouncerStatus: gathered.botBouncerStatus,
+    botBouncerCheckedAt: gathered.botBouncerCheckedAt,
   };
 }

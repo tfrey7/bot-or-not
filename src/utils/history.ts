@@ -1,9 +1,21 @@
-// Pure data-shape helpers for the report record stored in browser.storage.
-// No I/O — callers are responsible for reading/writing storage.
+// Storage I/O + canonical-shape helpers for Report records.
+//
+// bonReadReports / bonWriteReports are the only sanctioned entry points
+// for `browser.storage.local.{get,set}("reports")`. They centralize the
+// `unknown → Record<string, Report>` cast in one place, where it can run
+// through bonNormalizeReport to actually produce the canonical shape.
+//
+// bonNormalizeReport is the source of trust: every Report field always
+// present, Investigation canonicalized so consumers can drop defensive
+// `Array.isArray` / `typeof === "number"` / `?? null` checks.
 
 import type {
+  ContextItem,
+  Factor,
   HistoryEntry,
   Investigation,
+  InvestigationStatus,
+  Persona,
   Report,
   RunSnapshot,
 } from "../types.ts";
@@ -30,8 +42,8 @@ export function bonDedupeHistory(history: HistoryEntry[]): HistoryEntry[] {
   for (const entry of history) {
     const key = entry?.permalink;
     if (key && seen.has(key)) {
-      const idx = seen.get(key)!;
-      out[idx] = bonMergeHistoryEntries(out[idx], entry);
+      const index = seen.get(key)!;
+      out[index] = bonMergeHistoryEntries(out[index], entry);
     } else {
       if (key) {
         seen.set(key, out.length);
@@ -54,32 +66,165 @@ export function bonNormalizeReport(value: unknown): Report {
       userStatus: null,
       userStatusCheckedAt: 0,
       createdAt: null,
+      botBouncerStatus: null,
+      botBouncerCheckedAt: 0,
       investigation: null,
+      activityData: null,
+      contextItems: [],
     };
   }
 
-  const v = (value && typeof value === "object" ? value : {}) as Partial<
-    Record<string, unknown>
+  const record = (value && typeof value === "object" ? value : {}) as Record<
+    string,
+    unknown
   >;
   const history = bonDedupeHistory(
-    Array.isArray(v.history) ? (v.history as HistoryEntry[]) : []
+    Array.isArray(record.history) ? (record.history as HistoryEntry[]) : []
   );
-  const rawCount = typeof v.count === "number" ? v.count : 0;
+  const rawCount = typeof record.count === "number" ? record.count : 0;
   const count = history.length > 0 ? history.length : rawCount;
 
   return {
     count,
-    lastReportedAt: (v.lastReportedAt as number) ?? 0,
+    lastReportedAt:
+      typeof record.lastReportedAt === "number" ? record.lastReportedAt : 0,
     history,
-    userStatus: (v.userStatus as Report["userStatus"]) ?? null,
-    userStatusCheckedAt: (v.userStatusCheckedAt as number) ?? 0,
-    createdAt: (v.createdAt as number | null) ?? null,
+    userStatus: (record.userStatus as Report["userStatus"]) ?? null,
+    userStatusCheckedAt:
+      typeof record.userStatusCheckedAt === "number"
+        ? record.userStatusCheckedAt
+        : 0,
+    createdAt: typeof record.createdAt === "number" ? record.createdAt : null,
     botBouncerStatus:
-      (v.botBouncerStatus as Report["botBouncerStatus"]) ?? null,
-    botBouncerCheckedAt: (v.botBouncerCheckedAt as number) ?? 0,
-    investigation: (v.investigation as Investigation | null) ?? null,
-    activityData: (v.activityData as Report["activityData"]) ?? null,
+      (record.botBouncerStatus as Report["botBouncerStatus"]) ?? null,
+    botBouncerCheckedAt:
+      typeof record.botBouncerCheckedAt === "number"
+        ? record.botBouncerCheckedAt
+        : 0,
+    investigation: canonicalizeInvestigation(record.investigation),
+    activityData: (record.activityData as Report["activityData"]) ?? null,
+    contextItems: Array.isArray(record.contextItems)
+      ? (record.contextItems as ContextItem[])
+      : [],
   };
+}
+
+// Internal: turn whatever was on disk into the canonical Investigation shape
+// (or null). Every field always set after this; consumers gate on `status`
+// to know which result fields hold real data vs. null/empty defaults.
+function canonicalizeInvestigation(value: unknown): Investigation | null {
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+  const investigation = value as Record<string, unknown>;
+  const status = investigation.status as Investigation["status"];
+  if (status !== "running" && status !== "done" && status !== "error") {
+    return null;
+  }
+
+  return {
+    status,
+    startedAt:
+      typeof investigation.startedAt === "number"
+        ? investigation.startedAt
+        : null,
+    runAt: typeof investigation.runAt === "number" ? investigation.runAt : null,
+    durationMs:
+      typeof investigation.durationMs === "number"
+        ? investigation.durationMs
+        : null,
+    error: typeof investigation.error === "string" ? investigation.error : null,
+    verdict: (investigation.verdict as Investigation["verdict"]) ?? null,
+    confidence:
+      typeof investigation.confidence === "number"
+        ? investigation.confidence
+        : null,
+    botProbability:
+      typeof investigation.botProbability === "number"
+        ? investigation.botProbability
+        : null,
+    factors: Array.isArray(investigation.factors)
+      ? (investigation.factors as Factor[])
+      : [],
+    persona: (investigation.persona as Persona | null) ?? null,
+    summary:
+      typeof investigation.summary === "string" ? investigation.summary : "",
+    model: typeof investigation.model === "string" ? investigation.model : null,
+    usage: (investigation.usage as Investigation["usage"]) ?? null,
+    webSearchCount:
+      typeof investigation.webSearchCount === "number"
+        ? investigation.webSearchCount
+        : 0,
+    costUsd:
+      typeof investigation.costUsd === "number" ? investigation.costUsd : null,
+    postsFetched:
+      typeof investigation.postsFetched === "number"
+        ? investigation.postsFetched
+        : 0,
+    commentsFetched:
+      typeof investigation.commentsFetched === "number"
+        ? investigation.commentsFetched
+        : 0,
+    accountCreatedAt:
+      typeof investigation.accountCreatedAt === "string"
+        ? investigation.accountCreatedAt
+        : null,
+    accountAgeDays:
+      typeof investigation.accountAgeDays === "number"
+        ? investigation.accountAgeDays
+        : null,
+    runs: Array.isArray(investigation.runs)
+      ? (investigation.runs as RunSnapshot[])
+      : [],
+  };
+}
+
+// Build a fresh Investigation with all fields at default. Callers (only
+// setInvestigationState should be one) layer prev + patch on top.
+export function bonFreshInvestigation(
+  status: InvestigationStatus
+): Investigation {
+  return {
+    status,
+    startedAt: null,
+    runAt: null,
+    durationMs: null,
+    error: null,
+    verdict: null,
+    confidence: null,
+    botProbability: null,
+    factors: [],
+    persona: null,
+    summary: "",
+    model: null,
+    usage: null,
+    webSearchCount: 0,
+    costUsd: null,
+    postsFetched: 0,
+    commentsFetched: 0,
+    accountCreatedAt: null,
+    accountAgeDays: null,
+    runs: [],
+  };
+}
+
+// Sanctioned storage entry points. Reads run through bonNormalizeReport so
+// every callsite gets the canonical shape — no `as Report` lies elsewhere.
+export async function bonReadReports(): Promise<Record<string, Report>> {
+  const raw = (await browser.storage.local.get("reports")) as {
+    reports?: Record<string, unknown>;
+  };
+  const out: Record<string, Report> = {};
+  for (const [username, value] of Object.entries(raw.reports ?? {})) {
+    out[username] = bonNormalizeReport(value);
+  }
+  return out;
+}
+
+export async function bonWriteReports(
+  reports: Record<string, Report>
+): Promise<void> {
+  await browser.storage.local.set({ reports });
 }
 
 // Case-insensitive username lookup — Reddit's routing is case-insensitive but
@@ -93,9 +238,9 @@ export function bonFindReportKey(
   }
 
   const target = username.toLowerCase();
-  for (const k of Object.keys(reports)) {
-    if (k.toLowerCase() === target) {
-      return k;
+  for (const key of Object.keys(reports)) {
+    if (key.toLowerCase() === target) {
+      return key;
     }
   }
 
@@ -105,23 +250,22 @@ export function bonFindReportKey(
 // Extracts a runs[] snapshot from a terminated investigation so historical
 // timing/cost data survives across re-runs.
 export function bonSnapshotRun(
-  inv: Investigation,
+  investigation: Investigation,
   status: RunSnapshot["status"]
 ): RunSnapshot {
   return {
-    runAt: inv.runAt || Date.now(),
-    durationMs: typeof inv.durationMs === "number" ? inv.durationMs : null,
+    runAt: investigation.runAt ?? Date.now(),
+    durationMs: investigation.durationMs,
     status,
-    verdict: inv.verdict || null,
-    confidence: typeof inv.confidence === "number" ? inv.confidence : null,
-    botProbability:
-      typeof inv.botProbability === "number" ? inv.botProbability : null,
-    model: inv.model || null,
-    usage: inv.usage || null,
-    costUsd: typeof inv.costUsd === "number" ? inv.costUsd : null,
-    webSearchCount: inv.webSearchCount || 0,
-    postsFetched: inv.postsFetched || 0,
-    commentsFetched: inv.commentsFetched || 0,
-    error: status === "error" ? inv.error || null : null,
+    verdict: investigation.verdict,
+    confidence: investigation.confidence,
+    botProbability: investigation.botProbability,
+    model: investigation.model,
+    usage: investigation.usage,
+    costUsd: investigation.costUsd,
+    webSearchCount: investigation.webSearchCount,
+    postsFetched: investigation.postsFetched,
+    commentsFetched: investigation.commentsFetched,
+    error: status === "error" ? investigation.error : null,
   };
 }

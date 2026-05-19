@@ -23,10 +23,10 @@ export function bonAnalyticsRunLog(runs: AnalyticsEntry[]): HTMLDivElement {
   wrap.appendChild(title);
 
   if (!runs.length) {
-    const p = document.createElement("p");
-    p.className = "bon-analytics-empty-small";
-    p.textContent = "No runs to list.";
-    wrap.appendChild(p);
+    const emptyMsg = document.createElement("p");
+    emptyMsg.className = "bon-analytics-empty-small";
+    emptyMsg.textContent = "No runs to list.";
+    wrap.appendChild(emptyMsg);
     return wrap;
   }
 
@@ -58,33 +58,33 @@ export function bonAnalyticsRunLog(runs: AnalyticsEntry[]): HTMLDivElement {
 
   const tbody = document.createElement("tbody");
 
-  for (const r of rows) {
+  for (const run of rows) {
     const tr = document.createElement("tr");
 
     const tdWhen = document.createElement("td");
-    tdWhen.textContent = r.runAt ? bonFmtTimestamp(r.runAt) : "—";
+    tdWhen.textContent = run.runAt ? bonFmtTimestamp(run.runAt) : "—";
     tr.appendChild(tdWhen);
 
     const tdUser = document.createElement("td");
-    const a = document.createElement("a");
-    a.className = "bon-analytics-top-name";
-    a.href = `https://www.reddit.com/user/${encodeURIComponent(r.username)}`;
-    a.target = "_blank";
-    a.rel = "noopener noreferrer";
-    a.textContent = `u/${r.username}`;
-    tdUser.appendChild(a);
+    const userLink = document.createElement("a");
+    userLink.className = "bon-analytics-top-name";
+    userLink.href = `https://www.reddit.com/user/${encodeURIComponent(run.username)}`;
+    userLink.target = "_blank";
+    userLink.rel = "noopener noreferrer";
+    userLink.textContent = `u/${run.username}`;
+    tdUser.appendChild(userLink);
     tr.appendChild(tdUser);
 
     const tdVerdict = document.createElement("td");
-    tdVerdict.textContent = formatVerdictCell(r);
+    tdVerdict.textContent = formatVerdictCell(run);
     tr.appendChild(tdVerdict);
 
     const tdPersona = document.createElement("td");
-    tdPersona.textContent = r.persona || "—";
+    tdPersona.textContent = run.persona || "—";
     tr.appendChild(tdPersona);
 
     const tdModel = document.createElement("td");
-    const primaryModel = r.calls[0]?.model || null;
+    const primaryModel = run.calls[0]?.model || null;
 
     if (primaryModel) {
       const code = document.createElement("code");
@@ -97,24 +97,24 @@ export function bonAnalyticsRunLog(runs: AnalyticsEntry[]): HTMLDivElement {
     tr.appendChild(tdModel);
 
     const tdDuration = document.createElement("td");
-    tdDuration.textContent = bonFmtDuration(r.durationMs);
+    tdDuration.textContent = bonFmtDuration(run.durationMs);
     tr.appendChild(tdDuration);
 
     const tdCalls = document.createElement("td");
-    tdCalls.textContent = String(r.calls.length);
+    tdCalls.textContent = String(run.calls.length);
     tr.appendChild(tdCalls);
 
     const tdTokens = document.createElement("td");
-    const tokenTotal = sumRunTokens(r);
+    const tokenTotal = sumRunTokens(run);
     tdTokens.textContent = tokenTotal > 0 ? bonFmtThousands(tokenTotal) : "—";
     tr.appendChild(tdTokens);
 
     const tdCost = document.createElement("td");
-    tdCost.textContent = bonFmtUsd(r.totalCost);
+    tdCost.textContent = bonFmtUsd(run.totalCost);
     tr.appendChild(tdCost);
 
-    if (r.summary) {
-      tr.title = r.summary;
+    if (run.summary) {
+      tr.title = run.summary;
     }
 
     tbody.appendChild(tr);
@@ -136,33 +136,33 @@ export function bonAnalyticsRunLog(runs: AnalyticsEntry[]): HTMLDivElement {
   return wrap;
 }
 
-function sumRunTokens(r: AnalyticsEntry): number {
+function sumRunTokens(run: AnalyticsEntry): number {
   let total = 0;
 
-  for (const c of r.calls) {
-    const u = c.usage || {};
+  for (const call of run.calls) {
+    const usage = call.usage || {};
     total +=
-      (u.input_tokens || 0) +
-      (u.output_tokens || 0) +
-      (u.cache_read_input_tokens || 0) +
-      (u.cache_creation_input_tokens || 0);
+      (usage.input_tokens || 0) +
+      (usage.output_tokens || 0) +
+      (usage.cache_read_input_tokens || 0) +
+      (usage.cache_creation_input_tokens || 0);
   }
   return total;
 }
 
-function formatVerdictCell(r: AnalyticsEntry): string {
-  if (!r.verdict) {
+function formatVerdictCell(run: AnalyticsEntry): string {
+  if (!run.verdict) {
     return "—";
   }
 
-  const label = r.verdict.replace(/-/g, " ");
+  const label = run.verdict.replace(/-/g, " ");
 
-  if (typeof r.botProbability === "number") {
-    return `${label} · ${bonFmtPercent(r.botProbability)} bot`;
+  if (typeof run.botProbability === "number") {
+    return `${label} · ${bonFmtPercent(run.botProbability)} bot`;
   }
 
-  if (typeof r.confidence === "number") {
-    return `${label} · ${bonFmtPercent(r.confidence)} conf`;
+  if (typeof run.confidence === "number") {
+    return `${label} · ${bonFmtPercent(run.confidence)} conf`;
   }
   return label;
 }

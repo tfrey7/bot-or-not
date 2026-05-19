@@ -88,20 +88,20 @@ type RunLike = RunSnapshot | Investigation;
 export function bonAnalyticsCollect(
   reports: Array<Report & { username: string }> | null | undefined
 ): AnalyticsEntry[] {
-  const out: AnalyticsEntry[] = [];
+  const entries: AnalyticsEntry[] = [];
 
-  for (const r of reports || []) {
-    const inv = r?.investigation;
+  for (const report of reports || []) {
+    const investigation = report?.investigation;
 
-    if (!inv) {
+    if (!investigation) {
       continue;
     }
 
     // Newer records keep a runs[] history; emit one analytics entry per
     // historical run so re-investigations don't collapse into a single row.
-    if (Array.isArray(inv.runs) && inv.runs.length > 0) {
-      for (const run of inv.runs) {
-        out.push(buildAnalyticsEntry(r.username, run));
+    if (Array.isArray(investigation.runs) && investigation.runs.length > 0) {
+      for (const run of investigation.runs) {
+        entries.push(buildAnalyticsEntry(report.username, run));
       }
       // If a run is currently in flight, runs[] doesn't include it yet —
       // skip it (analytics only cares about completed runs).
@@ -110,9 +110,9 @@ export function bonAnalyticsCollect(
 
     // Legacy record (single most-recent run only). Treat the root fields as
     // one run.
-    out.push(buildAnalyticsEntry(r.username, inv));
+    entries.push(buildAnalyticsEntry(report.username, investigation));
   }
-  return out;
+  return entries;
 }
 
 function buildAnalyticsEntry(username: string, run: RunLike): AnalyticsEntry {
@@ -131,7 +131,7 @@ function buildAnalyticsEntry(username: string, run: RunLike): AnalyticsEntry {
     });
   }
 
-  const totalCost = calls.reduce((s, c) => s + (c.costUsd || 0), 0);
+  const totalCost = calls.reduce((sum, call) => sum + (call.costUsd || 0), 0);
   const personaLabel =
     "persona" in run && run.persona && typeof run.persona === "object"
       ? (run.persona as { label?: string }).label || null
@@ -159,7 +159,7 @@ function buildAnalyticsEntry(username: string, run: RunLike): AnalyticsEntry {
 export function bonAnalyticsSummarize(
   runs: AnalyticsEntry[]
 ): AnalyticsSummary {
-  const s: AnalyticsSummary = {
+  const summary: AnalyticsSummary = {
     count: runs.length,
     totalCost: 0,
     totalDuration: 0,
@@ -193,36 +193,36 @@ export function bonAnalyticsSummarize(
   let firstRun = Infinity;
   let lastRun = -Infinity;
 
-  for (const r of runs) {
-    s.totalCost += r.totalCost;
+  for (const run of runs) {
+    summary.totalCost += run.totalCost;
 
-    if (typeof r.durationMs === "number") {
-      s.totalDuration += r.durationMs;
-      durations.push(r.durationMs);
+    if (typeof run.durationMs === "number") {
+      summary.totalDuration += run.durationMs;
+      durations.push(run.durationMs);
     }
 
-    s.totalPosts += r.postsFetched;
-    s.totalComments += r.commentsFetched;
+    summary.totalPosts += run.postsFetched;
+    summary.totalComments += run.commentsFetched;
 
-    if (r.runAt) {
-      firstRun = Math.min(firstRun, r.runAt);
-      lastRun = Math.max(lastRun, r.runAt);
-      const d = new Date(r.runAt);
-      days.add(`${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`);
+    if (run.runAt) {
+      firstRun = Math.min(firstRun, run.runAt);
+      lastRun = Math.max(lastRun, run.runAt);
+      const day = new Date(run.runAt);
+      days.add(`${day.getFullYear()}-${day.getMonth()}-${day.getDate()}`);
     }
 
-    for (const c of r.calls) {
-      s.totalApiCalls++;
-      s.totalWebSearches += c.webSearchCount || 0;
-      const u = c.usage || {};
-      s.totalInput += u.input_tokens || 0;
-      s.totalOutput += u.output_tokens || 0;
-      s.totalCacheRead += u.cache_read_input_tokens || 0;
-      s.totalCacheWrite += u.cache_creation_input_tokens || 0;
+    for (const call of run.calls) {
+      summary.totalApiCalls++;
+      summary.totalWebSearches += call.webSearchCount || 0;
+      const usage = call.usage || {};
+      summary.totalInput += usage.input_tokens || 0;
+      summary.totalOutput += usage.output_tokens || 0;
+      summary.totalCacheRead += usage.cache_read_input_tokens || 0;
+      summary.totalCacheWrite += usage.cache_creation_input_tokens || 0;
 
-      if (c.model) {
-        const m = s.models[c.model] || {
-          model: c.model,
+      if (call.model) {
+        const modelTotals = summary.models[call.model] || {
+          model: call.model,
           calls: 0,
           cost: 0,
           in: 0,
@@ -231,58 +231,68 @@ export function bonAnalyticsSummarize(
           cacheWrite: 0,
           duration: 0,
         };
-        m.calls++;
-        m.cost += c.costUsd || 0;
-        m.in += u.input_tokens || 0;
-        m.out += u.output_tokens || 0;
-        m.cacheRead += u.cache_read_input_tokens || 0;
-        m.cacheWrite += u.cache_creation_input_tokens || 0;
-        s.models[c.model] = m;
+        modelTotals.calls++;
+        modelTotals.cost += call.costUsd || 0;
+        modelTotals.in += usage.input_tokens || 0;
+        modelTotals.out += usage.output_tokens || 0;
+        modelTotals.cacheRead += usage.cache_read_input_tokens || 0;
+        modelTotals.cacheWrite += usage.cache_creation_input_tokens || 0;
+        summary.models[call.model] = modelTotals;
       }
     }
   }
 
   durations.sort((a, b) => a - b);
-  s.daysActive = days.size;
-  s.firstRunAt = isFinite(firstRun) ? firstRun : null;
-  s.lastRunAt = isFinite(lastRun) ? lastRun : null;
-  s.avgCost = s.count ? s.totalCost / s.count : 0;
-  s.medianCost = s.count
+  summary.daysActive = days.size;
+  summary.firstRunAt = isFinite(firstRun) ? firstRun : null;
+  summary.lastRunAt = isFinite(lastRun) ? lastRun : null;
+  summary.avgCost = summary.count ? summary.totalCost / summary.count : 0;
+  summary.medianCost = summary.count
     ? bonPercentile(
-        runs.map((r) => r.totalCost).sort((a, b) => a - b),
+        runs.map((run) => run.totalCost).sort((a, b) => a - b),
         0.5
       )
     : 0;
-  s.maxCost = s.count ? Math.max(...runs.map((r) => r.totalCost)) : 0;
-  s.avgDuration = durations.length ? s.totalDuration / durations.length : 0;
-  s.medianDuration = bonPercentile(durations, 0.5);
-  s.p95Duration = bonPercentile(durations, 0.95);
-  s.totalTokens =
-    s.totalInput + s.totalOutput + s.totalCacheRead + s.totalCacheWrite;
-  s.cacheHitRate =
-    s.totalInput + s.totalCacheRead > 0
-      ? s.totalCacheRead / (s.totalInput + s.totalCacheRead)
+  summary.maxCost = summary.count
+    ? Math.max(...runs.map((run) => run.totalCost))
+    : 0;
+  summary.avgDuration = durations.length
+    ? summary.totalDuration / durations.length
+    : 0;
+  summary.medianDuration = bonPercentile(durations, 0.5);
+  summary.p95Duration = bonPercentile(durations, 0.95);
+  summary.totalTokens =
+    summary.totalInput +
+    summary.totalOutput +
+    summary.totalCacheRead +
+    summary.totalCacheWrite;
+  summary.cacheHitRate =
+    summary.totalInput + summary.totalCacheRead > 0
+      ? summary.totalCacheRead / (summary.totalInput + summary.totalCacheRead)
       : 0;
-  s.runsPerActiveDay = s.daysActive ? s.count / s.daysActive : 0;
+  summary.runsPerActiveDay = summary.daysActive
+    ? summary.count / summary.daysActive
+    : 0;
 
   // Estimate dollars saved by cache reads vs. paying full input price.
   let savings = 0;
 
-  for (const m of Object.values(s.models)) {
-    const p = bonLookupPricing(m.model);
+  for (const modelTotals of Object.values(summary.models)) {
+    const pricing = bonLookupPricing(modelTotals.model);
 
-    if (!p) {
+    if (!pricing) {
       continue;
     }
 
-    savings += (m.cacheRead * (p.input - p.cacheRead)) / 1_000_000;
+    savings +=
+      (modelTotals.cacheRead * (pricing.input - pricing.cacheRead)) / 1_000_000;
   }
 
-  s.cacheSavingsUsd = savings;
+  summary.cacheSavingsUsd = savings;
 
   // Burn rate over last 7 days of activity (only counting days with runs
   // to avoid a misleadingly low rate for sporadic use).
-  s.recentCost = bonRecentCost(runs, 7);
-  s.recentDays = 7;
-  return s;
+  summary.recentCost = bonRecentCost(runs, 7);
+  summary.recentDays = 7;
+  return summary;
 }

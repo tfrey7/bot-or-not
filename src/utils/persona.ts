@@ -15,8 +15,8 @@ export function bonNormalizePersona(raw: unknown): Persona | null {
     return null;
   }
 
-  const obj = raw as Record<string, unknown>;
-  const label = String(obj.label || "")
+  const record = raw as Record<string, unknown>;
+  const label = String(record.label || "")
     .toLowerCase()
     .trim();
   if (!(BON_PERSONA_LABELS as readonly string[]).includes(label)) {
@@ -24,12 +24,12 @@ export function bonNormalizePersona(raw: unknown): Persona | null {
   }
 
   const reasoning =
-    typeof obj.reasoning === "string" ? obj.reasoning.trim() : "";
+    typeof record.reasoning === "string" ? record.reasoning.trim() : "";
 
   return {
     label: label as PersonaLabel,
     reasoning,
-    archetypes: bonNormalizeArchetypes(obj.archetypes),
+    archetypes: bonNormalizeArchetypes(record.archetypes),
   };
 }
 
@@ -37,16 +37,16 @@ export function bonNormalizeArchetypes(
   raw: unknown
 ): Record<ArchetypeKey, number> | null {
   const out = {} as Record<ArchetypeKey, number>;
-  const src = (raw && typeof raw === "object" ? raw : {}) as Record<
+  const source = (raw && typeof raw === "object" ? raw : {}) as Record<
     string,
     unknown
   >;
   let anyPresent = false;
 
   for (const axis of BON_ARCHETYPE_KEYS) {
-    const v = src[axis];
-    if (typeof v === "number" && Number.isFinite(v)) {
-      out[axis] = Math.max(0, Math.min(1, v));
+    const value = source[axis];
+    if (typeof value === "number" && Number.isFinite(value)) {
+      out[axis] = Math.max(0, Math.min(1, value));
       anyPresent = true;
     } else {
       out[axis] = 0;

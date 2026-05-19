@@ -10,54 +10,54 @@ export function bonPanelBuildInvestigateBtn(
   username: string,
   investigation: Investigation | null | undefined
 ): HTMLButtonElement {
-  const btn = document.createElement("button");
-  btn.type = "button";
-  btn.className = "bon-panel-btn";
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "bon-panel-btn";
 
   const running = investigation?.status === "running";
   const stale = running && bonIsInvestigationStale(investigation);
   const verdict = investigation?.verdict;
 
   if (running && !stale) {
-    btn.textContent = "⏳ Investigating…";
-    btn.disabled = true;
-    btn.classList.add("bon-spinning");
+    button.textContent = "⏳ Investigating…";
+    button.disabled = true;
+    button.classList.add("bon-spinning");
   } else if (stale) {
-    btn.textContent = "🔁 Retry (stalled)";
+    button.textContent = "🔁 Retry (stalled)";
   } else if (verdict) {
-    btn.textContent = "🔁 Re-investigate";
+    button.textContent = "🔁 Re-investigate";
   } else {
-    btn.textContent = "🤖 Investigate";
+    button.textContent = "🤖 Investigate";
   }
 
-  btn.addEventListener("click", async (e) => {
-    e.stopPropagation();
-    btn.disabled = true;
-    btn.classList.add("bon-spinning");
-    btn.textContent = "⏳ Investigating…";
+  button.addEventListener("click", async (event) => {
+    event.stopPropagation();
+    button.disabled = true;
+    button.classList.add("bon-spinning");
+    button.textContent = "⏳ Investigating…";
 
     try {
-      const res = (await browser.runtime.sendMessage({
+      const response = (await browser.runtime.sendMessage({
         type: "investigate-user",
         username,
       })) as { ok?: boolean; error?: string };
 
-      if (res?.ok === false && res.error === "no-api-key") {
+      if (response?.ok === false && response.error === "no-api-key") {
         alert(
           "No Claude API key set. Click the Bot or Not toolbar icon, then open Settings to add one."
         );
-        btn.disabled = false;
-        btn.classList.remove("bon-spinning");
-        btn.textContent = verdict ? "🔁 Re-investigate" : "🤖 Investigate";
+        button.disabled = false;
+        button.classList.remove("bon-spinning");
+        button.textContent = verdict ? "🔁 Re-investigate" : "🤖 Investigate";
       }
       // storage.onChanged will trigger refreshProfilePanel.
-    } catch (err) {
-      console.error("[Bot or Not] investigate failed", err);
-      btn.disabled = false;
-      btn.classList.remove("bon-spinning");
-      btn.textContent = verdict ? "🔁 Re-investigate" : "🤖 Investigate";
+    } catch (error) {
+      console.error("[Bot or Not] investigate failed", error);
+      button.disabled = false;
+      button.classList.remove("bon-spinning");
+      button.textContent = verdict ? "🔁 Re-investigate" : "🤖 Investigate";
     }
   });
 
-  return btn;
+  return button;
 }

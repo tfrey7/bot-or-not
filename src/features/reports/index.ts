@@ -4,7 +4,7 @@
 // lives in its own file in this directory; this file just wires them
 // together.
 
-import { bonRenderAnalytics } from "../analytics/index.ts";
+import { bonRenderAnalytics } from "../analytics";
 import { BON_REGION_INFO } from "../regions/data.ts";
 import type { Report } from "../../types.ts";
 import { bonIsInvestigationStale } from "../../verdict.ts";
@@ -13,7 +13,6 @@ import {
   bonReportsCloseModalsOnEscape,
   bonReportsInitConfirmModal,
   bonReportsInitSettingsModal,
-  bonReportsOpenConfirmModal,
   bonReportsOpenSettings,
 } from "./modals.ts";
 import { bonReportsRow } from "./table_row.ts";
@@ -36,7 +35,6 @@ const tbody = document.getElementById("bon-tbody") as HTMLTableSectionElement;
 const tableWrap = document.getElementById("bon-table-wrap") as HTMLElement;
 const emptyEl = document.getElementById("bon-empty") as HTMLElement;
 const searchInput = document.getElementById("bon-search") as HTMLInputElement;
-const clearBtn = document.getElementById("bon-clear-btn") as HTMLButtonElement;
 const analyticsContainer = document.getElementById(
   "bon-analytics-container"
 ) as HTMLElement | null;
@@ -45,8 +43,8 @@ const analyticsContainer = document.getElementById(
 // version string.
 const versionEl = document.getElementById("bon-version");
 if (versionEl) {
-  const v = browser.runtime.getManifest().version;
-  versionEl.textContent = import.meta.env.DEV ? `${v} (dev)` : v;
+  const version = browser.runtime.getManifest().version;
+  versionEl.textContent = import.meta.env.DEV ? `${version} (dev)` : version;
 }
 
 const REGION_LABELS: Record<string, string> = Object.fromEntries(
@@ -85,8 +83,8 @@ async function loadActivityIfStale(
   inflightActivity.add(username);
   try {
     await browser.runtime.sendMessage({ type: "fetch-activity", username });
-  } catch (err) {
-    console.error("[Bot or Not] auto-load activity failed", err);
+  } catch (error) {
+    console.error("[Bot or Not] auto-load activity failed", error);
   } finally {
     inflightActivity.delete(username);
   }
@@ -106,23 +104,15 @@ browser.storage.onChanged.addListener((changes, area) => {
 
 searchInput.addEventListener("input", render);
 
-clearBtn.addEventListener("click", () => {
-  bonReportsOpenConfirmModal({
-    text: "Clear all reported users? This can't be undone.",
-    confirmLabel: "Clear all",
-    action: () => browser.runtime.sendMessage({ type: "clear-all-reports" }),
-  });
-});
-
 bonReportsInitConfirmModal({ onConfirm: load });
 bonReportsInitSettingsModal();
 bonReportsCloseModalsOnEscape();
 
 document
   .querySelectorAll<HTMLTableCellElement>("th.bon-sortable")
-  .forEach((th) => {
-    th.addEventListener("click", () => {
-      const key = th.dataset.sort as SortKey | undefined;
+  .forEach((header) => {
+    header.addEventListener("click", () => {
+      const key = header.dataset.sort as SortKey | undefined;
       if (!key) {
         return;
       }
@@ -132,7 +122,8 @@ document
       } else {
         sortKey = key;
         sortDir =
-          (th.dataset.defaultDir as SortDir) || bonReportsDefaultDirFor(key);
+          (header.dataset.defaultDir as SortDir) ||
+          bonReportsDefaultDirFor(key);
       }
 
       render();
@@ -156,11 +147,11 @@ async function load(): Promise<void> {
 
     render();
     renderAnalytics();
-  } catch (err) {
-    console.error("[Bot or Not] failed to load reports", err);
+  } catch (error) {
+    console.error("[Bot or Not] failed to load reports", error);
     tableWrap.hidden = true;
     emptyEl.hidden = false;
-    renderLoadError(err);
+    renderLoadError(error);
   }
 }
 
@@ -175,12 +166,12 @@ async function refreshApiKeyState(): Promise<void> {
     }
     hasApiKey = next;
     render();
-  } catch (err) {
-    console.error("[Bot or Not] failed to refresh api-key state", err);
+  } catch (error) {
+    console.error("[Bot or Not] failed to refresh api-key state", error);
   }
 }
 
-function renderLoadError(err: unknown): void {
+function renderLoadError(error: unknown): void {
   emptyEl.replaceChildren();
 
   const heading = document.createElement("p");
@@ -189,7 +180,9 @@ function renderLoadError(err: unknown): void {
   emptyEl.appendChild(heading);
 
   const rawMessage =
-    (err as { message?: string })?.message || String(err) || "Unknown error";
+    (error as { message?: string })?.message ||
+    String(error) ||
+    "Unknown error";
   const hint = bonReportsDiagnoseLoadError(rawMessage);
 
   const detail = document.createElement("p");
@@ -198,22 +191,22 @@ function renderLoadError(err: unknown): void {
   emptyEl.appendChild(detail);
 
   if (hint) {
-    const hintEl = document.createElement("p");
-    hintEl.className = "bon-empty-text bon-empty-hint";
-    hintEl.textContent = hint;
-    emptyEl.appendChild(hintEl);
+    const hintElement = document.createElement("p");
+    hintElement.className = "bon-empty-text bon-empty-hint";
+    hintElement.textContent = hint;
+    emptyEl.appendChild(hintElement);
   }
 
-  const btn = document.createElement("button");
-  btn.type = "button";
-  btn.className = "bon-btn bon-empty-action";
-  btn.textContent = "Reload page";
+  const reloadButton = document.createElement("button");
+  reloadButton.type = "button";
+  reloadButton.className = "bon-btn bon-empty-action";
+  reloadButton.textContent = "Reload page";
 
-  btn.addEventListener("click", () => {
+  reloadButton.addEventListener("click", () => {
     location.reload();
   });
 
-  emptyEl.appendChild(btn);
+  emptyEl.appendChild(reloadButton);
 }
 
 // Analytics shows aggregates across every investigation, so it should not
@@ -230,16 +223,16 @@ function render(): void {
   expectedDurationMs = bonReportsExpectedDurationMs(allReports);
   const query = searchInput.value.trim().toLowerCase();
 
-  const filtered = allReports.filter((r) => {
+  const filtered = allReports.filter((report) => {
     if (!query) {
       return true;
     }
 
     const haystack = [
-      r.username,
-      ...(r.history || []).flatMap((h) => [
-        h.subreddit,
-        h.postTitle as string | undefined,
+      report.username,
+      ...(report.history || []).flatMap((entry) => [
+        entry.subreddit,
+        entry.postTitle as string | undefined,
       ]),
     ]
       .filter(Boolean)
@@ -258,14 +251,12 @@ function render(): void {
     tableWrap.hidden = true;
     emptyEl.hidden = false;
     renderEmptyState(query);
-    clearBtn.hidden = allReports.length === 0;
     ensurePolling();
     return;
   }
 
   tableWrap.hidden = false;
   emptyEl.hidden = true;
-  clearBtn.hidden = false;
 
   for (const report of filtered) {
     const { summary, detailRows } = bonReportsRow(report, {
@@ -312,32 +303,32 @@ function renderEmptyState(query: string): void {
     hint.textContent = `Add a Claude API key in Settings to investigate u/${username}.`;
     emptyEl.appendChild(hint);
 
-    const settingsBtn = document.createElement("button");
-    settingsBtn.type = "button";
-    settingsBtn.className = "bon-btn bon-empty-action";
-    settingsBtn.textContent = "Open Settings";
-    settingsBtn.addEventListener("click", () => {
+    const settingsButton = document.createElement("button");
+    settingsButton.type = "button";
+    settingsButton.className = "bon-btn bon-empty-action";
+    settingsButton.textContent = "Open Settings";
+    settingsButton.addEventListener("click", () => {
       void bonReportsOpenSettings();
     });
-    emptyEl.appendChild(settingsBtn);
+    emptyEl.appendChild(settingsButton);
     return;
   }
 
-  const btn = document.createElement("button");
-  btn.type = "button";
-  btn.className = "bon-btn bon-empty-action";
-  btn.textContent = `Investigate u/${username}`;
+  const investigateButton = document.createElement("button");
+  investigateButton.type = "button";
+  investigateButton.className = "bon-btn bon-empty-action";
+  investigateButton.textContent = `Investigate u/${username}`;
 
-  btn.addEventListener("click", async () => {
-    btn.disabled = true;
-    btn.textContent = "Starting…";
+  investigateButton.addEventListener("click", async () => {
+    investigateButton.disabled = true;
+    investigateButton.textContent = "Starting…";
     try {
-      const res = (await browser.runtime.sendMessage({
+      const response = (await browser.runtime.sendMessage({
         type: "investigate-user",
         username,
       })) as { ok?: boolean; error?: string };
 
-      if (res?.ok === false && res.error === "no-api-key") {
+      if (response?.ok === false && response.error === "no-api-key") {
         hasApiKey = false;
         render();
         return;
@@ -348,21 +339,21 @@ function renderEmptyState(query: string): void {
       sortDir = "desc";
       updateSortIndicators();
       render();
-    } catch (err) {
-      console.error("[Bot or Not] manual investigate failed", err);
-      btn.disabled = false;
-      btn.textContent = `Investigate u/${username}`;
+    } catch (error) {
+      console.error("[Bot or Not] manual investigate failed", error);
+      investigateButton.disabled = false;
+      investigateButton.textContent = `Investigate u/${username}`;
     }
   });
 
-  emptyEl.appendChild(btn);
+  emptyEl.appendChild(investigateButton);
 }
 
 function ensurePolling(): void {
   const anyLive = allReports.some(
-    (r) =>
-      r.investigation?.status === "running" &&
-      !bonIsInvestigationStale(r.investigation)
+    (report) =>
+      report.investigation?.status === "running" &&
+      !bonIsInvestigationStale(report.investigation)
   );
 
   if (anyLive && !pollTimer) {
@@ -401,8 +392,8 @@ async function pollTick(): Promise<void> {
       updateRunningInPlace();
       ensurePolling();
     }
-  } catch (err) {
-    console.error("[Bot or Not] poll tick failed", err);
+  } catch (error) {
+    console.error("[Bot or Not] poll tick failed", error);
   }
 }
 
@@ -411,26 +402,26 @@ function updateRunningInPlace(): void {
   // new sample for the median (no full re-render fires for that alone).
   expectedDurationMs = bonReportsExpectedDurationMs(allReports);
 
-  for (const r of allReports) {
-    const inv = r.investigation;
-    if (inv?.status !== "running") {
+  for (const report of allReports) {
+    const investigation = report.investigation;
+    if (investigation?.status !== "running") {
       continue;
     }
-    if (bonIsInvestigationStale(inv)) {
+    if (bonIsInvestigationStale(investigation)) {
       continue;
     }
-    if (!inv.startedAt) {
+    if (investigation.startedAt === null) {
       continue;
     }
 
-    const elapsedMs = Math.max(0, Date.now() - inv.startedAt);
+    const elapsedMs = Math.max(0, Date.now() - investigation.startedAt);
     const elapsedSec = Math.round(elapsedMs / 1000);
 
     const cells = tbody.querySelectorAll<HTMLTableCellElement>(
       "[data-bon-running-cell]"
     );
     for (const cell of cells) {
-      if (cell.dataset.bonRunningCell === r.username) {
+      if (cell.dataset.bonRunningCell === report.username) {
         cell.textContent = bonReportsFormatRunningCellText(
           elapsedSec,
           expectedDurationMs
@@ -438,16 +429,19 @@ function updateRunningInPlace(): void {
       }
     }
 
-    const btns = tbody.querySelectorAll<HTMLButtonElement>(
+    const buttons = tbody.querySelectorAll<HTMLButtonElement>(
       "[data-bon-running-btn]"
     );
-    for (const btn of btns) {
-      if (btn.dataset.bonRunningBtn !== r.username) {
+    for (const button of buttons) {
+      if (button.dataset.bonRunningBtn !== report.username) {
         continue;
       }
-      btn.title = bonReportsFormatRunningTitle(elapsedSec, expectedDurationMs);
-      if (btn.classList.contains("bon-progress") && expectedDurationMs) {
-        bonReportsApplyProgressVisual(btn, elapsedMs, expectedDurationMs);
+      button.title = bonReportsFormatRunningTitle(
+        elapsedSec,
+        expectedDurationMs
+      );
+      if (button.classList.contains("bon-progress") && expectedDurationMs) {
+        bonReportsApplyProgressVisual(button, elapsedMs, expectedDurationMs);
       }
     }
   }
@@ -456,13 +450,13 @@ function updateRunningInPlace(): void {
 function updateSortIndicators(): void {
   document
     .querySelectorAll<HTMLTableCellElement>("th.bon-sortable")
-    .forEach((th) => {
-      const indicator = th.querySelector(".bon-sort-indicator");
+    .forEach((header) => {
+      const indicator = header.querySelector(".bon-sort-indicator");
       if (!indicator) {
         return;
       }
 
-      if (th.dataset.sort === sortKey) {
+      if (header.dataset.sort === sortKey) {
         indicator.textContent = sortDir === "asc" ? "▲" : "▼";
       } else {
         indicator.textContent = "";

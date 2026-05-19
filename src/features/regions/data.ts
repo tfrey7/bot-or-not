@@ -67,6 +67,9 @@ export const BON_REGION_SUBS: Record<string, string> = {
   indiangaming: "IN",
   indiangamers: "IN",
   indianmemes: "IN",
+  indiameme: "IN",
+  indiandankmemes: "IN",
+  faltoogyan: "IN",
   askindia: "IN",
   unitedstatesofindia: "IN",
   indianteenagers: "IN",
@@ -90,6 +93,7 @@ export const BON_REGION_SUBS: Record<string, string> = {
   developersindia: "IN",
   indianstreetbets: "IN",
   indiainvestments: "IN",
+  btechtards: "IN",
 
   // Pakistan
   pakistan: "PK",
@@ -375,6 +379,26 @@ export const BON_REGION_SUBS: Record<string, string> = {
   capetown: "ZA",
   johannesburg: "ZA",
 };
+
+// Regex fallbacks tried when a sub name has no entry in BON_REGION_SUBS. Used
+// to catch the long tail of country-coded subs (r/indian_academia, r/indianmed*,
+// r/pakistani_*) without enumerating every one. Patterns must be conservative —
+// the dominant false-positive risk for India is r/Indiana* (US state) and
+// r/IndianaJones, hence /^indian[^a]/ rather than /^indian/.
+export const BON_REGION_SUB_PATTERNS: Array<{
+  pattern: RegExp;
+  region: string;
+}> = [
+  // India — "indian" followed by anything that isn't 'a' (excludes Indiana*).
+  // Catches indian_academia, indian_flex, indianmedschool, indianboysontinder, …
+  { pattern: /^indian[^a]/, region: "IN" },
+  // Hindi for "India" — bharat_*, bharatpe, etc.
+  { pattern: /^bharat/, region: "IN" },
+
+  // Pakistan
+  { pattern: /^pakistani/, region: "PK" },
+  { pattern: /^pak_/, region: "PK" },
+];
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Text-based region signals (script detection + transliteration markers)

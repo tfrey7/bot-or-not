@@ -13,7 +13,7 @@ import {
   type ModeratedInference,
   type ScriptInference,
   type SubregionInference,
-} from "../regions/index.ts";
+} from "../regions";
 import type { ActivityData } from "../../types.ts";
 import { bonBucketLevel } from "../../utils/scoring.ts";
 import { bonPad2 } from "../../utils/format_time.ts";
@@ -81,8 +81,8 @@ function renderSubredditRegionLine(
 
   let runnerNote = "";
   if (subRegion.runnerUp) {
-    const r = BON_REGION_INFO[subRegion.runnerUp.region];
-    runnerNote = ` <span class="bon-region-tz">(also ${subRegion.runnerUp.count} in ${r?.label || subRegion.runnerUp.region})</span>`;
+    const runnerInfo = BON_REGION_INFO[subRegion.runnerUp.region];
+    runnerNote = ` <span class="bon-region-tz">(also ${subRegion.runnerUp.count} in ${runnerInfo?.label || subRegion.runnerUp.region})</span>`;
   }
 
   span.innerHTML = `Region from posting history: <strong title="${info.label}">${info.flag} ${info.label}</strong> — ${subRegion.count} item${subRegion.count === 1 ? "" : "s"} in ${hitsList}${moreNote}${runnerNote}`;
@@ -100,7 +100,7 @@ function renderScriptRegionLine(
   const span = document.createElement("span");
 
   const hits = scriptRegion.hits
-    .map((h) => `${h.count} ${h.script}`)
+    .map((hit) => `${hit.count} ${hit.script}`)
     .join(", ");
 
   span.innerHTML = `Script in their writing: <strong title="${info.label}">${info.flag} ${info.label}</strong> — ${hits}`;
@@ -116,7 +116,9 @@ function renderLanguageRegionLine(
   };
 
   const span = document.createElement("span");
-  const hits = langRegion.hits.map((h) => `${h.count} ${h.label}`).join(", ");
+  const hits = langRegion.hits
+    .map((hit) => `${hit.count} ${hit.label}`)
+    .join(", ");
 
   span.innerHTML = `Language markers in writing: <strong title="${info.label}">${info.flag} ${info.label}</strong> — ${hits}`;
   return span;
@@ -134,7 +136,7 @@ function renderModeratorRegionLine(
 
   const list = modRegion.hits
     .slice(0, 5)
-    .map((h) => `r/${h.sub}`)
+    .map((hit) => `r/${hit.sub}`)
     .join(", ");
 
   const more =
@@ -149,11 +151,11 @@ function renderModeratorRegionLine(
 function renderHourHeatmap(timestamps: number[]): HTMLDivElement {
   // 7 (day of week) x 24 (hour of day) buckets in the viewer's local timezone.
   const counts = new Array<number>(7 * 24).fill(0);
-  for (const t of timestamps) {
-    const local = new Date(t);
-    const dow = local.getDay();
+  for (const timestamp of timestamps) {
+    const local = new Date(timestamp);
+    const dayOfWeek = local.getDay();
     const hour = local.getHours();
-    counts[dow * 24 + hour]++;
+    counts[dayOfWeek * 24 + hour]++;
   }
 
   const wrap = document.createElement("div");
@@ -162,9 +164,9 @@ function renderHourHeatmap(timestamps: number[]): HTMLDivElement {
   const dayLabels = document.createElement("div");
   dayLabels.className = "bon-hour-days";
   for (let i = 0; i < 7; i++) {
-    const d = document.createElement("div");
-    d.textContent = BON_REPORTS_DAY_NAMES[i];
-    dayLabels.appendChild(d);
+    const label = document.createElement("div");
+    label.textContent = BON_REPORTS_DAY_NAMES[i];
+    dayLabels.appendChild(label);
   }
   wrap.appendChild(dayLabels);
 
@@ -174,9 +176,9 @@ function renderHourHeatmap(timestamps: number[]): HTMLDivElement {
   const hourLabels = document.createElement("div");
   hourLabels.className = "bon-hour-hours";
   for (let h = 0; h < 24; h++) {
-    const s = document.createElement("span");
-    s.textContent = h % 6 === 0 ? String(h) : "";
-    hourLabels.appendChild(s);
+    const label = document.createElement("span");
+    label.textContent = h % 6 === 0 ? String(h) : "";
+    hourLabels.appendChild(label);
   }
   right.appendChild(hourLabels);
 
@@ -187,13 +189,13 @@ function renderHourHeatmap(timestamps: number[]): HTMLDivElement {
       const cell = document.createElement("div");
       cell.className = "bon-hour-cell";
 
-      const c = counts[d * 24 + h];
-      const lvl = bonBucketLevel(c);
-      if (lvl > 0) {
-        cell.classList.add(`bon-heatmap-cell--lvl${lvl}`);
+      const count = counts[d * 24 + h];
+      const level = bonBucketLevel(count);
+      if (level > 0) {
+        cell.classList.add(`bon-heatmap-cell--lvl${level}`);
       }
 
-      cell.title = `${BON_REPORTS_DAY_NAMES[d]} ${String(h).padStart(2, "0")}:00 — ${c} item${c === 1 ? "" : "s"}`;
+      cell.title = `${BON_REPORTS_DAY_NAMES[d]} ${String(h).padStart(2, "0")}:00 — ${count} item${count === 1 ? "" : "s"}`;
       grid.appendChild(cell);
     }
   }
@@ -250,11 +252,11 @@ export function bonReportsHourSection(
   primary.appendChild(renderInferredTimezone(inferred, subRegion));
   outer.appendChild(primary);
 
-  const tzName = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const timezoneName = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
   const advisory = document.createElement("p");
   advisory.className = "bon-heatmap-row bon-heatmap-advisory";
-  advisory.innerHTML = `<small>Heatmap below uses your local timezone (<strong>${tzName}</strong>) for reference.</small>`;
+  advisory.innerHTML = `<small>Heatmap below uses your local timezone (<strong>${timezoneName}</strong>) for reference.</small>`;
   outer.appendChild(advisory);
 
   outer.appendChild(renderHourHeatmap(timestamps));

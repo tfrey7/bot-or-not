@@ -8,33 +8,35 @@ export function bonFmtDuration(ms: number | null | undefined): string {
     return `${Math.round(ms)}ms`;
   }
 
-  const s = ms / 1000;
-  if (s < 60) {
-    return `${s.toFixed(s < 10 ? 1 : 0)}s`;
+  const seconds = ms / 1000;
+  if (seconds < 60) {
+    return `${seconds.toFixed(seconds < 10 ? 1 : 0)}s`;
   }
 
-  const m = Math.floor(s / 60);
-  const rem = Math.round(s % 60);
-  if (m < 60) {
-    return rem ? `${m}m ${rem}s` : `${m}m`;
+  const minutes = Math.floor(seconds / 60);
+  const remainderSeconds = Math.round(seconds % 60);
+  if (minutes < 60) {
+    return remainderSeconds
+      ? `${minutes}m ${remainderSeconds}s`
+      : `${minutes}m`;
   }
 
-  const h = Math.floor(m / 60);
-  return `${h}h ${m % 60}m`;
+  const hours = Math.floor(minutes / 60);
+  return `${hours}h ${minutes % 60}m`;
 }
 
 export function bonFormatDate(ts: number): string {
-  const d = new Date(ts);
+  const date = new Date(ts);
   const diffMs = Date.now() - ts;
-  const min = 60_000;
-  const hour = 60 * min;
+  const minute = 60_000;
+  const hour = 60 * minute;
   const day = 24 * hour;
 
-  if (diffMs < min) {
+  if (diffMs < minute) {
     return "now";
   }
   if (diffMs < hour) {
-    return `${Math.floor(diffMs / min)}m ago`;
+    return `${Math.floor(diffMs / minute)}m ago`;
   }
   if (diffMs < day) {
     return `${Math.floor(diffMs / hour)}h ago`;
@@ -43,8 +45,8 @@ export function bonFormatDate(ts: number): string {
     return `${Math.floor(diffMs / day)}d ago`;
   }
 
-  const sameYear = d.getFullYear() === new Date().getFullYear();
-  return d.toLocaleDateString(undefined, {
+  const sameYear = date.getFullYear() === new Date().getFullYear();
+  return date.toLocaleDateString(undefined, {
     year: sameYear ? undefined : "2-digit",
     month: "short",
     day: "numeric",
@@ -55,15 +57,15 @@ export function bonFormatDate(ts: number): string {
 // the in-feed panel where horizontal space is tight.
 export function bonFormatPanelDate(ts: number): string {
   const diffMs = Date.now() - ts;
-  const min = 60_000;
-  const hour = 60 * min;
+  const minute = 60_000;
+  const hour = 60 * minute;
   const day = 24 * hour;
 
-  if (diffMs < min) {
+  if (diffMs < minute) {
     return "now";
   }
   if (diffMs < hour) {
-    return `${Math.floor(diffMs / min)}m`;
+    return `${Math.floor(diffMs / minute)}m`;
   }
   if (diffMs < day) {
     return `${Math.floor(diffMs / hour)}h`;
@@ -72,9 +74,9 @@ export function bonFormatPanelDate(ts: number): string {
     return `${Math.floor(diffMs / day)}d`;
   }
 
-  const d = new Date(ts);
-  const sameYear = d.getFullYear() === new Date().getFullYear();
-  return d.toLocaleDateString(undefined, {
+  const date = new Date(ts);
+  const sameYear = date.getFullYear() === new Date().getFullYear();
+  return date.toLocaleDateString(undefined, {
     year: sameYear ? undefined : "2-digit",
     month: "short",
     day: "numeric",
@@ -82,16 +84,16 @@ export function bonFormatPanelDate(ts: number): string {
 }
 
 export function bonFmtTimestamp(ts: number): string {
-  const d = new Date(ts);
-  const date = d.toLocaleDateString(undefined, {
+  const date = new Date(ts);
+  const dateStr = date.toLocaleDateString(undefined, {
     month: "short",
     day: "numeric",
   });
-  const time = d.toLocaleTimeString(undefined, {
+  const timeStr = date.toLocaleTimeString(undefined, {
     hour: "numeric",
     minute: "2-digit",
   });
-  return `${date} ${time}`;
+  return `${dateStr} ${timeStr}`;
 }
 
 export function bonPad2(n: number): string {

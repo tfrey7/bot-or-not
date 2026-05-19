@@ -58,11 +58,13 @@ export function bonInlineTagTitle(
   const parts = [`@${info.username}`];
 
   if (info.verdict) {
-    const conf =
+    const confidenceText =
       typeof info.confidence === "number"
         ? ` (${Math.round(info.confidence * 100)}% confidence)`
         : "";
-    parts.push(`AI verdict: ${bonFormatVerdict(info.verdict)}${conf}`);
+    parts.push(
+      `AI verdict: ${bonFormatVerdict(info.verdict)}${confidenceText}`
+    );
   } else if (variant === "running") {
     parts.push("AI investigation in progress");
   }
@@ -85,9 +87,9 @@ export function bonInlineTagTitle(
 // Avatar-wrapping anchors have no visible text. Tagging them puts the pill
 // in the wrong layout slot (often a column flex container), so it wraps to
 // its own line below the username row.
-export function bonInlineTagIsAvatarLink(el: Element): boolean {
-  if (el.textContent && el.textContent.trim()) {
+export function bonInlineTagIsAvatarLink(element: Element): boolean {
+  if (element.textContent && element.textContent.trim()) {
     return false;
   }
-  return !!el.querySelector("img, svg, shreddit-avatar, faceplate-img");
+  return !!element.querySelector("img, svg, shreddit-avatar, faceplate-img");
 }

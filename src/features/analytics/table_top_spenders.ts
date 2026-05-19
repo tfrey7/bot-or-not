@@ -17,15 +17,15 @@ export function bonAnalyticsTopSpenders(
   wrap.appendChild(title);
 
   const top = [...runs]
-    .filter((r) => r.totalCost > 0)
+    .filter((run) => run.totalCost > 0)
     .sort((a, b) => b.totalCost - a.totalCost)
     .slice(0, 10);
 
   if (!top.length) {
-    const p = document.createElement("p");
-    p.className = "bon-analytics-empty-small";
-    p.textContent = "No cost data on the completed investigations.";
-    wrap.appendChild(p);
+    const emptyMsg = document.createElement("p");
+    emptyMsg.className = "bon-analytics-empty-small";
+    emptyMsg.textContent = "No cost data on the completed investigations.";
+    wrap.appendChild(emptyMsg);
     return wrap;
   }
 
@@ -33,33 +33,35 @@ export function bonAnalyticsTopSpenders(
   const list = document.createElement("ol");
   list.className = "bon-analytics-top-list";
 
-  for (const r of top) {
+  for (const run of top) {
     const li = document.createElement("li");
 
     const name = document.createElement("a");
     name.className = "bon-analytics-top-name";
-    name.href = `https://www.reddit.com/user/${encodeURIComponent(r.username)}`;
+    name.href = `https://www.reddit.com/user/${encodeURIComponent(run.username)}`;
     name.target = "_blank";
     name.rel = "noopener noreferrer";
-    name.textContent = `u/${r.username}`;
+    name.textContent = `u/${run.username}`;
     li.appendChild(name);
 
     const meta = document.createElement("span");
     meta.className = "bon-analytics-top-meta";
     const metaBits: string[] = [];
 
-    if (r.verdict) {
-      metaBits.push(r.verdict.replace(/-/g, " "));
+    if (run.verdict) {
+      metaBits.push(run.verdict.replace(/-/g, " "));
     }
 
-    if (r.durationMs != null) {
-      metaBits.push(bonFmtDuration(r.durationMs));
+    if (run.durationMs != null) {
+      metaBits.push(bonFmtDuration(run.durationMs));
     }
 
-    metaBits.push(`${r.calls.length} call${r.calls.length === 1 ? "" : "s"}`);
+    metaBits.push(
+      `${run.calls.length} call${run.calls.length === 1 ? "" : "s"}`
+    );
 
-    if (r.runAt) {
-      metaBits.push(new Date(r.runAt).toLocaleDateString());
+    if (run.runAt) {
+      metaBits.push(new Date(run.runAt).toLocaleDateString());
     }
 
     meta.textContent = metaBits.join(" · ");
@@ -69,13 +71,13 @@ export function bonAnalyticsTopSpenders(
     bar.className = "bon-analytics-top-bar";
     const fill = document.createElement("div");
     fill.className = "bon-analytics-top-bar-fill";
-    fill.style.width = `${(r.totalCost / maxCost) * 100}%`;
+    fill.style.width = `${(run.totalCost / maxCost) * 100}%`;
     bar.appendChild(fill);
     li.appendChild(bar);
 
     const cost = document.createElement("span");
     cost.className = "bon-analytics-top-cost";
-    cost.textContent = bonFmtUsd(r.totalCost);
+    cost.textContent = bonFmtUsd(run.totalCost);
     li.appendChild(cost);
 
     list.appendChild(li);

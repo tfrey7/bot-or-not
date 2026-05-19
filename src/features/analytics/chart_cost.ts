@@ -24,7 +24,9 @@ export function bonAnalyticsCostChart(
   const root = bonAnalyticsSvgRoot(W, H);
 
   const sorted = runs
-    .filter((r): r is AnalyticsEntry & { runAt: number } => r.runAt != null)
+    .filter(
+      (run): run is AnalyticsEntry & { runAt: number } => run.runAt != null
+    )
     .sort((a, b) => a.runAt - b.runAt);
 
   if (!sorted.length) {
@@ -38,18 +40,18 @@ export function bonAnalyticsCostChart(
   const last = sorted[sorted.length - 1].runAt;
   const span = Math.max(last - first, 1);
 
-  let cum = 0;
-  const points = sorted.map((r) => {
-    cum += r.totalCost;
+  let cumulative = 0;
+  const points = sorted.map((run) => {
+    cumulative += run.totalCost;
     return {
-      x: PAD.l + ((r.runAt - first) / span) * iw,
-      cum,
-      cost: r.totalCost,
-      runAt: r.runAt,
-      username: r.username,
+      x: PAD.l + ((run.runAt - first) / span) * iw,
+      cumulative,
+      cost: run.totalCost,
+      runAt: run.runAt,
+      username: run.username,
     };
   });
-  const maxCum = cum || 1;
+  const maxCumulative = cumulative || 1;
 
   // Y gridlines + ticks
   for (let i = 0; i <= 4; i++) {
@@ -68,7 +70,7 @@ export function bonAnalyticsCostChart(
       bonAnalyticsSvgText(
         PAD.l - 8,
         y + 3,
-        bonFmtUsd(maxCum * frac),
+        bonFmtUsd(maxCumulative * frac),
         null,
         "end"
       )
@@ -78,8 +80,8 @@ export function bonAnalyticsCostChart(
   // Area + line
   const lineCoords = points
     .map(
-      (p) =>
-        `${p.x.toFixed(2)},${(PAD.t + ih - (p.cum / maxCum) * ih).toFixed(2)}`
+      (point) =>
+        `${point.x.toFixed(2)},${(PAD.t + ih - (point.cumulative / maxCumulative) * ih).toFixed(2)}`
     )
     .join(" L ");
 
@@ -96,23 +98,23 @@ export function bonAnalyticsCostChart(
   );
 
   // Highlight the most expensive single run
-  let maxIdx = 0;
+  let maxIndex = 0;
   for (let i = 1; i < points.length; i++) {
-    if (sorted[i].totalCost > sorted[maxIdx].totalCost) {
-      maxIdx = i;
+    if (sorted[i].totalCost > sorted[maxIndex].totalCost) {
+      maxIndex = i;
     }
   }
 
-  const mp = points[maxIdx];
-  const my = PAD.t + ih - (mp.cum / maxCum) * ih;
+  const maxPoint = points[maxIndex];
+  const maxY = PAD.t + ih - (maxPoint.cumulative / maxCumulative) * ih;
   const marker = bonAnalyticsSvgEl("circle", {
-    cx: mp.x,
-    cy: my,
+    cx: maxPoint.x,
+    cy: maxY,
     r: 3.5,
     class: "bon-chart-marker",
   });
   const markerTitle = bonAnalyticsSvgEl("title");
-  markerTitle.textContent = `Most expensive: u/${mp.username} — ${bonFmtUsd(mp.cost)} (${new Date(mp.runAt).toLocaleString()})`;
+  markerTitle.textContent = `Most expensive: u/${maxPoint.username} — ${bonFmtUsd(maxPoint.cost)} (${new Date(maxPoint.runAt).toLocaleString()})`;
   marker.appendChild(markerTitle);
   root.appendChild(marker);
 
@@ -136,19 +138,25 @@ export function bonAnalyticsCostChart(
       { frac: 0.5, anchor: "middle" },
       { frac: 1, anchor: "end" },
     ].forEach(({ frac, anchor }) => {
-      const t = first + frac * span;
+      const timestamp = first + frac * span;
       const x = PAD.l + frac * iw;
       root.appendChild(
-        bonAnalyticsSvgText(x, PAD.t + ih + 18, xFormatter(t), null, anchor)
+        bonAnalyticsSvgText(
+          x,
+          PAD.t + ih + 18,
+          xFormatter(timestamp),
+          null,
+          anchor
+        )
       );
     });
   }
 
   // Final value label
-  const lastP = points[points.length - 1];
-  const lastY = PAD.t + ih - (lastP.cum / maxCum) * ih;
+  const lastPoint = points[points.length - 1];
+  const lastY = PAD.t + ih - (lastPoint.cumulative / maxCumulative) * ih;
   const cap = bonAnalyticsSvgEl("circle", {
-    cx: lastP.x,
+    cx: lastPoint.x,
     cy: lastY,
     r: 3,
     class: "bon-chart-endpoint",
@@ -157,11 +165,11 @@ export function bonAnalyticsCostChart(
 
   // Add hover hit-rects spanning each segment
   for (let i = 0; i < points.length; i++) {
-    const p = points[i];
+    const point = points[i];
     const prev = i > 0 ? points[i - 1] : null;
     const next = i < points.length - 1 ? points[i + 1] : null;
-    const x = prev ? (prev.x + p.x) / 2 : PAD.l;
-    const x2 = next ? (next.x + p.x) / 2 : PAD.l + iw;
+    const x = prev ? (prev.x + point.x) / 2 : PAD.l;
+    const x2 = next ? (next.x + point.x) / 2 : PAD.l + iw;
     const hit = bonAnalyticsSvgEl("rect", {
       x,
       y: PAD.t,
@@ -169,9 +177,9 @@ export function bonAnalyticsCostChart(
       height: ih,
       fill: "transparent",
     });
-    const t = bonAnalyticsSvgEl("title");
-    t.textContent = `u/${p.username} · ${new Date(p.runAt).toLocaleString()}\nthis run: ${bonFmtUsd(p.cost)} · cumulative: ${bonFmtUsd(p.cum)}`;
-    hit.appendChild(t);
+    const tooltip = bonAnalyticsSvgEl("title");
+    tooltip.textContent = `u/${point.username} · ${new Date(point.runAt).toLocaleString()}\nthis run: ${bonFmtUsd(point.cost)} · cumulative: ${bonFmtUsd(point.cumulative)}`;
+    hit.appendChild(tooltip);
     root.appendChild(hit);
   }
   return root;

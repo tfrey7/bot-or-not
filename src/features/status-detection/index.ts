@@ -104,14 +104,14 @@ function detectPostStatuses(): void {
 }
 
 function detectStandalonePostStatus(): void {
-  const m = window.location.pathname.match(
+  const match = window.location.pathname.match(
     /^(\/r\/[^/]+\/comments\/[^/]+\/[^/?#]+\/?)/i
   );
-  if (!m) {
+  if (!match) {
     return;
   }
 
-  const permalink = m[1].endsWith("/") ? m[1] : `${m[1]}/`;
+  const permalink = match[1].endsWith("/") ? match[1] : `${match[1]}/`;
   if (reportedPostPermalinks.has(permalink)) {
     return;
   }
@@ -169,14 +169,14 @@ function detectBotBouncerStatuses(): void {
       .trim();
 
     if (!flairText) {
-      const flairEl = post.querySelector(
+      const flairElement = post.querySelector(
         "shreddit-post-flair, [class*='flair']"
       );
-      flairText = flairEl?.textContent?.trim().toLowerCase() || "";
+      flairText = flairElement?.textContent?.trim().toLowerCase() || "";
     }
 
     const status = ["banned", "pending", "organic"].find(
-      (s) => s === flairText
+      (candidate) => candidate === flairText
     );
     if (!status) {
       return;

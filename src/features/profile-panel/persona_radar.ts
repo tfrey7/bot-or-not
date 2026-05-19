@@ -19,7 +19,7 @@ function buildPersonaRadar(
   archetypes: Record<ArchetypeKey, number>
 ): HTMLDivElement | null {
   const svgns = "http://www.w3.org/2000/svg";
-  const v = RADAR_VIEW;
+  const view = RADAR_VIEW;
   const axes = BON_ARCHETYPES;
   const N = axes.length;
 
@@ -33,42 +33,48 @@ function buildPersonaRadar(
   const vertex = (i: number, scale: number): { x: number; y: number } => {
     const t = angle(i);
     return {
-      x: v.center + v.radius * scale * Math.cos(t),
-      y: v.center + v.radius * scale * Math.sin(t),
+      x: view.center + view.radius * scale * Math.cos(t),
+      y: view.center + view.radius * scale * Math.sin(t),
     };
   };
 
   const points = (scale: number): string =>
     axes
       .map((_, i) => {
-        const p = vertex(i, scale);
-        return `${p.x.toFixed(2)},${p.y.toFixed(2)}`;
+        const point = vertex(i, scale);
+        return `${point.x.toFixed(2)},${point.y.toFixed(2)}`;
       })
       .join(" ");
 
   const wrap = document.createElement("div");
   wrap.className = "bon-panel-persona-radar";
   wrap.title = axes
-    .map((a) => `${a.label} ${Math.round((archetypes[a.key] || 0) * 100)}%`)
+    .map(
+      (axis) =>
+        `${axis.label} ${Math.round((archetypes[axis.key] || 0) * 100)}%`
+    )
     .join("  ·  ");
 
   const svg = document.createElementNS(svgns, "svg");
-  svg.setAttribute("viewBox", `0 0 ${v.size} ${v.size}`);
+  svg.setAttribute("viewBox", `0 0 ${view.size} ${view.size}`);
   svg.setAttribute("class", "bon-panel-radar");
   svg.setAttribute("role", "img");
   svg.setAttribute(
     "aria-label",
     `Persona radar: ${axes
-      .map((a) => `${a.label} ${Math.round((archetypes[a.key] || 0) * 100)}%`)
+      .map(
+        (axis) =>
+          `${axis.label} ${Math.round((archetypes[axis.key] || 0) * 100)}%`
+      )
       .join(", ")}`
   );
 
-  for (let g = 1; g <= v.gridLevels; g++) {
+  for (let g = 1; g <= view.gridLevels; g++) {
     const poly = document.createElementNS(svgns, "polygon");
-    poly.setAttribute("points", points(g / v.gridLevels));
+    poly.setAttribute("points", points(g / view.gridLevels));
     poly.setAttribute(
       "class",
-      g === v.gridLevels
+      g === view.gridLevels
         ? "bon-panel-radar-grid bon-panel-radar-grid--outer"
         : "bon-panel-radar-grid"
     );
@@ -76,22 +82,22 @@ function buildPersonaRadar(
   }
 
   for (let i = 0; i < N; i++) {
-    const p = vertex(i, 1);
+    const point = vertex(i, 1);
 
     const line = document.createElementNS(svgns, "line");
-    line.setAttribute("x1", String(v.center));
-    line.setAttribute("y1", String(v.center));
-    line.setAttribute("x2", p.x.toFixed(2));
-    line.setAttribute("y2", p.y.toFixed(2));
+    line.setAttribute("x1", String(view.center));
+    line.setAttribute("y1", String(view.center));
+    line.setAttribute("x2", point.x.toFixed(2));
+    line.setAttribute("y2", point.y.toFixed(2));
     line.setAttribute("class", "bon-panel-radar-axis");
     svg.appendChild(line);
   }
 
   const dataPolyPts = axes
-    .map((a, i) => {
-      const score = Math.max(0, Math.min(1, archetypes[a.key] || 0));
-      const p = vertex(i, score);
-      return `${p.x.toFixed(2)},${p.y.toFixed(2)}`;
+    .map((axis, i) => {
+      const score = Math.max(0, Math.min(1, archetypes[axis.key] || 0));
+      const point = vertex(i, score);
+      return `${point.x.toFixed(2)},${point.y.toFixed(2)}`;
     })
     .join(" ");
 
@@ -106,11 +112,11 @@ function buildPersonaRadar(
       continue;
     }
 
-    const p = vertex(i, score);
+    const point = vertex(i, score);
 
     const dot = document.createElementNS(svgns, "circle");
-    dot.setAttribute("cx", p.x.toFixed(2));
-    dot.setAttribute("cy", p.y.toFixed(2));
+    dot.setAttribute("cx", point.x.toFixed(2));
+    dot.setAttribute("cy", point.y.toFixed(2));
     dot.setAttribute("r", "3");
     dot.setAttribute("class", "bon-panel-radar-dot");
     svg.appendChild(dot);
@@ -118,8 +124,8 @@ function buildPersonaRadar(
 
   for (let i = 0; i < N; i++) {
     const t = angle(i);
-    const lx = v.center + (v.radius + v.labelPad) * Math.cos(t);
-    const ly = v.center + (v.radius + v.labelPad) * Math.sin(t);
+    const lx = view.center + (view.radius + view.labelPad) * Math.cos(t);
+    const ly = view.center + (view.radius + view.labelPad) * Math.sin(t);
     const cosT = Math.cos(t);
     const sinT = Math.sin(t);
 
@@ -173,8 +179,8 @@ export function bonPanelBuildPersonaStrip(persona: Persona): HTMLElement {
   const labelText =
     persona.label === "normal"
       ? "Normal"
-      : BON_ARCHETYPES.find((a) => a.key === persona.label)?.label ||
-        persona.label;
+      : BON_ARCHETYPES.find((archetype) => archetype.key === persona.label)
+          ?.label || persona.label;
 
   label.textContent = labelText;
   wrap.appendChild(label);

@@ -76,27 +76,35 @@ export interface RunSnapshot {
   error: string | null;
 }
 
+// Investigation is stored as one struct that mutates through "running" →
+// "done"/"error". bonNormalizeReport canonicalizes from unknown JSON and
+// fills in defaults so every key is always present. Consumers gate on
+// `status` to know which result fields are populated:
+//   running → verdict/factors/etc. are null/empty; startedAt is set
+//   done    → all result fields populated
+//   error   → `error` is set; result fields may be null/empty
+// Result fields use `null` (not omission) for "not yet known."
 export interface Investigation {
   status: InvestigationStatus;
-  startedAt?: number | null;
-  runAt?: number;
-  durationMs?: number | null;
-  error?: string | null;
-  verdict?: Verdict;
-  confidence?: number;
-  botProbability?: number;
-  factors?: Factor[];
-  persona?: Persona | null;
-  summary?: string;
-  model?: string;
-  usage?: ClaudeUsage | null;
-  webSearchCount?: number;
-  costUsd?: number | null;
-  postsFetched?: number;
-  commentsFetched?: number;
-  accountCreatedAt?: string | null;
-  accountAgeDays?: number | null;
-  runs?: RunSnapshot[];
+  startedAt: number | null;
+  runAt: number | null;
+  durationMs: number | null;
+  error: string | null;
+  verdict: Verdict | null;
+  confidence: number | null;
+  botProbability: number | null;
+  factors: Factor[];
+  persona: Persona | null;
+  summary: string;
+  model: string | null;
+  usage: ClaudeUsage | null;
+  webSearchCount: number;
+  costUsd: number | null;
+  postsFetched: number;
+  commentsFetched: number;
+  accountCreatedAt: string | null;
+  accountAgeDays: number | null;
+  runs: RunSnapshot[];
 }
 
 // History entry from a single report click. `at` is the unix-ms timestamp.
@@ -129,6 +137,28 @@ export interface ActivityData {
   fetchedAt: number;
 }
 
+// Operator-collected dossier entry. Captured automatically when a report is
+// filed (provenance: "auto") and manually via the in-page "Add context" button
+// (provenance: "manual"). Trimmed to ~1KB per item so dossiers can grow without
+// blowing the investigation prompt budget.
+//
+// Every field is always present — bonFetchContextItem sets all of them, using
+// `null` for absent data. No two-way optionality.
+export interface ContextItem {
+  permalink: string;
+  kind: "post" | "comment";
+  subreddit: string | null;
+  author: string;
+  title: string | null;
+  body: string | null;
+  score: number | null;
+  createdAt: string | null;
+  addedAt: number;
+  provenance: "auto" | "manual";
+}
+
+// Canonical Report shape produced by bonNormalizeReport. Every field is always
+// present; `null` (or 0 for timestamps) means "no signal." No two-way optionality.
 export interface Report {
   count: number;
   lastReportedAt: number;
@@ -136,59 +166,116 @@ export interface Report {
   userStatus: UserStatus;
   userStatusCheckedAt: number;
   createdAt: number | null;
-  botBouncerStatus?: BotBouncerStatus;
-  botBouncerCheckedAt?: number;
+  botBouncerStatus: BotBouncerStatus;
+  botBouncerCheckedAt: number;
   investigation: Investigation | null;
-  activityData?: ActivityData | null;
+  activityData: ActivityData | null;
+  contextItems: ContextItem[];
 }
 
-// Profile summary handed to Claude as JSON. Loose shape — the prompt does
-// the actual schema enforcement, this just types the assembly call sites.
+// Profile summary handed to Claude as JSON. The prompt does the actual schema
+// enforcement, but the assembly call sites in summarize.ts produce these named
+// shapes so consumers (and prompt authors) can see what's guaranteed.
+
+export interface AccountSummary {
+  name: string;
+  created_at: string | null;
+  age_days: number | null;
+  total_karma: number | null;
+  link_karma: number | null;
+  comment_karma: number | null;
+  is_employee: boolean;
+  verified: boolean;
+  has_verified_email: boolean;
+}
+
+export interface TopSubreddit {
+  sub: string;
+  count: number;
+}
+
+export interface ModeratorRemovals {
+  total: number;
+  by_category: Record<string, number>;
+}
+
+export interface PostingRate {
+  visible_window_days: number;
+  visible_items_per_day: number;
+  sample_size: number;
+  sample_capped: boolean;
+}
+
+export interface ModeratedSubreddit {
+  sub: string;
+  subscribers: number | null;
+  type: string | null;
+  over_18: boolean;
+}
+
+export interface ModeratedSubreddits {
+  count: number;
+  list: ModeratedSubreddit[];
+}
+
+export interface BotBouncerSignal {
+  status: Exclude<BotBouncerStatus, null>;
+  checked_at: string | null;
+}
+
+export interface SummaryPost {
+  subreddit: string;
+  title: string | null;
+  selftext_excerpt: string;
+  score: number | null;
+  num_comments: number | null;
+  created_at: string | null;
+  url: string | null;
+  permalink: string | null;
+  is_self: boolean;
+  over_18: boolean;
+  removed_by_category: string | null;
+}
+
+export interface SummaryComment {
+  subreddit: string;
+  body_excerpt: string;
+  score: number | null;
+  created_at: string | null;
+  permalink: string | null;
+  link_title: string | null;
+  removed_by_category: string | null;
+}
+
+export interface OperatorContextSummary {
+  kind: "post" | "comment";
+  subreddit: string | null;
+  title: string | null;
+  body: string | null;
+  score: number | null;
+  created_at: string | null;
+  permalink: string;
+  added_at: string;
+  provenance: "auto" | "manual";
+}
+
 export interface ProfileSummary {
   username: string;
-  account: {
-    name: string;
-    created_at: string | null;
-    age_days: number | null;
-    total_karma: number | null;
-    link_karma: number | null;
-    comment_karma: number | null;
-    is_employee: boolean;
-    verified: boolean;
-    has_verified_email: boolean;
-  };
+  account: AccountSummary;
   activity: {
     posts_fetched: number;
     comments_fetched: number;
-    top_subreddits: Array<{ sub: string; count: number }>;
-    moderator_removals: {
-      total: number;
-      by_category: Record<string, number>;
-    };
-    posting_rate: {
-      visible_window_days: number;
-      visible_items_per_day: number;
-      sample_size: number;
-      sample_capped: boolean;
-    } | null;
-    moderated_subreddits: {
-      count: number;
-      list: Array<{
-        sub: string;
-        subscribers: number | null;
-        type: string | null;
-        over_18: boolean;
-      }>;
-    };
+    top_subreddits: TopSubreddit[];
+    moderator_removals: ModeratorRemovals;
+    posting_rate: PostingRate | null;
+    moderated_subreddits: ModeratedSubreddits;
   };
   external_signals: {
-    bot_bouncer: {
-      status: BotBouncerStatus;
-      checked_at: string | null;
-    } | null;
+    bot_bouncer: BotBouncerSignal | null;
   };
-  recent_posts: Array<Record<string, unknown>>;
-  recent_comments: Array<Record<string, unknown>>;
+  recent_posts: SummaryPost[];
+  recent_comments: SummaryComment[];
+  operator_collected_context?: OperatorContextSummary[];
 }
 
 // Raw Reddit JSON envelopes we look into. Field set is intentionally

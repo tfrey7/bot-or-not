@@ -54,8 +54,8 @@ export function bonInlineTagsMark(): void {
     .querySelectorAll<HTMLAnchorElement>(
       'a[href*="/user/"]:not([data-bon-marked]), a[href*="/u/"]:not([data-bon-marked])'
     )
-    .forEach((el) => {
-      const href = el.getAttribute("href");
+    .forEach((anchor) => {
+      const href = anchor.getAttribute("href");
       if (!href) {
         return;
       }
@@ -65,13 +65,13 @@ export function bonInlineTagsMark(): void {
         return;
       }
 
-      if (el.closest('[id^="profile-tab"]')) {
+      if (anchor.closest('[id^="profile-tab"]')) {
         return;
       }
 
-      el.dataset.bonMarked = "true";
+      anchor.dataset.bonMarked = "true";
 
-      if (bonInlineTagIsAvatarLink(el)) {
+      if (bonInlineTagIsAvatarLink(anchor)) {
         return;
       }
 
@@ -84,7 +84,7 @@ export function bonInlineTagsMark(): void {
 
       // Skip if a tag for this user already sits next to this link (Reddit
       // sometimes re-parents anchors, dropping the data-bon-marked flag).
-      const sibling = el.nextElementSibling as HTMLElement | null;
+      const sibling = anchor.nextElementSibling as HTMLElement | null;
       if (
         sibling?.classList?.contains("bon-user-tag") &&
         sibling.dataset.bonTagFor === key
@@ -95,8 +95,8 @@ export function bonInlineTagsMark(): void {
       // Scoped dedup: post headers often contain multiple anchors for the
       // same user (avatar + username link). Only one pill per header.
       const scope =
-        el.closest("shreddit-post, shreddit-comment, article, header") ||
-        el.parentElement;
+        anchor.closest("shreddit-post, shreddit-comment, article, header") ||
+        anchor.parentElement;
       if (
         scope?.querySelector(
           `.bon-user-tag[data-bon-tag-for="${bonCssEscape(key)}"]`
@@ -105,7 +105,7 @@ export function bonInlineTagsMark(): void {
         return;
       }
 
-      el.insertAdjacentElement("afterend", buildUserTag(info));
+      anchor.insertAdjacentElement("afterend", buildUserTag(info));
     });
 }
 
@@ -114,12 +114,12 @@ function refreshUserTag(username: string): void {
 
   document
     .querySelectorAll(`.bon-user-tag[data-bon-tag-for="${bonCssEscape(key)}"]`)
-    .forEach((t) => t.remove());
+    .forEach((tag) => tag.remove());
 
   document
     .querySelectorAll<HTMLAnchorElement>('a[href*="/user/"], a[href*="/u/"]')
-    .forEach((el) => {
-      const href = el.getAttribute("href");
+    .forEach((anchor) => {
+      const href = anchor.getAttribute("href");
       if (!href) {
         return;
       }
@@ -129,17 +129,17 @@ function refreshUserTag(username: string): void {
         return;
       }
 
-      delete el.dataset.bonMarked;
+      delete anchor.dataset.bonMarked;
     });
 
   bonInlineTagsMark();
 }
 
 function resetAndMarkAll(): void {
-  document.querySelectorAll(".bon-user-tag").forEach((t) => t.remove());
+  document.querySelectorAll(".bon-user-tag").forEach((tag) => tag.remove());
   document
     .querySelectorAll<HTMLAnchorElement>("a[data-bon-marked]")
-    .forEach((el) => delete el.dataset.bonMarked);
+    .forEach((anchor) => delete anchor.dataset.bonMarked);
   bonInlineTagsMark();
 }
 
@@ -168,15 +168,15 @@ export function bonInlineTagsInit(): void {
 
   document.addEventListener(
     "click",
-    (e) => {
-      const target = e.target as Element | null;
+    (event) => {
+      const target = event.target as Element | null;
       const tag = target?.closest?.(".bon-user-tag");
       if (!tag) {
         return;
       }
 
-      e.preventDefault();
-      e.stopPropagation();
+      event.preventDefault();
+      event.stopPropagation();
       browser.runtime.sendMessage({ type: "open-popup" });
     },
     true

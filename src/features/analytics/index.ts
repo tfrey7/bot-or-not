@@ -40,8 +40,12 @@ export function bonRenderAnalytics(
   container.replaceChildren();
 
   const investigations = bonAnalyticsCollect(reports);
-  const runs = investigations.filter((i) => i.status === "done");
-  const errors = investigations.filter((i) => i.status === "error").length;
+  const runs = investigations.filter(
+    (investigation) => investigation.status === "done"
+  );
+  const errors = investigations.filter(
+    (investigation) => investigation.status === "error"
+  ).length;
 
   const section = document.createElement("section");
   section.className = "bon-analytics";
@@ -139,25 +143,27 @@ function buildEmptyState(): HTMLDivElement {
   return div;
 }
 
-function buildFootnote(s: AnalyticsSummary): HTMLParagraphElement {
-  const p = document.createElement("p");
-  p.className = "bon-analytics-footnote";
+function buildFootnote(summary: AnalyticsSummary): HTMLParagraphElement {
+  const paragraph = document.createElement("p");
+  paragraph.className = "bon-analytics-footnote";
 
   const parts: string[] = [
     `Bot or Not v${browser.runtime.getManifest().version}`,
   ];
 
-  if (s.firstRunAt) {
-    parts.push(`earliest run ${new Date(s.firstRunAt).toLocaleDateString()}`);
+  if (summary.firstRunAt) {
+    parts.push(
+      `earliest run ${new Date(summary.firstRunAt).toLocaleDateString()}`
+    );
   }
 
-  if (s.lastRunAt) {
-    parts.push(`latest ${new Date(s.lastRunAt).toLocaleDateString()}`);
+  if (summary.lastRunAt) {
+    parts.push(`latest ${new Date(summary.lastRunAt).toLocaleDateString()}`);
   }
 
   parts.push(
     "costs are estimated from per-token pricing; check your Anthropic console for billed amounts"
   );
-  p.textContent = parts.join(" · ") + ".";
-  return p;
+  paragraph.textContent = parts.join(" · ") + ".";
+  return paragraph;
 }

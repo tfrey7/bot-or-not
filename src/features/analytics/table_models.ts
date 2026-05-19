@@ -33,9 +33,9 @@ export function bonAnalyticsModelsTable(
   const byModel = new Map<string, ModelRow>();
   const durationsByModel = new Map<string, number[]>();
 
-  for (const r of runs) {
-    for (const c of r.calls) {
-      const key = c.model || "(unknown)";
+  for (const run of runs) {
+    for (const call of run.calls) {
+      const key = call.model || "(unknown)";
       const row = byModel.get(key) || {
         model: key,
         calls: 0,
@@ -46,20 +46,20 @@ export function bonAnalyticsModelsTable(
         cacheWrite: 0,
       };
       row.calls++;
-      row.cost += c.costUsd || 0;
-      const u = c.usage || {};
-      row.in += u.input_tokens || 0;
-      row.out += u.output_tokens || 0;
-      row.cacheRead += u.cache_read_input_tokens || 0;
-      row.cacheWrite += u.cache_creation_input_tokens || 0;
+      row.cost += call.costUsd || 0;
+      const usage = call.usage || {};
+      row.in += usage.input_tokens || 0;
+      row.out += usage.output_tokens || 0;
+      row.cacheRead += usage.cache_read_input_tokens || 0;
+      row.cacheWrite += usage.cache_creation_input_tokens || 0;
       byModel.set(key, row);
 
-      if (typeof r.durationMs === "number") {
+      if (typeof run.durationMs === "number") {
         if (!durationsByModel.has(key)) {
           durationsByModel.set(key, []);
         }
 
-        durationsByModel.get(key)!.push(r.durationMs);
+        durationsByModel.get(key)!.push(run.durationMs);
       }
     }
   }
@@ -87,12 +87,12 @@ export function bonAnalyticsModelsTable(
     { label: "Avg duration" },
     { label: "Avg / call" },
     { label: "Total cost" },
-  ].forEach((c) => {
+  ].forEach((column) => {
     const th = document.createElement("th");
-    th.textContent = c.label;
+    th.textContent = column.label;
 
-    if (c.align) {
-      th.style.textAlign = c.align;
+    if (column.align) {
+      th.style.textAlign = column.align;
     }
 
     headRow.appendChild(th);
@@ -102,33 +102,34 @@ export function bonAnalyticsModelsTable(
 
   const tbody = document.createElement("tbody");
 
-  for (const r of rows) {
+  for (const row of rows) {
     const tr = document.createElement("tr");
-    const hit = r.in + r.cacheRead > 0 ? r.cacheRead / (r.in + r.cacheRead) : 0;
-    const durs = durationsByModel.get(r.model) || [];
-    const avgDur = durs.length
-      ? durs.reduce((a, b) => a + b, 0) / durs.length
+    const hit =
+      row.in + row.cacheRead > 0 ? row.cacheRead / (row.in + row.cacheRead) : 0;
+    const durations = durationsByModel.get(row.model) || [];
+    const avgDuration = durations.length
+      ? durations.reduce((a, b) => a + b, 0) / durations.length
       : null;
 
     const tdModel = document.createElement("td");
     const code = document.createElement("code");
-    code.textContent = r.model;
+    code.textContent = row.model;
     tdModel.appendChild(code);
     tr.appendChild(tdModel);
 
     [
-      String(r.calls),
-      bonFmtThousands(r.in),
-      bonFmtThousands(r.out),
-      bonFmtThousands(r.cacheRead),
-      bonFmtThousands(r.cacheWrite),
+      String(row.calls),
+      bonFmtThousands(row.in),
+      bonFmtThousands(row.out),
+      bonFmtThousands(row.cacheRead),
+      bonFmtThousands(row.cacheWrite),
       bonFmtPercent(hit),
-      bonFmtDuration(avgDur),
-      bonFmtUsd(r.cost / Math.max(1, r.calls)),
-      bonFmtUsd(r.cost),
-    ].forEach((val) => {
+      bonFmtDuration(avgDuration),
+      bonFmtUsd(row.cost / Math.max(1, row.calls)),
+      bonFmtUsd(row.cost),
+    ].forEach((cellText) => {
       const td = document.createElement("td");
-      td.textContent = val;
+      td.textContent = cellText;
       tr.appendChild(td);
     });
     tbody.appendChild(tr);

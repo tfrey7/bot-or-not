@@ -72,16 +72,16 @@ function resolveUrl(permalink: string | undefined): string | null {
 }
 
 function renderHistoryEntry(entry: HistoryEntry): HTMLTableRowElement {
-  const tr = document.createElement("tr");
+  const row = document.createElement("tr");
 
   const dateCell = document.createElement("td");
   if (entry.at) {
-    const d = new Date(entry.at);
-    const sameYear = d.getFullYear() === new Date().getFullYear();
+    const date = new Date(entry.at);
+    const sameYear = date.getFullYear() === new Date().getFullYear();
 
     const dateLine = document.createElement("span");
     dateLine.className = "bon-history-date";
-    dateLine.textContent = d.toLocaleDateString(undefined, {
+    dateLine.textContent = date.toLocaleDateString(undefined, {
       month: "short",
       day: "numeric",
       year: sameYear ? undefined : "2-digit",
@@ -89,18 +89,18 @@ function renderHistoryEntry(entry: HistoryEntry): HTMLTableRowElement {
 
     const timeLine = document.createElement("span");
     timeLine.className = "bon-history-time";
-    timeLine.textContent = d.toLocaleTimeString(undefined, {
+    timeLine.textContent = date.toLocaleTimeString(undefined, {
       hour: "numeric",
       minute: "2-digit",
     });
 
     dateCell.appendChild(dateLine);
     dateCell.appendChild(timeLine);
-    dateCell.title = d.toLocaleString();
+    dateCell.title = date.toLocaleString();
   } else {
     dateCell.textContent = "unknown";
   }
-  tr.appendChild(dateCell);
+  row.appendChild(dateCell);
 
   const kindCell = document.createElement("td");
   const leadIcon = statusIcon(entry.status, "post") || kindIconFor(entry.kind);
@@ -108,7 +108,7 @@ function renderHistoryEntry(entry: HistoryEntry): HTMLTableRowElement {
   if (leadIcon) {
     kindCell.appendChild(leadIcon);
   }
-  tr.appendChild(kindCell);
+  row.appendChild(kindCell);
 
   const labelCell = document.createElement("td");
 
@@ -126,20 +126,20 @@ function renderHistoryEntry(entry: HistoryEntry): HTMLTableRowElement {
   const label = labelParts.join(" · ") || targetUrl || "report";
 
   if (targetUrl) {
-    const a = document.createElement("a");
-    a.href = targetUrl;
-    a.target = "_blank";
-    a.rel = "noopener noreferrer";
-    a.textContent = label;
-    a.title = label;
-    labelCell.appendChild(a);
+    const anchor = document.createElement("a");
+    anchor.href = targetUrl;
+    anchor.target = "_blank";
+    anchor.rel = "noopener noreferrer";
+    anchor.textContent = label;
+    anchor.title = label;
+    labelCell.appendChild(anchor);
   } else {
     labelCell.textContent = label;
     labelCell.title = label;
   }
-  tr.appendChild(labelCell);
+  row.appendChild(labelCell);
 
-  return tr;
+  return row;
 }
 
 export function bonReportsHistoryTable(
@@ -148,12 +148,12 @@ export function bonReportsHistoryTable(
   const table = document.createElement("table");
   table.className = "bon-history-table";
 
-  const tbodyEl = document.createElement("tbody");
+  const tbody = document.createElement("tbody");
   const sorted = [...history].sort((a, b) => (b.at || 0) - (a.at || 0));
   for (const entry of sorted) {
-    tbodyEl.appendChild(renderHistoryEntry(entry));
+    tbody.appendChild(renderHistoryEntry(entry));
   }
 
-  table.appendChild(tbodyEl);
+  table.appendChild(tbody);
   return table;
 }

@@ -29,10 +29,12 @@ export const BON_FACTORS: readonly FactorMeta[] = [
   { key: "moderated_subreddits", label: "Moderated subreddits" },
 ];
 
-export const BON_FACTOR_KEYS: readonly string[] = BON_FACTORS.map((f) => f.key);
+export const BON_FACTOR_KEYS: readonly string[] = BON_FACTORS.map(
+  (factor) => factor.key
+);
 
 export const BON_FACTOR_LABELS: Record<string, string> = Object.fromEntries(
-  BON_FACTORS.map((f) => [f.key, f.label])
+  BON_FACTORS.map((factor) => [factor.key, factor.label])
 );
 
 export interface ArchetypeMeta {
@@ -65,7 +67,7 @@ export const BON_ARCHETYPES: readonly ArchetypeMeta[] = [
 ];
 
 export const BON_ARCHETYPE_KEYS: readonly ArchetypeKey[] = BON_ARCHETYPES.map(
-  (a) => a.key
+  (archetype) => archetype.key
 );
 
 // `bot` and `normal` are valid persona labels but not radar axes — the chart

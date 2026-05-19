@@ -7,8 +7,17 @@
 
 import type {
   BotBouncerStatus,
+  ContextItem,
+  ModeratedSubreddit,
+  ModeratedSubreddits,
+  ModeratorRemovals,
+  OperatorContextSummary,
+  PostingRate,
   ProfileSummary,
   RedditProfile,
+  SummaryComment,
+  SummaryPost,
+  TopSubreddit,
 } from "../../types.ts";
 import { BON_REDDIT_FETCH_LIMIT } from "./fetch.ts";
 
@@ -50,9 +59,12 @@ interface RawModeratedEntry {
   url?: string;
 }
 
+// Optional inputs threaded in from bonGatherProfile. Absence is expressed
+// by omission — no `null` on optional fields.
 export interface SummarizeExtra {
-  botBouncerStatus?: BotBouncerStatus;
-  botBouncerCheckedAt?: number | null;
+  botBouncerStatus?: Exclude<BotBouncerStatus, null>;
+  botBouncerCheckedAt?: number;
+  contextItems?: ContextItem[];
 }
 
 export function bonSummarizeProfile(
@@ -60,175 +72,240 @@ export function bonSummarizeProfile(
   raw: RedditProfile,
   extra: SummarizeExtra = {}
 ): ProfileSummary {
-  const aboutData = raw.about?.data || {};
-  const posts: RawPost[] = (raw.submitted?.data?.children || [])
-    .map((c) => c.data as RawPost | undefined)
-    .filter((p): p is RawPost => Boolean(p));
-  const comments: RawComment[] = (raw.comments?.data?.children || [])
-    .map((c) => c.data as RawComment | undefined)
-    .filter((c): c is RawComment => Boolean(c));
+  const aboutData = raw.about.data ?? {};
+  const posts = extractChildren<RawPost>(raw.submitted.data?.children);
+  const comments = extractChildren<RawComment>(raw.comments.data?.children);
 
-  const createdUtc = aboutData.created_utc
-    ? aboutData.created_utc * 1000
-    : null;
-  const ageDays = createdUtc
-    ? Math.floor((Date.now() - createdUtc) / 86_400_000)
-    : null;
+  const createdUtc =
+    typeof aboutData.created_utc === "number"
+      ? aboutData.created_utc * 1000
+      : null;
+  const ageDays =
+    createdUtc !== null
+      ? Math.floor((Date.now() - createdUtc) / 86_400_000)
+      : null;
 
-  const trimmedPosts = posts.slice(0, BON_MAX_ITEMS_TO_AI).map((p) => ({
-    subreddit: p.subreddit_name_prefixed || `r/${p.subreddit}`,
-    title: p.title,
-    selftext_excerpt: (p.selftext || "").slice(0, 400),
-    score: p.score,
-    num_comments: p.num_comments,
-    created_at: p.created_utc
-      ? new Date(p.created_utc * 1000).toISOString()
-      : null,
-    url: p.url_overridden_by_dest || null,
-    permalink: p.permalink,
-    is_self: p.is_self,
-    over_18: p.over_18,
-    removed_by_category: p.removed_by_category || null,
-  }));
+  const trimmedPosts: SummaryPost[] = posts
+    .slice(0, BON_MAX_ITEMS_TO_AI)
+    .map(trimPost);
+  const trimmedComments: SummaryComment[] = comments
+    .slice(0, BON_MAX_ITEMS_TO_AI)
+    .map(trimComment);
 
-  const trimmedComments = comments.slice(0, BON_MAX_ITEMS_TO_AI).map((c) => ({
-    subreddit: c.subreddit_name_prefixed || `r/${c.subreddit}`,
-    body_excerpt: (c.body || "").slice(0, 500),
-    score: c.score,
-    created_at: c.created_utc
-      ? new Date(c.created_utc * 1000).toISOString()
-      : null,
-    permalink: c.permalink,
-    link_title: c.link_title || null,
-    removed_by_category: c.removed_by_category || null,
-  }));
-
-  const removalCounts: { total: number; by_category: Record<string, number> } =
-    { total: 0, by_category: {} };
-
-  for (const item of [...posts, ...comments]) {
-    const cat = item.removed_by_category;
-
-    if (!cat) {
-      continue;
-    }
-
-    removalCounts.total++;
-    removalCounts.by_category[cat] = (removalCounts.by_category[cat] || 0) + 1;
-  }
-
-  // Posting rate over the visible window. The fetched sample is capped
-  // at ~100 posts + 100 comments; the window between the oldest and
-  // newest item tells us how fast they accumulated. A heavy farmer can
-  // hit 50+/day sustained — well above what a normal human (even a Stan)
-  // does.
-  const allTimestamps: number[] = [...posts, ...comments]
-    .map((it) => (it.created_utc ? it.created_utc * 1000 : null))
-    .filter((t): t is number => typeof t === "number");
-
-  let postingRate: ProfileSummary["activity"]["posting_rate"] = null;
-
-  if (allTimestamps.length >= 2) {
-    const newest = Math.max(...allTimestamps);
-    const oldest = Math.min(...allTimestamps);
-    const windowMs = Math.max(newest - oldest, 1);
-    const windowDays = windowMs / 86_400_000;
-
-    postingRate = {
-      visible_window_days: Number(windowDays.toFixed(2)),
-      visible_items_per_day: Number(
-        (allTimestamps.length / Math.max(windowDays, 1 / 24)).toFixed(2)
-      ),
-      sample_size: allTimestamps.length,
-      sample_capped:
-        posts.length >= BON_REDDIT_FETCH_LIMIT ||
-        comments.length >= BON_REDDIT_FETCH_LIMIT,
-    };
-  }
-
-  // Moderated subreddits. Reddit returns
-  // {kind: "ModeratedList", data: [...]} where each entry has
-  // sr_display_name_prefixed, subscribers, subreddit_type, over_18, etc.
-  // A 403 / null means the user hides their mod list (rare) or has no
-  // mod roles — treat both as "no signal" downstream.
-  const modRaw: RawModeratedEntry[] = Array.isArray(raw.moderated?.data)
-    ? raw.moderated.data
-    : [];
-  const moderatedList = modRaw
-    .map((m) => ({
-      sub:
-        m.sr_display_name_prefixed ||
-        (m.sr ? `r/${m.sr}` : null) ||
-        (m.display_name ? `r/${m.display_name}` : null) ||
-        m.url ||
-        null,
-      subscribers: typeof m.subscribers === "number" ? m.subscribers : null,
-      type: m.subreddit_type || null,
-      over_18: !!m.over_18,
-    }))
-    .filter(
-      (
-        m
-      ): m is {
-        sub: string;
-        subscribers: number | null;
-        type: string | null;
-        over_18: boolean;
-      } => Boolean(m.sub)
-    );
-  const moderatedSummary = {
-    count: moderatedList.length,
-    list: moderatedList,
-  };
-
-  const subredditCounts: Record<string, number> = {};
-
-  for (const p of posts) {
-    const k = p.subreddit_name_prefixed || `r/${p.subreddit}`;
-    subredditCounts[k] = (subredditCounts[k] || 0) + 1;
-  }
-  for (const c of comments) {
-    const k = c.subreddit_name_prefixed || `r/${c.subreddit}`;
-    subredditCounts[k] = (subredditCounts[k] || 0) + 1;
-  }
-
-  const topSubreddits = Object.entries(subredditCounts)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 25)
-    .map(([sub, count]) => ({ sub, count }));
+  const moderatorRemovals = countRemovals(posts, comments);
+  const postingRate = computePostingRate(posts, comments);
+  const moderatedSubreddits = summarizeModerated(raw.moderated?.data);
+  const topSubreddits = countTopSubreddits(posts, comments);
 
   return {
     username,
     account: {
-      name: aboutData.name || username,
-      created_at: createdUtc ? new Date(createdUtc).toISOString() : null,
+      name: aboutData.name ?? username,
+      created_at:
+        createdUtc !== null ? new Date(createdUtc).toISOString() : null,
       age_days: ageDays,
       total_karma: aboutData.total_karma ?? null,
       link_karma: aboutData.link_karma ?? null,
       comment_karma: aboutData.comment_karma ?? null,
-      is_employee: !!aboutData.is_employee,
-      verified: !!aboutData.verified,
-      has_verified_email: !!aboutData.has_verified_email,
+      is_employee: aboutData.is_employee === true,
+      verified: aboutData.verified === true,
+      has_verified_email: aboutData.has_verified_email === true,
     },
     activity: {
       posts_fetched: posts.length,
       comments_fetched: comments.length,
       top_subreddits: topSubreddits,
-      moderator_removals: removalCounts,
+      moderator_removals: moderatorRemovals,
       posting_rate: postingRate,
-      moderated_subreddits: moderatedSummary,
+      moderated_subreddits: moderatedSubreddits,
     },
     external_signals: {
-      bot_bouncer: extra.botBouncerStatus
-        ? {
-            status: extra.botBouncerStatus,
-            checked_at: extra.botBouncerCheckedAt
-              ? new Date(extra.botBouncerCheckedAt).toISOString()
-              : null,
-          }
-        : null,
+      bot_bouncer:
+        extra.botBouncerStatus !== undefined
+          ? {
+              status: extra.botBouncerStatus,
+              checked_at:
+                extra.botBouncerCheckedAt !== undefined
+                  ? new Date(extra.botBouncerCheckedAt).toISOString()
+                  : null,
+            }
+          : null,
     },
     recent_posts: trimmedPosts,
     recent_comments: trimmedComments,
+    operator_collected_context: (extra.contextItems ?? []).map(trimContextItem),
   };
+}
+
+function extractChildren<T>(
+  children: Array<{ data?: unknown }> | undefined
+): T[] {
+  if (!children) {
+    return [];
+  }
+  const items: T[] = [];
+  for (const child of children) {
+    if (child.data) {
+      items.push(child.data as T);
+    }
+  }
+  return items;
+}
+
+function subredditLabel(item: RawPost | RawComment): string {
+  return item.subreddit_name_prefixed ?? `r/${item.subreddit ?? ""}`;
+}
+
+function trimPost(post: RawPost): SummaryPost {
+  return {
+    subreddit: subredditLabel(post),
+    title: post.title ?? null,
+    selftext_excerpt: (post.selftext ?? "").slice(0, 400),
+    score: post.score ?? null,
+    num_comments: post.num_comments ?? null,
+    created_at:
+      typeof post.created_utc === "number"
+        ? new Date(post.created_utc * 1000).toISOString()
+        : null,
+    url: post.url_overridden_by_dest ?? null,
+    permalink: post.permalink ?? null,
+    is_self: post.is_self === true,
+    over_18: post.over_18 === true,
+    removed_by_category: post.removed_by_category ?? null,
+  };
+}
+
+function trimComment(comment: RawComment): SummaryComment {
+  return {
+    subreddit: subredditLabel(comment),
+    body_excerpt: (comment.body ?? "").slice(0, 500),
+    score: comment.score ?? null,
+    created_at:
+      typeof comment.created_utc === "number"
+        ? new Date(comment.created_utc * 1000).toISOString()
+        : null,
+    permalink: comment.permalink ?? null,
+    link_title: comment.link_title ?? null,
+    removed_by_category: comment.removed_by_category ?? null,
+  };
+}
+
+function trimContextItem(contextItem: ContextItem): OperatorContextSummary {
+  return {
+    kind: contextItem.kind,
+    subreddit: contextItem.subreddit,
+    title: contextItem.title,
+    body: contextItem.body,
+    score: contextItem.score,
+    created_at: contextItem.createdAt,
+    permalink: contextItem.permalink,
+    added_at: new Date(contextItem.addedAt).toISOString(),
+    provenance: contextItem.provenance,
+  };
+}
+
+function countRemovals(
+  posts: RawPost[],
+  comments: RawComment[]
+): ModeratorRemovals {
+  const removals: ModeratorRemovals = { total: 0, by_category: {} };
+  for (const item of [...posts, ...comments]) {
+    const category = item.removed_by_category;
+    if (!category) {
+      continue;
+    }
+    removals.total++;
+    removals.by_category[category] = (removals.by_category[category] ?? 0) + 1;
+  }
+  return removals;
+}
+
+// Posting rate over the visible window. The fetched sample is capped at ~100
+// posts + 100 comments; the window between the oldest and newest item tells us
+// how fast they accumulated. A heavy farmer can hit 50+/day sustained — well
+// above what a normal human (even a Stan) does.
+function computePostingRate(
+  posts: RawPost[],
+  comments: RawComment[]
+): PostingRate | null {
+  const allTimestamps: number[] = [];
+  for (const item of [...posts, ...comments]) {
+    if (typeof item.created_utc === "number") {
+      allTimestamps.push(item.created_utc * 1000);
+    }
+  }
+
+  if (allTimestamps.length < 2) {
+    return null;
+  }
+
+  const newest = Math.max(...allTimestamps);
+  const oldest = Math.min(...allTimestamps);
+  const windowDays = Math.max(newest - oldest, 1) / 86_400_000;
+
+  return {
+    visible_window_days: Number(windowDays.toFixed(2)),
+    visible_items_per_day: Number(
+      (allTimestamps.length / Math.max(windowDays, 1 / 24)).toFixed(2)
+    ),
+    sample_size: allTimestamps.length,
+    sample_capped:
+      posts.length >= BON_REDDIT_FETCH_LIMIT ||
+      comments.length >= BON_REDDIT_FETCH_LIMIT,
+  };
+}
+
+// Moderated subreddits. Reddit returns {kind: "ModeratedList", data: [...]}
+// where each entry has sr_display_name_prefixed, subscribers, etc. A 403 /
+// null means the user hides their mod list (rare) or has no mod roles —
+// treat both as "no signal" downstream.
+function summarizeModerated(
+  entries: RawModeratedEntry[] | undefined
+): ModeratedSubreddits {
+  if (!entries) {
+    return { count: 0, list: [] };
+  }
+  const list: ModeratedSubreddit[] = [];
+  for (const entry of entries) {
+    const sub = moderatedLabel(entry);
+    if (sub === null) {
+      continue;
+    }
+    list.push({
+      sub,
+      subscribers:
+        typeof entry.subscribers === "number" ? entry.subscribers : null,
+      type: entry.subreddit_type ?? null,
+      over_18: entry.over_18 === true,
+    });
+  }
+  return { count: list.length, list };
+}
+
+function moderatedLabel(entry: RawModeratedEntry): string | null {
+  if (entry.sr_display_name_prefixed) {
+    return entry.sr_display_name_prefixed;
+  }
+  if (entry.sr) {
+    return `r/${entry.sr}`;
+  }
+  if (entry.display_name) {
+    return `r/${entry.display_name}`;
+  }
+  return entry.url ?? null;
+}
+
+function countTopSubreddits(
+  posts: RawPost[],
+  comments: RawComment[]
+): TopSubreddit[] {
+  const counts: Record<string, number> = {};
+  for (const item of [...posts, ...comments]) {
+    const label = subredditLabel(item);
+    counts[label] = (counts[label] ?? 0) + 1;
+  }
+  return Object.entries(counts)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 25)
+    .map(([sub, count]) => ({ sub, count }));
 }

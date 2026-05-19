@@ -1,14 +1,22 @@
 import {
+  bonDossierAdd,
+  bonDossierHasMap,
+  bonDossierRemove,
+} from "./features/dossier";
+import {
   bonFetchUserActivity,
   bonGatherProfile,
   bonRunOneDAnalysis,
-} from "./features/investigation/index.ts";
+} from "./features/investigation";
 import type { ActivityData, Investigation, Report } from "./types.ts";
 import {
   bonDedupeHistory,
   bonFindReportKey,
+  bonFreshInvestigation,
   bonNormalizeReport,
+  bonReadReports,
   bonSnapshotRun,
+  bonWriteReports,
 } from "./utils/history.ts";
 import {
   bonIsInvestigationStale,
@@ -26,37 +34,36 @@ void sweepOrphanedInvestigations();
 
 async function sweepOrphanedInvestigations(): Promise<void> {
   try {
-    const { reports = {} } = (await browser.storage.local.get("reports")) as {
-      reports?: Record<string, Report>;
-    };
+    const reports = await bonReadReports();
 
     let changed = false;
-    for (const [username, value] of Object.entries(reports)) {
-      const inv = value?.investigation;
-      if (inv?.status !== "running") {
+    for (const [username, report] of Object.entries(reports)) {
+      const investigation = report.investigation;
+      if (investigation?.status !== "running") {
         continue;
       }
 
-      const startedAt = inv.startedAt || 0;
       reports[username] = {
-        ...value,
+        ...report,
         investigation: {
-          ...inv,
+          ...investigation,
           status: "error",
           startedAt: null,
           error: "interrupted before completion",
-          durationMs: startedAt ? Date.now() - startedAt : null,
+          durationMs: investigation.startedAt
+            ? Date.now() - investigation.startedAt
+            : null,
         },
       };
       changed = true;
     }
 
     if (changed) {
-      await browser.storage.local.set({ reports });
+      await bonWriteReports(reports);
       console.log("[Bot or Not] swept orphaned investigations");
     }
-  } catch (err) {
-    console.error("[Bot or Not] orphan sweep failed", err);
+  } catch (error) {
+    console.error("[Bot or Not] orphan sweep failed", error);
   }
 }
 
@@ -117,6 +124,15 @@ browser.runtime.onMessage.addListener((message: BaseMessage) => {
   if (message.type === "set-claude-api-key") {
     return handleSetClaudeApiKey(message);
   }
+  if (message.type === "dossier-add") {
+    return handleDossierAdd(message);
+  }
+  if (message.type === "dossier-remove") {
+    return handleDossierRemove(message);
+  }
+  if (message.type === "dossier-has-map") {
+    return handleDossierHasMap(message);
+  }
 });
 
 browser.action.onClicked.addListener(() => {
@@ -139,8 +155,8 @@ async function openReportsTab(): Promise<void> {
     }
 
     await browser.tabs.create({ url });
-  } catch (err) {
-    console.error("[Bot or Not] openReportsTab failed", err);
+  } catch (error) {
+    console.error("[Bot or Not] openReportsTab failed", error);
   }
 }
 
@@ -151,25 +167,46 @@ async function handleOpenPopup(): Promise<void> {
 async function handleReportUser(
   message: BaseMessage
 ): Promise<{ count: number }> {
-  const { reports = {} } = (await browser.storage.local.get("reports")) as {
-    reports?: Record<string, Report>;
-  };
+  const reports = await bonReadReports();
 
   const username = message.username as string;
   const existing = bonNormalizeReport(reports[username]);
-  const at = Date.now();
-  const entry = { at, ...((message.context as Record<string, unknown>) || {}) };
+  const reportedAt = Date.now();
+  const entry = {
+    at: reportedAt,
+    ...((message.context as Record<string, unknown>) ?? {}),
+  };
   const history = bonDedupeHistory([...existing.history, entry]);
 
   reports[username] = {
     ...existing,
     count: history.length,
-    lastReportedAt: at,
+    lastReportedAt: reportedAt,
     history,
   };
-  await browser.storage.local.set({ reports });
+  await bonWriteReports(reports);
 
-  void maybeAutoInvestigate(username);
+  // Capture the post/comment that triggered this report so the investigation
+  // always has at least one anchor — even when the account's post history is
+  // hidden and Claude has nothing else to work from. Awaited inline before the
+  // auto-investigate kicks off so the report record has the context item when
+  // bonGatherProfile reads it; the report-click itself doesn't wait, since the
+  // whole sequence runs detached from the response.
+  const context = (message.context as Record<string, unknown>) ?? {};
+  const permalink =
+    typeof context.permalink === "string" ? context.permalink : null;
+
+  void (async () => {
+    if (permalink) {
+      try {
+        await bonDossierAdd(username, permalink, "auto");
+      } catch (error) {
+        console.error("[Bot or Not] auto dossier capture failed", error);
+      }
+    }
+    await maybeAutoInvestigate(username);
+  })();
+
   return { count: history.length };
 }
 
@@ -184,26 +221,27 @@ async function maybeAutoInvestigate(username: string): Promise<void> {
       return;
     }
 
-    const { reports = {} } = (await browser.storage.local.get("reports")) as {
-      reports?: Record<string, Report>;
-    };
-    const key = bonFindReportKey(reports, username) || username;
-    const inv = bonNormalizeReport(reports[key]).investigation;
+    const reports = await bonReadReports();
+    const key = bonFindReportKey(reports, username) ?? username;
+    const investigation = bonNormalizeReport(reports[key]).investigation;
 
-    if (inv?.status === "running" && !bonIsInvestigationStale(inv)) {
+    if (
+      investigation?.status === "running" &&
+      !bonIsInvestigationStale(investigation)
+    ) {
       return;
     }
 
     if (
-      inv?.runAt &&
-      Date.now() - inv.runAt < BON_AUTO_INVESTIGATE_FRESHNESS_MS
+      investigation?.runAt &&
+      Date.now() - investigation.runAt < BON_AUTO_INVESTIGATE_FRESHNESS_MS
     ) {
       return;
     }
 
     await handleInvestigateUser({ type: "investigate-user", username });
-  } catch (err) {
-    console.error("[Bot or Not] auto-investigate failed", err);
+  } catch (error) {
+    console.error("[Bot or Not] auto-investigate failed", error);
   }
 }
 
@@ -214,7 +252,7 @@ async function maybeAutoInvestigate(username: string): Promise<void> {
 async function handleAutoInvestigateOnView(
   message: BaseMessage
 ): Promise<{ ok: boolean; started?: boolean; error?: string }> {
-  const username = ((message.username as string) || "").trim();
+  const username = ((message.username as string) ?? "").trim();
   if (!username) {
     return { ok: false, error: "missing-username" };
   }
@@ -227,38 +265,40 @@ async function handleAutoInvestigateOnView(
       return { ok: true, started: false };
     }
 
-    const { reports = {} } = (await browser.storage.local.get("reports")) as {
-      reports?: Record<string, Report>;
-    };
-    const key = bonFindReportKey(reports, username) || username;
-    const inv = bonNormalizeReport(reports[key]).investigation;
+    const reports = await bonReadReports();
+    const key = bonFindReportKey(reports, username) ?? username;
+    const investigation = bonNormalizeReport(reports[key]).investigation;
 
-    if (inv && !(inv.status === "running" && bonIsInvestigationStale(inv))) {
+    if (
+      investigation &&
+      !(
+        investigation.status === "running" &&
+        bonIsInvestigationStale(investigation)
+      )
+    ) {
       return { ok: true, started: false };
     }
 
     void handleInvestigateUser({ type: "investigate-user", username });
     return { ok: true, started: true };
-  } catch (err) {
-    console.error("[Bot or Not] auto-investigate-on-view failed", err);
+  } catch (error) {
+    console.error("[Bot or Not] auto-investigate-on-view failed", error);
     return {
       ok: false,
-      error: String((err as { message?: string })?.message || err),
+      error: String((error as { message?: string })?.message ?? error),
     };
   }
 }
 
 async function handleUpdateUserCreatedAt(message: BaseMessage): Promise<void> {
-  const { reports = {} } = (await browser.storage.local.get("reports")) as {
-    reports?: Record<string, Report>;
-  };
+  const reports = await bonReadReports();
   const username = message.username as string;
 
   if (!reports[username]) {
     return;
   }
 
-  const existing = bonNormalizeReport(reports[username]);
+  const existing = reports[username];
   if (existing.createdAt) {
     return;
   }
@@ -267,13 +307,11 @@ async function handleUpdateUserCreatedAt(message: BaseMessage): Promise<void> {
     ...existing,
     createdAt: message.createdAt as number,
   };
-  await browser.storage.local.set({ reports });
+  await bonWriteReports(reports);
 }
 
 async function handleUpdateUserStatus(message: BaseMessage): Promise<void> {
-  const { reports = {} } = (await browser.storage.local.get("reports")) as {
-    reports?: Record<string, Report>;
-  };
+  const reports = await bonReadReports();
   const username = message.username as string;
 
   // Only update users we've already reported
@@ -281,7 +319,7 @@ async function handleUpdateUserStatus(message: BaseMessage): Promise<void> {
     return;
   }
 
-  const existing = bonNormalizeReport(reports[username]);
+  const existing = reports[username];
   if (existing.userStatus === message.status) {
     return;
   }
@@ -291,22 +329,20 @@ async function handleUpdateUserStatus(message: BaseMessage): Promise<void> {
     userStatus: message.status as Report["userStatus"],
     userStatusCheckedAt: Date.now(),
   };
-  await browser.storage.local.set({ reports });
+  await bonWriteReports(reports);
 }
 
 async function handleUpdateBotBouncerStatus(
   message: BaseMessage
 ): Promise<void> {
-  const { reports = {} } = (await browser.storage.local.get("reports")) as {
-    reports?: Record<string, Report>;
-  };
+  const reports = await bonReadReports();
   const key = bonFindReportKey(reports, message.username as string);
 
   if (!key) {
     return;
   }
 
-  const existing = bonNormalizeReport(reports[key]);
+  const existing = reports[key];
   if (existing.botBouncerStatus === message.status) {
     return;
   }
@@ -316,17 +352,14 @@ async function handleUpdateBotBouncerStatus(
     botBouncerStatus: message.status as Report["botBouncerStatus"],
     botBouncerCheckedAt: Date.now(),
   };
-  await browser.storage.local.set({ reports });
+  await bonWriteReports(reports);
 }
 
 async function handleUpdatePostStatus(message: BaseMessage): Promise<void> {
-  const { reports = {} } = (await browser.storage.local.get("reports")) as {
-    reports?: Record<string, Report>;
-  };
+  const reports = await bonReadReports();
 
   let updated = false;
-  for (const username of Object.keys(reports)) {
-    const existing = bonNormalizeReport(reports[username]);
+  for (const [username, existing] of Object.entries(reports)) {
     let changed = false;
 
     const newHistory = existing.history.map((entry) => {
@@ -352,7 +385,7 @@ async function handleUpdatePostStatus(message: BaseMessage): Promise<void> {
   }
 
   if (updated) {
-    await browser.storage.local.set({ reports });
+    await bonWriteReports(reports);
   }
 }
 
@@ -368,13 +401,11 @@ interface UserTag {
 }
 
 async function handleGetUserTags(): Promise<{ tags: Record<string, UserTag> }> {
-  const { reports = {} } = (await browser.storage.local.get("reports")) as {
-    reports?: Record<string, Report>;
-  };
+  const reports = await bonReadReports();
 
   const tags: Record<string, UserTag> = {};
-  for (const [username, value] of Object.entries(reports)) {
-    const tag = summarizeUserTag(username, value);
+  for (const [username, report] of Object.entries(reports)) {
+    const tag = summarizeUserTag(username, report);
     if (tag) {
       tags[username] = tag;
     }
@@ -382,17 +413,17 @@ async function handleGetUserTags(): Promise<{ tags: Record<string, UserTag> }> {
   return { tags };
 }
 
-function summarizeUserTag(username: string, value: unknown): UserTag | null {
-  const r = bonNormalizeReport(value);
-  const inv = bonNormalizeInvestigation(r.investigation);
-  const verdict = inv?.status === "done" && inv?.verdict ? inv.verdict : null;
-  const investigationStatus = inv?.status || null;
+function summarizeUserTag(username: string, report: Report): UserTag | null {
+  const investigation = bonNormalizeInvestigation(report.investigation);
+  const verdict =
+    investigation?.status === "done" ? investigation.verdict : null;
+  const investigationStatus = investigation?.status ?? null;
 
   const hasSignal =
     verdict ||
-    r.count > 0 ||
-    r.userStatus ||
-    r.botBouncerStatus ||
+    report.count > 0 ||
+    report.userStatus ||
+    report.botBouncerStatus ||
     investigationStatus === "running";
 
   if (!hasSignal) {
@@ -401,52 +432,42 @@ function summarizeUserTag(username: string, value: unknown): UserTag | null {
 
   return {
     username,
-    count: r.count,
+    count: report.count,
     verdict,
-    confidence: typeof inv?.confidence === "number" ? inv.confidence : null,
+    confidence: investigation?.confidence ?? null,
     investigationStatus,
-    investigationStartedAt: inv?.startedAt || null,
-    botBouncerStatus: r.botBouncerStatus || null,
-    userStatus: r.userStatus || null,
+    investigationStartedAt: investigation?.startedAt ?? null,
+    botBouncerStatus: report.botBouncerStatus,
+    userStatus: report.userStatus,
   };
 }
 
 async function handleGetAllReports(): Promise<{
   reports: Record<string, Report>;
 }> {
-  const { reports = {} } = (await browser.storage.local.get("reports")) as {
-    reports?: Record<string, Report>;
-  };
-
-  const normalized: Record<string, Report> = {};
-  for (const [username, value] of Object.entries(reports)) {
-    normalized[username] = bonNormalizeReport(value);
-  }
-  return { reports: normalized };
+  return { reports: await bonReadReports() };
 }
 
 async function handleClearAllReports(): Promise<{ ok: boolean }> {
-  await browser.storage.local.set({ reports: {} });
+  await bonWriteReports({});
   return { ok: true };
 }
 
 async function handleDeleteReport(
   message: BaseMessage
 ): Promise<{ ok: boolean; removed?: boolean; error?: string }> {
-  const username = ((message.username as string) || "").trim();
+  const username = ((message.username as string) ?? "").trim();
   if (!username) {
     return { ok: false, error: "missing-username" };
   }
 
-  const { reports = {} } = (await browser.storage.local.get("reports")) as {
-    reports?: Record<string, Report>;
-  };
+  const reports = await bonReadReports();
   if (!(username in reports)) {
     return { ok: true, removed: false };
   }
 
   delete reports[username];
-  await browser.storage.local.set({ reports });
+  await bonWriteReports(reports);
   return { ok: true, removed: true };
 }
 
@@ -472,43 +493,44 @@ async function handleSetClaudeApiKey(
 
 async function setInvestigationState(
   username: string,
-  patch: Partial<Investigation>
+  patch: Partial<Investigation> & { status: Investigation["status"] }
 ): Promise<void> {
-  const { reports = {} } = (await browser.storage.local.get("reports")) as {
-    reports?: Record<string, Report>;
-  };
+  const reports = await bonReadReports();
 
   // Create the record on first investigation so users who haven't been
   // reported yet still get tracked.
-  const key = bonFindReportKey(reports, username) || username;
-  const existing = bonNormalizeReport(reports[key]);
-  const prevInv: Partial<Investigation> = existing.investigation || {};
-  const nextInv = { ...prevInv, ...patch } as Investigation;
+  const key = bonFindReportKey(reports, username) ?? username;
+  const existing = reports[key] ?? bonNormalizeReport(undefined);
+  const prevInvestigation = existing.investigation;
+  const nextInvestigation: Investigation = {
+    ...bonFreshInvestigation(patch.status),
+    ...(prevInvestigation ?? {}),
+    ...patch,
+  };
 
   // Append a snapshot to runs[] whenever a run terminates. Older records have
   // only the single most-recent investigation stored — seed runs[] from those
   // fields on the first re-run so historical timing/cost data survives.
   const completing =
-    prevInv.status === "running" &&
+    prevInvestigation?.status === "running" &&
     (patch.status === "done" || patch.status === "error");
 
-  if (completing) {
-    const prevRuns = Array.isArray(prevInv.runs) ? prevInv.runs : [];
+  if (completing && prevInvestigation) {
     const seeded =
-      prevRuns.length === 0 &&
-      prevInv.runAt &&
-      typeof prevInv.durationMs === "number"
-        ? [bonSnapshotRun(prevInv as Investigation, "done")]
-        : prevRuns;
+      prevInvestigation.runs.length === 0 &&
+      prevInvestigation.runAt !== null &&
+      prevInvestigation.durationMs !== null
+        ? [bonSnapshotRun(prevInvestigation, "done")]
+        : prevInvestigation.runs;
 
-    nextInv.runs = [
+    nextInvestigation.runs = [
       ...seeded,
-      bonSnapshotRun(nextInv, patch.status as "done" | "error"),
+      bonSnapshotRun(nextInvestigation, patch.status),
     ];
   }
 
-  reports[key] = { ...existing, investigation: nextInv };
-  await browser.storage.local.set({ reports });
+  reports[key] = { ...existing, investigation: nextInvestigation };
+  await bonWriteReports(reports);
 }
 
 async function handleInvestigateUser(
@@ -533,19 +555,22 @@ async function handleInvestigateUser(
     error: null,
   });
 
-  const { reports: latestReports = {} } = (await browser.storage.local.get(
-    "reports"
-  )) as { reports?: Record<string, Report> };
-  const existingRecord = bonNormalizeReport(
-    latestReports[bonFindReportKey(latestReports, username) || username]
-  );
+  const latestReports = await bonReadReports();
+  const existingRecord =
+    latestReports[bonFindReportKey(latestReports, username) ?? username] ??
+    bonNormalizeReport(undefined);
 
   try {
     const inputs = await bonGatherProfile(username, {
-      botBouncerStatus: existingRecord.botBouncerStatus,
-      botBouncerCheckedAt: existingRecord.botBouncerCheckedAt,
+      ...(existingRecord.botBouncerStatus
+        ? { botBouncerStatus: existingRecord.botBouncerStatus }
+        : {}),
+      ...(existingRecord.botBouncerCheckedAt
+        ? { botBouncerCheckedAt: existingRecord.botBouncerCheckedAt }
+        : {}),
+      contextItems: existingRecord.contextItems,
     });
-    const oneD = await bonRunOneDAnalysis(claudeApiKey, inputs.summary);
+    const analysis = await bonRunOneDAnalysis(claudeApiKey, inputs.summary);
 
     const durationMs = Date.now() - startedAt;
     console.log(
@@ -553,8 +578,8 @@ async function handleInvestigateUser(
     );
 
     const sharedFields = {
-      postsFetched: inputs.raw.submitted?.data?.children?.length || 0,
-      commentsFetched: inputs.raw.comments?.data?.children?.length || 0,
+      postsFetched: inputs.raw.submitted.data?.children?.length ?? 0,
+      commentsFetched: inputs.raw.comments.data?.children?.length ?? 0,
       accountCreatedAt: inputs.summary.account.created_at,
       accountAgeDays: inputs.summary.account.age_days,
     };
@@ -564,7 +589,7 @@ async function handleInvestigateUser(
       startedAt: null,
       error: null,
       durationMs,
-      ...oneD,
+      ...analysis,
       ...sharedFields,
     });
 
@@ -582,21 +607,21 @@ async function handleInvestigateUser(
 
     return {
       ok: true,
-      result: { ...oneD, ...sharedFields, durationMs },
+      result: { ...analysis, ...sharedFields, durationMs },
     };
-  } catch (err) {
-    console.error("[Bot or Not] investigation failed", err);
+  } catch (error) {
+    console.error("[Bot or Not] investigation failed", error);
 
     await setInvestigationState(username, {
       status: "error",
       startedAt: null,
-      error: String((err as { message?: string })?.message || err),
+      error: String((error as { message?: string })?.message ?? error),
       durationMs: Date.now() - startedAt,
     });
 
     return {
       ok: false,
-      error: String((err as { message?: string })?.message || err),
+      error: String((error as { message?: string })?.message ?? error),
     };
   }
 }
@@ -605,13 +630,11 @@ async function saveActivityData(
   username: string,
   activityData: ActivityData
 ): Promise<void> {
-  const { reports = {} } = (await browser.storage.local.get("reports")) as {
-    reports?: Record<string, Report>;
-  };
-  const key = bonFindReportKey(reports, username) || username;
-  const existing = bonNormalizeReport(reports[key]);
+  const reports = await bonReadReports();
+  const key = bonFindReportKey(reports, username) ?? username;
+  const existing = reports[key] ?? bonNormalizeReport(undefined);
   reports[key] = { ...existing, activityData };
-  await browser.storage.local.set({ reports });
+  await bonWriteReports(reports);
 }
 
 async function handleFetchActivity(
@@ -626,11 +649,11 @@ async function handleFetchActivity(
     const activityData = await bonFetchUserActivity(username);
     await saveActivityData(username, activityData);
     return { ok: true, activityData };
-  } catch (err) {
-    console.error("[Bot or Not] fetch-activity failed", err);
+  } catch (error) {
+    console.error("[Bot or Not] fetch-activity failed", error);
     return {
       ok: false,
-      error: String((err as { message?: string })?.message || err),
+      error: String((error as { message?: string })?.message ?? error),
     };
   }
 }
@@ -638,24 +661,52 @@ async function handleFetchActivity(
 async function handleGetUserState(
   message: BaseMessage
 ): Promise<{ count: number; isBot: boolean }> {
-  const { reports = {} } = (await browser.storage.local.get("reports")) as {
-    reports?: Record<string, Report>;
-  };
-  const { count } = bonNormalizeReport(reports[message.username as string]);
+  const reports = await bonReadReports();
+  const username = message.username as string;
+  const count = reports[username]?.count ?? 0;
   return { count, isBot: count > 0 };
+}
+
+async function handleDossierAdd(
+  message: BaseMessage
+): Promise<{ ok: boolean; added: boolean; error?: string }> {
+  const username = ((message.username as string) ?? "").trim();
+  const permalink = ((message.permalink as string) ?? "").trim();
+  const result = await bonDossierAdd(username, permalink, "manual");
+  return {
+    ok: result.ok,
+    added: result.added,
+    ...(result.error ? { error: result.error } : {}),
+  };
+}
+
+async function handleDossierRemove(
+  message: BaseMessage
+): Promise<{ ok: boolean; removed: boolean }> {
+  const username = ((message.username as string) ?? "").trim();
+  const permalink = ((message.permalink as string) ?? "").trim();
+  return bonDossierRemove(username, permalink);
+}
+
+async function handleDossierHasMap(
+  message: BaseMessage
+): Promise<{ map: Record<string, true> }> {
+  const queries = Array.isArray(message.queries)
+    ? (message.queries as Array<{ username: string; permalink: string }>)
+    : [];
+  const map = await bonDossierHasMap(queries);
+  return { map };
 }
 
 async function handleGetUserReport(
   message: BaseMessage
 ): Promise<{ report: Report | null }> {
-  const { reports = {} } = (await browser.storage.local.get("reports")) as {
-    reports?: Record<string, Report>;
-  };
+  const reports = await bonReadReports();
   const key = bonFindReportKey(reports, message.username as string);
 
   if (!key) {
     return { report: null };
   }
 
-  return { report: bonNormalizeReport(reports[key]) };
+  return { report: reports[key] };
 }

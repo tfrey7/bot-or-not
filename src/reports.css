@@ -54,6 +54,101 @@
     0 1px 2px rgba(60, 40, 20, 0.04), 0 6px 18px -8px rgba(60, 40, 20, 0.16);
   --bon-shadow-lg:
     0 2px 4px rgba(60, 40, 20, 0.05), 0 16px 36px -10px rgba(60, 40, 20, 0.22);
+
+  /* Themed bits referenced by classification stamps, region badges, "new"
+     factor warning states, the page texture, modal overlay, and heatmap
+     ramp. Hoisted to tokens so the dark-mode block below can re-skin them. */
+  --bon-stamp-bg: rgba(251, 247, 236, 0.55);
+  --bon-tz-match-bg: #e4ecda;
+  --bon-tz-match-border: #b6c89a;
+  --bon-tz-mismatch-bg: #f4e3b8;
+  --bon-tz-mismatch-border: #d8b574;
+  --bon-warning-bg: #f4e3b8;
+  --bon-warning-border: #d8b574;
+  --bon-warning-text: #6e3d0e;
+  --bon-warning-accent: #a07418;
+  --bon-warning-accent-soft: #884d12;
+  --bon-warning-bg-soft: #fbf2dc;
+  --bon-warning-stripe-a: #f4e3b8;
+  --bon-warning-stripe-b: #d8b574;
+  --bon-warning-signal-border: #b88837;
+  --bon-dot-grid: rgba(60, 40, 20, 0.08);
+  --bon-overlay: rgba(26, 22, 18, 0.5);
+
+  --bon-heat-1: #d4ddc1;
+  --bon-heat-2: #a3bc8e;
+  --bon-heat-3: #6b9663;
+  --bon-heat-4: var(--bon-stamp-forest);
+  --bon-heat-5: #144530;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    /* Paper surface inverts to a warm near-black; tints stay subtle so cards
+       and rows still separate from the page without high-contrast slabs. */
+    --bon-bg: #181410;
+    --bon-bg-tint: #221d17;
+    --bon-surface: #221d17;
+    --bon-surface-soft: #1d1813;
+    --bon-row-hover: #2c251c;
+
+    --bon-text: #ede4d0;
+    --bon-text-soft: #d4c9b1;
+    --bon-muted: #948b78;
+    --bon-muted-soft: #6a6253;
+
+    --bon-border: #36302a;
+    --bon-border-strong: #4f463a;
+    --bon-rule: #ede4d0;
+
+    /* Accents and stamps brightened so they still read as colored ink on
+       dark paper while keeping the original hue family. */
+    --bon-accent: #6da5e3;
+    --bon-accent-soft: rgba(109, 165, 227, 0.18);
+    --bon-link: #8fbdec;
+    --bon-link-hover: #b3d2f3;
+    --bon-stamp-red: #d05858;
+    --bon-stamp-rust: #d68754;
+    --bon-stamp-amber: #e0b557;
+    --bon-stamp-moss: #8aa86e;
+    --bon-stamp-forest: #6abd8a;
+    --bon-stamp-charcoal: #b0a896;
+    --bon-stamp-blue: #6da5e3;
+    --bon-stamp-slate: #8a96aa;
+    --bon-danger: #d05858;
+
+    --bon-shadow-xs: 0 1px 0 rgba(0, 0, 0, 0.3);
+    --bon-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35);
+    --bon-shadow-md:
+      0 1px 2px rgba(0, 0, 0, 0.25), 0 6px 18px -8px rgba(0, 0, 0, 0.55);
+    --bon-shadow-lg:
+      0 2px 4px rgba(0, 0, 0, 0.3), 0 16px 36px -10px rgba(0, 0, 0, 0.7);
+
+    --bon-stamp-bg: rgba(34, 29, 23, 0.6);
+    --bon-tz-match-bg: rgba(138, 168, 110, 0.18);
+    --bon-tz-match-border: rgba(138, 168, 110, 0.55);
+    --bon-tz-mismatch-bg: rgba(224, 181, 87, 0.16);
+    --bon-tz-mismatch-border: rgba(224, 181, 87, 0.5);
+
+    --bon-warning-bg: rgba(224, 181, 87, 0.16);
+    --bon-warning-border: rgba(224, 181, 87, 0.5);
+    --bon-warning-text: #e0b557;
+    --bon-warning-accent: #d6a23c;
+    --bon-warning-accent-soft: #f0c977;
+    --bon-warning-bg-soft: rgba(224, 181, 87, 0.1);
+    --bon-warning-stripe-a: rgba(224, 181, 87, 0.3);
+    --bon-warning-stripe-b: rgba(224, 181, 87, 0.55);
+    --bon-warning-signal-border: rgba(224, 181, 87, 0.65);
+
+    --bon-dot-grid: rgba(237, 228, 208, 0.04);
+    --bon-overlay: rgba(0, 0, 0, 0.65);
+
+    --bon-heat-1: #2c3826;
+    --bon-heat-2: #3e5535;
+    --bon-heat-3: #5a8050;
+    --bon-heat-4: #6abd8a;
+    --bon-heat-5: #9fdab4;
+  }
 }
 
 * {
@@ -84,7 +179,7 @@ body {
      interfering with legibility. */
   background-image: radial-gradient(
     circle at 1px 1px,
-    rgba(60, 40, 20, 0.08) 1px,
+    var(--bon-dot-grid) 1px,
     transparent 0
   );
   background-size: 24px 24px;
@@ -189,7 +284,7 @@ body {
 }
 .bon-btn:hover {
   background: var(--bon-row-hover);
-  border-color: #9c8665;
+  border-color: var(--bon-text-soft);
 }
 .bon-btn:active {
   transform: translateY(1px);
@@ -390,12 +485,12 @@ table.bon-table {
   color: var(--bon-text);
 }
 .bon-region-badge--tz-match {
-  background: #e4ecda;
-  border-color: #b6c89a;
+  background: var(--bon-tz-match-bg);
+  border-color: var(--bon-tz-match-border);
 }
 .bon-region-badge--tz-mismatch {
-  background: #f4e3b8;
-  border-color: #d8b574;
+  background: var(--bon-tz-mismatch-bg);
+  border-color: var(--bon-tz-mismatch-border);
 }
 .bon-region-badge .bon-region-flag {
   font-size: 1rem;
@@ -429,7 +524,7 @@ table.bon-table {
   line-height: 1.2;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  background: rgba(251, 247, 236, 0.55);
+  background: var(--bon-stamp-bg);
   white-space: nowrap;
 }
 .bon-verdict-badge--bot {
@@ -520,10 +615,14 @@ table.bon-table {
   color: var(--bon-muted);
 }
 .bon-factor-dot--new {
-  background: repeating-linear-gradient(135deg, #f4e3b8 0 3px, #d8b574 3px 6px);
-  border: 1px solid #a07418;
-  --bon-factor-accent: #a07418;
-  color: #884d12;
+  background: repeating-linear-gradient(
+    135deg,
+    var(--bon-warning-stripe-a) 0 3px,
+    var(--bon-warning-stripe-b) 3px 6px
+  );
+  border: 1px solid var(--bon-warning-accent);
+  --bon-factor-accent: var(--bon-warning-accent);
+  color: var(--bon-warning-accent-soft);
 }
 
 /* ----- Hover card popover -------------------------------------------------
@@ -596,7 +695,7 @@ table.bon-table {
   --bon-factor-accent: var(--bon-border-strong);
 }
 .bon-factor-card--new {
-  --bon-factor-accent: #a07418;
+  --bon-factor-accent: var(--bon-warning-accent);
 }
 
 .bon-factor-card-header {
@@ -799,11 +898,6 @@ table.bon-table {
   font-weight: 400;
   letter-spacing: -0.005em;
 }
-.bon-verdict-summary::first-letter {
-  font-style: normal;
-  font-weight: 400;
-  color: var(--bon-stamp-blue);
-}
 .bon-verdict-meta {
   font-family: var(--bon-font-mono);
   font-size: 0.72rem;
@@ -903,7 +997,7 @@ table.bon-table {
   letter-spacing: 0.14em;
   text-transform: uppercase;
   white-space: nowrap;
-  background: rgba(251, 247, 236, 0.55);
+  background: var(--bon-stamp-bg);
 }
 .bon-factor-signal--bot {
   color: var(--bon-stamp-red);
@@ -915,13 +1009,13 @@ table.bon-table {
   color: var(--bon-stamp-forest);
 }
 .bon-factor-signal--new {
-  color: #884d12;
-  border-color: #b88837;
-  background: #f4e3b8;
+  color: var(--bon-warning-accent-soft);
+  border-color: var(--bon-warning-signal-border);
+  background: var(--bon-warning-bg);
 }
 .bon-factor--new {
   border-style: dashed;
-  background: #fbf2dc;
+  background: var(--bon-warning-bg-soft);
   border-top-style: dashed;
 }
 .bon-factor-reasoning--muted {
@@ -1066,7 +1160,7 @@ table.bon-table {
 .bon-modal-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(26, 22, 18, 0.5);
+  background: var(--bon-overlay);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1139,6 +1233,40 @@ table.bon-table {
   color: var(--bon-danger);
 }
 
+.bon-settings-danger {
+  margin: 1.5em 0 1.25em;
+  padding-top: 1em;
+  border-top: 1px solid var(--bon-border);
+}
+.bon-settings-danger-label {
+  font-family: var(--bon-font-mono);
+  font-size: 0.66rem;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--bon-muted);
+  font-weight: 700;
+  margin: 0 0 0.55em;
+}
+.bon-settings-danger-row {
+  display: flex;
+  align-items: center;
+  gap: 0.9em;
+}
+.bon-settings-danger-desc {
+  flex: 1;
+  font-family: var(--bon-font-mono);
+  font-size: 0.75rem;
+  color: var(--bon-muted);
+  line-height: 1.45;
+}
+
+.bon-row-footer {
+  display: flex;
+  justify-content: flex-end;
+  padding: 0.4em 1.75em 1.4em 3.5em;
+  background: var(--bon-surface-soft);
+}
+
 /* ============================================================
    Heatmap / contribution calendar
    ============================================================ */
@@ -1168,9 +1296,9 @@ table.bon-table {
   cursor: default;
 }
 .bon-heatmap-banner {
-  background: #f4e3b8;
-  border: 1px solid #d8b574;
-  color: #6e3d0e;
+  background: var(--bon-warning-bg);
+  border: 1px solid var(--bon-warning-border);
+  color: var(--bon-warning-text);
   border-radius: 0.4em;
   padding: 0.55em 0.8em;
   font-size: 0.78rem;
@@ -1316,19 +1444,19 @@ table.bon-table {
   background: var(--bon-bg-tint);
 }
 .bon-heatmap-cell--lvl1 {
-  background: #d4ddc1;
+  background: var(--bon-heat-1);
 }
 .bon-heatmap-cell--lvl2 {
-  background: #a3bc8e;
+  background: var(--bon-heat-2);
 }
 .bon-heatmap-cell--lvl3 {
-  background: #6b9663;
+  background: var(--bon-heat-3);
 }
 .bon-heatmap-cell--lvl4 {
-  background: var(--bon-stamp-forest);
+  background: var(--bon-heat-4);
 }
 .bon-heatmap-cell--lvl5 {
-  background: #144530;
+  background: var(--bon-heat-5);
 }
 .bon-heatmap-legend {
   display: inline-flex;
@@ -1502,4 +1630,133 @@ table.bon-table {
     max-width: 24em;
     margin: 0 auto;
   }
+}
+
+/* ---------- Dossier section (reports row detail) ---------- */
+
+.bon-dossier-empty {
+  font-size: 0.85rem;
+  color: var(--bon-muted);
+  margin: 0;
+  line-height: 1.5;
+  max-width: 60ch;
+}
+
+.bon-dossier-hint {
+  font-size: 0.78rem;
+  color: var(--bon-muted);
+  margin: 0 0 0.9em;
+  font-style: italic;
+}
+
+.bon-dossier-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 0.85em;
+}
+
+.bon-dossier-item {
+  padding: 0.7em 0.9em;
+  background: var(--bon-surface, #fff);
+  border: 1px solid var(--bon-border);
+  border-radius: 4px;
+}
+
+.bon-dossier-item__header {
+  display: flex;
+  align-items: center;
+  gap: 0.6em;
+  flex-wrap: wrap;
+  font-family: var(--bon-font-mono);
+  font-size: 0.7rem;
+  color: var(--bon-muted);
+  margin-bottom: 0.45em;
+}
+
+.bon-dossier-item__kind {
+  font-size: 0.9rem;
+}
+
+.bon-dossier-item__sub {
+  color: var(--bon-text);
+  font-weight: 600;
+}
+
+.bon-dossier-item__score,
+.bon-dossier-item__date {
+  font-variant-numeric: tabular-nums;
+}
+
+.bon-dossier-item__prov {
+  margin-left: auto;
+  padding: 0.1em 0.55em;
+  border-radius: 2px;
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-weight: 700;
+}
+
+.bon-dossier-item__prov--auto {
+  background: rgba(128, 128, 128, 0.16);
+  color: var(--bon-muted);
+}
+
+.bon-dossier-item__prov--manual {
+  background: rgba(214, 122, 28, 0.18);
+  color: #b35a1e;
+}
+
+.bon-dossier-item__remove {
+  background: transparent;
+  border: 1px solid var(--bon-border);
+  color: var(--bon-muted);
+  padding: 0.18em 0.7em;
+  font-size: 0.7rem;
+  border-radius: 3px;
+  cursor: pointer;
+  font-family: var(--bon-font-mono);
+  letter-spacing: 0.06em;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+
+.bon-dossier-item__remove:hover:not(:disabled) {
+  color: #c0392b;
+  border-color: #c0392b;
+}
+
+.bon-dossier-item__remove:disabled {
+  cursor: progress;
+  opacity: 0.5;
+}
+
+.bon-dossier-item__title {
+  margin: 0 0 0.3em;
+  font-weight: 600;
+  font-size: 0.92rem;
+  color: var(--bon-text);
+  line-height: 1.35;
+}
+
+.bon-dossier-item__body {
+  margin: 0 0 0.5em;
+  font-size: 0.85rem;
+  line-height: 1.45;
+  color: var(--bon-text);
+  white-space: pre-wrap;
+}
+
+.bon-dossier-item__permalink {
+  font-family: var(--bon-font-mono);
+  font-size: 0.7rem;
+  color: var(--bon-muted);
+  text-decoration: none;
+  word-break: break-all;
+}
+
+.bon-dossier-item__permalink:hover {
+  color: var(--bon-stamp-blue);
+  text-decoration: underline;
 }

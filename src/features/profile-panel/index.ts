@@ -127,9 +127,10 @@ function injectPostAuthorPanel(): void {
   // the destination post page render.
   const urlBase = postMatch[1].toLowerCase();
   const postEl = Array.from(document.querySelectorAll("shreddit-post")).find(
-    (p) =>
-      (p.getAttribute("permalink") || "").toLowerCase().startsWith(urlBase) &&
-      !p.closest("shreddit-feed")
+    (post) =>
+      (post.getAttribute("permalink") || "")
+        .toLowerCase()
+        .startsWith(urlBase) && !post.closest("shreddit-feed")
   ) as HTMLElement | undefined;
 
   if (!postEl) {
@@ -163,14 +164,14 @@ async function refreshProfilePanel(username: string): Promise<void> {
 
   let report: Report | null = null;
   try {
-    const res = (await browser.runtime.sendMessage({
+    const response = (await browser.runtime.sendMessage({
       type: "get-user-report",
       username,
     })) as { report?: Report | null };
-    report = res?.report ?? null;
+    report = response?.report ?? null;
     reportCache.set(username, report);
-  } catch (err) {
-    console.error("[Bot or Not] failed to fetch user report", err);
+  } catch (error) {
+    console.error("[Bot or Not] failed to fetch user report", error);
   }
 
   renderProfilePanel(username, report);
@@ -249,14 +250,14 @@ async function refreshPostAuthorPanel(
 
   let report: Report | null = null;
   try {
-    const res = (await browser.runtime.sendMessage({
+    const response = (await browser.runtime.sendMessage({
       type: "get-user-report",
       username,
     })) as { report?: Report | null };
-    report = res?.report ?? null;
+    report = response?.report ?? null;
     reportCache.set(username, report);
-  } catch (err) {
-    console.error("[Bot or Not] failed to fetch user report", err);
+  } catch (error) {
+    console.error("[Bot or Not] failed to fetch user report", error);
   }
 
   renderPostAuthorPanel(username, postEl, report);
@@ -277,7 +278,7 @@ function renderPostAuthorPanel(
   if (!postEl || !postEl.isConnected) {
     postEl =
       (Array.from(document.querySelectorAll("shreddit-post")).find(
-        (p) => !p.closest("shreddit-feed")
+        (post) => !post.closest("shreddit-feed")
       ) as HTMLElement | undefined) ?? null;
     if (!postEl) {
       return;
@@ -352,7 +353,7 @@ export function bonProfilePanelInit(): void {
     if (postPanel?.dataset.username) {
       const postEl =
         (Array.from(document.querySelectorAll("shreddit-post")).find(
-          (p) => !p.closest("shreddit-feed")
+          (post) => !post.closest("shreddit-feed")
         ) as HTMLElement | undefined) ?? null;
 
       void refreshPostAuthorPanel(

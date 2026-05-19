@@ -166,7 +166,7 @@
 }
 
 .bon-chart-area {
-  fill: rgba(31, 70, 115, 0.12);
+  fill: var(--bon-accent-soft);
   stroke: none;
 }
 

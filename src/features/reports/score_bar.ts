@@ -12,7 +12,7 @@ export function bonReportsScoreBar(
 ): HTMLDivElement {
   const clamped = Math.max(-1, Math.min(1, score));
 
-  const conf =
+  const clampedConfidence =
     typeof confidence === "number" ? Math.max(0, Math.min(1, confidence)) : 0;
 
   const bar = document.createElement("div");
@@ -30,7 +30,7 @@ export function bonReportsScoreBar(
 
   fill.className = `bon-factor-bar-fill bon-factor-bar-fill--${fillClass}`;
   fill.style.left = "0";
-  fill.style.width = `${conf * 100}%`;
+  fill.style.width = `${clampedConfidence * 100}%`;
 
   bar.appendChild(fill);
   return bar;

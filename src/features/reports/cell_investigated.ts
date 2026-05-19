@@ -59,9 +59,9 @@ export function bonReportsPopulateInvestigatedCell(
   cell.appendChild(when);
 
   if (typeof investigation.durationMs === "number") {
-    const dur = document.createElement("span");
-    dur.className = "bon-duration";
-    dur.textContent = `Took ${bonFmtDuration(investigation.durationMs)}`;
-    cell.appendChild(dur);
+    const duration = document.createElement("span");
+    duration.className = "bon-duration";
+    duration.textContent = `Took ${bonFmtDuration(investigation.durationMs)}`;
+    cell.appendChild(duration);
   }
 }

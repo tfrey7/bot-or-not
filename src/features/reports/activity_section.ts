@@ -5,6 +5,7 @@
 // most recent N items and older activity is unknowable from the API.
 
 import type { ActivityData } from "../../types.ts";
+import { bonAugmentActivityWithContext } from "../../utils/reddit_activity.ts";
 import { bonReportsCalendarHeatmap } from "./calendar_heatmap.ts";
 import { bonReportsHourSection } from "./hour_heatmap.ts";
 import type { ReportRow } from "./logic.ts";
@@ -14,34 +15,34 @@ function renderActivityRefresh(
   activityData: ActivityData | null,
   standalone: boolean
 ): HTMLButtonElement {
-  const btn = document.createElement("button");
-  btn.type = "button";
-  btn.className = "bon-heatmap-refresh";
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "bon-heatmap-refresh";
 
-  const ts = activityData?.fetchedAt
+  const fetchedAt = activityData?.fetchedAt
     ? new Date(activityData.fetchedAt).toLocaleString()
     : "";
 
-  btn.textContent = standalone ? "↻ Refresh" : "↻ refresh";
-  btn.title = ts ? `Fetched ${ts}` : "Refresh from Reddit";
+  button.textContent = standalone ? "↻ Refresh" : "↻ refresh";
+  button.title = fetchedAt ? `Fetched ${fetchedAt}` : "Refresh from Reddit";
 
-  btn.addEventListener("click", async () => {
-    btn.disabled = true;
-    btn.textContent = "refreshing…";
+  button.addEventListener("click", async () => {
+    button.disabled = true;
+    button.textContent = "refreshing…";
     try {
       await browser.runtime.sendMessage({
         type: "fetch-activity",
         username,
       });
       // storage.onChanged will re-render.
-    } catch (err) {
-      console.error("[Bot or Not] refresh failed", err);
-      btn.disabled = false;
-      btn.textContent = standalone ? "↻ Refresh" : "↻ refresh";
+    } catch (error) {
+      console.error("[Bot or Not] refresh failed", error);
+      button.disabled = false;
+      button.textContent = standalone ? "↻ Refresh" : "↻ refresh";
     }
   });
 
-  return btn;
+  return button;
 }
 
 function renderApiLimitBanner(
@@ -52,8 +53,8 @@ function renderApiLimitBanner(
     return null;
   }
 
-  const div = document.createElement("div");
-  div.className = "bon-heatmap-banner";
+  const banner = document.createElement("div");
+  banner.className = "bon-heatmap-banner";
 
   const limitedKinds: string[] = [];
   if (postsLimited) {
@@ -84,8 +85,8 @@ function renderApiLimitBanner(
     ? ` Activity before ${dateText} may be undercounted — what looks like dormancy could just be data older than the API window.`
     : " Older activity may be missing from the heatmap.";
 
-  div.textContent = lead + tail;
-  return div;
+  banner.textContent = lead + tail;
+  return banner;
 }
 
 export function bonReportsActivitySection(report: ReportRow): HTMLDivElement {
@@ -100,38 +101,38 @@ export function bonReportsActivitySection(report: ReportRow): HTMLDivElement {
   const { username, activityData } = report;
 
   if (!activityData) {
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.className = "bon-heatmap-load";
-    btn.textContent = "📊 Load activity";
+    const loadButton = document.createElement("button");
+    loadButton.type = "button";
+    loadButton.className = "bon-heatmap-load";
+    loadButton.textContent = "📊 Load activity";
 
-    btn.addEventListener("click", async () => {
-      btn.disabled = true;
-      btn.textContent = "Loading…";
+    loadButton.addEventListener("click", async () => {
+      loadButton.disabled = true;
+      loadButton.textContent = "Loading…";
       try {
-        const res = (await browser.runtime.sendMessage({
+        const response = (await browser.runtime.sendMessage({
           type: "fetch-activity",
           username,
         })) as { ok?: boolean; error?: string };
-        if (res?.ok === false) {
-          btn.disabled = false;
-          btn.textContent = "📊 Load activity";
+        if (response?.ok === false) {
+          loadButton.disabled = false;
+          loadButton.textContent = "📊 Load activity";
 
-          const err = document.createElement("p");
-          err.className = "bon-heatmap-empty";
-          err.style.color = "var(--bon-danger)";
-          err.textContent = `Failed to load: ${res.error || "Unknown error"}`;
-          wrap.appendChild(err);
+          const errorMessage = document.createElement("p");
+          errorMessage.className = "bon-heatmap-empty";
+          errorMessage.style.color = "var(--bon-danger)";
+          errorMessage.textContent = `Failed to load: ${response.error || "Unknown error"}`;
+          wrap.appendChild(errorMessage);
         }
         // storage.onChanged will trigger a re-render on success.
-      } catch (err) {
-        console.error("[Bot or Not] fetch-activity failed", err);
-        btn.disabled = false;
-        btn.textContent = "📊 Load activity";
+      } catch (error) {
+        console.error("[Bot or Not] fetch-activity failed", error);
+        loadButton.disabled = false;
+        loadButton.textContent = "📊 Load activity";
       }
     });
 
-    wrap.appendChild(btn);
+    wrap.appendChild(loadButton);
     return wrap;
   }
 
@@ -163,11 +164,16 @@ export function bonReportsActivitySection(report: ReportRow): HTMLDivElement {
   const commentsLabel = commentsCount === 1 ? "comment" : "comments";
 
   const countSpan = document.createElement("span");
-  const ps = document.createElement("strong");
-  ps.textContent = String(postsCount);
-  const cs = document.createElement("strong");
-  cs.textContent = String(commentsCount);
-  countSpan.append(ps, ` ${postsLabel} · `, cs, ` ${commentsLabel}`);
+  const postsStrong = document.createElement("strong");
+  postsStrong.textContent = String(postsCount);
+  const commentsStrong = document.createElement("strong");
+  commentsStrong.textContent = String(commentsCount);
+  countSpan.append(
+    postsStrong,
+    ` ${postsLabel} · `,
+    commentsStrong,
+    ` ${commentsLabel}`
+  );
   meta.appendChild(countSpan);
 
   const earliest = timestamps[0];
@@ -178,8 +184,13 @@ export function bonReportsActivitySection(report: ReportRow): HTMLDivElement {
   meta.appendChild(renderActivityRefresh(username, activityData, false));
   wrap.appendChild(meta);
 
+  const augmented = bonAugmentActivityWithContext(
+    activityData,
+    report.contextItems
+  );
+
   wrap.appendChild(bonReportsCalendarHeatmap(timestamps, activityData));
-  wrap.appendChild(bonReportsHourSection(timestamps, activityData));
+  wrap.appendChild(bonReportsHourSection(timestamps, augmented));
 
   return wrap;
 }

@@ -861,3 +861,92 @@
   font-style: italic;
   padding: 0.3em 0 0;
 }
+
+/* ---------- Dossier "Add context" button ----------
+   Floating pill anchored absolutely under each reported user's comment/post
+   action row. Inline injection isn't reliable — Reddit's faceplate-tracker
+   wrappers use `display: contents` and lit-html reconciles unauthorized
+   children away. Absolute positioning to document.body sidesteps both. */
+
+.bon-dossier-btn--floating {
+  position: absolute;
+  z-index: 100;
+  pointer-events: auto;
+  /* `top` is set to the row's vertical midpoint; this transform centers the
+     pill on that point so it visually sits on the same line as Vote/Share. */
+  transform: translateY(-50%);
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 0.3em 0.7em;
+  /* Color/bg are overridden by the state classes below but default to the
+     same orange palette as the rest of the report UI. */
+  background: rgba(214, 122, 28, 0.15);
+  color: #f0a04b;
+  border: 1px solid rgba(214, 122, 28, 0.5);
+}
+
+.bon-dossier-btn--floating:hover:not(:disabled) {
+  background: rgba(214, 122, 28, 0.28);
+  border-color: rgba(214, 122, 28, 0.8);
+}
+
+.bon-dossier-btn {
+  display: inline-flex;
+  align-items: center;
+  margin: 0 0 0 0.25em;
+  padding: 0.4em 0.85em;
+  font-family: inherit;
+  font-size: 0.78em;
+  font-weight: 600;
+  line-height: 1.2;
+  color: inherit;
+  background: transparent;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  cursor: pointer;
+  white-space: nowrap;
+  user-select: none;
+  opacity: 0.7;
+  transition: opacity 0.15s, transform 0.15s, background 0.15s, border-color 0.15s;
+  flex: 0 0 auto;
+  align-self: center;
+  vertical-align: middle;
+}
+
+.bon-dossier-btn:hover:not(:disabled) {
+  opacity: 1;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.bon-dossier-btn:disabled {
+  cursor: progress;
+  opacity: 0.5;
+}
+
+.bon-dossier-btn--added {
+  opacity: 1;
+  background: rgba(214, 122, 28, 0.18);
+  border-color: rgba(214, 122, 28, 0.65);
+  color: #f0a04b;
+}
+
+.bon-dossier-btn--added:hover:not(:disabled) {
+  background: rgba(214, 122, 28, 0.28);
+}
+
+.bon-dossier-btn--loading {
+  opacity: 0.55;
+}
+
+.bon-dossier-btn--error {
+  border-color: rgba(192, 57, 43, 0.7);
+  color: #e57360;
+  opacity: 1;
+}
+
+/* Comments live in tighter rows — shave the size a touch. */
+.bon-dossier-btn--comment {
+  font-size: 0.72em;
+  padding: 0.3em 0.7em;
+}

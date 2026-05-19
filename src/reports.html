@@ -36,14 +36,6 @@
           >
             ⚙ Settings
           </button>
-          <button
-            type="button"
-            id="bon-clear-btn"
-            class="bon-btn bon-btn--danger"
-            hidden
-          >
-            Clear all
-          </button>
         </div>
       </header>
 
@@ -125,6 +117,21 @@
             spellcheck="false"
           />
           <p id="bon-api-key-status" class="bon-settings-status"></p>
+        </div>
+        <div class="bon-settings-danger">
+          <p class="bon-settings-danger-label">Danger zone</p>
+          <div class="bon-settings-danger-row">
+            <span class="bon-settings-danger-desc">
+              Delete every reported user and investigation.
+            </span>
+            <button
+              type="button"
+              id="bon-clear-btn"
+              class="bon-btn bon-btn--danger"
+            >
+              Clear all
+            </button>
+          </div>
         </div>
         <div class="bon-modal-actions">
           <button type="button" id="bon-settings-cancel" class="bon-btn">

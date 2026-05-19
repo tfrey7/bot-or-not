@@ -2,11 +2,9 @@
 // orchestrator and widget files all import from here so render code stays
 // focused on building nodes from already-computed values.
 
-import {
-  bonInferRegion,
-  type RegionInferenceResult,
-} from "../regions/index.ts";
+import { bonInferRegion, type RegionInferenceResult } from "../regions";
 import type { ActivityData, Investigation, Report } from "../../types.ts";
+import { bonAugmentActivityWithContext } from "../../utils/reddit_activity.ts";
 import { bonIsInvestigationStale } from "../../verdict.ts";
 import { BON_REPORTS_VERDICT_RANK } from "./data.ts";
 
@@ -17,30 +15,33 @@ export type ReportRow = Report & { username: string };
 export function bonReportsExpectedDurationMs(
   allReports: ReportRow[]
 ): number | null {
-  const durs: number[] = [];
-  for (const r of allReports) {
-    const inv = r.investigation;
-    if (!inv) {
+  const durations: number[] = [];
+  for (const report of allReports) {
+    const investigation = report.investigation;
+    if (!investigation) {
       continue;
     }
 
-    if (Array.isArray(inv.runs) && inv.runs.length > 0) {
-      for (const run of inv.runs) {
-        if (run.status === "done" && typeof run.durationMs === "number") {
-          durs.push(run.durationMs);
+    if (investigation.runs.length > 0) {
+      for (const run of investigation.runs) {
+        if (run.status === "done" && run.durationMs !== null) {
+          durations.push(run.durationMs);
         }
       }
-    } else if (inv.status === "done" && typeof inv.durationMs === "number") {
-      durs.push(inv.durationMs);
+    } else if (
+      investigation.status === "done" &&
+      investigation.durationMs !== null
+    ) {
+      durations.push(investigation.durationMs);
     }
   }
 
-  if (durs.length < 3) {
+  if (durations.length < 3) {
     return null;
   }
 
-  durs.sort((a, b) => a - b);
-  return durs[Math.floor(durs.length / 2)];
+  durations.sort((a, b) => a - b);
+  return durations[Math.floor(durations.length / 2)];
 }
 
 export function bonReportsFormatExpectedSec(ms: number): number {
@@ -100,21 +101,21 @@ export function bonReportsSanitizeUsernameQuery(
 export function bonReportsDiagnoseLoadError(
   message: string | null | undefined
 ): string {
-  const msg = (message || "").toLowerCase();
+  const normalized = (message || "").toLowerCase();
 
   if (
-    msg.includes("receiving end does not exist") ||
-    msg.includes("could not establish connection") ||
-    msg.includes("message port closed")
+    normalized.includes("receiving end does not exist") ||
+    normalized.includes("could not establish connection") ||
+    normalized.includes("message port closed")
   ) {
     return "The extension background worker isn't responding. This usually happens after the extension was reloaded or updated while this page was open. Reload the page to reconnect.";
   }
 
-  if (msg.includes("quota") || msg.includes("storage")) {
+  if (normalized.includes("quota") || normalized.includes("storage")) {
     return "Browser storage may be full or unavailable. Try clearing some reports or checking your browser's extension storage permissions.";
   }
 
-  if (msg.includes("undefined") || msg.includes("cannot read")) {
+  if (normalized.includes("undefined") || normalized.includes("cannot read")) {
     return "Stored report data may be corrupted. Check the browser console for details, or clear all reports from Settings as a last resort.";
   }
 
@@ -129,32 +130,35 @@ export function bonReportsHasStructuralChange(
     return true;
   }
 
-  const prevByUser = new Map(prev.map((r) => [r.username, r]));
+  const prevByUser = new Map(prev.map((report) => [report.username, report]));
 
-  for (const r of next) {
-    const p = prevByUser.get(r.username);
-    if (!p) {
-      return true;
-    }
-
-    const ps = p.investigation?.status;
-    const ns = r.investigation?.status;
-    if (ps !== ns) {
-      return true;
-    }
-    if (p.investigation?.verdict !== r.investigation?.verdict) {
-      return true;
-    }
-    if (p.count !== r.count) {
-      return true;
-    }
-    if (p.lastReportedAt !== r.lastReportedAt) {
+  for (const report of next) {
+    const prevReport = prevByUser.get(report.username);
+    if (!prevReport) {
       return true;
     }
 
-    const pStale = ps === "running" && bonIsInvestigationStale(p.investigation);
-    const nStale = ns === "running" && bonIsInvestigationStale(r.investigation);
-    if (pStale !== nStale) {
+    const prevStatus = prevReport.investigation?.status;
+    const nextStatus = report.investigation?.status;
+    if (prevStatus !== nextStatus) {
+      return true;
+    }
+    if (prevReport.investigation?.verdict !== report.investigation?.verdict) {
+      return true;
+    }
+    if (prevReport.count !== report.count) {
+      return true;
+    }
+    if (prevReport.lastReportedAt !== report.lastReportedAt) {
+      return true;
+    }
+
+    const prevStale =
+      prevStatus === "running" &&
+      bonIsInvestigationStale(prevReport.investigation);
+    const nextStale =
+      nextStatus === "running" && bonIsInvestigationStale(report.investigation);
+    if (prevStale !== nextStale) {
       return true;
     }
   }
@@ -184,8 +188,8 @@ export function bonReportsInferTimezoneFromTimestamps(
   }
 
   const utcCounts = new Array<number>(24).fill(0);
-  for (const t of timestamps) {
-    utcCounts[new Date(t).getUTCHours()]++;
+  for (const timestamp of timestamps) {
+    utcCounts[new Date(timestamp).getUTCHours()]++;
   }
 
   const WINDOW = 6;
@@ -246,8 +250,11 @@ export function bonReportsComputeRegionForReport(
     ...(activityData?.commentTimestamps || []),
   ];
 
-  const tz = bonReportsInferTimezoneFromTimestamps(timestamps);
-  return bonInferRegion(activityData, tz);
+  const timezone = bonReportsInferTimezoneFromTimestamps(timestamps);
+  const augmented = activityData
+    ? bonAugmentActivityWithContext(activityData, report.contextItems)
+    : null;
+  return bonInferRegion(augmented, timezone);
 }
 
 export function bonReportsComputeEarliestFullyVisible(
@@ -292,38 +299,38 @@ export function bonReportsDefaultDirFor(key: SortKey): SortDir {
 type SortValue = string | number | null;
 
 export function bonReportsSortValue(
-  r: ReportRow,
+  report: ReportRow,
   key: SortKey,
   regionLabels: Record<string, string>
 ): SortValue {
   if (key === "username") {
-    return r.username.toLowerCase();
+    return report.username.toLowerCase();
   }
   if (key === "count") {
-    return r.count || 0;
+    return report.count || 0;
   }
   if (key === "lastReportedAt") {
-    return r.lastReportedAt || 0;
+    return report.lastReportedAt || 0;
   }
   if (key === "verdict") {
-    const v = r.investigation?.verdict;
-    return v ? (BON_REPORTS_VERDICT_RANK[v] ?? 5) : 5;
+    const verdict = report.investigation?.verdict;
+    return verdict ? (BON_REPORTS_VERDICT_RANK[verdict] ?? 5) : 5;
   }
   if (key === "investigatedAt") {
-    const inv: Investigation | null = r.investigation;
-    if (!inv) {
+    const investigation: Investigation | null = report.investigation;
+    if (!investigation) {
       return 0;
     }
 
     // While running, runAt isn't written yet — fall back to startedAt so a
     // freshly-kicked-off investigation sorts to the top instead of the
     // bottom.
-    return inv.runAt || inv.startedAt || 0;
+    return investigation.runAt ?? investigation.startedAt ?? 0;
   }
   if (key === "region") {
     // Sort by region label so same-country rows cluster; rows with no
     // inferred region sink to the bottom.
-    const region = bonReportsComputeRegionForReport(r);
+    const region = bonReportsComputeRegionForReport(report);
     if (!region) {
       return "￿";
     }
@@ -342,26 +349,26 @@ export function bonReportsCompareBy(
   dir: SortDir,
   regionLabels: Record<string, string>
 ): (a: ReportRow, b: ReportRow) => number {
-  const mult = dir === "asc" ? 1 : -1;
+  const multiplier = dir === "asc" ? 1 : -1;
 
   return (a, b) => {
-    const av = bonReportsSortValue(a, key, regionLabels);
-    const bv = bonReportsSortValue(b, key, regionLabels);
+    const aValue = bonReportsSortValue(a, key, regionLabels);
+    const bValue = bonReportsSortValue(b, key, regionLabels);
 
-    if (av == null && bv == null) {
+    if (aValue == null && bValue == null) {
       return 0;
     }
-    if (av == null) {
+    if (aValue == null) {
       return 1;
     }
-    if (bv == null) {
+    if (bValue == null) {
       return -1;
     }
-    if (av < bv) {
-      return -1 * mult;
+    if (aValue < bValue) {
+      return -1 * multiplier;
     }
-    if (av > bv) {
-      return 1 * mult;
+    if (aValue > bValue) {
+      return 1 * multiplier;
     }
 
     const aTime = a.lastReportedAt || 0;

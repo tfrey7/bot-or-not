@@ -9,7 +9,7 @@ import { bonScoreLeaning } from "../../utils/scoring.ts";
 import { bonTopReasons } from "../../verdict.ts";
 
 export function bonReportsTopReasonsList(
-  factors: Factor[] | null | undefined
+  factors: Factor[]
 ): HTMLUListElement | null {
   const top = bonTopReasons(factors, 3);
 
@@ -17,38 +17,37 @@ export function bonReportsTopReasonsList(
     return null;
   }
 
-  const ul = document.createElement("ul");
-  ul.className = "bon-top-reasons";
+  const list = document.createElement("ul");
+  list.className = "bon-top-reasons";
 
-  for (const f of top) {
-    const li = document.createElement("li");
-    const leaning = bonScoreLeaning(f.score, f.confidence);
+  for (const factor of top) {
+    const listItem = document.createElement("li");
+    const leaning = bonScoreLeaning(factor.score, factor.confidence);
 
-    li.className = `bon-reason bon-reason--${leaning}`;
+    listItem.className = `bon-reason bon-reason--${leaning}`;
 
     const bullet = document.createElement("span");
     bullet.className = "bon-reason__bullet";
     bullet.setAttribute("aria-hidden", "true");
-    li.appendChild(bullet);
+    listItem.appendChild(bullet);
 
     const text = document.createElement("span");
     text.className = "bon-reason__text";
 
     const label = document.createElement("strong");
     label.textContent =
-      BON_FACTOR_LABELS[f.key] ||
-      (f as { name?: string }).name ||
-      f.key ||
-      "Factor";
+      BON_FACTOR_LABELS[factor.key] ??
+      (factor as { name?: string }).name ??
+      factor.key;
 
     text.appendChild(label);
 
-    if (f.reasoning) {
-      text.appendChild(document.createTextNode(` — ${f.reasoning}`));
+    if (factor.reasoning) {
+      text.appendChild(document.createTextNode(` — ${factor.reasoning}`));
     }
 
-    li.appendChild(text);
-    ul.appendChild(li);
+    listItem.appendChild(text);
+    list.appendChild(listItem);
   }
-  return ul;
+  return list;
 }

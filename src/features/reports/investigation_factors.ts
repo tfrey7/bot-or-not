@@ -15,21 +15,21 @@ interface FactorWithExtras extends Factor {
   evidence?: string | string[];
 }
 
-function factorLabel(f: FactorWithExtras): string {
-  if (f.key && BON_FACTOR_LABELS[f.key]) {
-    return BON_FACTOR_LABELS[f.key];
+function factorLabel(factor: FactorWithExtras): string {
+  if (factor.key && BON_FACTOR_LABELS[factor.key]) {
+    return BON_FACTOR_LABELS[factor.key];
   }
 
-  if (f.name) {
-    return f.name.replace(/_/g, " ");
+  if (factor.name) {
+    return factor.name.replace(/_/g, " ");
   }
 
-  return f.key || "Factor";
+  return factor.key || "Factor";
 }
 
 function renderMissingFactor(key: string): HTMLLIElement {
-  const li = document.createElement("li");
-  li.className = "bon-factor bon-factor--new";
+  const listItem = document.createElement("li");
+  listItem.className = "bon-factor bon-factor--new";
 
   const meta = document.createElement("div");
   meta.className = "bon-factor-meta";
@@ -48,7 +48,7 @@ function renderMissingFactor(key: string): HTMLLIElement {
   header.appendChild(pill);
 
   meta.appendChild(header);
-  li.appendChild(meta);
+  listItem.appendChild(meta);
 
   const note = document.createElement("div");
   note.className = "bon-factor-content";
@@ -59,14 +59,14 @@ function renderMissingFactor(key: string): HTMLLIElement {
     "Added after this investigation ran. Re-run the investigation to include this factor in the verdict.";
 
   note.appendChild(inner);
-  li.appendChild(note);
+  listItem.appendChild(note);
 
-  return li;
+  return listItem;
 }
 
-function renderFactor(f: FactorWithExtras): HTMLLIElement {
-  const li = document.createElement("li");
-  li.className = "bon-factor";
+function renderFactor(factor: FactorWithExtras): HTMLLIElement {
+  const listItem = document.createElement("li");
+  listItem.className = "bon-factor";
 
   const meta = document.createElement("div");
   meta.className = "bon-factor-meta";
@@ -76,11 +76,11 @@ function renderFactor(f: FactorWithExtras): HTMLLIElement {
 
   const name = document.createElement("span");
   name.className = "bon-factor-name";
-  name.textContent = factorLabel(f);
+  name.textContent = factorLabel(factor);
   header.appendChild(name);
 
-  if (typeof f.score === "number") {
-    const leaning = bonScoreLeaning(f.score, f.confidence);
+  if (typeof factor.score === "number") {
+    const leaning = bonScoreLeaning(factor.score, factor.confidence);
 
     const pill = document.createElement("span");
     const pillClass =
@@ -97,64 +97,64 @@ function renderFactor(f: FactorWithExtras): HTMLLIElement {
   }
   meta.appendChild(header);
 
-  if (typeof f.score === "number") {
-    meta.appendChild(bonReportsScoreBar(f.score, f.confidence));
+  if (typeof factor.score === "number") {
+    meta.appendChild(bonReportsScoreBar(factor.score, factor.confidence));
   }
 
   const subMetaParts: string[] = [];
-  if (typeof f.confidence === "number") {
-    subMetaParts.push(`${Math.round(f.confidence * 100)}% confidence`);
+  if (typeof factor.confidence === "number") {
+    subMetaParts.push(`${Math.round(factor.confidence * 100)}% confidence`);
   }
 
   if (subMetaParts.length) {
-    const sm = document.createElement("div");
-    sm.className = "bon-factor-confidence";
-    sm.textContent = subMetaParts.join(" · ");
-    meta.appendChild(sm);
+    const subMeta = document.createElement("div");
+    subMeta.className = "bon-factor-confidence";
+    subMeta.textContent = subMetaParts.join(" · ");
+    meta.appendChild(subMeta);
   }
 
-  li.appendChild(meta);
+  listItem.appendChild(meta);
 
   const content = document.createElement("div");
   content.className = "bon-factor-content";
 
-  if (f.reasoning) {
-    const r = document.createElement("div");
-    r.className = "bon-factor-reasoning";
-    r.textContent = f.reasoning;
-    content.appendChild(r);
+  if (factor.reasoning) {
+    const reasoning = document.createElement("div");
+    reasoning.className = "bon-factor-reasoning";
+    reasoning.textContent = factor.reasoning;
+    content.appendChild(reasoning);
   }
 
-  if (Array.isArray(f.evidence) && f.evidence.length) {
-    const ev = document.createElement("ul");
-    ev.className = "bon-factor-evidence";
-    for (const cite of f.evidence) {
+  if (Array.isArray(factor.evidence) && factor.evidence.length) {
+    const evidence = document.createElement("ul");
+    evidence.className = "bon-factor-evidence";
+    for (const cite of factor.evidence) {
       const item = document.createElement("li");
       item.textContent = cite;
-      ev.appendChild(item);
+      evidence.appendChild(item);
     }
-    content.appendChild(ev);
+    content.appendChild(evidence);
   }
 
-  li.appendChild(content);
-  return li;
+  listItem.appendChild(content);
+  return listItem;
 }
 
 export function bonReportsFactorsList(factors: Factor[]): HTMLUListElement {
-  const ul = document.createElement("ul");
-  ul.className = "bon-verdict-factors";
+  const list = document.createElement("ul");
+  list.className = "bon-verdict-factors";
 
   const byKey = new Map<string, FactorWithExtras>(
-    factors.map((f) => [f.key, f as FactorWithExtras])
+    factors.map((factor) => [factor.key, factor as FactorWithExtras])
   );
 
   for (const key of BON_FACTOR_KEYS) {
-    const f = byKey.get(key);
-    if (f) {
-      ul.appendChild(renderFactor(f));
+    const factor = byKey.get(key);
+    if (factor) {
+      list.appendChild(renderFactor(factor));
     } else {
-      ul.appendChild(renderMissingFactor(key));
+      list.appendChild(renderMissingFactor(key));
     }
   }
-  return ul;
+  return list;
 }

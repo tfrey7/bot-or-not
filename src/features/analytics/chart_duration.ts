@@ -23,8 +23,8 @@ export function bonAnalyticsDurationChart(
   const root = bonAnalyticsSvgRoot(W, H);
 
   const durations = runs
-    .map((r) => r.durationMs)
-    .filter((d): d is number => typeof d === "number");
+    .map((run) => run.durationMs)
+    .filter((duration): duration is number => typeof duration === "number");
 
   if (!durations.length) {
     root.appendChild(bonAnalyticsEmptyChart(W, H, "No duration data."));
@@ -42,14 +42,14 @@ export function bonAnalyticsDurationChart(
   ];
   const counts: number[] = new Array(buckets.length).fill(0);
 
-  for (const d of durations) {
-    let idx = buckets.findIndex((b) => d < b.max);
+  for (const duration of durations) {
+    let index = buckets.findIndex((bucket) => duration < bucket.max);
 
-    if (idx === -1) {
-      idx = buckets.length - 1;
+    if (index === -1) {
+      index = buckets.length - 1;
     }
 
-    counts[idx]++;
+    counts[index]++;
   }
 
   const maxCount = Math.max(1, ...counts);
@@ -80,12 +80,12 @@ export function bonAnalyticsDurationChart(
   }
 
   for (let i = 0; i < buckets.length; i++) {
-    const c = counts[i];
+    const count = counts[i];
     const x = PAD.l + i * barW + 5;
     const w = barW - 10;
 
-    if (c > 0) {
-      const h = (c / maxCount) * ih;
+    if (count > 0) {
+      const h = (count / maxCount) * ih;
       const y = PAD.t + ih - h;
       const rect = bonAnalyticsSvgEl("rect", {
         x: x.toFixed(2),
@@ -95,9 +95,9 @@ export function bonAnalyticsDurationChart(
         rx: 2,
         class: "bon-chart-bar bon-chart-bar--teal",
       });
-      const t = bonAnalyticsSvgEl("title");
-      t.textContent = `${buckets[i].label}: ${c} run${c === 1 ? "" : "s"} (${bonFmtPercent(c / durations.length)} of total)`;
-      rect.appendChild(t);
+      const tooltip = bonAnalyticsSvgEl("title");
+      tooltip.textContent = `${buckets[i].label}: ${count} run${count === 1 ? "" : "s"} (${bonFmtPercent(count / durations.length)} of total)`;
+      rect.appendChild(tooltip);
       root.appendChild(rect);
     }
 
@@ -119,7 +119,7 @@ export function bonAnalyticsDurationChart(
     [...durations].sort((a, b) => a - b),
     0.5
   );
-  let medianBucket = buckets.findIndex((b) => medianMs < b.max);
+  let medianBucket = buckets.findIndex((bucket) => medianMs < bucket.max);
 
   if (medianBucket === -1) {
     medianBucket = buckets.length - 1;

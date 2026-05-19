@@ -13,9 +13,11 @@ import { bonReportsPersonaBlock } from "./persona_block.ts";
 import { bonReportsTopReasonsList } from "./top_reasons.ts";
 
 export function bonReportsInvestigationDetail(
-  rawInvestigation: Investigation
+  rawInvestigation: Investigation,
+  contextItemsCount: number = 0
 ): HTMLDivElement {
   const investigation = bonNormalizeInvestigation(rawInvestigation);
+  const contextLabel = formatContextLabel(contextItemsCount);
 
   const wrap = document.createElement("div");
   wrap.className = "bon-detail-wrap";
@@ -28,28 +30,29 @@ export function bonReportsInvestigationDetail(
   if (investigation.status === "running") {
     const stale = bonIsInvestigationStale(investigation);
 
-    const p = document.createElement("p");
-    p.className = "bon-verdict-meta";
+    const message = document.createElement("p");
+    message.className = "bon-verdict-meta";
 
     if (stale) {
-      p.textContent = investigation.startedAt
+      message.textContent = investigation.startedAt
         ? `Stalled — started ${new Date(investigation.startedAt).toLocaleString()}, never completed. Click the retry button above to re-run.`
         : "Stalled — never completed. Click the retry button above to re-run.";
     } else {
-      p.textContent = investigation.startedAt
+      const base = investigation.startedAt
         ? `Running since ${new Date(investigation.startedAt).toLocaleString()}…`
         : "Running…";
+      message.textContent = contextLabel ? `${base} · ${contextLabel}` : base;
     }
 
-    wrap.appendChild(p);
+    wrap.appendChild(message);
     return wrap;
   }
 
   if (investigation.status === "error") {
-    const err = document.createElement("div");
-    err.className = "bon-verdict-error";
-    err.textContent = `Investigation failed: ${investigation.error || "unknown error"}`;
-    wrap.appendChild(err);
+    const errorBlock = document.createElement("div");
+    errorBlock.className = "bon-verdict-error";
+    errorBlock.textContent = `Investigation failed: ${investigation.error ?? "unknown error"}`;
+    wrap.appendChild(errorBlock);
     return wrap;
   }
 
@@ -63,7 +66,7 @@ export function bonReportsInvestigationDetail(
     summaryCol.appendChild(summary);
   }
 
-  if (Array.isArray(investigation.factors) && investigation.factors.length) {
+  if (investigation.factors.length > 0) {
     const reasons = bonReportsTopReasonsList(investigation.factors);
     if (reasons) {
       summaryCol.appendChild(reasons);
@@ -91,7 +94,7 @@ export function bonReportsInvestigationDetail(
   meta.className = "bon-verdict-meta";
 
   const metaParts: string[] = [];
-  if (typeof investigation.confidence === "number") {
+  if (investigation.confidence !== null) {
     metaParts.push(
       `overall confidence ${Math.round(investigation.confidence * 100)}%`
     );
@@ -99,32 +102,40 @@ export function bonReportsInvestigationDetail(
   if (investigation.model) {
     metaParts.push(investigation.model);
   }
-  if (investigation.runAt) {
-    const ts = new Date(investigation.runAt).toLocaleString();
-    metaParts.push(`run ${ts}`);
+  if (investigation.runAt !== null) {
+    const runAt = new Date(investigation.runAt).toLocaleString();
+    metaParts.push(`run ${runAt}`);
   }
-  if (typeof investigation.durationMs === "number") {
+  if (investigation.durationMs !== null) {
     metaParts.push(`took ${bonFmtDuration(investigation.durationMs)}`);
   }
-  if (typeof investigation.postsFetched === "number") {
-    metaParts.push(
-      `${investigation.postsFetched} posts, ${investigation.commentsFetched ?? 0} comments analyzed`
-    );
+  metaParts.push(
+    `${investigation.postsFetched} posts, ${investigation.commentsFetched} comments analyzed`
+  );
+  if (contextLabel) {
+    metaParts.push(`📎 ${contextLabel}`);
   }
-  if (typeof investigation.webSearchCount === "number") {
-    metaParts.push(
-      investigation.webSearchCount > 0
-        ? `🌐 web search: ${investigation.webSearchCount}`
-        : "🌐 web search: skipped"
-    );
-  }
+  metaParts.push(
+    investigation.webSearchCount > 0
+      ? `🌐 web search: ${investigation.webSearchCount}`
+      : "🌐 web search: skipped"
+  );
 
   meta.textContent = metaParts.join(" · ");
   wrap.appendChild(meta);
 
-  if (Array.isArray(investigation.factors) && investigation.factors.length) {
+  if (investigation.factors.length > 0) {
     wrap.appendChild(bonReportsFactorsList(investigation.factors));
   }
 
   return wrap;
+}
+
+function formatContextLabel(count: number): string | null {
+  if (count <= 0) {
+    return null;
+  }
+  return count === 1
+    ? "1 context item included"
+    : `${count} context items included`;
 }

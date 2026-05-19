@@ -4,7 +4,7 @@
 // the operator can audit the pick.
 
 import { BON_REGION_INFO, type RegionInfo } from "../regions/data.ts";
-import type { DeterministicRegionInference } from "../regions/index.ts";
+import type { DeterministicRegionInference } from "../regions";
 import { bonReportsComputeRegionForReport, type ReportRow } from "./logic.ts";
 
 function formatRegionTooltip(
@@ -31,7 +31,7 @@ function formatRegionTooltip(
 
   if (region.scriptSignal) {
     const scriptSummary = region.scriptSignal.hits
-      .map((h) => `${h.count} ${h.script}`)
+      .map((hit) => `${hit.count} ${hit.script}`)
       .join(", ");
 
     lines.push(`• Script in their writing: ${scriptSummary}`);
@@ -39,7 +39,7 @@ function formatRegionTooltip(
 
   if (region.languageSignal) {
     const langSummary = region.languageSignal.hits
-      .map((h) => `${h.count} ${h.label}`)
+      .map((hit) => `${hit.count} ${hit.label}`)
       .join(", ");
 
     lines.push(`• Language markers in their writing: ${langSummary}`);
@@ -48,7 +48,7 @@ function formatRegionTooltip(
   if (region.moderator) {
     const modList = region.moderator.hits
       .slice(0, 3)
-      .map((h) => `r/${h.sub}`)
+      .map((hit) => `r/${hit.sub}`)
       .join(", ");
 
     lines.push(
@@ -67,9 +67,9 @@ function formatRegionTooltip(
   }
 
   if (region.runnerUp) {
-    const r = BON_REGION_INFO[region.runnerUp.region];
+    const runnerInfo = BON_REGION_INFO[region.runnerUp.region];
     lines.push(
-      `(runner-up: ${r?.label || region.runnerUp.region} with score ${region.runnerUp.score.toFixed(1)})`
+      `(runner-up: ${runnerInfo?.label || region.runnerUp.region} with score ${region.runnerUp.score.toFixed(1)})`
     );
   }
 
@@ -138,7 +138,7 @@ export function bonReportsRegionBadge(report: ReportRow): HTMLSpanElement {
 
   const candidates = region.possibleRegions
     .map((code) => BON_REGION_INFO[code]?.label)
-    .filter((l): l is string => Boolean(l));
+    .filter((label): label is string => Boolean(label));
 
   span.title = candidates.length
     ? `Timezone-only inference. Posting hours cluster around UTC${sign}${offset} — possible regions: ${candidates.join(", ")}. No country-coded subreddits in activity.`

@@ -23,14 +23,14 @@ export function bonReportsCalendarHeatmap(
   const startSunday = new Date(currentWeekSunday);
   startSunday.setDate(currentWeekSunday.getDate() - 52 * 7);
 
-  const dayKey = (d: Date): string =>
-    `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+  const dayKey = (date: Date): string =>
+    `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
 
   const counts = new Map<string, number>();
-  for (const t of timestamps) {
-    const d = new Date(t);
-    const k = dayKey(d);
-    counts.set(k, (counts.get(k) || 0) + 1);
+  for (const timestamp of timestamps) {
+    const date = new Date(timestamp);
+    const key = dayKey(date);
+    counts.set(key, (counts.get(key) || 0) + 1);
   }
 
   const wrap = document.createElement("div");
@@ -39,10 +39,10 @@ export function bonReportsCalendarHeatmap(
   const dayLabels = document.createElement("div");
   dayLabels.className = "bon-cal-days";
   for (let i = 0; i < 7; i++) {
-    const d = document.createElement("div");
+    const label = document.createElement("div");
     // Show every other day label to reduce clutter
-    d.textContent = i % 2 === 1 ? BON_REPORTS_DAY_NAMES[i] : "";
-    dayLabels.appendChild(d);
+    label.textContent = i % 2 === 1 ? BON_REPORTS_DAY_NAMES[i] : "";
+    dayLabels.appendChild(label);
   }
   wrap.appendChild(dayLabels);
 
@@ -56,10 +56,10 @@ export function bonReportsCalendarHeatmap(
   for (let w = 0; w < 53; w++) {
     const sunday = new Date(startSunday);
     sunday.setDate(startSunday.getDate() + w * 7);
-    const m = sunday.getMonth();
-    if (m !== curMonth) {
-      monthRuns.push({ startWeek: w, month: m });
-      curMonth = m;
+    const month = sunday.getMonth();
+    if (month !== curMonth) {
+      monthRuns.push({ startWeek: w, month });
+      curMonth = month;
     }
   }
   monthRuns.push({ startWeek: 53, month: -1 });
@@ -96,17 +96,17 @@ export function bonReportsCalendarHeatmap(
       if (date > today) {
         cell.classList.add("bon-cal-cell--future");
       } else {
-        const c = counts.get(dayKey(date)) || 0;
-        const lvl = bonBucketLevel(c);
+        const count = counts.get(dayKey(date)) || 0;
+        const level = bonBucketLevel(count);
         const inUnknownZone =
-          earliestVisible && date.getTime() < earliestVisible && c === 0;
+          earliestVisible && date.getTime() < earliestVisible && count === 0;
 
         if (inUnknownZone) {
           cell.classList.add("bon-cal-cell--unknown");
           cell.title = `${date.toLocaleDateString()} — beyond Reddit's API window (unknown)`;
-        } else if (lvl > 0) {
-          cell.classList.add(`bon-heatmap-cell--lvl${lvl}`);
-          cell.title = `${date.toLocaleDateString()} — ${c} item${c === 1 ? "" : "s"}`;
+        } else if (level > 0) {
+          cell.classList.add(`bon-heatmap-cell--lvl${level}`);
+          cell.title = `${date.toLocaleDateString()} — ${count} item${count === 1 ? "" : "s"}`;
         } else {
           cell.title = `${date.toLocaleDateString()} — no activity`;
         }

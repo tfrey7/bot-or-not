@@ -11,18 +11,18 @@ import {
   bonAnalyticsSvgText,
 } from "./svg.ts";
 
-export function bonAnalyticsTokenMix(s: AnalyticsSummary): SVGSVGElement {
+export function bonAnalyticsTokenMix(summary: AnalyticsSummary): SVGSVGElement {
   const W = 600;
   const H = 200;
   const root = bonAnalyticsSvgRoot(W, H);
 
   const segments = [
-    { label: "Fresh input", value: s.totalInput, color: "#3b82f6" },
-    { label: "Cache read", value: s.totalCacheRead, color: "#16a085" },
-    { label: "Cache write", value: s.totalCacheWrite, color: "#f59e0b" },
-    { label: "Output", value: s.totalOutput, color: "#8b5cf6" },
+    { label: "Fresh input", value: summary.totalInput, color: "#3b82f6" },
+    { label: "Cache read", value: summary.totalCacheRead, color: "#16a085" },
+    { label: "Cache write", value: summary.totalCacheWrite, color: "#f59e0b" },
+    { label: "Output", value: summary.totalOutput, color: "#8b5cf6" },
   ];
-  const total = segments.reduce((a, b) => a + b.value, 0);
+  const total = segments.reduce((sum, segment) => sum + segment.value, 0);
 
   if (total === 0) {
     root.appendChild(bonAnalyticsEmptyChart(W, H, "No token usage recorded."));
@@ -47,8 +47,8 @@ export function bonAnalyticsTokenMix(s: AnalyticsSummary): SVGSVGElement {
 
   let x = PAD;
 
-  for (const seg of segments) {
-    const w = (seg.value / total) * innerW;
+  for (const segment of segments) {
+    const w = (segment.value / total) * innerW;
 
     if (w <= 0) {
       continue;
@@ -59,10 +59,10 @@ export function bonAnalyticsTokenMix(s: AnalyticsSummary): SVGSVGElement {
       y: BAR_Y,
       width: w.toFixed(2),
       height: BAR_H,
-      fill: seg.color,
+      fill: segment.color,
     });
     const title = bonAnalyticsSvgEl("title");
-    title.textContent = `${seg.label}: ${bonFmtThousands(seg.value)} tokens (${bonFmtPercent(seg.value / total, 1)})`;
+    title.textContent = `${segment.label}: ${bonFmtThousands(segment.value)} tokens (${bonFmtPercent(segment.value / total, 1)})`;
     rect.appendChild(title);
     root.appendChild(rect);
 
@@ -71,7 +71,7 @@ export function bonAnalyticsTokenMix(s: AnalyticsSummary): SVGSVGElement {
         bonAnalyticsSvgText(
           x + w / 2,
           BAR_Y + BAR_H / 2 + 5,
-          bonFmtPercent(seg.value / total, 0),
+          bonFmtPercent(segment.value / total, 0),
           "bon-chart-inbar",
           "middle"
         )
@@ -85,7 +85,7 @@ export function bonAnalyticsTokenMix(s: AnalyticsSummary): SVGSVGElement {
   const legendStartY = BAR_Y + BAR_H + 28;
   const legendColW = innerW / 2;
 
-  segments.forEach((seg, i) => {
+  segments.forEach((segment, i) => {
     const lx = PAD + (i % 2) * legendColW;
     const ly = legendStartY + Math.floor(i / 2) * 22;
     root.appendChild(
@@ -95,14 +95,14 @@ export function bonAnalyticsTokenMix(s: AnalyticsSummary): SVGSVGElement {
         width: 11,
         height: 11,
         rx: 2,
-        fill: seg.color,
+        fill: segment.color,
       })
     );
     root.appendChild(
       bonAnalyticsSvgText(
         lx + 18,
         ly + 1,
-        `${seg.label} — ${bonFmtThousands(seg.value)} (${bonFmtPercent(seg.value / total, 0)})`,
+        `${segment.label} — ${bonFmtThousands(segment.value)} (${bonFmtPercent(segment.value / total, 0)})`,
         "bon-chart-legend"
       )
     );

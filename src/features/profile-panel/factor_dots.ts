@@ -22,7 +22,7 @@ type DotLeaning =
 
 function buildFactorDotCard(
   fullLabel: string,
-  f: FactorWithExtras | undefined,
+  factor: FactorWithExtras | undefined,
   hasRun: boolean,
   leaning: DotLeaning
 ): HTMLSpanElement {
@@ -41,7 +41,7 @@ function buildFactorDotCard(
   name.textContent = fullLabel;
   header.appendChild(name);
 
-  if (f && typeof f.score === "number") {
+  if (factor && typeof factor.score === "number") {
     const pill = document.createElement("span");
     pill.className = `bon-panel-factor-card__signal bon-panel-factor-card__signal--${leaning}`;
 
@@ -53,37 +53,38 @@ function buildFactorDotCard(
 
   card.appendChild(header);
 
-  if (f && typeof f.confidence === "number") {
-    const conf = document.createElement("span");
-    conf.className = "bon-panel-factor-card__confidence";
-    conf.textContent = `${Math.round(f.confidence * 100)}% confidence`;
-    card.appendChild(conf);
+  if (factor && typeof factor.confidence === "number") {
+    const confidence = document.createElement("span");
+    confidence.className = "bon-panel-factor-card__confidence";
+    confidence.textContent = `${Math.round(factor.confidence * 100)}% confidence`;
+    card.appendChild(confidence);
   }
 
-  if (f?.reasoning) {
-    const r = document.createElement("span");
-    r.className = "bon-panel-factor-card__reasoning";
-    r.textContent = f.reasoning;
-    card.appendChild(r);
-  } else if (!f && hasRun) {
-    const r = document.createElement("span");
-    r.className =
+  if (factor?.reasoning) {
+    const reasoning = document.createElement("span");
+    reasoning.className = "bon-panel-factor-card__reasoning";
+    reasoning.textContent = factor.reasoning;
+    card.appendChild(reasoning);
+  } else if (!factor && hasRun) {
+    const reasoning = document.createElement("span");
+    reasoning.className =
       "bon-panel-factor-card__reasoning bon-panel-factor-card__reasoning--muted";
-    r.textContent = "Added after this investigation ran — re-run to score.";
-    card.appendChild(r);
-  } else if (!f) {
-    const r = document.createElement("span");
-    r.className =
+    reasoning.textContent =
+      "Added after this investigation ran — re-run to score.";
+    card.appendChild(reasoning);
+  } else if (!factor) {
+    const reasoning = document.createElement("span");
+    reasoning.className =
       "bon-panel-factor-card__reasoning bon-panel-factor-card__reasoning--muted";
-    r.textContent = "Not investigated.";
-    card.appendChild(r);
+    reasoning.textContent = "Not investigated.";
+    card.appendChild(reasoning);
   }
 
-  if (f && Array.isArray(f.evidence) && f.evidence.length) {
+  if (factor && Array.isArray(factor.evidence) && factor.evidence.length) {
     const list = document.createElement("ul");
     list.className = "bon-panel-factor-card__evidence";
 
-    for (const cite of f.evidence) {
+    for (const cite of factor.evidence) {
       const item = document.createElement("li");
       item.textContent = cite;
       list.appendChild(item);
@@ -103,57 +104,57 @@ function buildFactorDotCard(
 // Show/hide is then class-toggled (the CSS :hover rule wouldn't fire on a
 // card that's no longer a descendant of the dot).
 function attachFactorCardPositioning(
-  dotEl: HTMLElement,
-  cardEl: HTMLElement
+  dotElement: HTMLElement,
+  cardElement: HTMLElement
 ): void {
   let mounted = false;
 
   const show = (): void => {
     if (!mounted) {
-      document.body.appendChild(cardEl);
+      document.body.appendChild(cardElement);
       mounted = true;
     }
 
-    const dotRect = dotEl.getBoundingClientRect();
-    const cardWidth = cardEl.offsetWidth;
-    const cardHeight = cardEl.offsetHeight;
+    const dotRect = dotElement.getBoundingClientRect();
+    const cardWidth = cardElement.offsetWidth;
+    const cardHeight = cardElement.offsetHeight;
 
     if (!cardWidth || !cardHeight) {
       return;
     }
 
-    const vw = window.innerWidth;
-    const vh = window.innerHeight;
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
     const margin = 8;
     const gap = 10;
 
     let left = dotRect.left + dotRect.width / 2 - cardWidth / 2;
-    left = Math.max(margin, Math.min(left, vw - margin - cardWidth));
+    left = Math.max(margin, Math.min(left, viewportWidth - margin - cardWidth));
 
     let top = dotRect.top - cardHeight - gap;
     if (top < margin) {
       top = dotRect.bottom + gap;
     }
-    top = Math.max(margin, Math.min(top, vh - margin - cardHeight));
+    top = Math.max(margin, Math.min(top, viewportHeight - margin - cardHeight));
 
-    cardEl.style.left = `${left}px`;
-    cardEl.style.top = `${top}px`;
-    cardEl.classList.add("bon-panel-factor-card--visible");
+    cardElement.style.left = `${left}px`;
+    cardElement.style.top = `${top}px`;
+    cardElement.classList.add("bon-panel-factor-card--visible");
   };
 
   const hide = (): void => {
-    cardEl.classList.remove("bon-panel-factor-card--visible");
+    cardElement.classList.remove("bon-panel-factor-card--visible");
   };
 
-  dotEl.addEventListener("mouseenter", show);
-  dotEl.addEventListener("mouseleave", hide);
-  dotEl.addEventListener("focus", show);
-  dotEl.addEventListener("blur", hide);
+  dotElement.addEventListener("mouseenter", show);
+  dotElement.addEventListener("mouseleave", hide);
+  dotElement.addEventListener("focus", show);
+  dotElement.addEventListener("blur", hide);
 }
 
 function buildFactorDot(
   key: string,
-  f: FactorWithExtras | undefined,
+  factor: FactorWithExtras | undefined,
   hasRun: boolean
 ): HTMLSpanElement {
   const fullLabel = BON_FACTOR_LABELS[key] || key;
@@ -163,11 +164,11 @@ function buildFactorDot(
   dot.tabIndex = 0;
 
   let leaning: DotLeaning;
-  if (f && typeof f.score === "number") {
-    leaning = bonScoreLeaning(f.score, f.confidence) as DotLeaning;
-  } else if (!f && hasRun) {
+  if (factor && typeof factor.score === "number") {
+    leaning = bonScoreLeaning(factor.score, factor.confidence) as DotLeaning;
+  } else if (!factor && hasRun) {
     leaning = "new";
-  } else if (!f) {
+  } else if (!factor) {
     leaning = "missing";
   } else {
     leaning = "neutral";
@@ -175,15 +176,15 @@ function buildFactorDot(
 
   dot.classList.add(`bon-panel-factor-dot--${leaning}`);
 
-  if (f) {
-    const confText =
-      typeof f.confidence === "number"
-        ? `${Math.round(f.confidence * 100)}%`
+  if (factor) {
+    const confidenceText =
+      typeof factor.confidence === "number"
+        ? `${Math.round(factor.confidence * 100)}%`
         : "—";
 
     dot.setAttribute(
       "aria-label",
-      `${fullLabel}: ${leaning === "neutral" ? "neutral" : bonFormatVerdict(leaning)} · ${confText} confidence`
+      `${fullLabel}: ${leaning === "neutral" ? "neutral" : bonFormatVerdict(leaning)} · ${confidenceText} confidence`
     );
   } else if (hasRun) {
     dot.setAttribute(
@@ -194,7 +195,7 @@ function buildFactorDot(
     dot.setAttribute("aria-label", `${fullLabel}: not investigated`);
   }
 
-  const card = buildFactorDotCard(fullLabel, f, hasRun, leaning);
+  const card = buildFactorDotCard(fullLabel, factor, hasRun, leaning);
   dot.appendChild(card);
   attachFactorCardPositioning(dot, card);
   return dot;
@@ -208,9 +209,9 @@ export function bonPanelBuildFactorDots(
 
   const byKey = new Map<string, FactorWithExtras>();
   if (Array.isArray(investigation?.factors)) {
-    for (const f of investigation.factors) {
-      if (f?.key) {
-        byKey.set(f.key, f as FactorWithExtras);
+    for (const factor of investigation.factors) {
+      if (factor?.key) {
+        byKey.set(factor.key, factor as FactorWithExtras);
       }
     }
   }

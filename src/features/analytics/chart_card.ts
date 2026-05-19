@@ -12,16 +12,16 @@ export function bonAnalyticsChartCard(
   const head = document.createElement("div");
   head.className = "bon-chart-head";
 
-  const h = document.createElement("div");
-  h.className = "bon-chart-title";
-  h.textContent = title;
-  head.appendChild(h);
+  const titleEl = document.createElement("div");
+  titleEl.className = "bon-chart-title";
+  titleEl.textContent = title;
+  head.appendChild(titleEl);
 
   if (subtitle) {
-    const s = document.createElement("div");
-    s.className = "bon-chart-sub";
-    s.textContent = subtitle;
-    head.appendChild(s);
+    const subtitleEl = document.createElement("div");
+    subtitleEl.className = "bon-chart-sub";
+    subtitleEl.textContent = subtitle;
+    head.appendChild(subtitleEl);
   }
 
   card.appendChild(head);

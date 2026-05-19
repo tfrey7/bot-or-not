@@ -1,8 +1,8 @@
-// Action buttons in the last column: 🤖 investigate / 🔁 re-investigate /
-// progress-ring while running, plus 🗑 delete. The investigate button's
-// running state participates in the poll-tick's in-place updates (via
-// data-bon-running-btn attributes) so the spinner / progress ring don't
-// jitter on every render.
+// Investigate button (🤖 / 🔁 / progress-ring) shown in the actions column,
+// plus the "Delete report" danger button shown in the row's expanded footer.
+// The investigate button's running state participates in the poll-tick's
+// in-place updates (via data-bon-running-btn attributes) so the spinner /
+// progress ring don't jitter on every render.
 
 import type { Investigation } from "../../types.ts";
 import { bonIsInvestigationStale } from "../../verdict.ts";
@@ -10,7 +10,7 @@ import { bonReportsFormatRunningTitle } from "./logic.ts";
 import { bonReportsOpenConfirmModal } from "./modals.ts";
 
 export function bonReportsApplyProgressVisual(
-  btn: HTMLButtonElement,
+  button: HTMLButtonElement,
   elapsedMs: number,
   expectedMs: number | null | undefined
 ): void {
@@ -18,9 +18,9 @@ export function bonReportsApplyProgressVisual(
     return;
   }
 
-  const pct = Math.min(100, (elapsedMs / expectedMs) * 100);
-  btn.style.setProperty("--bon-progress", `${pct.toFixed(1)}%`);
-  btn.classList.toggle("bon-progress--overtime", elapsedMs > expectedMs);
+  const percent = Math.min(100, (elapsedMs / expectedMs) * 100);
+  button.style.setProperty("--bon-progress", `${percent.toFixed(1)}%`);
+  button.classList.toggle("bon-progress--overtime", elapsedMs > expectedMs);
 }
 
 export interface InvestigateButtonOpts {
@@ -33,81 +33,79 @@ export function bonReportsRenderInvestigateButton(
   investigation: Investigation | null | undefined,
   { expectedDurationMs, onNoApiKey }: InvestigateButtonOpts
 ): HTMLButtonElement {
-  const btn = document.createElement("button");
-  btn.type = "button";
-  btn.className = "bon-investigate-btn";
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "bon-investigate-btn";
 
   const running = investigation?.status === "running";
   const stale = running && bonIsInvestigationStale(investigation);
   const verdict = investigation?.verdict;
 
   if (running && !stale && investigation) {
-    btn.textContent = "";
-    btn.disabled = true;
-    btn.dataset.bonRunningBtn = username;
+    button.textContent = "";
+    button.disabled = true;
+    button.dataset.bonRunningBtn = username;
 
     const startedAt = investigation.startedAt || Date.now();
-    btn.dataset.bonRunningStartedAt = String(startedAt);
+    button.dataset.bonRunningStartedAt = String(startedAt);
 
     const elapsedMs = Math.max(0, Date.now() - startedAt);
     const elapsedSec = Math.round(elapsedMs / 1000);
 
     if (expectedDurationMs) {
-      btn.classList.add("bon-progress");
-      bonReportsApplyProgressVisual(btn, elapsedMs, expectedDurationMs);
+      button.classList.add("bon-progress");
+      bonReportsApplyProgressVisual(button, elapsedMs, expectedDurationMs);
     } else {
-      btn.classList.add("bon-spinning");
+      button.classList.add("bon-spinning");
     }
 
-    btn.title = bonReportsFormatRunningTitle(elapsedSec, expectedDurationMs);
+    button.title = bonReportsFormatRunningTitle(elapsedSec, expectedDurationMs);
   } else if (stale) {
-    btn.textContent = "🔁";
-    btn.title = "Retry stalled investigation";
+    button.textContent = "🔁";
+    button.title = "Retry stalled investigation";
   } else if (verdict) {
-    btn.textContent = "🔁";
-    btn.title = "Re-run AI investigation";
+    button.textContent = "🔁";
+    button.title = "Re-run AI investigation";
   } else {
-    btn.textContent = "🤖";
-    btn.title = "Run AI investigation";
+    button.textContent = "🤖";
+    button.title = "Run AI investigation";
   }
 
-  btn.setAttribute("aria-label", btn.title);
+  button.setAttribute("aria-label", button.title);
 
-  btn.addEventListener("click", async () => {
-    btn.disabled = true;
-    btn.classList.add("bon-spinning");
-    btn.textContent = "";
+  button.addEventListener("click", async () => {
+    button.disabled = true;
+    button.classList.add("bon-spinning");
+    button.textContent = "";
     try {
-      const res = (await browser.runtime.sendMessage({
+      const response = (await browser.runtime.sendMessage({
         type: "investigate-user",
         username,
       })) as { ok?: boolean; error?: string };
-      if (res?.ok === false && res.error === "no-api-key") {
+      if (response?.ok === false && response.error === "no-api-key") {
         onNoApiKey?.();
       }
       // storage.onChanged will reload and re-render.
-    } catch (err) {
-      console.error("[Bot or Not] investigate failed", err);
-      btn.disabled = false;
-      btn.classList.remove("bon-spinning");
-      btn.textContent = verdict ? "🔁" : "🤖";
+    } catch (error) {
+      console.error("[Bot or Not] investigate failed", error);
+      button.disabled = false;
+      button.classList.remove("bon-spinning");
+      button.textContent = verdict ? "🔁" : "🤖";
     }
   });
 
-  return btn;
+  return button;
 }
 
 export function bonReportsRenderDeleteButton(
   username: string
 ): HTMLButtonElement {
-  const btn = document.createElement("button");
-  btn.type = "button";
-  btn.className = "bon-investigate-btn bon-delete-btn";
-  btn.textContent = "🗑";
-  btn.title = `Delete report for u/${username}`;
-  btn.setAttribute("aria-label", btn.title);
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "bon-btn bon-btn--danger";
+  button.textContent = `Delete report for u/${username}`;
 
-  btn.addEventListener("click", () => {
+  button.addEventListener("click", () => {
     bonReportsOpenConfirmModal({
       text: `Delete the report for u/${username}? This can't be undone.`,
       confirmLabel: "Delete",
@@ -116,5 +114,5 @@ export function bonReportsRenderDeleteButton(
     });
   });
 
-  return btn;
+  return button;
 }

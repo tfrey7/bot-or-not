@@ -16,74 +16,76 @@ export const BON_REDDIT_FETCH_LIMIT = 100;
 
 export async function bonTimed<T>(
   label: string,
-  fn: () => Promise<T>
+  task: () => Promise<T>
 ): Promise<T> {
-  const t0 = performance.now();
+  const startedAt = performance.now();
 
   try {
-    const result = await fn();
-    const ms = Math.round(performance.now() - t0);
-    console.log(`[Bot or Not] timing: ${label} ${ms}ms`);
+    const result = await task();
+    const elapsedMs = Math.round(performance.now() - startedAt);
+    console.log(`[Bot or Not] timing: ${label} ${elapsedMs}ms`);
     return result;
-  } catch (err) {
-    const ms = Math.round(performance.now() - t0);
-    console.log(`[Bot or Not] timing: ${label} ${ms}ms (failed)`);
-    throw err;
+  } catch (error) {
+    const elapsedMs = Math.round(performance.now() - startedAt);
+    console.log(`[Bot or Not] timing: ${label} ${elapsedMs}ms (failed)`);
+    throw error;
   }
 }
 
 export async function bonFetchJson<T = unknown>(url: string): Promise<T> {
   return bonTimed(`fetch ${bonShortUrl(url)}`, async () => {
-    const res = await fetch(url, {
+    const response = await fetch(url, {
       headers: { Accept: "application/json" },
       credentials: "include",
     });
 
-    if (!res.ok) {
-      throw new Error(`Reddit fetch ${res.status} for ${url}`);
+    if (!response.ok) {
+      throw new Error(`Reddit fetch ${response.status} for ${url}`);
     }
 
-    return res.json() as Promise<T>;
+    return response.json() as Promise<T>;
   });
+}
+
+interface BotBouncerPost {
+  title?: string;
+  link_flair_text?: string;
+}
+
+interface BotBouncerSearchResponse {
+  data?: {
+    children?: Array<{ data?: BotBouncerPost }>;
+  };
 }
 
 export async function bonFetchBotBouncerStatus(
   username: string
 ): Promise<BotBouncerStatus> {
-  const q = encodeURIComponent(`Overview for ${username}`);
-  const url = `https://www.reddit.com/r/BotBouncer/search.json?q=${q}&restrict_sr=true&sort=new&limit=10&raw_json=1`;
+  const query = encodeURIComponent(`Overview for ${username}`);
+  const url = `https://www.reddit.com/r/BotBouncer/search.json?q=${query}&restrict_sr=true&sort=new&limit=10&raw_json=1`;
 
   try {
-    const json = await bonFetchJson<{
-      data?: {
-        children?: Array<{
-          data?: { title?: string; link_flair_text?: string };
-        }>;
-      };
-    }>(url);
-    const posts = (json.data?.children || [])
-      .map((c) => c.data)
-      .filter((p): p is { title?: string; link_flair_text?: string } =>
-        Boolean(p)
-      );
+    const searchResponse = await bonFetchJson<BotBouncerSearchResponse>(url);
     const target = `overview for ${username}`.toLowerCase();
-    const match = posts.find(
-      (p) => (p.title || "").toLowerCase().trim() === target
-    );
 
-    if (!match) {
+    for (const child of searchResponse.data?.children ?? []) {
+      const post = child.data;
+      if (!post) {
+        continue;
+      }
+      if ((post.title ?? "").toLowerCase().trim() !== target) {
+        continue;
+      }
+      const flair = (post.link_flair_text ?? "").toLowerCase().trim();
+      if (flair === "banned" || flair === "pending" || flair === "organic") {
+        return flair;
+      }
       return null;
     }
 
-    const flair = (match.link_flair_text || "").toLowerCase().trim();
-
-    if (flair === "banned" || flair === "pending" || flair === "organic") {
-      return flair;
-    }
-
     return null;
-  } catch (err) {
-    console.error("[Bot or Not] BotBouncer lookup failed", err);
+  } catch (error) {
+    console.error("[Bot or Not] BotBouncer lookup failed", error);
     return null;
   }
 }
@@ -91,17 +93,17 @@ export async function bonFetchBotBouncerStatus(
 export async function bonFetchRedditProfile(
   username: string
 ): Promise<RedditProfile> {
-  const safe = encodeURIComponent(username);
+  const encodedUsername = encodeURIComponent(username);
   const [about, submitted, comments, moderated] = await Promise.all([
-    bonFetchJson(`https://www.reddit.com/user/${safe}/about.json`),
+    bonFetchJson(`https://www.reddit.com/user/${encodedUsername}/about.json`),
     bonFetchJson(
-      `https://www.reddit.com/user/${safe}/submitted.json?limit=${BON_REDDIT_FETCH_LIMIT}&raw_json=1`
+      `https://www.reddit.com/user/${encodedUsername}/submitted.json?limit=${BON_REDDIT_FETCH_LIMIT}&raw_json=1`
     ),
     bonFetchJson(
-      `https://www.reddit.com/user/${safe}/comments.json?limit=${BON_REDDIT_FETCH_LIMIT}&raw_json=1`
+      `https://www.reddit.com/user/${encodedUsername}/comments.json?limit=${BON_REDDIT_FETCH_LIMIT}&raw_json=1`
     ),
     bonFetchJson(
-      `https://www.reddit.com/user/${safe}/moderated_subreddits.json?raw_json=1`
+      `https://www.reddit.com/user/${encodedUsername}/moderated_subreddits.json?raw_json=1`
     ).catch(() => null),
   ]);
 
@@ -119,16 +121,16 @@ export async function bonFetchRedditProfile(
 export async function bonFetchRedditActivity(
   username: string
 ): Promise<RedditActivityFetch> {
-  const safe = encodeURIComponent(username);
+  const encodedUsername = encodeURIComponent(username);
   const [submitted, comments, moderated] = await Promise.all([
     bonFetchJson(
-      `https://www.reddit.com/user/${safe}/submitted.json?limit=${BON_REDDIT_FETCH_LIMIT}&raw_json=1`
+      `https://www.reddit.com/user/${encodedUsername}/submitted.json?limit=${BON_REDDIT_FETCH_LIMIT}&raw_json=1`
     ),
     bonFetchJson(
-      `https://www.reddit.com/user/${safe}/comments.json?limit=${BON_REDDIT_FETCH_LIMIT}&raw_json=1`
+      `https://www.reddit.com/user/${encodedUsername}/comments.json?limit=${BON_REDDIT_FETCH_LIMIT}&raw_json=1`
     ),
     bonFetchJson(
-      `https://www.reddit.com/user/${safe}/moderated_subreddits.json?raw_json=1`
+      `https://www.reddit.com/user/${encodedUsername}/moderated_subreddits.json?raw_json=1`
     ).catch(() => null),
   ]);
 

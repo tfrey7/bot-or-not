@@ -1,8 +1,12 @@
 // Pure transform: raw Reddit JSON → activity summary used by the analyzer
 // and the heatmap.
 
-import { bonScanTextSignals } from "../features/regions/index.ts";
-import type { ActivityData, RedditActivityFetch } from "../types.ts";
+import { bonNormalizeSubName, bonScanTextSignals } from "../features/regions";
+import type {
+  ActivityData,
+  ContextItem,
+  RedditActivityFetch,
+} from "../types.ts";
 
 const BON_REDDIT_FETCH_LIMIT = 100;
 
@@ -21,51 +25,47 @@ interface RedditComment {
 }
 
 export function bonExtractActivityData(raw: RedditActivityFetch): ActivityData {
-  const posts: RedditPost[] = (raw.submitted?.data?.children || [])
-    .map((c) => c.data as RedditPost | undefined)
-    .filter((p): p is RedditPost => Boolean(p));
-  const comments: RedditComment[] = (raw.comments?.data?.children || [])
-    .map((c) => c.data as RedditComment | undefined)
-    .filter((c): c is RedditComment => Boolean(c));
+  const posts: RedditPost[] = (raw.submitted.data?.children ?? [])
+    .map((child) => child.data as RedditPost | undefined)
+    .filter((post): post is RedditPost => Boolean(post));
+  const comments: RedditComment[] = (raw.comments.data?.children ?? [])
+    .map((child) => child.data as RedditComment | undefined)
+    .filter((comment): comment is RedditComment => Boolean(comment));
 
   const postTimestamps = posts
-    .map((p) => (p.created_utc ? p.created_utc * 1000 : null))
-    .filter((t): t is number => typeof t === "number");
+    .map((post) => (post.created_utc ? post.created_utc * 1000 : null))
+    .filter((timestamp): timestamp is number => typeof timestamp === "number");
   const commentTimestamps = comments
-    .map((c) => (c.created_utc ? c.created_utc * 1000 : null))
-    .filter((t): t is number => typeof t === "number");
+    .map((comment) => (comment.created_utc ? comment.created_utc * 1000 : null))
+    .filter((timestamp): timestamp is number => typeof timestamp === "number");
 
   const subredditCounts: Record<string, number> = {};
   for (const item of [...posts, ...comments]) {
-    const sub = (
-      item.subreddit ||
-      (item.subreddit_name_prefixed || "").replace(/^r\//i, "")
-    )
-      .toString()
-      .toLowerCase();
-    if (!sub) {
+    const subreddit = (
+      item.subreddit ??
+      (item.subreddit_name_prefixed ?? "").replace(/^r\//i, "")
+    ).toLowerCase();
+    if (!subreddit) {
       continue;
     }
-    subredditCounts[sub] = (subredditCounts[sub] || 0) + 1;
+    subredditCounts[subreddit] = (subredditCounts[subreddit] ?? 0) + 1;
   }
 
   // Concatenate all visible user-authored text and scan for region signals
   // (non-Latin scripts, dialect/transliteration markers). The scanner lives
   // in features/regions so the script/marker tables stay in one place.
   const corpus = [
-    ...posts.map((p) => `${p.title || ""}\n${p.selftext || ""}`),
-    ...comments.map((c) => c.body || ""),
+    ...posts.map((post) => `${post.title ?? ""}\n${post.selftext ?? ""}`),
+    ...comments.map((comment) => comment.body ?? ""),
   ].join("\n");
   const scanned = bonScanTextSignals(corpus);
 
   // moderated_subreddits.json: { "data": [{ "sr": "name", ... }, ...] } when
   // the user has the "show moderated subs publicly" setting on; otherwise it
   // 403s and the caller catches → null. Either case is fine.
-  const moderatedSubs = Array.isArray(raw.moderated?.data)
-    ? raw.moderated.data
-        .map((m) => m.sr || m.display_name || null)
-        .filter((s): s is string => Boolean(s))
-    : [];
+  const moderatedSubs = (raw.moderated?.data ?? [])
+    .map((mod) => mod.sr ?? mod.display_name ?? null)
+    .filter((name): name is string => Boolean(name));
 
   return {
     postTimestamps,
@@ -83,5 +83,62 @@ export function bonExtractActivityData(raw: RedditActivityFetch): ActivityData {
       : null,
     fetchLimit: BON_REDDIT_FETCH_LIMIT,
     fetchedAt: Date.now(),
+  };
+}
+
+// Fold operator-collected dossier items into an ActivityData snapshot so the
+// deterministic region inference (subreddit counts, scripts, language markers)
+// sees them the same way it sees API-fetched posts and comments. Critical for
+// accounts with hidden post histories where the operator-pasted items ARE the
+// only evidence of country-coded participation.
+//
+// Returns the original snapshot unchanged when there are no items to merge,
+// so call sites don't pay for a copy when context is empty.
+export function bonAugmentActivityWithContext(
+  activityData: ActivityData,
+  contextItems: ContextItem[] | null | undefined
+): ActivityData {
+  if (!contextItems || contextItems.length === 0) {
+    return activityData;
+  }
+
+  const subredditCounts = { ...activityData.subredditCounts };
+  const textParts: string[] = [];
+
+  for (const item of contextItems) {
+    if (item.subreddit) {
+      const normalized = bonNormalizeSubName(item.subreddit);
+
+      if (normalized) {
+        subredditCounts[normalized] = (subredditCounts[normalized] ?? 0) + 1;
+      }
+    }
+
+    if (item.title) {
+      textParts.push(item.title);
+    }
+
+    if (item.body) {
+      textParts.push(item.body);
+    }
+  }
+
+  const scanned = bonScanTextSignals(textParts.join("\n"));
+
+  const scriptSignals = { ...activityData.scriptSignals };
+  for (const [script, count] of Object.entries(scanned.scripts)) {
+    scriptSignals[script] = (scriptSignals[script] ?? 0) + count;
+  }
+
+  const languageSignals = { ...activityData.languageSignals };
+  for (const [language, count] of Object.entries(scanned.languages)) {
+    languageSignals[language] = (languageSignals[language] ?? 0) + count;
+  }
+
+  return {
+    ...activityData,
+    subredditCounts,
+    scriptSignals,
+    languageSignals,
   };
 }

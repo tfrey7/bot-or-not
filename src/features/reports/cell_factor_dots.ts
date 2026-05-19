@@ -31,56 +31,56 @@ type DotLeaning =
 // and overflow rules; appending to body guarantees the card sits directly
 // under <html> so fixed positioning resolves against the true viewport.
 function attachFactorCardPositioning(
-  dotEl: HTMLElement,
-  cardEl: HTMLElement
+  dotElement: HTMLElement,
+  cardElement: HTMLElement
 ): void {
   let mounted = false;
 
   const show = (): void => {
     if (!mounted) {
-      document.body.appendChild(cardEl);
+      document.body.appendChild(cardElement);
       mounted = true;
     }
 
-    const dotRect = dotEl.getBoundingClientRect();
-    const cardWidth = cardEl.offsetWidth;
-    const cardHeight = cardEl.offsetHeight;
+    const dotRect = dotElement.getBoundingClientRect();
+    const cardWidth = cardElement.offsetWidth;
+    const cardHeight = cardElement.offsetHeight;
     if (!cardWidth || !cardHeight) {
       return;
     }
 
-    const vw = window.innerWidth;
-    const vh = window.innerHeight;
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
     const margin = 8;
     const gap = 10;
 
     let left = dotRect.left + dotRect.width / 2 - cardWidth / 2;
-    left = Math.max(margin, Math.min(left, vw - margin - cardWidth));
+    left = Math.max(margin, Math.min(left, viewportWidth - margin - cardWidth));
 
     let top = dotRect.top - cardHeight - gap;
     if (top < margin) {
       top = dotRect.bottom + gap;
     }
-    top = Math.max(margin, Math.min(top, vh - margin - cardHeight));
+    top = Math.max(margin, Math.min(top, viewportHeight - margin - cardHeight));
 
-    cardEl.style.left = `${left}px`;
-    cardEl.style.top = `${top}px`;
-    cardEl.classList.add("bon-factor-card--visible");
+    cardElement.style.left = `${left}px`;
+    cardElement.style.top = `${top}px`;
+    cardElement.classList.add("bon-factor-card--visible");
   };
 
   const hide = (): void => {
-    cardEl.classList.remove("bon-factor-card--visible");
+    cardElement.classList.remove("bon-factor-card--visible");
   };
 
-  dotEl.addEventListener("mouseenter", show);
-  dotEl.addEventListener("mouseleave", hide);
-  dotEl.addEventListener("focus", show);
-  dotEl.addEventListener("blur", hide);
+  dotElement.addEventListener("mouseenter", show);
+  dotElement.addEventListener("mouseleave", hide);
+  dotElement.addEventListener("focus", show);
+  dotElement.addEventListener("blur", hide);
 }
 
 function buildFactorTooltipCard(
   fullLabel: string,
-  f: FactorWithEvidence | undefined,
+  factor: FactorWithEvidence | undefined,
   hasRun: boolean,
   leaning: DotLeaning
 ): HTMLSpanElement {
@@ -99,7 +99,7 @@ function buildFactorTooltipCard(
   name.textContent = fullLabel;
   header.appendChild(name);
 
-  if (f && typeof f.score === "number") {
+  if (factor && typeof factor.score === "number") {
     const pillClass =
       leaning === "likely-bot"
         ? "bot"
@@ -119,38 +119,41 @@ function buildFactorTooltipCard(
   }
   card.appendChild(header);
 
-  if (f && typeof f.score === "number") {
-    card.appendChild(bonReportsScoreBar(f.score, f.confidence));
+  if (factor && typeof factor.score === "number") {
+    card.appendChild(bonReportsScoreBar(factor.score, factor.confidence));
   }
 
-  if (f && typeof f.confidence === "number") {
-    const conf = document.createElement("span");
-    conf.className = "bon-factor-card-confidence";
-    conf.textContent = `${Math.round(f.confidence * 100)}% confidence`;
-    card.appendChild(conf);
+  if (factor && typeof factor.confidence === "number") {
+    const confidence = document.createElement("span");
+    confidence.className = "bon-factor-card-confidence";
+    confidence.textContent = `${Math.round(factor.confidence * 100)}% confidence`;
+    card.appendChild(confidence);
   }
 
-  if (f?.reasoning) {
-    const r = document.createElement("span");
-    r.className = "bon-factor-card-reasoning";
-    r.textContent = f.reasoning;
-    card.appendChild(r);
-  } else if (!f && hasRun) {
-    const r = document.createElement("span");
-    r.className = "bon-factor-card-reasoning bon-factor-card-reasoning--muted";
-    r.textContent = "Added after this investigation ran — re-run to score.";
-    card.appendChild(r);
-  } else if (!f) {
-    const r = document.createElement("span");
-    r.className = "bon-factor-card-reasoning bon-factor-card-reasoning--muted";
-    r.textContent = "Not investigated.";
-    card.appendChild(r);
+  if (factor?.reasoning) {
+    const reasoning = document.createElement("span");
+    reasoning.className = "bon-factor-card-reasoning";
+    reasoning.textContent = factor.reasoning;
+    card.appendChild(reasoning);
+  } else if (!factor && hasRun) {
+    const reasoning = document.createElement("span");
+    reasoning.className =
+      "bon-factor-card-reasoning bon-factor-card-reasoning--muted";
+    reasoning.textContent =
+      "Added after this investigation ran — re-run to score.";
+    card.appendChild(reasoning);
+  } else if (!factor) {
+    const reasoning = document.createElement("span");
+    reasoning.className =
+      "bon-factor-card-reasoning bon-factor-card-reasoning--muted";
+    reasoning.textContent = "Not investigated.";
+    card.appendChild(reasoning);
   }
 
-  if (f && Array.isArray(f.evidence) && f.evidence.length) {
+  if (factor && Array.isArray(factor.evidence) && factor.evidence.length) {
     const list = document.createElement("ul");
     list.className = "bon-factor-card-evidence";
-    for (const cite of f.evidence) {
+    for (const cite of factor.evidence) {
       const item = document.createElement("li");
       item.textContent = cite;
       list.appendChild(item);
@@ -163,7 +166,7 @@ function buildFactorTooltipCard(
 
 function buildFactorDot(
   key: string,
-  f: FactorWithEvidence | undefined,
+  factor: FactorWithEvidence | undefined,
   hasRun: boolean
 ): HTMLSpanElement {
   const fullLabel = BON_FACTOR_LABELS[key] || key;
@@ -173,27 +176,28 @@ function buildFactorDot(
   dot.tabIndex = 0;
 
   let leaning: DotLeaning;
-  if (f && typeof f.score === "number") {
-    leaning = bonScoreLeaning(f.score, f.confidence) as DotLeaning;
-  } else if (!f && hasRun) {
+  if (factor && typeof factor.score === "number") {
+    leaning = bonScoreLeaning(factor.score, factor.confidence) as DotLeaning;
+  } else if (!factor && hasRun) {
     leaning = "new";
-  } else if (!f) {
+  } else if (!factor) {
     leaning = "missing";
   } else {
     leaning = "neutral";
   }
   dot.classList.add(`bon-factor-dot--${leaning}`);
 
-  if (f) {
-    const scoreText = typeof f.score === "number" ? f.score.toFixed(2) : "—";
-    const confText =
-      typeof f.confidence === "number"
-        ? `${Math.round(f.confidence * 100)}%`
+  if (factor) {
+    const scoreText =
+      typeof factor.score === "number" ? factor.score.toFixed(2) : "—";
+    const confidenceText =
+      typeof factor.confidence === "number"
+        ? `${Math.round(factor.confidence * 100)}%`
         : "—";
 
     dot.setAttribute(
       "aria-label",
-      `${fullLabel}: score ${scoreText}, confidence ${confText}`
+      `${fullLabel}: score ${scoreText}, confidence ${confidenceText}`
     );
   } else if (hasRun) {
     dot.setAttribute(
@@ -204,7 +208,7 @@ function buildFactorDot(
     dot.setAttribute("aria-label", `${fullLabel}: not investigated`);
   }
 
-  const card = buildFactorTooltipCard(fullLabel, f, hasRun, leaning);
+  const card = buildFactorTooltipCard(fullLabel, factor, hasRun, leaning);
   dot.appendChild(card);
   attachFactorCardPositioning(dot, card);
 
@@ -218,11 +222,9 @@ export function bonReportsFactorDots(
   wrap.className = "bon-factors-cell";
 
   const factorsByKey = new Map<string, FactorWithEvidence>();
-  if (Array.isArray(investigation?.factors)) {
-    for (const f of investigation.factors) {
-      if (f?.key) {
-        factorsByKey.set(f.key, f as FactorWithEvidence);
-      }
+  for (const factor of investigation?.factors ?? []) {
+    if (factor?.key) {
+      factorsByKey.set(factor.key, factor as FactorWithEvidence);
     }
   }
 
@@ -231,8 +233,8 @@ export function bonReportsFactorDots(
   // without the "added after" framing.
   const hasRun = investigation?.status === "done";
   for (const key of BON_FACTOR_KEYS) {
-    const f = factorsByKey.get(key);
-    wrap.appendChild(buildFactorDot(key, f, hasRun));
+    const factor = factorsByKey.get(key);
+    wrap.appendChild(buildFactorDot(key, factor, hasRun));
   }
   return wrap;
 }

@@ -31,6 +31,9 @@ const apiKeyInput = document.getElementById(
 const apiKeyStatus = document.getElementById(
   "bon-api-key-status"
 ) as HTMLElement;
+const clearAllBtn = document.getElementById(
+  "bon-clear-btn"
+) as HTMLButtonElement;
 
 let pendingConfirmAction: (() => Promise<unknown> | unknown) | null = null;
 
@@ -65,8 +68,8 @@ export function bonReportsInitConfirmModal({
 }): void {
   cancelBtn.addEventListener("click", closeConfirmModal);
 
-  modal.addEventListener("click", (e) => {
-    if (e.target === modal) {
+  modal.addEventListener("click", (event) => {
+    if (event.target === modal) {
       closeConfirmModal();
     }
   });
@@ -84,8 +87,8 @@ export function bonReportsInitConfirmModal({
       await action();
       closeConfirmModal();
       await onConfirm();
-    } catch (err) {
-      console.error("[Bot or Not] confirm action failed", err);
+    } catch (error) {
+      console.error("[Bot or Not] confirm action failed", error);
     } finally {
       confirmBtn.disabled = false;
       cancelBtn.disabled = false;
@@ -159,18 +162,26 @@ export function bonReportsInitSettingsModal(): void {
     settingsModal.hidden = true;
   });
 
-  settingsModal.addEventListener("click", (e) => {
-    if (e.target === settingsModal) {
+  settingsModal.addEventListener("click", (event) => {
+    if (event.target === settingsModal) {
       settingsModal.hidden = true;
     }
   });
 
   settingsSave.addEventListener("click", saveApiKey);
+
+  clearAllBtn.addEventListener("click", () => {
+    bonReportsOpenConfirmModal({
+      text: "Clear all reported users? This can't be undone.",
+      confirmLabel: "Clear all",
+      action: () => browser.runtime.sendMessage({ type: "clear-all-reports" }),
+    });
+  });
 }
 
 export function bonReportsCloseModalsOnEscape(): void {
-  document.addEventListener("keydown", (e) => {
-    if (e.key !== "Escape") {
+  document.addEventListener("keydown", (event) => {
+    if (event.key !== "Escape") {
       return;
     }
 

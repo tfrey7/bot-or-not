@@ -68,27 +68,27 @@ export function bonEstimateCostUsd(
   model: string | null | undefined,
   webSearchCount = 0
 ): number | null {
-  const p = bonLookupPricing(model);
-  if (!p || !usage) {
+  const pricing = bonLookupPricing(model);
+  if (!pricing || !usage) {
     return null;
   }
 
-  const inTok = usage.input_tokens || 0;
-  const outTok = usage.output_tokens || 0;
+  const inputTokens = usage.input_tokens || 0;
+  const outputTokens = usage.output_tokens || 0;
   const cacheRead = usage.cache_read_input_tokens || 0;
   const cacheCreate = usage.cache_creation_input_tokens || 0;
   const write5m = usage.cache_creation?.ephemeral_5m_input_tokens;
   const write1h = usage.cache_creation?.ephemeral_1h_input_tokens;
   // Prefer the split if present; otherwise treat all cache creation as 5m.
-  const w5 = write5m != null ? write5m : cacheCreate;
-  const w1 = write1h != null ? write1h : 0;
+  const write5mTokens = write5m != null ? write5m : cacheCreate;
+  const write1hTokens = write1h != null ? write1h : 0;
 
   const usd =
-    (inTok * p.input +
-      outTok * p.output +
-      cacheRead * p.cacheRead +
-      w5 * p.cacheWrite5m +
-      w1 * p.cacheWrite1h) /
+    (inputTokens * pricing.input +
+      outputTokens * pricing.output +
+      cacheRead * pricing.cacheRead +
+      write5mTokens * pricing.cacheWrite5m +
+      write1hTokens * pricing.cacheWrite1h) /
       1_000_000 +
     (webSearchCount || 0) * BON_WEB_SEARCH_USD_PER_REQUEST;
 
@@ -103,6 +103,6 @@ export function bonRecentCost(
 ): number {
   const cutoff = Date.now() - days * 86_400_000;
   return runs
-    .filter((r) => r.runAt && r.runAt >= cutoff)
-    .reduce((a, r) => a + (r.totalCost || 0), 0);
+    .filter((run) => run.runAt && run.runAt >= cutoff)
+    .reduce((sum, run) => sum + (run.totalCost || 0), 0);
 }
