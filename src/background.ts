@@ -1,15 +1,19 @@
 import {
-  bonDossierAdd,
-  bonDossierHasMap,
-  bonDossierRemove,
-} from "./features/dossier";
+  bonAiCommandBuildSnapshot,
+  bonRunAiCommand,
+  type AiCommandMessage,
+  type AiCommandResult,
+} from "./features/ai-command";
 import {
+  bonExtractSnoovatarUrl,
   bonFetchUserActivity,
   bonGatherProfile,
   bonRunOneDAnalysis,
   RedditFetchError,
 } from "./features/investigation";
+import { bonReportsComputeRegionForReport } from "./features/reports/logic.ts";
 import type { ActivityData, Investigation, Report } from "./types.ts";
+import { bonExpectedDurationMs } from "./utils/expected_duration.ts";
 import {
   bonDedupeHistory,
   bonFindReportKey,
@@ -27,6 +31,12 @@ import {
 
 console.log("[Bot or Not] background loaded");
 
+// In-memory conversation history for the AI command bar. Persists across
+// `ai-command` calls but resets on service-worker eviction or extension
+// reload — a hard cap on conversation length. The operator can also reset
+// explicitly via `ai-command-reset`.
+let aiCommandHistory: AiCommandMessage[] = [];
+
 // Any investigation found with status: "running" at startup was orphaned —
 // a previous background-script instance died mid-await (web-ext reload, browser
 // restart, service worker eviction) and its completion handler never fired.
@@ -34,11 +44,16 @@ console.log("[Bot or Not] background loaded");
 // than stuck on a spinner forever.
 void sweepOrphanedInvestigations();
 
+// One-time rename pass: the `crank` archetype was renamed to `zealot`.
+// Rewrite stored investigations so the UI doesn't render stale labels.
+void migrateCrankToZealot();
+
 async function sweepOrphanedInvestigations(): Promise<void> {
   try {
     const reports = await bonReadReports();
 
     let changed = false;
+
     for (const [username, report] of Object.entries(reports)) {
       const investigation = report.investigation;
       if (investigation?.status !== "running") {
@@ -69,6 +84,56 @@ async function sweepOrphanedInvestigations(): Promise<void> {
   }
 }
 
+async function migrateCrankToZealot(): Promise<void> {
+  try {
+    const reports = await bonReadReports();
+
+    let changed = false;
+
+    for (const [username, report] of Object.entries(reports)) {
+      const persona = report.investigation?.persona;
+      if (!persona) {
+        continue;
+      }
+
+      const archetypes = persona.archetypes as Record<string, number> | null;
+      const hasCrankArchetype = archetypes && "crank" in archetypes;
+      const hasCrankLabel = (persona.label as string) === "crank";
+
+      if (!hasCrankArchetype && !hasCrankLabel) {
+        continue;
+      }
+
+      const nextArchetypes = hasCrankArchetype
+        ? (() => {
+            const { crank, ...rest } = archetypes;
+            return { ...rest, zealot: crank } as Record<string, number>;
+          })()
+        : archetypes;
+
+      reports[username] = {
+        ...report,
+        investigation: {
+          ...report.investigation!,
+          persona: {
+            ...persona,
+            label: hasCrankLabel ? "zealot" : persona.label,
+            archetypes: nextArchetypes as typeof persona.archetypes,
+          },
+        },
+      };
+      changed = true;
+    }
+
+    if (changed) {
+      await bonWriteReports(reports);
+      console.log("[Bot or Not] migrated crank → zealot in stored personas");
+    }
+  } catch (error) {
+    console.error("[Bot or Not] crank → zealot migration failed", error);
+  }
+}
+
 interface BaseMessage {
   type: string;
   [k: string]: unknown;
@@ -78,71 +143,90 @@ browser.runtime.onMessage.addListener((message: BaseMessage) => {
   if (message.type === "report-user") {
     return handleReportUser(message);
   }
+
   if (message.type === "get-user-state") {
     return handleGetUserState(message);
   }
+
   if (message.type === "get-user-report") {
     return handleGetUserReport(message);
   }
+
   if (message.type === "get-user-tags") {
     return handleGetUserTags();
   }
+
   if (message.type === "get-all-reports") {
     return handleGetAllReports();
   }
+
   if (message.type === "update-user-status") {
     return handleUpdateUserStatus(message);
   }
-  if (message.type === "update-user-created-at") {
-    return handleUpdateUserCreatedAt(message);
+
+  if (message.type === "update-user-profile-stats") {
+    return handleUpdateUserProfileStats(message);
   }
+
   if (message.type === "update-post-status") {
     return handleUpdatePostStatus(message);
   }
+
   if (message.type === "update-botbouncer-status") {
     return handleUpdateBotBouncerStatus(message);
   }
+
   if (message.type === "clear-all-reports") {
     return handleClearAllReports();
   }
+
   if (message.type === "delete-report") {
     return handleDeleteReport(message);
   }
+
   if (message.type === "open-popup") {
     return handleOpenPopup();
   }
+
   if (message.type === "open-reports-tab") {
     return handleOpenReportsTab(message);
   }
+
   if (message.type === "investigate-user") {
     return handleInvestigateUser(message);
   }
+
   if (message.type === "auto-investigate-on-view") {
     return handleAutoInvestigateOnView(message);
   }
+
   if (message.type === "fetch-activity") {
     return handleFetchActivity(message);
   }
+
   if (message.type === "get-claude-api-key") {
     return handleGetClaudeApiKey();
   }
+
   if (message.type === "set-claude-api-key") {
     return handleSetClaudeApiKey(message);
   }
-  if (message.type === "dossier-add") {
-    return handleDossierAdd(message);
-  }
-  if (message.type === "dossier-remove") {
-    return handleDossierRemove(message);
-  }
-  if (message.type === "dossier-has-map") {
-    return handleDossierHasMap(message);
-  }
+
   if (message.type === "link-ring") {
     return handleLinkRing(message);
   }
+
   if (message.type === "unlink-ring") {
     return handleUnlinkRing(message);
+  }
+
+  if (message.type === "ai-command") {
+    return handleAiCommand(message);
+  }
+
+  if (message.type === "ai-command-reset") {
+    aiCommandHistory = [];
+    return Promise.resolve({ ok: true });
   }
 });
 
@@ -168,11 +252,14 @@ async function openReportsTab(username?: string): Promise<void> {
         if (tab.url !== targetUrl) {
           update.url = targetUrl;
         }
+
         await browser.tabs.update(tab.id, update);
       }
+
       if (tab.windowId != null) {
         await browser.windows.update(tab.windowId, { focused: true });
       }
+
       return;
     }
 
@@ -219,26 +306,7 @@ async function handleReportUser(
   };
   await bonWriteReports(reports);
 
-  // Capture the post/comment that triggered this report so the investigation
-  // always has at least one anchor — even when the account's post history is
-  // hidden and Claude has nothing else to work from. Awaited inline before the
-  // auto-investigate kicks off so the report record has the context item when
-  // bonGatherProfile reads it; the report-click itself doesn't wait, since the
-  // whole sequence runs detached from the response.
-  const context = (message.context as Record<string, unknown>) ?? {};
-  const permalink =
-    typeof context.permalink === "string" ? context.permalink : null;
-
-  void (async () => {
-    if (permalink) {
-      try {
-        await bonDossierAdd(username, permalink, "auto");
-      } catch (error) {
-        console.error("[Bot or Not] auto dossier capture failed", error);
-      }
-    }
-    await maybeAutoInvestigate(username);
-  })();
+  void maybeAutoInvestigate(username);
 
   return { count: history.length };
 }
@@ -250,6 +318,7 @@ async function maybeAutoInvestigate(username: string): Promise<void> {
     const { claudeApiKey = "" } = (await browser.storage.local.get(
       "claudeApiKey"
     )) as { claudeApiKey?: string };
+
     if (!claudeApiKey) {
       return;
     }
@@ -294,6 +363,7 @@ async function handleAutoInvestigateOnView(
     const { claudeApiKey = "" } = (await browser.storage.local.get(
       "claudeApiKey"
     )) as { claudeApiKey?: string };
+
     if (!claudeApiKey) {
       return { ok: true, started: false };
     }
@@ -323,7 +393,9 @@ async function handleAutoInvestigateOnView(
   }
 }
 
-async function handleUpdateUserCreatedAt(message: BaseMessage): Promise<void> {
+async function handleUpdateUserProfileStats(
+  message: BaseMessage
+): Promise<void> {
   const reports = await bonReadReports();
   const username = message.username as string;
 
@@ -332,13 +404,25 @@ async function handleUpdateUserCreatedAt(message: BaseMessage): Promise<void> {
   }
 
   const existing = reports[username];
-  if (existing.createdAt) {
+  const incomingCreatedAt = message.createdAt as number | null;
+  const incomingKarma = message.totalKarma as number | null;
+
+  // Cake day is immutable, so only fill it when we don't already have one.
+  // Karma changes over time — let the latest fetch win.
+  const nextCreatedAt = existing.createdAt ?? incomingCreatedAt ?? null;
+  const nextKarma = incomingKarma ?? existing.totalKarma ?? null;
+
+  if (
+    nextCreatedAt === existing.createdAt &&
+    nextKarma === existing.totalKarma
+  ) {
     return;
   }
 
   reports[username] = {
     ...existing,
-    createdAt: message.createdAt as number,
+    createdAt: nextCreatedAt,
+    totalKarma: nextKarma,
   };
   await bonWriteReports(reports);
 }
@@ -392,6 +476,7 @@ async function handleUpdatePostStatus(message: BaseMessage): Promise<void> {
   const reports = await bonReadReports();
 
   let updated = false;
+
   for (const [username, existing] of Object.entries(reports)) {
     let changed = false;
 
@@ -408,6 +493,7 @@ async function handleUpdatePostStatus(message: BaseMessage): Promise<void> {
           statusCheckedAt: Date.now(),
         };
       }
+
       return entry;
     });
 
@@ -438,12 +524,14 @@ async function handleGetUserTags(): Promise<{ tags: Record<string, UserTag> }> {
   const reports = await bonReadReports();
 
   const tags: Record<string, UserTag> = {};
+
   for (const [username, report] of Object.entries(reports)) {
     const tag = summarizeUserTag(username, report);
     if (tag) {
       tags[username] = tag;
     }
   }
+
   return { tags };
 }
 
@@ -514,6 +602,7 @@ async function handleGetClaudeApiKey(): Promise<{ hasKey: boolean }> {
   const { claudeApiKey = "" } = (await browser.storage.local.get(
     "claudeApiKey"
   )) as { claudeApiKey?: string };
+
   return { hasKey: !!claudeApiKey };
 }
 
@@ -583,6 +672,7 @@ async function handleInvestigateUser(
   const { claudeApiKey = "" } = (await browser.storage.local.get(
     "claudeApiKey"
   )) as { claudeApiKey?: string };
+
   if (!claudeApiKey) {
     return { ok: false, error: "no-api-key" };
   }
@@ -607,9 +697,12 @@ async function handleInvestigateUser(
       ...(existingRecord.botBouncerCheckedAt
         ? { botBouncerCheckedAt: existingRecord.botBouncerCheckedAt }
         : {}),
-      contextItems: existingRecord.contextItems,
     });
-    const analysis = await bonRunOneDAnalysis(claudeApiKey, inputs.summary);
+    const analysis = await bonRunOneDAnalysis(
+      claudeApiKey,
+      inputs.summary,
+      bonExtractSnoovatarUrl(inputs.raw)
+    );
 
     const durationMs = Date.now() - startedAt;
     console.log(
@@ -710,48 +803,18 @@ async function handleGetUserState(
   return { count, isBot: count > 0 };
 }
 
-async function handleDossierAdd(
-  message: BaseMessage
-): Promise<{ ok: boolean; added: boolean; error?: string }> {
-  const username = ((message.username as string) ?? "").trim();
-  const permalink = ((message.permalink as string) ?? "").trim();
-  const result = await bonDossierAdd(username, permalink, "manual");
-  return {
-    ok: result.ok,
-    added: result.added,
-    ...(result.error ? { error: result.error } : {}),
-  };
-}
-
-async function handleDossierRemove(
-  message: BaseMessage
-): Promise<{ ok: boolean; removed: boolean }> {
-  const username = ((message.username as string) ?? "").trim();
-  const permalink = ((message.permalink as string) ?? "").trim();
-  return bonDossierRemove(username, permalink);
-}
-
-async function handleDossierHasMap(
-  message: BaseMessage
-): Promise<{ map: Record<string, true> }> {
-  const queries = Array.isArray(message.queries)
-    ? (message.queries as Array<{ username: string; permalink: string }>)
-    : [];
-  const map = await bonDossierHasMap(queries);
-  return { map };
-}
-
 async function handleGetUserReport(
   message: BaseMessage
-): Promise<{ report: Report | null }> {
+): Promise<{ report: Report | null; expectedDurationMs: number | null }> {
   const reports = await bonReadReports();
+  const expectedDurationMs = bonExpectedDurationMs(Object.values(reports));
   const key = bonFindReportKey(reports, message.username as string);
 
   if (!key) {
-    return { report: null };
+    return { report: null, expectedDurationMs };
   }
 
-  return { report: reports[key] };
+  return { report: reports[key]!, expectedDurationMs };
 }
 
 async function handleLinkRing(
@@ -769,15 +832,18 @@ async function handleLinkRing(
 
   const reports = await bonReadReports();
   const keys: string[] = [];
+
   for (const username of usernames) {
     const key = bonFindReportKey(reports, username);
     if (!key) {
       return { ok: false, error: `unknown-user:${username}` };
     }
+
     keys.push(key);
   }
 
   const existingRingIds = new Set<string>();
+
   for (const key of keys) {
     const ringId = reports[key].ringId;
     if (ringId) {
@@ -798,6 +864,7 @@ async function handleLinkRing(
     if (reports[key].ringId === ringId) {
       continue;
     }
+
     reports[key] = { ...reports[key], ringId };
   }
 
@@ -820,14 +887,17 @@ async function handleUnlinkRing(
 
   const reports = await bonReadReports();
   let changed = false;
+
   for (const username of usernames) {
     const key = bonFindReportKey(reports, username);
     if (!key) {
       continue;
     }
+
     if (reports[key].ringId === null) {
       continue;
     }
+
     reports[key] = { ...reports[key], ringId: null };
     changed = true;
   }
@@ -835,15 +905,155 @@ async function handleUnlinkRing(
   if (changed) {
     await bonWriteReports(reports);
   }
+
   return { ok: true };
 }
 
 function collectExistingRingIds(reports: Record<string, Report>): Set<string> {
   const out = new Set<string>();
+
   for (const report of Object.values(reports)) {
     if (report.ringId) {
       out.add(report.ringId);
     }
   }
+
   return out;
+}
+
+// Bridge the agent's named tool calls to the same handler functions that
+// `browser.runtime.onMessage` already routes through. Each branch reshapes
+// the tool input into the BaseMessage shape that handler expects.
+async function handleAiCommand(
+  message: BaseMessage
+): Promise<AiCommandResult | { ok: false; error: string }> {
+  const input = ((message.input as string) ?? "").trim();
+  if (!input) {
+    return { ok: false, error: "empty-input" };
+  }
+
+  const { claudeApiKey = "" } = (await browser.storage.local.get(
+    "claudeApiKey"
+  )) as { claudeApiKey?: string };
+
+  if (!claudeApiKey) {
+    return { ok: false, error: "no-api-key" };
+  }
+
+  const reports = await bonReadReports();
+
+  // Compute a country code per user so the agent can answer "filter to US
+  // accounts" without us shipping all the underlying signals. Soft inferences
+  // (timezone-only band) collapse to null — too noisy as a filter target.
+  const regions: Record<string, string | null> = {};
+
+  for (const [username, report] of Object.entries(reports)) {
+    const result = bonReportsComputeRegionForReport({ username, ...report });
+    regions[username] =
+      result?.kind === "ai" || result?.kind === "deterministic"
+        ? result.region
+        : null;
+  }
+
+  const snapshot = bonAiCommandBuildSnapshot(reports, regions);
+
+  const result = await bonRunAiCommand(
+    claudeApiKey,
+    snapshot,
+    input,
+    async (tool, args) => {
+      if (tool === "link_ring") {
+        return handleLinkRing({
+          type: "link-ring",
+          usernames: args.usernames,
+        });
+      }
+
+      if (tool === "unlink_ring") {
+        return handleUnlinkRing({
+          type: "unlink-ring",
+          usernames: args.usernames,
+        });
+      }
+
+      if (tool === "delete_report") {
+        return handleDeleteReport({
+          type: "delete-report",
+          username: args.username,
+        });
+      }
+
+      if (tool === "investigate_user") {
+        // Don't block the agent loop on a full ~60s investigation — fire it
+        // off and report back immediately. The reports page polls and the row
+        // flips to "running" on its own.
+        void handleInvestigateUser({
+          type: "investigate-user",
+          username: args.username,
+        });
+
+        return { ok: true, started: true };
+      }
+
+      if (tool === "set_user_status") {
+        await handleUpdateUserStatus({
+          type: "update-user-status",
+          username: args.username,
+          status: args.status,
+        });
+
+        return { ok: true };
+      }
+
+      if (tool === "filter_users") {
+        // UI-only action — the input list flows through to the reports page
+        // via the agent's actions[] and gets applied as a visible-row gate.
+        const usernames = Array.isArray(args.usernames)
+          ? (args.usernames as string[])
+          : [];
+
+        return { ok: true, count: usernames.length };
+      }
+
+      if (tool === "navigate_to_user") {
+        // Storage-side no-op — resolve the username to the canonical stored key
+        // and hand it back so the reports page can select that row after the
+        // agent returns. Tries exact (case-insensitive) match first, then falls
+        // back to a substring match so a partial reference like "spam" still
+        // lands somewhere reasonable if Claude passed the operator's phrasing
+        // through without resolving it against the snapshot.
+        const requested = ((args.username as string) ?? "").trim();
+        const latest = await bonReadReports();
+
+        let key = bonFindReportKey(latest, requested);
+
+        if (!key && requested) {
+          const needle = requested.toLowerCase();
+          const candidates = Object.keys(latest).filter((name) =>
+            name.toLowerCase().includes(needle)
+          );
+
+          // Shortest match wins — "alice" in {"alice42", "alice_test_account"}
+          // prefers "alice42" as the tighter fit.
+          candidates.sort((a, b) => a.length - b.length);
+          key = candidates[0] ?? null;
+        }
+
+        if (!key) {
+          return { ok: false, error: `unknown user: ${requested}` };
+        }
+
+        return { ok: true, username: key };
+      }
+
+      return { ok: false, error: `unknown tool: ${tool}` };
+    },
+    aiCommandHistory
+  );
+
+  // Persist the updated transcript so the next `ai-command` call sees this
+  // turn as prior context. The result also carries `history` for callers
+  // that want to mirror it (none today).
+  aiCommandHistory = result.history;
+  return result;
 }

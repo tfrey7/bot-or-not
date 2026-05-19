@@ -4,6 +4,7 @@ export function bonFmtDuration(ms: number | null | undefined): string {
   if (ms == null || !isFinite(ms)) {
     return "—";
   }
+
   if (ms < 1000) {
     return `${Math.round(ms)}ms`;
   }
@@ -35,12 +36,15 @@ export function bonFormatDate(ts: number): string {
   if (diffMs < minute) {
     return "now";
   }
+
   if (diffMs < hour) {
     return `${Math.floor(diffMs / minute)}m ago`;
   }
+
   if (diffMs < day) {
     return `${Math.floor(diffMs / hour)}h ago`;
   }
+
   if (diffMs < 7 * day) {
     return `${Math.floor(diffMs / day)}d ago`;
   }
@@ -64,12 +68,15 @@ export function bonFormatPanelDate(ts: number): string {
   if (diffMs < minute) {
     return "now";
   }
+
   if (diffMs < hour) {
     return `${Math.floor(diffMs / minute)}m`;
   }
+
   if (diffMs < day) {
     return `${Math.floor(diffMs / hour)}h`;
   }
+
   if (diffMs < 7 * day) {
     return `${Math.floor(diffMs / day)}d`;
   }
@@ -93,6 +100,7 @@ export function bonFmtTimestamp(ts: number): string {
     hour: "numeric",
     minute: "2-digit",
   });
+
   return `${dateStr} ${timeStr}`;
 }
 

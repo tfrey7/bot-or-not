@@ -1,6 +1,6 @@
 // Full investigation detail rendered in the expanded row — orchestrates
-// the summary + top reasons, persona aside, run metadata line, and the
-// per-factor card list.
+// the summary, full non-neutral factor bullet list, persona aside, and
+// run metadata.
 
 import type { Investigation } from "../../types.ts";
 import {
@@ -9,35 +9,49 @@ import {
 } from "../../verdict.ts";
 import { bonLinkifyReddit } from "../../utils/linkify_reddit.ts";
 import { bonTopReasonsList } from "../../utils/top_reasons_list.ts";
-import { bonReportsFactorsList } from "./investigation_factors.ts";
-import { bonReportsInvestigationLoading } from "./investigation_loading.ts";
+import { bonInvestigationLoading } from "../../utils/investigation_loading.ts";
+import { bonReportsVerdictBadge } from "./cell_verdict.ts";
 import { bonReportsPersonaBlock } from "./persona_block.ts";
+
+export interface InvestigationDetailOpts {
+  expectedDurationMs?: number | null;
+}
 
 export function bonReportsInvestigationDetail(
   rawInvestigation: Investigation | null | undefined,
-  contextItemsCount: number = 0,
   actions: HTMLElement[] = [],
-  inRing = false
+  inRing = false,
+  { expectedDurationMs = null }: InvestigationDetailOpts = {}
 ): HTMLDivElement {
-  const contextLabel = formatContextLabel(contextItemsCount);
-
   const wrap = document.createElement("div");
   wrap.className = "bon-detail-wrap";
 
   const header = document.createElement("div");
   header.className = "bon-detail-header";
 
+  const titleGroup = document.createElement("div");
+  titleGroup.className = "bon-detail-header-title";
+
   const title = document.createElement("p");
   title.className = "bon-detail-title";
   title.textContent = "AI investigation";
-  header.appendChild(title);
+  titleGroup.appendChild(title);
+
+  const verdictBadge = bonReportsVerdictBadge(rawInvestigation, inRing);
+  if (verdictBadge) {
+    titleGroup.appendChild(verdictBadge);
+  }
+
+  header.appendChild(titleGroup);
 
   if (actions.length > 0) {
     const actionsRow = document.createElement("div");
     actionsRow.className = "bon-detail-header-actions";
+
     for (const action of actions) {
       actionsRow.appendChild(action);
     }
+
     header.appendChild(actionsRow);
   }
 
@@ -67,8 +81,9 @@ export function bonReportsInvestigationDetail(
     }
 
     wrap.appendChild(
-      bonReportsInvestigationLoading(investigation.startedAt, contextLabel)
+      bonInvestigationLoading(investigation.startedAt, { expectedDurationMs })
     );
+
     return wrap;
   }
 
@@ -91,7 +106,7 @@ export function bonReportsInvestigationDetail(
   }
 
   if (investigation.factors.length > 0) {
-    const reasons = bonTopReasonsList(investigation.factors);
+    const reasons = bonTopReasonsList(investigation.factors, Infinity);
     if (reasons) {
       summaryCol.appendChild(reasons);
     }
@@ -109,30 +124,11 @@ export function bonReportsInvestigationDetail(
     if (summaryCol.childNodes.length) {
       wrap.appendChild(summaryCol);
     }
+
     if (personaBlock) {
       wrap.appendChild(personaBlock);
     }
   }
 
-  if (contextLabel) {
-    const contextMeta = document.createElement("p");
-    contextMeta.className = "bon-verdict-meta";
-    contextMeta.textContent = `📎 ${contextLabel}`;
-    wrap.appendChild(contextMeta);
-  }
-
-  if (investigation.factors.length > 0) {
-    wrap.appendChild(bonReportsFactorsList(investigation.factors));
-  }
-
   return wrap;
-}
-
-function formatContextLabel(count: number): string | null {
-  if (count <= 0) {
-    return null;
-  }
-  return count === 1
-    ? "1 context item included"
-    : `${count} context items included`;
 }

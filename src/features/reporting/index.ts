@@ -63,6 +63,7 @@ function buildReportContext(event: Event): PendingReport | null {
       authorElement.id ||
       null;
   }
+
   return { username, context };
 }
 

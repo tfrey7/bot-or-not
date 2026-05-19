@@ -61,6 +61,7 @@ function attachFactorCardPositioning(
     if (top < margin) {
       top = dotRect.bottom + gap;
     }
+
     top = Math.max(margin, Math.min(top, viewportHeight - margin - cardHeight));
 
     cardElement.style.left = `${left}px`;
@@ -85,6 +86,7 @@ function buildFactorTooltipCard(
   leaning: DotLeaning
 ): HTMLSpanElement {
   const card = document.createElement("span");
+
   // Leaning modifier carries --bon-factor-accent forward when the card is
   // hoisted to <body> for positioning; otherwise inheritance from the dot
   // is severed and the colored top border goes muted.
@@ -117,6 +119,7 @@ function buildFactorTooltipCard(
         : bonFormatVerdict(leaning);
     header.appendChild(pill);
   }
+
   card.appendChild(header);
 
   if (factor && typeof factor.score === "number") {
@@ -153,11 +156,13 @@ function buildFactorTooltipCard(
   if (factor && Array.isArray(factor.evidence) && factor.evidence.length) {
     const list = document.createElement("ul");
     list.className = "bon-factor-card-evidence";
+
     for (const cite of factor.evidence) {
       const item = document.createElement("li");
       item.textContent = cite;
       list.appendChild(item);
     }
+
     card.appendChild(list);
   }
 
@@ -185,6 +190,7 @@ function buildFactorDot(
   } else {
     leaning = "neutral";
   }
+
   dot.classList.add(`bon-factor-dot--${leaning}`);
 
   if (factor) {
@@ -222,6 +228,7 @@ export function bonReportsFactorDots(
   wrap.className = "bon-factors-cell";
 
   const factorsByKey = new Map<string, FactorWithEvidence>();
+
   for (const factor of investigation?.factors ?? []) {
     if (factor?.key) {
       factorsByKey.set(factor.key, factor as FactorWithEvidence);
@@ -232,9 +239,11 @@ export function bonReportsFactorDots(
   // (status done). A never-run investigation gets the plain "missing" dots
   // without the "added after" framing.
   const hasRun = investigation?.status === "done";
+
   for (const key of BON_FACTOR_KEYS) {
     const factor = factorsByKey.get(key);
     wrap.appendChild(buildFactorDot(key, factor, hasRun));
   }
+
   return wrap;
 }

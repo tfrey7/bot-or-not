@@ -126,6 +126,7 @@ function bonDetectScripts(text: string): Record<string, number> {
   for (let i = 0; i < text.length; ) {
     const codePoint = text.codePointAt(i)!;
     i += codePoint > 0xffff ? 2 : 1;
+
     for (const range of BON_SCRIPT_RANGES) {
       if (codePoint >= range.range[0] && codePoint <= range.range[1]) {
         counts[range.name] = (counts[range.name] || 0) + 1;
@@ -133,34 +134,65 @@ function bonDetectScripts(text: string): Record<string, number> {
       }
     }
   }
+
   return counts;
 }
 
-function bonDetectLanguageMarkers(text: string): Record<string, number> {
+const LANGUAGE_SAMPLE_LIMIT = 4;
+
+function bonDetectLanguageMarkers(text: string): {
+  counts: Record<string, number>;
+  samples: Record<string, string[]>;
+} {
   if (!text) {
-    return {};
+    return { counts: {}, samples: {} };
   }
 
   const counts: Record<string, number> = {};
+  const samples: Record<string, string[]> = {};
 
   for (const [name, marker] of Object.entries(BON_LANGUAGE_MARKERS)) {
     const matches = text.match(marker.pattern);
-    if (matches && matches.length > 0) {
-      counts[name] = matches.length;
+    if (!matches || matches.length === 0) {
+      continue;
     }
+
+    counts[name] = matches.length;
+
+    const seen = new Set<string>();
+    const picked: string[] = [];
+
+    for (const match of matches) {
+      const normalized = match.toLowerCase();
+      if (seen.has(normalized)) {
+        continue;
+      }
+
+      seen.add(normalized);
+      picked.push(match);
+      if (picked.length >= LANGUAGE_SAMPLE_LIMIT) {
+        break;
+      }
+    }
+
+    samples[name] = picked;
   }
-  return counts;
+
+  return { counts, samples };
 }
 
 // One-shot scan over a concatenated text corpus. Used by bot_analysis.js
-// during fetch — output is stored in activityData.{scriptSignals,languageSignals}.
+// during fetch — output is stored in activityData.{scriptSignals,languageSignals,languageSamples}.
 export function bonScanTextSignals(text: string): {
   scripts: Record<string, number>;
   languages: Record<string, number>;
+  languageSamples: Record<string, string[]>;
 } {
+  const detected = bonDetectLanguageMarkers(text);
   return {
     scripts: bonDetectScripts(text),
-    languages: bonDetectLanguageMarkers(text),
+    languages: detected.counts,
+    languageSamples: detected.samples,
   };
 }
 
@@ -194,6 +226,7 @@ export function bonInferRegionFromScripts(
 
     // Split votes across plausible regions for ambiguous scripts.
     const share = count / range.regions.length;
+
     for (const region of range.regions) {
       votes[region] = (votes[region] || 0) + share;
     }
@@ -215,11 +248,13 @@ export interface LanguageInference {
     label: string;
     count: number;
     regions: string[];
+    samples: string[];
   }>;
 }
 
 export function bonInferRegionFromLanguage(
-  languageCounts: Record<string, number> | null | undefined
+  languageCounts: Record<string, number> | null | undefined,
+  languageSamples?: Record<string, string[]> | null | undefined
 ): LanguageInference | null {
   if (!languageCounts) {
     return null;
@@ -243,9 +278,11 @@ export function bonInferRegionFromLanguage(
       label: marker.label,
       count,
       regions: marker.regions,
+      samples: languageSamples?.[name] ?? [],
     });
 
     const share = count / marker.regions.length;
+
     for (const region of marker.regions) {
       votes[region] = (votes[region] || 0) + share;
     }
@@ -265,72 +302,95 @@ export function bonRegionForOffset(offset: number): string {
   if (offset === 0) {
     return "UK, Portugal, West Africa";
   }
+
   if (offset === 1) {
     return "Western/Central Europe";
   }
+
   if (offset === 2) {
     return "Eastern Europe, South Africa";
   }
+
   if (offset === 3) {
     return "Moscow, Eastern Europe, East Africa";
   }
+
   if (offset === 4) {
     return "Gulf, Caucasus";
   }
+
   if (offset === 5) {
     return "Pakistan, West Asia";
   }
+
   if (offset === 6) {
     return "India, Bangladesh";
   }
+
   if (offset === 7) {
     return "Thailand, Vietnam, Indonesia";
   }
+
   if (offset === 8) {
     return "China, Singapore, Philippines";
   }
+
   if (offset === 9) {
     return "Japan, Korea";
   }
+
   if (offset === 10) {
     return "Eastern Australia";
   }
+
   if (offset === 11) {
     return "Solomon Islands";
   }
+
   if (offset === 12) {
     return "New Zealand";
   }
+
   if (offset === -1) {
     return "Azores, Cape Verde";
   }
+
   if (offset === -2) {
     return "Mid-Atlantic";
   }
+
   if (offset === -3) {
     return "Brazil, Argentina";
   }
+
   if (offset === -4) {
     return "Atlantic, Eastern Caribbean";
   }
+
   if (offset === -5) {
     return "US Eastern, Colombia, Peru";
   }
+
   if (offset === -6) {
     return "US Central, Mexico";
   }
+
   if (offset === -7) {
     return "US Mountain";
   }
+
   if (offset === -8) {
     return "US Pacific";
   }
+
   if (offset === -9) {
     return "Alaska";
   }
+
   if (offset === -10) {
     return "Hawaii";
   }
+
   return "";
 }
 
@@ -392,10 +452,31 @@ export interface TimezoneOnlyRegionInference {
   possibleRegions: string[];
 }
 
-export type RegionInferenceResult =
+// AI-picked region. Carries the deterministic result alongside so the UI can
+// surface supporting evidence (e.g. matching country-coded sub hits) and call
+// out contradictions (AI says US, deterministic says RU because of Cyrillic).
+export interface AiRegionInference {
+  kind: "ai";
+  region: string;
+  confidence: number;
+  reasoning: string;
+  deterministic:
+    | DeterministicRegionInference
+    | TimezoneOnlyRegionInference
+    | null;
+}
+
+// Output of the deterministic pipeline alone (no AI input). Used as the
+// `deterministic` slot on AiRegionInference and as the standalone result
+// when no AI investigation has run yet.
+export type DeterministicRegionResult =
   | DeterministicRegionInference
   | TimezoneOnlyRegionInference
   | null;
+
+export type RegionInferenceResult =
+  | DeterministicRegionResult
+  | AiRegionInference;
 
 // Combine all deterministic signals (subreddit, script, language, moderator)
 // plus timezone, picking the region with the highest weighted score.
@@ -403,7 +484,7 @@ export type RegionInferenceResult =
 export function bonInferRegion(
   activityData: ActivityData | null | undefined,
   tzInferred: TzInferred | { kind: string } | null | undefined
-): RegionInferenceResult {
+): DeterministicRegionResult {
   const subredditResult = activityData
     ? bonInferRegionFromSubreddits(activityData.subredditCounts)
     : null;
@@ -411,7 +492,10 @@ export function bonInferRegion(
     ? bonInferRegionFromScripts(activityData.scriptSignals)
     : null;
   const languageResult = activityData
-    ? bonInferRegionFromLanguage(activityData.languageSignals)
+    ? bonInferRegionFromLanguage(
+        activityData.languageSignals,
+        activityData.languageSamples
+      )
     : null;
   const moderatorResult = activityData
     ? bonInferRegionFromModerated(activityData.moderatedSubs)
@@ -509,5 +593,6 @@ export function bonInferRegion(
       possibleRegions,
     };
   }
+
   return null;
 }

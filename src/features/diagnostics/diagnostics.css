@@ -1,7 +1,7 @@
 /* Diagnostics tab — labeled key/value blocks for the record inspector,
    compact tables for the count breakdowns, and an error list. Inherits
-   the --bon-* tokens from reports.css and the .bon-analytics-* layout
-   primitives from analytics/styles.css. */
+   the --bon-* tokens from app.css and the .bon-analytics-* layout
+   primitives from analytics/analytics.css. */
 
 .bon-diagnostics {
   display: flex;

@@ -30,6 +30,7 @@ export function bonAnalyticsActivityChart(
     root.appendChild(
       bonAnalyticsEmptyChart(W, H, "No timestamped runs to plot.")
     );
+
     return root;
   }
 
@@ -61,6 +62,7 @@ export function bonAnalyticsActivityChart(
 
   // Y gridlines
   const yTicks = Math.min(4, maxCount);
+
   for (let i = 0; i <= yTicks; i++) {
     const frac = i / yTicks;
     const y = PAD.t + ih - frac * ih;

@@ -15,7 +15,8 @@
   "permissions": ["storage", "unlimitedStorage", "tabs"],
   "host_permissions": [
     "https://api.anthropic.com/*",
-    "https://www.reddit.com/*"
+    "https://www.reddit.com/*",
+    "https://html.duckduckgo.com/*"
   ],
   "content_scripts": [
     {
@@ -39,7 +40,21 @@
   },
   "web_accessible_resources": [
     {
-      "resources": ["icons/icon.png", "icons/icon-bot.png"],
+      "resources": [
+        "icons/icon.png",
+        "icons/icon-bot.png",
+        "icons/chromes-investigating.png",
+        "icons/chromes-corkboard.png",
+        "icons/chromes-peephole.png",
+        "icons/chromes-typewriter.png",
+        "icons/chromes-magnifier-doorknob.png",
+        "icons/chromes-plaster-cast.png",
+        "icons/chromes-microscope.png",
+        "icons/chromes-wiretap.png",
+        "icons/chromes-foggy-alley.png",
+        "icons/chromes-filing-cabinet.png",
+        "icons/chromes-darkroom.png"
+      ],
       "matches": [
         "*://reddit.com/*",
         "*://old.reddit.com/*",

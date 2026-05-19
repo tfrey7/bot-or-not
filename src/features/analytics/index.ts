@@ -194,6 +194,7 @@ function buildEmptyState(): HTMLDivElement {
   div.className = "bon-analytics-empty";
   div.textContent =
     "No completed investigations yet. Click 🤖 on a reported user to run one — stats will populate here.";
+
   return div;
 }
 

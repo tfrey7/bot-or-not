@@ -27,6 +27,7 @@ export function bonReportsCalendarHeatmap(
     `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
 
   const counts = new Map<string, number>();
+
   for (const timestamp of timestamps) {
     const date = new Date(timestamp);
     const key = dayKey(date);
@@ -38,12 +39,15 @@ export function bonReportsCalendarHeatmap(
 
   const dayLabels = document.createElement("div");
   dayLabels.className = "bon-cal-days";
+
   for (let i = 0; i < 7; i++) {
     const label = document.createElement("div");
+
     // Show every other day label to reduce clutter
     label.textContent = i % 2 === 1 ? BON_REPORTS_DAY_NAMES[i] : "";
     dayLabels.appendChild(label);
   }
+
   wrap.appendChild(dayLabels);
 
   const right = document.createElement("div");
@@ -53,6 +57,7 @@ export function bonReportsCalendarHeatmap(
   // the truncated first/last month doesn't visually crash into its neighbour.
   const monthRuns: Array<{ startWeek: number; month: number }> = [];
   let curMonth = -1;
+
   for (let w = 0; w < 53; w++) {
     const sunday = new Date(startSunday);
     sunday.setDate(startSunday.getDate() + w * 7);
@@ -62,9 +67,11 @@ export function bonReportsCalendarHeatmap(
       curMonth = month;
     }
   }
+
   monthRuns.push({ startWeek: 53, month: -1 });
 
   const monthLabelByWeek = new Map<number, number>();
+
   for (let i = 0; i < monthRuns.length - 1; i++) {
     const length = monthRuns[i + 1].startWeek - monthRuns[i].startWeek;
     if (length >= 3) {
@@ -74,17 +81,21 @@ export function bonReportsCalendarHeatmap(
 
   const months = document.createElement("div");
   months.className = "bon-cal-months";
+
   for (let w = 0; w < 53; w++) {
     const span = document.createElement("span");
     if (monthLabelByWeek.has(w)) {
       span.textContent = BON_REPORTS_MONTH_NAMES[monthLabelByWeek.get(w)!];
     }
+
     months.appendChild(span);
   }
+
   right.appendChild(months);
 
   const grid = document.createElement("div");
   grid.className = "bon-cal-grid";
+
   for (let w = 0; w < 53; w++) {
     for (let d = 0; d < 7; d++) {
       const date = new Date(startSunday);
@@ -111,9 +122,11 @@ export function bonReportsCalendarHeatmap(
           cell.title = `${date.toLocaleDateString()} — no activity`;
         }
       }
+
       grid.appendChild(cell);
     }
   }
+
   right.appendChild(grid);
 
   wrap.appendChild(right);
@@ -121,14 +134,17 @@ export function bonReportsCalendarHeatmap(
   const legend = document.createElement("div");
   legend.className = "bon-heatmap-legend";
   legend.appendChild(document.createTextNode("Less"));
+
   for (let i = 0; i <= 5; i++) {
     const cell = document.createElement("span");
     cell.className = "bon-heatmap-legend-cell";
     if (i > 0) {
       cell.classList.add(`bon-heatmap-cell--lvl${i}`);
     }
+
     legend.appendChild(cell);
   }
+
   legend.appendChild(document.createTextNode("More"));
 
   const outer = document.createElement("div");

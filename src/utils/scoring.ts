@@ -13,21 +13,27 @@ export function bonScoreLeaning(
   if (typeof score !== "number") {
     return "neutral";
   }
+
   if (typeof confidence === "number" && confidence < 0.2) {
     return "neutral";
   }
+
   if (score <= -0.5) {
     return "bot";
   }
+
   if (score <= -0.2) {
     return "likely-bot";
   }
+
   if (score >= 0.5) {
     return "human";
   }
+
   if (score >= 0.2) {
     return "likely-human";
   }
+
   return "neutral";
 }
 
@@ -36,17 +42,22 @@ export function bonBucketLevel(count: number): number {
   if (count <= 0) {
     return 0;
   }
+
   if (count === 1) {
     return 1;
   }
+
   if (count <= 3) {
     return 2;
   }
+
   if (count <= 6) {
     return 3;
   }
+
   if (count <= 10) {
     return 4;
   }
+
   return 5;
 }

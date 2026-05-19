@@ -5,9 +5,9 @@
 // most recent N items and older activity is unknowable from the API.
 
 import type { ActivityData } from "../../types.ts";
-import { bonAugmentActivityWithContext } from "../../utils/reddit_activity.ts";
 import { bonReportsCalendarHeatmap } from "./calendar_heatmap.ts";
 import { bonReportsHourSection } from "./hour_heatmap.ts";
+import { bonReportsSubredditTimelines } from "./subreddit_timelines.ts";
 import type { ReportRow } from "./logic.ts";
 
 function renderActivityRefresh(
@@ -34,6 +34,7 @@ function renderActivityRefresh(
         type: "fetch-activity",
         username,
       });
+
       // storage.onChanged will re-render.
     } catch (error) {
       console.error("[Bot or Not] refresh failed", error);
@@ -43,50 +44,6 @@ function renderActivityRefresh(
   });
 
   return button;
-}
-
-function renderApiLimitBanner(
-  activityData: ActivityData
-): HTMLDivElement | null {
-  const { postsLimited, commentsLimited } = activityData;
-  if (!postsLimited && !commentsLimited) {
-    return null;
-  }
-
-  const banner = document.createElement("div");
-  banner.className = "bon-heatmap-banner";
-
-  const limitedKinds: string[] = [];
-  if (postsLimited) {
-    limitedKinds.push("posts");
-  }
-  if (commentsLimited) {
-    limitedKinds.push("comments");
-  }
-  const limitedText = limitedKinds.join(" and ");
-
-  const earliestVisible = (() => {
-    const bounds: number[] = [];
-    if (postsLimited && activityData.earliestPostAt) {
-      bounds.push(activityData.earliestPostAt);
-    }
-    if (commentsLimited && activityData.earliestCommentAt) {
-      bounds.push(activityData.earliestCommentAt);
-    }
-    return bounds.length ? Math.max(...bounds) : null;
-  })();
-
-  const dateText = earliestVisible
-    ? new Date(earliestVisible).toLocaleDateString()
-    : null;
-
-  const lead = `⚠ Reddit returned the most recent ${activityData.fetchLimit || 100} ${limitedText} only.`;
-  const tail = dateText
-    ? ` Activity before ${dateText} may be undercounted — what looks like dormancy could just be data older than the API window.`
-    : " Older activity may be missing from the heatmap.";
-
-  banner.textContent = lead + tail;
-  return banner;
 }
 
 export function bonReportsActivitySection(report: ReportRow): HTMLDivElement {
@@ -114,6 +71,7 @@ export function bonReportsActivitySection(report: ReportRow): HTMLDivElement {
           type: "fetch-activity",
           username,
         })) as { ok?: boolean; error?: string };
+
         if (response?.ok === false) {
           loadButton.disabled = false;
           loadButton.textContent = "📊 Load activity";
@@ -124,6 +82,7 @@ export function bonReportsActivitySection(report: ReportRow): HTMLDivElement {
           errorMessage.textContent = `Failed to load: ${response.error || "Unknown error"}`;
           wrap.appendChild(errorMessage);
         }
+
         // storage.onChanged will trigger a re-render on success.
       } catch (error) {
         console.error("[Bot or Not] fetch-activity failed", error);
@@ -148,11 +107,6 @@ export function bonReportsActivitySection(report: ReportRow): HTMLDivElement {
     wrap.appendChild(empty);
     wrap.appendChild(renderActivityRefresh(username, activityData, true));
     return wrap;
-  }
-
-  const banner = renderApiLimitBanner(activityData);
-  if (banner) {
-    wrap.appendChild(banner);
   }
 
   const meta = document.createElement("p");
@@ -184,13 +138,11 @@ export function bonReportsActivitySection(report: ReportRow): HTMLDivElement {
   meta.appendChild(renderActivityRefresh(username, activityData, false));
   wrap.appendChild(meta);
 
-  const augmented = bonAugmentActivityWithContext(
-    activityData,
-    report.contextItems
-  );
-
   wrap.appendChild(bonReportsCalendarHeatmap(timestamps, activityData));
-  wrap.appendChild(bonReportsHourSection(timestamps, augmented));
+  wrap.appendChild(bonReportsHourSection(timestamps));
+  wrap.appendChild(
+    bonReportsSubredditTimelines(activityData, report.createdAt)
+  );
 
   return wrap;
 }

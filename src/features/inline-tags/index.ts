@@ -1,11 +1,13 @@
 // Inline username pills rendered next to every reddit /user/ link in feeds
-// and comments. `bonInlineTagsInit` does the first-time wiring (load tags,
-// install click + storage listeners); the orchestrator calls
-// `bonInlineTagsMark` on every MutationObserver tick to tag freshly-rendered
-// links.
+// and comments, plus a chip in the profile-page header that opens the same
+// flyout. `bonInlineTagsInit` does the first-time wiring (load tags, install
+// click + storage listeners); the orchestrator calls `bonInlineTagsMark` on
+// every MutationObserver tick to tag freshly-rendered links and to keep the
+// profile-header chip in sync.
 
 import { bonCssEscape } from "../../utils/format_text.ts";
 import { bonRingChip } from "../../utils/ring_chip.ts";
+import { bonInlineTagsCloseFlyout, bonInlineTagsOpenFlyout } from "./flyout.ts";
 import {
   bonInlineTagIsAvatarLink,
   bonInlineTagLabel,
@@ -19,12 +21,18 @@ import {
 let userTags = new Map<string, UserTagInfo>();
 let tagsLoaded = false;
 
+// Last profile username we kicked off an auto-investigation for. Guards the
+// chip-injection loop (runs on every observer tick) from re-firing the IPC
+// per tick once the chip is in place.
+let lastProfileAutoInvestigate: string | null = null;
+
 async function loadUserTags(): Promise<void> {
   const { tags = {} } = (await browser.runtime.sendMessage({
     type: "get-user-tags",
   })) as { tags?: Record<string, UserTagInfo> };
 
   userTags = new Map();
+
   for (const [username, info] of Object.entries(tags)) {
     userTags.set(username.toLowerCase(), { ...info, username });
   }
@@ -46,7 +54,117 @@ function buildUserTag(info: UserTagInfo): HTMLSpanElement {
   return tag;
 }
 
+// True when the anchor is the author byline link of the active
+// shreddit-post on a /r/*/comments/* page (i.e. the OP of the post the
+// user is currently viewing, not a feed item). The "credit-bar" slot on
+// shreddit-post wraps the byline; the active post is the one whose
+// permalink matches the URL and isn't nested in a feed.
+function isPostAuthorByline(anchor: HTMLAnchorElement): boolean {
+  if (!/^\/r\/[^/]+\/comments\//i.test(window.location.pathname)) {
+    return false;
+  }
+
+  const post = anchor.closest("shreddit-post") as HTMLElement | null;
+  if (!post || post.closest("shreddit-feed")) {
+    return false;
+  }
+
+  const permalink = (post.getAttribute("permalink") || "")
+    .toLowerCase()
+    .split("?")[0];
+
+  if (
+    !permalink ||
+    !window.location.pathname.toLowerCase().startsWith(permalink)
+  ) {
+    return false;
+  }
+
+  return !!anchor.closest('[slot="credit-bar"]');
+}
+
+// Walks the document for the profile-page header h1 (avatar + username row),
+// not a post/comment title h1 in the feed below it. Mirrors the heuristic the
+// old embedded profile-panel used.
+function findProfileHeaderH1(): HTMLHeadingElement | null {
+  for (const h1 of document.querySelectorAll("h1")) {
+    if (h1.closest("shreddit-post, shreddit-comment, article")) {
+      continue;
+    }
+
+    return h1 as HTMLHeadingElement;
+  }
+
+  return null;
+}
+
+// On /user/* pages, inject a clickable chip into the profile header so the
+// page surfaces the same flyout as the inline pills. Idempotent: rebuilds the
+// chip only when the variant or label changes, so the per-tick call is cheap.
+function markProfileHeader(): void {
+  const profileMatch = window.location.pathname.match(
+    /^\/(?:user|u)\/([^/?#]+)/i
+  );
+
+  if (!profileMatch) {
+    document.getElementById("bon-profile-chip")?.remove();
+    lastProfileAutoInvestigate = null;
+    return;
+  }
+
+  const username = profileMatch[1];
+  const key = username.toLowerCase();
+
+  const h1 = findProfileHeaderH1();
+  if (!h1) {
+    return;
+  }
+
+  const info: UserTagInfo = userTags.get(key) || {
+    username,
+    count: 0,
+    verdict: null,
+    confidence: null,
+    investigationStatus: null,
+    investigationStartedAt: null,
+    botBouncerStatus: null,
+    userStatus: null,
+  };
+
+  const variant = bonInlineTagVariant(info);
+  const label = bonInlineTagLabel(info, variant);
+
+  const existing = document.getElementById(
+    "bon-profile-chip"
+  ) as HTMLElement | null;
+
+  const upToDate =
+    !!existing &&
+    existing.dataset.bonTagFor === key &&
+    existing.classList.contains(`bon-user-tag--${variant}`) &&
+    existing.textContent === label &&
+    existing.isConnected &&
+    existing.parentElement === h1;
+
+  if (!upToDate) {
+    existing?.remove();
+    const chip = buildUserTag(info);
+    chip.id = "bon-profile-chip";
+    h1.appendChild(chip);
+  }
+
+  if (lastProfileAutoInvestigate !== key) {
+    lastProfileAutoInvestigate = key;
+    browser.runtime.sendMessage({
+      type: "auto-investigate-on-view",
+      username,
+    });
+  }
+}
+
 export function bonInlineTagsMark(): void {
+  markProfileHeader();
+
   if (!tagsLoaded) {
     return;
   }
@@ -70,13 +188,44 @@ export function bonInlineTagsMark(): void {
         return;
       }
 
+      // On a post detail page, hold off marking until the enclosing
+      // shreddit-post has its `permalink` attribute set — that's what
+      // identifies the OP byline. Without this guard, a tick that runs
+      // between mount and attribute-settle would mark the anchor for
+      // good and we'd never get a chance to inject the idle tag.
+      if (/^\/r\/[^/]+\/comments\//i.test(window.location.pathname)) {
+        const enclosingPost = anchor.closest(
+          "shreddit-post"
+        ) as HTMLElement | null;
+
+        if (enclosingPost && !enclosingPost.getAttribute("permalink")) {
+          return;
+        }
+      }
+
       anchor.dataset.bonMarked = "true";
 
       if (bonInlineTagIsAvatarLink(anchor)) {
         return;
       }
 
-      const info = userTags.get(match[1].toLowerCase());
+      let info = userTags.get(match[1].toLowerCase());
+      if (!info && isPostAuthorByline(anchor)) {
+        // Synthetic idle info: produces the "Bot?" tag so post OPs are
+        // always one click away from an investigation, even when we have
+        // no prior reports or analysis for them.
+        info = {
+          username: match[1],
+          count: 0,
+          verdict: null,
+          confidence: null,
+          investigationStatus: null,
+          investigationStartedAt: null,
+          botBouncerStatus: null,
+          userStatus: null,
+        };
+      }
+
       if (!info) {
         return;
       }
@@ -98,6 +247,7 @@ export function bonInlineTagsMark(): void {
       const scope =
         anchor.closest("shreddit-post, shreddit-comment, article, header") ||
         anchor.parentElement;
+
       if (
         scope?.querySelector(
           `.bon-user-tag[data-bon-tag-for="${bonCssEscape(key)}"]`
@@ -126,6 +276,7 @@ function refreshUserTag(username: string): void {
       if (next?.classList.contains("bon-ring-chip")) {
         next.remove();
       }
+
       tag.remove();
     });
 
@@ -177,6 +328,13 @@ export function bonInlineTagsBumpReport(username: string): void {
   refreshUserTag(username);
 }
 
+// Called by the content-script orchestrator on SPA navigation. Closes any
+// open flyout so a stale assessment doesn't hover on screen after the
+// user moves to a different post or feed.
+export function bonInlineTagsResetNav(): void {
+  bonInlineTagsCloseFlyout();
+}
+
 export function bonInlineTagsInit(): void {
   void loadUserTags();
 
@@ -184,14 +342,19 @@ export function bonInlineTagsInit(): void {
     "click",
     (event) => {
       const target = event.target as Element | null;
-      const tag = target?.closest?.(".bon-user-tag");
+      const tag = target?.closest?.(".bon-user-tag") as HTMLElement | null;
       if (!tag) {
+        return;
+      }
+
+      const username = tag.dataset.bonTagFor;
+      if (!username) {
         return;
       }
 
       event.preventDefault();
       event.stopPropagation();
-      browser.runtime.sendMessage({ type: "open-popup" });
+      bonInlineTagsOpenFlyout(username, tag);
     },
     true
   );

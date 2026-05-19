@@ -119,6 +119,7 @@ export function bonAnalyticsRunLog(runs: AnalyticsEntry[]): HTMLDivElement {
 
     tbody.appendChild(tr);
   }
+
   table.appendChild(tbody);
 
   const scroll = document.createElement("div");
@@ -133,6 +134,7 @@ export function bonAnalyticsRunLog(runs: AnalyticsEntry[]): HTMLDivElement {
     note.textContent = `Showing ${rows.length} most recent of ${sorted.length} runs.`;
     wrap.appendChild(note);
   }
+
   return wrap;
 }
 
@@ -147,6 +149,7 @@ function sumRunTokens(run: AnalyticsEntry): number {
       (usage.cache_read_input_tokens || 0) +
       (usage.cache_creation_input_tokens || 0);
   }
+
   return total;
 }
 
@@ -164,6 +167,7 @@ function formatVerdictCell(run: AnalyticsEntry): string {
   if (typeof run.confidence === "number") {
     return `${label} · ${bonFmtPercent(run.confidence)} conf`;
   }
+
   return label;
 }
 

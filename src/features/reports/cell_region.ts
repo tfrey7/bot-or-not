@@ -1,10 +1,15 @@
-// Region badge in the "Region" column. Deterministic regions get the
-// flag + label; timezone-only inferences fall back to a muted "UTC+N"
-// chip. The tooltip enumerates every signal source that contributed so
-// the operator can audit the pick.
+// Region badge in the "Region" column. AI-picked regions get the flag +
+// label with the model's reasoning surfaced as a tooltip; deterministic
+// regions get the flag + label plus the per-signal breakdown; timezone-
+// only inferences fall back to a muted "UTC+N" chip. The tooltip
+// enumerates every signal source that contributed so the operator can
+// audit the pick.
 
 import { BON_REGION_INFO, type RegionInfo } from "../regions/data.ts";
-import type { DeterministicRegionInference } from "../regions";
+import type {
+  AiRegionInference,
+  DeterministicRegionInference,
+} from "../regions";
 import { bonReportsComputeRegionForReport, type ReportRow } from "./logic.ts";
 
 function formatRegionTooltip(
@@ -76,6 +81,48 @@ function formatRegionTooltip(
   return lines.join("\n");
 }
 
+function buildAiBadge(region: AiRegionInference): HTMLSpanElement {
+  const info: RegionInfo = BON_REGION_INFO[region.region] || {
+    flag: "🏳",
+    label: region.region,
+    utcOffsets: [],
+  };
+
+  const deterministicMismatch =
+    region.deterministic?.kind === "deterministic" &&
+    region.deterministic.region !== region.region;
+
+  const badge = document.createElement("span");
+  badge.className = `bon-region-badge${deterministicMismatch ? " bon-region-badge--tz-mismatch" : ""}`;
+
+  const flag = document.createElement("span");
+  flag.className = "bon-region-flag";
+  flag.textContent = info.flag;
+  flag.title = info.label;
+  badge.appendChild(flag);
+
+  const label = document.createElement("span");
+  label.textContent = info.label;
+  badge.appendChild(label);
+
+  const lines = [`${info.label} — AI investigation pick:`];
+  if (region.reasoning) {
+    lines.push(`• ${region.reasoning}`);
+  }
+
+  lines.push(`• Confidence ${Math.round(region.confidence * 100)}%`);
+
+  if (deterministicMismatch && region.deterministic?.kind === "deterministic") {
+    const otherInfo = BON_REGION_INFO[region.deterministic.region];
+    lines.push(
+      `⚠ Deterministic signals point to ${otherInfo?.label || region.deterministic.region} (subreddit/script/language activity) — possible mismatch worth a look`
+    );
+  }
+
+  badge.title = lines.join("\n");
+  return badge;
+}
+
 export function bonReportsRegionBadge(report: ReportRow): HTMLSpanElement {
   const region = bonReportsComputeRegionForReport(report);
 
@@ -98,6 +145,10 @@ export function bonReportsRegionBadge(report: ReportRow): HTMLSpanElement {
     return dash;
   }
 
+  if (region.kind === "ai") {
+    return buildAiBadge(region);
+  }
+
   if (region.kind === "deterministic") {
     const info: RegionInfo = BON_REGION_INFO[region.region] || {
       flag: "🏳",
@@ -113,6 +164,7 @@ export function bonReportsRegionBadge(report: ReportRow): HTMLSpanElement {
     } else if (region.tzMatch === false) {
       tzClass = " bon-region-badge--tz-mismatch";
     }
+
     badge.className = `bon-region-badge${tzClass}`;
 
     const flag = document.createElement("span");

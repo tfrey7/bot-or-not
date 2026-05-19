@@ -4,21 +4,46 @@
 // there's no investigation to preview so the panel can fall back to a
 // single bare toggle row.
 
-import { bonNormalizeInvestigation } from "../../verdict.ts";
+import {
+  bonIsInvestigationStale,
+  bonNormalizeInvestigation,
+} from "../../verdict.ts";
 import type { Report } from "../../types.ts";
+import { bonInvestigationLoading } from "../../utils/investigation_loading.ts";
 import { bonLinkifyReddit } from "../../utils/linkify_reddit.ts";
 import { bonTopReasonsList } from "../../utils/top_reasons_list.ts";
 import { bonPanelBuildPersonaStrip } from "./persona_strip.ts";
 
+export interface BuildPreviewOpts {
+  expectedDurationMs?: number | null;
+}
+
 export function bonPanelBuildPreview(
   _username: string,
-  report: Report | null | undefined
+  report: Report | null | undefined,
+  { expectedDurationMs = null }: BuildPreviewOpts = {}
 ): HTMLDivElement | null {
   const investigation = bonNormalizeInvestigation(
     report?.investigation,
     !!report?.ringId
   );
   const hasFactors = (investigation?.factors.length ?? 0) > 0;
+
+  if (
+    investigation?.status === "running" &&
+    !bonIsInvestigationStale(investigation)
+  ) {
+    const preview = document.createElement("div");
+    preview.className = "bon-profile-panel__preview";
+    preview.appendChild(
+      bonInvestigationLoading(investigation.startedAt, {
+        compact: true,
+        expectedDurationMs,
+      })
+    );
+
+    return preview;
+  }
 
   if (!investigation?.summary && !hasFactors) {
     return null;
@@ -58,6 +83,7 @@ export function bonPanelBuildPreview(
     if (summaryCol.childNodes.length) {
       preview.appendChild(summaryCol);
     }
+
     if (personaBlock) {
       preview.appendChild(personaBlock);
     }

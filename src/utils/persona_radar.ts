@@ -16,8 +16,30 @@ const RADAR_LAYOUT = {
   gridLevels: 4,
 };
 
+// Floor for the filled polygon's vertices so a strongly mono-archetype
+// persona still reads as a shape (a blade pointing to the spike) instead
+// of a degenerate line through the center. Dots and tooltips use the
+// true score — only the visible polygon gets the baseline.
+const POLY_FLOOR = 0.06;
+
+// Race-out animation tuning. Each vertex starts at the center and races
+// to its target; successive vertices fire on a clockwise stagger from
+// 12 o'clock, so the shape "grows" instead of popping into existence.
+const ANIM_VERTEX_MS = 360;
+const ANIM_STAGGER_MS = 70;
+const easeOutCubic = (t: number): number => 1 - Math.pow(1 - t, 3);
+
+// Fires once the last vertex finishes its race-out. Callers use this
+// to chain the persona label's reveal animation onto the same timeline
+// without depending on CSS animation-delay (which doesn't survive
+// every host page's style cascade).
+export interface BonPersonaRadarOptions {
+  onLock?: () => void;
+}
+
 export function bonPersonaRadar(
-  archetypes: Record<ArchetypeKey, number>
+  archetypes: Record<ArchetypeKey, number>,
+  options: BonPersonaRadarOptions = {}
 ): HTMLDivElement | null {
   const svgns = "http://www.w3.org/2000/svg";
   const layout = RADAR_LAYOUT;
@@ -93,18 +115,40 @@ export function bonPersonaRadar(
     svg.appendChild(line);
   }
 
-  const dataPolyPts = axes
-    .map((axis, i) => {
-      const score = Math.max(0, Math.min(1, archetypes[axis.key] || 0));
-      const point = vertex(i, score);
-      return `${point.x.toFixed(2)},${point.y.toFixed(2)}`;
-    })
-    .join(" ");
+  const polyTargets = axes.map((axis, i) => {
+    const score = Math.max(0, Math.min(1, archetypes[axis.key] || 0));
+    return vertex(i, Math.max(score, POLY_FLOOR));
+  });
+
+  const reduceMotion =
+    typeof window !== "undefined" &&
+    typeof window.matchMedia === "function" &&
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  const formatPolyPoints = (
+    pts: ReadonlyArray<{ x: number; y: number }>
+  ): string =>
+    pts.map((point) => `${point.x.toFixed(2)},${point.y.toFixed(2)}`).join(" ");
+
+  const centerPoints = polyTargets.map(() => ({
+    x: layout.center,
+    y: layout.center,
+  }));
 
   const dataPoly = document.createElementNS(svgns, "polygon");
-  dataPoly.setAttribute("points", dataPolyPts);
+  dataPoly.setAttribute(
+    "points",
+    formatPolyPoints(reduceMotion ? polyTargets : centerPoints)
+  );
   dataPoly.setAttribute("class", "bon-radar-data");
   svg.appendChild(dataPoly);
+
+  const dotTargets: Array<{
+    el: SVGCircleElement;
+    axisIndex: number;
+    tx: number;
+    ty: number;
+  }> = [];
 
   for (let i = 0; i < N; i++) {
     const score = archetypes[axes[i].key] || 0;
@@ -114,11 +158,69 @@ export function bonPersonaRadar(
 
     const point = vertex(i, score);
     const dot = document.createElementNS(svgns, "circle");
-    dot.setAttribute("cx", point.x.toFixed(2));
-    dot.setAttribute("cy", point.y.toFixed(2));
+    const startX = reduceMotion ? point.x : layout.center;
+    const startY = reduceMotion ? point.y : layout.center;
+    dot.setAttribute("cx", startX.toFixed(2));
+    dot.setAttribute("cy", startY.toFixed(2));
     dot.setAttribute("r", "3");
     dot.setAttribute("class", "bon-radar-dot");
     svg.appendChild(dot);
+
+    dotTargets.push({ el: dot, axisIndex: i, tx: point.x, ty: point.y });
+  }
+
+  if (
+    !reduceMotion &&
+    typeof window !== "undefined" &&
+    typeof window.requestAnimationFrame === "function"
+  ) {
+    const totalDuration = ANIM_STAGGER_MS * (N - 1) + ANIM_VERTEX_MS;
+    let startTime: number | null = null;
+
+    const tick = (now: number): void => {
+      if (startTime === null) {
+        startTime = now;
+      }
+
+      const elapsed = now - startTime;
+
+      const liveVertices = polyTargets.map((target, i) => {
+        const vertexStart = i * ANIM_STAGGER_MS;
+        const localT = Math.max(
+          0,
+          Math.min(1, (elapsed - vertexStart) / ANIM_VERTEX_MS)
+        );
+        const eased = easeOutCubic(localT);
+        return {
+          x: layout.center + (target.x - layout.center) * eased,
+          y: layout.center + (target.y - layout.center) * eased,
+        };
+      });
+      dataPoly.setAttribute("points", formatPolyPoints(liveVertices));
+
+      for (const dot of dotTargets) {
+        const vertexStart = dot.axisIndex * ANIM_STAGGER_MS;
+        const localT = Math.max(
+          0,
+          Math.min(1, (elapsed - vertexStart) / ANIM_VERTEX_MS)
+        );
+        const eased = easeOutCubic(localT);
+        const x = layout.center + (dot.tx - layout.center) * eased;
+        const y = layout.center + (dot.ty - layout.center) * eased;
+        dot.el.setAttribute("cx", x.toFixed(2));
+        dot.el.setAttribute("cy", y.toFixed(2));
+      }
+
+      if (elapsed < totalDuration) {
+        window.requestAnimationFrame(tick);
+      } else {
+        options.onLock?.();
+      }
+    };
+
+    window.requestAnimationFrame(tick);
+  } else if (reduceMotion) {
+    options.onLock?.();
   }
 
   for (let i = 0; i < N; i++) {

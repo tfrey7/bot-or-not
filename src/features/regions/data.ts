@@ -392,6 +392,7 @@ export const BON_REGION_SUB_PATTERNS: Array<{
   // India — "indian" followed by anything that isn't 'a' (excludes Indiana*).
   // Catches indian_academia, indian_flex, indianmedschool, indianboysontinder, …
   { pattern: /^indian[^a]/, region: "IN" },
+
   // Hindi for "India" — bharat_*, bharatpe, etc.
   { pattern: /^bharat/, region: "IN" },
 
@@ -428,6 +429,7 @@ export const BON_SCRIPT_RANGES: ScriptRange[] = [
   { name: "telugu", range: [0x0c00, 0x0c7f], regions: ["IN"] },
   { name: "kannada", range: [0x0c80, 0x0cff], regions: ["IN"] },
   { name: "malayalam", range: [0x0d00, 0x0d7f], regions: ["IN"] },
+
   // Arabic script: used by Arabic (multi-country) and Urdu (Pakistan). We
   // can't distinguish without word-level analysis — split votes across the
   // most common Arabic-script countries.
@@ -462,9 +464,13 @@ export const BON_LANGUAGE_MARKERS: Record<string, LanguageMarker> = {
   brazilianPortuguese: {
     label: "BR Portuguese",
     regions: ["BR"],
+
     // Distinguish from European Portuguese via dialect-specific slang.
+    // Tokens must be Portuguese-specific — avoid common English words like
+    // "legal" or "mano" (mano a mano), which trigger massive false positives
+    // for English-speaking users who never touch Portuguese.
     pattern:
-      /\b(galera|mano|treta|bagulho|trampo|moleque|valeu|saudade|você|vocês|legal|caraca|caralho|porra|caralhinho|bicho|massa)\b/gi,
+      /\b(galera|treta|bagulho|trampo|moleque|valeu|saudade|você|vocês|caraca|caralho|porra|caralhinho|bicho)\b/gi,
   },
   russianWords: {
     label: "Russian",
@@ -480,8 +486,11 @@ export const BON_LANGUAGE_MARKERS: Record<string, LanguageMarker> = {
   tagalog: {
     label: "Tagalog",
     regions: ["PH"],
+
+    // Avoid English homographs: "ate" (past tense of eat) and "mahal" (common
+    // surname / "Taj Mahal") trigger false positives for English-only users.
     pattern:
-      /\b(kasi|naman|talaga|kahit|kapag|magkano|puwede|salamat|kumusta|mahal|kuya|ate|ganyan|sige)\b/gi,
+      /\b(kasi|naman|talaga|kahit|kapag|magkano|puwede|salamat|kumusta|kuya|ganyan|sige)\b/gi,
   },
   mexicanSpanish: {
     label: "MX Spanish",

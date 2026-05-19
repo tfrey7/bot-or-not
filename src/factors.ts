@@ -28,6 +28,7 @@ export const BON_FACTORS: readonly FactorMeta[] = [
   { key: "posting_volume", label: "Posting volume" },
   { key: "moderated_subreddits", label: "Moderated subreddits" },
   { key: "promotional_account", label: "Promotional account" },
+  { key: "avatar_style", label: "Avatar style" },
 ];
 
 export const BON_FACTOR_KEYS: readonly string[] = BON_FACTORS.map(
@@ -64,7 +65,7 @@ export const BON_ARCHETYPES: readonly ArchetypeMeta[] = [
   { key: "farmer", label: "Farmer", hue: 210 },
   { key: "teen", label: "Teen", hue: 95 },
   { key: "thirst", label: "Thirst", hue: 320 },
-  { key: "crank", label: "Crank", hue: 0 },
+  { key: "zealot", label: "Zealot", hue: 0 },
   { key: "hustler", label: "Hustler", hue: 155 },
   { key: "doomer", label: "Doomer", hue: 260 },
 ];

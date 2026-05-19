@@ -24,6 +24,7 @@ import type {
 import { bonShortUrl } from "../../utils/format_text.ts";
 
 export const BON_REDDIT_FETCH_LIMIT = 100;
+
 // Operator-triggered activity refresh paginates to this many items per
 // listing (3 pages × 100). Investigation fetch stays single-page so we
 // don't bloat the Claude prompt or slow auto-investigations.
@@ -128,6 +129,7 @@ async function measureFetch<T>(
       typeof (error as { httpStatus?: number })?.httpStatus === "number"
         ? (error as { httpStatus: number }).httpStatus
         : null;
+
     return {
       data: null,
       metric: {
@@ -175,6 +177,7 @@ async function measureFetchListingPaginated(
       if (allChildren.length === 0) {
         return { data: null, metrics };
       }
+
       break;
     }
 
@@ -185,6 +188,7 @@ async function measureFetchListingPaginated(
     if (!lastCursor || children.length === 0) {
       break;
     }
+
     cursor = lastCursor;
   }
 
@@ -232,13 +236,16 @@ export async function bonFetchBotBouncerStatus(
     if (!post) {
       continue;
     }
+
     if ((post.title ?? "").toLowerCase().trim() !== target) {
       continue;
     }
+
     const flair = (post.link_flair_text ?? "").toLowerCase().trim();
     if (flair === "banned" || flair === "pending" || flair === "organic") {
       return { status: flair, metric };
     }
+
     return { status: null, metric };
   }
 

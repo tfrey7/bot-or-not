@@ -1,156 +1,36 @@
 // Day-of-week × hour-of-day heatmap rendered below the calendar, plus the
-// region/timezone-inference lines that summarize the deterministic region
-// signals the regions feature surfaced for this account.
+// observational notes about the posting cycle itself (flat-across-24h
+// warning, insufficient-data note, viewer-timezone advisory). Region
+// inference lives in region_section.ts — this file is only about *when*
+// the account posts, not *where*.
 
-import { BON_REGION_INFO } from "../regions/data.ts";
-import {
-  bonInferRegionFromLanguage,
-  bonInferRegionFromModerated,
-  bonInferRegionFromScripts,
-  bonInferRegionFromSubreddits,
-  bonRegionForOffset,
-  type LanguageInference,
-  type ModeratedInference,
-  type ScriptInference,
-  type SubregionInference,
-} from "../regions";
-import type { ActivityData } from "../../types.ts";
 import { bonBucketLevel } from "../../utils/scoring.ts";
-import { bonPad2 } from "../../utils/format_time.ts";
 import { BON_REPORTS_DAY_NAMES } from "./data.ts";
 import {
   bonReportsInferTimezoneFromTimestamps,
   type TimezoneInference,
 } from "./logic.ts";
 
-function renderInferredTimezone(
-  inferred: TimezoneInference,
-  subRegion: SubregionInference | null
-): HTMLSpanElement {
-  const span = document.createElement("span");
-
+function renderCycleNote(inferred: TimezoneInference): HTMLSpanElement | null {
   if (inferred.kind === "insufficient") {
-    span.innerHTML = `<small>Not enough activity to infer a timezone (${inferred.count} item${inferred.count === 1 ? "" : "s"}).</small>`;
+    const span = document.createElement("span");
+    span.innerHTML = `<small>Not enough activity to infer a sleep cycle (${inferred.count} item${inferred.count === 1 ? "" : "s"}).</small>`;
     return span;
   }
 
   if (inferred.kind === "flat") {
+    const span = document.createElement("span");
     span.innerHTML = `⚠ <strong>No clear daily cycle</strong> — activity is spread evenly across 24 hours UTC. Possible bot, shared account, or multi-region operator.`;
     return span;
   }
 
-  const { offsetHours, sleepStartUtc, sleepEndUtc } = inferred;
-  const offsetStr = `UTC${offsetHours >= 0 ? "+" : ""}${offsetHours}`;
-  const region = bonRegionForOffset(offsetHours);
-  const sleep = `${bonPad2(sleepStartUtc)}:00–${bonPad2(sleepEndUtc)}:00 UTC`;
-
-  let suffix = "";
-  if (subRegion) {
-    const info = BON_REGION_INFO[subRegion.region];
-    const offsets = info?.utcOffsets || [];
-    if (offsets.includes(offsetHours)) {
-      suffix = ` — <strong style="color:#16a085">matches ${info.label} posting history ✓</strong>`;
-    } else {
-      suffix = ` — <strong style="color:#c0392b">does NOT match ${info?.label || subRegion.region} posting history ⚠</strong>`;
-    }
-  }
-
-  span.innerHTML = `Likely profile timezone: <strong>${offsetStr}</strong>${region ? ` (${region})` : ""} — inactive window ${sleep}${suffix}`;
-  return span;
-}
-
-function renderSubredditRegionLine(
-  subRegion: SubregionInference
-): HTMLSpanElement {
-  const info = BON_REGION_INFO[subRegion.region] || {
-    flag: "🏳",
-    label: subRegion.region,
-  };
-
-  const span = document.createElement("span");
-
-  const hitsList = subRegion.hits
-    .slice(0, 5)
-    .map(({ sub, count }) => `r/${sub}${count > 1 ? ` ×${count}` : ""}`)
-    .join(", ");
-
-  const moreNote =
-    subRegion.hits.length > 5
-      ? ` <span class="bon-region-tz">+${subRegion.hits.length - 5} more</span>`
-      : "";
-
-  let runnerNote = "";
-  if (subRegion.runnerUp) {
-    const runnerInfo = BON_REGION_INFO[subRegion.runnerUp.region];
-    runnerNote = ` <span class="bon-region-tz">(also ${subRegion.runnerUp.count} in ${runnerInfo?.label || subRegion.runnerUp.region})</span>`;
-  }
-
-  span.innerHTML = `Region from posting history: <strong title="${info.label}">${info.flag} ${info.label}</strong> — ${subRegion.count} item${subRegion.count === 1 ? "" : "s"} in ${hitsList}${moreNote}${runnerNote}`;
-  return span;
-}
-
-function renderScriptRegionLine(
-  scriptRegion: ScriptInference
-): HTMLSpanElement {
-  const info = BON_REGION_INFO[scriptRegion.region] || {
-    flag: "🏳",
-    label: scriptRegion.region,
-  };
-
-  const span = document.createElement("span");
-
-  const hits = scriptRegion.hits
-    .map((hit) => `${hit.count} ${hit.script}`)
-    .join(", ");
-
-  span.innerHTML = `Script in their writing: <strong title="${info.label}">${info.flag} ${info.label}</strong> — ${hits}`;
-  return span;
-}
-
-function renderLanguageRegionLine(
-  langRegion: LanguageInference
-): HTMLSpanElement {
-  const info = BON_REGION_INFO[langRegion.region] || {
-    flag: "🏳",
-    label: langRegion.region,
-  };
-
-  const span = document.createElement("span");
-  const hits = langRegion.hits
-    .map((hit) => `${hit.count} ${hit.label}`)
-    .join(", ");
-
-  span.innerHTML = `Language markers in writing: <strong title="${info.label}">${info.flag} ${info.label}</strong> — ${hits}`;
-  return span;
-}
-
-function renderModeratorRegionLine(
-  modRegion: ModeratedInference
-): HTMLSpanElement {
-  const info = BON_REGION_INFO[modRegion.region] || {
-    flag: "🏳",
-    label: modRegion.region,
-  };
-
-  const span = document.createElement("span");
-
-  const list = modRegion.hits
-    .slice(0, 5)
-    .map((hit) => `r/${hit.sub}`)
-    .join(", ");
-
-  const more =
-    modRegion.hits.length > 5
-      ? ` <span class="bon-region-tz">+${modRegion.hits.length - 5} more</span>`
-      : "";
-
-  span.innerHTML = `Moderates ${modRegion.score} ${info.label}-coded sub${modRegion.score === 1 ? "" : "s"}: <strong title="${info.label}">${info.flag} ${info.label}</strong> — ${list}${more}`;
-  return span;
+  return null;
 }
 
 function renderHourHeatmap(timestamps: number[]): HTMLDivElement {
   // 7 (day of week) x 24 (hour of day) buckets in the viewer's local timezone.
   const counts = new Array<number>(7 * 24).fill(0);
+
   for (const timestamp of timestamps) {
     const local = new Date(timestamp);
     const dayOfWeek = local.getDay();
@@ -163,11 +43,13 @@ function renderHourHeatmap(timestamps: number[]): HTMLDivElement {
 
   const dayLabels = document.createElement("div");
   dayLabels.className = "bon-hour-days";
+
   for (let i = 0; i < 7; i++) {
     const label = document.createElement("div");
     label.textContent = BON_REPORTS_DAY_NAMES[i];
     dayLabels.appendChild(label);
   }
+
   wrap.appendChild(dayLabels);
 
   const right = document.createElement("div");
@@ -175,15 +57,18 @@ function renderHourHeatmap(timestamps: number[]): HTMLDivElement {
 
   const hourLabels = document.createElement("div");
   hourLabels.className = "bon-hour-hours";
+
   for (let h = 0; h < 24; h++) {
     const label = document.createElement("span");
     label.textContent = h % 6 === 0 ? String(h) : "";
     hourLabels.appendChild(label);
   }
+
   right.appendChild(hourLabels);
 
   const grid = document.createElement("div");
   grid.className = "bon-hour-grid";
+
   for (let d = 0; d < 7; d++) {
     for (let h = 0; h < 24; h++) {
       const cell = document.createElement("div");
@@ -199,65 +84,25 @@ function renderHourHeatmap(timestamps: number[]): HTMLDivElement {
       grid.appendChild(cell);
     }
   }
+
   right.appendChild(grid);
 
   wrap.appendChild(right);
   return wrap;
 }
 
-export function bonReportsHourSection(
-  timestamps: number[],
-  activityData: ActivityData | null | undefined
-): HTMLDivElement {
+export function bonReportsHourSection(timestamps: number[]): HTMLDivElement {
   const outer = document.createElement("div");
   outer.style.marginTop = "0.75em";
 
-  // Surface every deterministic signal source independently so the operator
-  // can see which ones fired (subreddit / script / language markers /
-  // moderated subs) — not just the combined verdict.
-  const subRegion = bonInferRegionFromSubreddits(activityData?.subredditCounts);
-  const scriptRegion = bonInferRegionFromScripts(activityData?.scriptSignals);
-  const langRegion = bonInferRegionFromLanguage(activityData?.languageSignals);
-  const modRegion = bonInferRegionFromModerated(activityData?.moderatedSubs);
-
-  if (subRegion) {
-    const row = document.createElement("p");
-    row.className = "bon-heatmap-row";
-    row.appendChild(renderSubredditRegionLine(subRegion));
-    outer.appendChild(row);
-  }
-  if (scriptRegion) {
-    const row = document.createElement("p");
-    row.className = "bon-heatmap-row";
-    row.appendChild(renderScriptRegionLine(scriptRegion));
-    outer.appendChild(row);
-  }
-  if (langRegion) {
-    const row = document.createElement("p");
-    row.className = "bon-heatmap-row";
-    row.appendChild(renderLanguageRegionLine(langRegion));
-    outer.appendChild(row);
-  }
-  if (modRegion) {
-    const row = document.createElement("p");
-    row.className = "bon-heatmap-row";
-    row.appendChild(renderModeratorRegionLine(modRegion));
-    outer.appendChild(row);
-  }
-
   const inferred = bonReportsInferTimezoneFromTimestamps(timestamps);
-
-  const primary = document.createElement("p");
-  primary.className = "bon-heatmap-row";
-  primary.appendChild(renderInferredTimezone(inferred, subRegion));
-  outer.appendChild(primary);
-
-  const timezoneName = Intl.DateTimeFormat().resolvedOptions().timeZone;
-
-  const advisory = document.createElement("p");
-  advisory.className = "bon-heatmap-row bon-heatmap-advisory";
-  advisory.innerHTML = `<small>Heatmap below uses your local timezone (<strong>${timezoneName}</strong>) for reference.</small>`;
-  outer.appendChild(advisory);
+  const cycleNote = renderCycleNote(inferred);
+  if (cycleNote) {
+    const row = document.createElement("p");
+    row.className = "bon-heatmap-row";
+    row.appendChild(cycleNote);
+    outer.appendChild(row);
+  }
 
   outer.appendChild(renderHourHeatmap(timestamps));
   return outer;

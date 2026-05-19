@@ -19,6 +19,7 @@ export function bonNormalizePersona(raw: unknown): Persona | null {
   const label = String(record.label || "")
     .toLowerCase()
     .trim();
+
   if (!(BON_PERSONA_LABELS as readonly string[]).includes(label)) {
     return null;
   }

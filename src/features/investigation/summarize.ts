@@ -7,17 +7,16 @@
 
 import type {
   BotBouncerStatus,
-  ContextItem,
   ModeratedSubreddit,
   ModeratedSubreddits,
   ModeratorRemovals,
-  OperatorContextSummary,
   PostingRate,
   ProfileSummary,
   RedditProfile,
   SummaryComment,
   SummaryPost,
   TopSubreddit,
+  WebSearchResult,
 } from "../../types.ts";
 import { BON_REDDIT_FETCH_LIMIT } from "./fetch.ts";
 
@@ -64,7 +63,7 @@ interface RawModeratedEntry {
 export interface SummarizeExtra {
   botBouncerStatus?: Exclude<BotBouncerStatus, null>;
   botBouncerCheckedAt?: number;
-  contextItems?: ContextItem[];
+  webSearchResults?: WebSearchResult[];
 }
 
 export function bonSummarizeProfile(
@@ -96,6 +95,7 @@ export function bonSummarizeProfile(
   const postingRate = computePostingRate(posts, comments);
   const moderatedSubreddits = summarizeModerated(raw.moderated?.data);
   const topSubreddits = countTopSubreddits(posts, comments);
+  const avatarCustomized = bonHasCustomSnoovatar(aboutData.snoovatar_img);
 
   return {
     username,
@@ -111,6 +111,7 @@ export function bonSummarizeProfile(
       verified: aboutData.verified === true,
       has_verified_email: aboutData.has_verified_email === true,
     },
+    avatar: { customized: avatarCustomized },
     activity: {
       posts_fetched: posts.length,
       comments_fetched: comments.length,
@@ -133,8 +134,23 @@ export function bonSummarizeProfile(
     },
     recent_posts: trimmedPosts,
     recent_comments: trimmedComments,
-    operator_collected_context: (extra.contextItems ?? []).map(trimContextItem),
+    web_search_results: extra.webSearchResults ?? [],
   };
+}
+
+// `snoovatar_img` is an empty string for default snoos and a non-empty
+// PNG URL when the user customized via Reddit's avatar editor. That's
+// the only check we need — Reddit doesn't surface a "default-snoo" URL
+// here; default accounts return `""`. The companion `icon_img` field is
+// always populated (often with a generic snoo) so it can't tell us
+// whether the user actually chose anything.
+export function bonHasCustomSnoovatar(snoovatarImg?: string): boolean {
+  return typeof snoovatarImg === "string" && snoovatarImg.trim().length > 0;
+}
+
+export function bonExtractSnoovatarUrl(raw: RedditProfile): string | null {
+  const url = raw.about.data?.snoovatar_img;
+  return bonHasCustomSnoovatar(url) ? (url as string) : null;
 }
 
 function extractChildren<T>(
@@ -143,12 +159,15 @@ function extractChildren<T>(
   if (!children) {
     return [];
   }
+
   const items: T[] = [];
+
   for (const child of children) {
     if (child.data) {
       items.push(child.data as T);
     }
   }
+
   return items;
 }
 
@@ -190,33 +209,22 @@ function trimComment(comment: RawComment): SummaryComment {
   };
 }
 
-function trimContextItem(contextItem: ContextItem): OperatorContextSummary {
-  return {
-    kind: contextItem.kind,
-    subreddit: contextItem.subreddit,
-    title: contextItem.title,
-    body: contextItem.body,
-    score: contextItem.score,
-    created_at: contextItem.createdAt,
-    permalink: contextItem.permalink,
-    added_at: new Date(contextItem.addedAt).toISOString(),
-    provenance: contextItem.provenance,
-  };
-}
-
 function countRemovals(
   posts: RawPost[],
   comments: RawComment[]
 ): ModeratorRemovals {
   const removals: ModeratorRemovals = { total: 0, by_category: {} };
+
   for (const item of [...posts, ...comments]) {
     const category = item.removed_by_category;
     if (!category) {
       continue;
     }
+
     removals.total++;
     removals.by_category[category] = (removals.by_category[category] ?? 0) + 1;
   }
+
   return removals;
 }
 
@@ -229,6 +237,7 @@ function computePostingRate(
   comments: RawComment[]
 ): PostingRate | null {
   const allTimestamps: number[] = [];
+
   for (const item of [...posts, ...comments]) {
     if (typeof item.created_utc === "number") {
       allTimestamps.push(item.created_utc * 1000);
@@ -265,12 +274,15 @@ function summarizeModerated(
   if (!entries) {
     return { count: 0, list: [] };
   }
+
   const list: ModeratedSubreddit[] = [];
+
   for (const entry of entries) {
     const sub = moderatedLabel(entry);
     if (sub === null) {
       continue;
     }
+
     list.push({
       sub,
       subscribers:
@@ -279,6 +291,7 @@ function summarizeModerated(
       over_18: entry.over_18 === true,
     });
   }
+
   return { count: list.length, list };
 }
 
@@ -286,12 +299,15 @@ function moderatedLabel(entry: RawModeratedEntry): string | null {
   if (entry.sr_display_name_prefixed) {
     return entry.sr_display_name_prefixed;
   }
+
   if (entry.sr) {
     return `r/${entry.sr}`;
   }
+
   if (entry.display_name) {
     return `r/${entry.display_name}`;
   }
+
   return entry.url ?? null;
 }
 
@@ -300,10 +316,12 @@ function countTopSubreddits(
   comments: RawComment[]
 ): TopSubreddit[] {
   const counts: Record<string, number> = {};
+
   for (const item of [...posts, ...comments]) {
     const label = subredditLabel(item);
     counts[label] = (counts[label] ?? 0) + 1;
   }
+
   return Object.entries(counts)
     .sort((a, b) => b[1] - a[1])
     .slice(0, 25)

@@ -1,7 +1,5 @@
 # Bot or Not — Claude Guidelines
 
-@~/Development/.claude/languages/typescript.md
-
 ## Dev Workflow
 
 | Command             | Purpose                                                                                                 |
@@ -12,13 +10,7 @@
 | `npm run typecheck` | Run `tsc --noEmit` against `src/**/*.ts`                                                                |
 | `npm run build`     | Build an unsigned extension zip into `web-ext-artifacts/`                                               |
 | `npm run sign`      | Sign and publish to AMO (self-distribution, unlisted). Reads `AMO_API_KEY`/`AMO_API_SECRET` from `.env` |
-
-Run `npm run typecheck`, `npm run lint`, and `npm run format` before committing.
-
-### Branching
-
-- Work directly on `main` — do not create feature branches.
-- Hold off on `git commit` until a change is confirmed working, then commit it to `main`.
+| `npm run investigate -- <username> [--no-web-search] [--json]` | Run the bot/human investigation pipeline against a Reddit username outside the extension. Lets you iterate on `src/features/investigation/prompt.md` without rebuilding. Reads `CLAUDE_API_KEY` from `.env` (gitignored). |
 
 ### Release
 
@@ -49,10 +41,11 @@ Three execution contexts, communicating via `browser.runtime.sendMessage`:
 
 - Triggered automatically when a user is reported, or on demand from the reports page.
 - `src/features/investigation/prompt.md` is the system prompt sent to Claude. Editing it changes how factors are scored.
-- Claude returns 14 per-factor `{score, confidence, reasoning, evidence}` objects on a single bot↔human axis (`-1` = strong human signal, `+1` = strong bot signal), plus a top-level `persona: { label, reasoning }` block where `label` ∈ `{bot, stan, farmer, normal}`.
+- Claude returns 15 per-factor `{score, confidence, reasoning, evidence}` objects on a single bot↔human axis (`-1` = strong human signal, `+1` = strong bot signal), plus a top-level `persona: { label, reasoning, archetypes }` block. `label` is one of `{bot, normal}` or one of the human-flavor archetypes defined in `src/factors.ts` (currently `stan`, `farmer`, `teen`, `thirst`, `crank`, `hustler`, `doomer`). `archetypes` is a 0–1 strength score per archetype axis, used by the reports-page radar chart.
 - `src/verdict.ts` aggregates deterministically: `botProbability = sigmoid(2 × Σ(-score × confidence))`, then bins into one of 5 labels: `bot`, `likely-bot`, `uncertain`, `likely-human`, `human`.
 - Verdict logic lives **only** in `verdict.ts`. Don't bake it into the prompt or the background — re-running the aggregator on stored factor scores must reproduce the same verdict.
-- **Persona is an LLM pick, not derived from factor math.** The bot↔human scalar and the persona answer different questions: a Stan or Farmer is still a human, so persona `stan`/`farmer` is consistent with a positive (human-leaning) verdict.
+- **Persona is an LLM pick, not derived from factor math.** The bot↔human scalar and the persona answer different questions: archetypes describe flavors of *human* behavior, so a `stan` / `farmer` / `crank` / etc. persona is consistent with a positive (human-leaning) verdict. `bot` is a valid label but not a radar axis — the bot↔human scalar already answers that.
+- Archetype list is canonical in `src/factors.ts` (`BON_ARCHETYPES`). Adding/removing/renaming an archetype must be mirrored in `src/features/investigation/prompt.md` so Claude's `persona.archetypes` keys match what the radar expects.
 
 ### Factor-list contract
 
@@ -88,7 +81,7 @@ Investigation shape:
   startedAt, durationMs, error,
   verdict, confidence, botProbability,  // derived by verdict.js
   factors: [{ key, score, confidence, reasoning, evidence }, ...],
-  persona: { label, reasoning } | null,  // LLM-picked archetype
+  persona: { label, reasoning, archetypes } | null,  // LLM pick + 0–1 per-axis strengths
   summary,
 }
 ```
@@ -104,23 +97,9 @@ Investigation shape:
 
 ## Code organization
 
-Every screen and pipeline lives under `src/features/<feature>/`. Each directory IS the feature — drop the directory, remove the one or two imports from `src/content_script.ts` / `src/background.ts` / `src/reports.html`, and the feature is gone.
+Every screen and pipeline lives under `src/features/<feature>/`. Each directory IS the feature — drop the directory, remove the one or two imports from `src/content_script.ts` / `src/background.ts` / `src/reports.html`, and the feature is gone. Top-level survivors are intentional cross-feature contracts: `src/verdict.ts` (the verdict-derivation math), `src/factors.ts` (the canonical factor + persona list), and `src/types.ts` (shared domain types), plus the `src/utils/` helpers.
 
-Current features: `analytics/`, `regions/`, `inline-tags/`, `reporting/`, `profile-panel/`, `status-detection/`, `reports/`, `investigation/`. Top-level survivors are intentional cross-feature contracts: `src/verdict.ts` (the verdict-derivation math), `src/factors.ts` (the canonical factor + persona list), and `src/types.ts` (shared domain types), plus the `src/utils/` helpers.
-
-### File roles inside a feature
-
-| File          | Purpose                                                                                                                                                                                                |
-| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `index.ts`    | Public entry point. The renderer (`bonRenderX(...)`) for UI features, or the main public function for library features. May hold tiny render helpers (≤15 lines, called only from the entry function). |
-| `logic.ts`    | Pure data transforms / aggregations — no DOM, no I/O. Feature-internal types live here too.                                                                                                            |
-| `data.ts`     | Static lookup tables / constants.                                                                                                                                                                      |
-| `styles.css`  | Feature CSS.                                                                                                                                                                                           |
-| `<widget>.ts` | One file per visible widget — e.g. `chart_cost.ts`, `table_run_log.ts`, `stat_grid.ts`. One render function per file, named for what it builds.                                                        |
-
-**Avoid grab-bag files.** If a file needs `// ---------- Section name ----------` dividers to navigate, the sections want to be separate files. Treat any such divider as a TODO to split. Splitting one file into many is fine — even small files. The locatability win (the IDE file tree becomes a TOC) outweighs the file-count cost.
-
-**Separate business logic from rendering.** Pure transforms go in `logic.js`; DOM building goes in `index.js` or per-widget files. A function that computes summary stats and the function that paints them shouldn't share a file.
+General file-role and structure rules (`index.ts`, `logic.ts`, `data.ts`, `<widget>.ts`; avoid grab-bag files; separate logic from rendering) live in the `writing-code` Skill.
 
 ### Naming exported names
 
@@ -141,13 +120,9 @@ ES modules everywhere; cross-file communication is via `import` / `export` (no I
 6. Update any `import` sites in `background.ts` / `content_script.ts` / `reports.html` to point at the new feature path.
 7. Run `npm run typecheck && npm run lint && npm run format && npm run build`. Done.
 
-## Conventions
+## Project-specific conventions
 
-- All DOM IDs and CSS classes are prefixed `bon-` to avoid collisions with Reddit's styles.
-- ID format: `bon-[noun]` (e.g., `#bon-badge`, `#bon-check-btn`).
-- CSS modifier format: `bon-[noun]--[state]` (e.g., `.bon-stat-pill--verdict-bot`, `.bon-badge--bot`).
-- Use **async/await** throughout — no `.then()` chains.
-- Prefix every `console.log` / `console.error` with `[Bot or Not]`.
-- Use `em` units for sizing so inline elements scale with surrounding Reddit text.
-- Apply `transition: opacity 0.15s, transform 0.15s` to interactive elements.
-- Prefer if/return chains over switch statements.
+- DOM/CSS prefix is `bon-`.
+- Console log tag is `[Bot or Not]`.
+
+General code style, naming, comments, and TypeScript conventions live in the `writing-code` Skill.

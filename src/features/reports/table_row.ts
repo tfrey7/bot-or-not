@@ -14,22 +14,14 @@ import type { ReportRow } from "./logic.ts";
 export interface RowOptions {
   selectedUsername: string | null;
   expectedDurationMs: number | null;
-  isChecked: boolean;
   onSelect: (username: string) => void;
-  onToggleCheck: (username: string, checked: boolean) => void;
 }
 
 export function bonReportsRow(
   report: ReportRow,
   opts: RowOptions
 ): HTMLTableRowElement {
-  const {
-    selectedUsername,
-    expectedDurationMs,
-    isChecked,
-    onSelect,
-    onToggleCheck,
-  } = opts;
+  const { selectedUsername, expectedDurationMs, onSelect } = opts;
   const { username, investigation, ringId } = report;
 
   const summary = document.createElement("tr");
@@ -37,6 +29,7 @@ export function bonReportsRow(
   if (selectedUsername === username) {
     summary.classList.add("bon-row-summary--selected");
   }
+
   summary.dataset.bonUsername = username;
   summary.tabIndex = 0;
   summary.setAttribute("role", "button");
@@ -52,21 +45,6 @@ export function bonReportsRow(
       onSelect(username);
     }
   });
-
-  const selectCell = document.createElement("td");
-  selectCell.className = "bon-row-select-cell";
-  const checkbox = document.createElement("input");
-  checkbox.type = "checkbox";
-  checkbox.checked = isChecked;
-  checkbox.setAttribute("aria-label", `Select u/${username}`);
-  checkbox.addEventListener("click", (event) => {
-    event.stopPropagation();
-  });
-  checkbox.addEventListener("change", () => {
-    onToggleCheck(username, checkbox.checked);
-  });
-  selectCell.appendChild(checkbox);
-  summary.appendChild(selectCell);
 
   const userCell = document.createElement("td");
   const nameWrap = document.createElement("span");
@@ -107,6 +85,7 @@ export function bonReportsRow(
     dash.textContent = "—";
     verdictCell.appendChild(dash);
   }
+
   summary.appendChild(verdictCell);
 
   const investigatedCell = document.createElement("td");
@@ -116,12 +95,14 @@ export function bonReportsRow(
     investigation,
     expectedDurationMs
   );
+
   if (
     investigation?.status === "running" &&
     !bonIsInvestigationStale(investigation)
   ) {
     investigatedCell.dataset.bonRunningCell = username;
   }
+
   summary.appendChild(investigatedCell);
 
   return summary;

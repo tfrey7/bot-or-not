@@ -6,6 +6,10 @@
 
 import type { Persona } from "../../types.ts";
 import { bonPersonaHue } from "../../utils/persona_color.ts";
+import {
+  bonHidePersonaLabel,
+  bonRevealPersonaLabel,
+} from "../../utils/persona_label_reveal.ts";
 import { bonPersonaRadar } from "../../utils/persona_radar.ts";
 import { bonPersonaTitle } from "../../utils/persona_title.ts";
 
@@ -27,13 +31,21 @@ export function bonReportsPersonaBlock(
   const label = document.createElement("p");
   label.className = `bon-persona-label bon-persona-label--${persona.label}`;
   label.textContent = bonPersonaTitle(persona);
-  block.appendChild(label);
 
   if (persona.archetypes) {
-    const radar = bonPersonaRadar(persona.archetypes);
+    bonHidePersonaLabel(label);
+    const radar = bonPersonaRadar(persona.archetypes, {
+      onLock: () => bonRevealPersonaLabel(label),
+    });
+
     if (radar) {
+      block.appendChild(label);
       block.appendChild(radar);
+    } else {
+      block.appendChild(label);
     }
+  } else {
+    block.appendChild(label);
   }
 
   if (persona.reasoning) {
@@ -42,5 +54,6 @@ export function bonReportsPersonaBlock(
     blurb.textContent = persona.reasoning;
     block.appendChild(blurb);
   }
+
   return block;
 }

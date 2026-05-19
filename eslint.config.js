@@ -59,6 +59,36 @@ export default tseslint.config(
     // setting prettier considers compatible).
     rules: {
       curly: ["error", "all"],
+      "padding-line-between-statements": [
+        "error",
+        { blankLine: "always", prev: "block-like", next: "*" },
+        {
+          blankLine: "always",
+          prev: "*",
+          next: ["for", "while", "do"],
+        },
+        {
+          blankLine: "always",
+          prev: [
+            "multiline-const",
+            "multiline-let",
+            "multiline-var",
+            "multiline-expression",
+          ],
+          next: ["if", "switch", "try", "return", "throw"],
+        },
+      ],
+      "lines-around-comment": [
+        "error",
+        {
+          beforeLineComment: true,
+          beforeBlockComment: true,
+          allowBlockStart: true,
+          allowObjectStart: true,
+          allowArrayStart: true,
+          allowClassStart: true,
+        },
+      ],
     },
   }
 );

@@ -34,6 +34,7 @@ export function bonPanelBuildInvestigateBtn(
       button.textContent = "🤖";
       button.title = "Investigate";
     }
+
     button.setAttribute("aria-label", button.title);
   };
 
@@ -69,6 +70,7 @@ export function bonPanelBuildInvestigateBtn(
         button.classList.remove("bon-spinning");
         setState(verdict ? "reinvestigate" : "investigate");
       }
+
       // storage.onChanged will trigger refreshProfilePanel.
     } catch (error) {
       console.error("[Bot or Not] investigate failed", error);

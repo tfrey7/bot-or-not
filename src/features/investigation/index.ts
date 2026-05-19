@@ -15,19 +15,22 @@ import type {
   ActivityData,
   BotBouncerStatus,
   ClaudeUsage,
-  ContextItem,
   Factor,
   Persona,
   ProfileSummary,
   RedditFetchMetric,
   RedditMetrics,
   RedditProfile,
+  RegionInferenceAi,
   Verdict,
+  WebSearchResult,
 } from "../../types.ts";
 import { bonExtractJson } from "../../utils/json.ts";
 import { bonNormalizePersona } from "../../utils/persona.ts";
 import { bonExtractActivityData } from "../../utils/reddit_activity.ts";
+import { bonNormalizeRegionInference } from "../../utils/region_inference.ts";
 import { bonComputeVerdict } from "../../verdict.ts";
+import { bonWebSearchRedditUser } from "../web-search/index.ts";
 import { bonCallClaude } from "./api.ts";
 import {
   bonFetchBotBouncerStatus,
@@ -36,15 +39,14 @@ import {
   bonFetchRedditProfile,
   RedditFetchError,
 } from "./fetch.ts";
-import { bonSummarizeProfile } from "./summarize.ts";
+import { bonExtractSnoovatarUrl, bonSummarizeProfile } from "./summarize.ts";
 
-// Caller-supplied context for an investigation. All three keys are
-// independently optional — omit when no signal is on hand. The fields
-// themselves never carry `null`; absence is expressed by omission.
+// Caller-supplied context for an investigation. Both keys are independently
+// optional — omit when no signal is on hand. The fields themselves never
+// carry `null`; absence is expressed by omission.
 export interface GatherProfileExtra {
   botBouncerStatus?: Exclude<BotBouncerStatus, null>;
   botBouncerCheckedAt?: number;
-  contextItems?: ContextItem[];
 }
 
 export interface GatheredProfile {
@@ -54,6 +56,10 @@ export interface GatheredProfile {
   botBouncerStatus: BotBouncerStatus;
   botBouncerCheckedAt: number | null;
   redditMetrics: RedditMetrics;
+  webSearchResults: WebSearchResult[];
+  webSearchDurationMs: number;
+  webSearchStatus: "ok" | "error";
+  webSearchError: string | null;
 }
 
 export interface OneDAnalysisResult {
@@ -62,6 +68,7 @@ export interface OneDAnalysisResult {
   botProbability: number;
   summary: string;
   persona: Persona | null;
+  region: RegionInferenceAi | null;
   factors: Factor[];
   runAt: number;
   model: string;
@@ -78,24 +85,27 @@ export async function bonFetchUserActivity(
 }
 
 // Fetch + summarize the account once so the analyzer works from a
-// single Reddit fetch per investigation.
+// single Reddit fetch per investigation. Reddit profile, BotBouncer
+// lookup, and DDG web search all run in parallel so the wall time is
+// max() not sum() — the web search lands in time to be embedded in the
+// summary that goes to Claude.
 export async function bonGatherProfile(
   username: string,
   extra: GatherProfileExtra = {}
 ): Promise<GatheredProfile> {
   const wallStart = performance.now();
 
-  // BotBouncer never throws — its fetch result is folded back into the
-  // metrics regardless. Profile may throw RedditFetchError on a critical
-  // miss; we want the partial metrics + the botbouncer metric on that
-  // path too, so use Promise.allSettled.
-  const [profileSettled, botBouncerSettled] = await Promise.allSettled([
-    bonFetchRedditProfile(username),
-    bonFetchBotBouncerStatus(username),
-  ]);
+  const [profileSettled, botBouncerSettled, webSearchSettled] =
+    await Promise.allSettled([
+      bonFetchRedditProfile(username),
+      bonFetchBotBouncerStatus(username),
+      bonWebSearchRedditUser(username),
+    ]);
 
   const botBouncerResult =
     botBouncerSettled.status === "fulfilled" ? botBouncerSettled.value : null;
+  const webSearchResult =
+    webSearchSettled.status === "fulfilled" ? webSearchSettled.value : null;
 
   const totalDurationMs = Math.round(performance.now() - wallStart);
 
@@ -110,6 +120,7 @@ export async function bonGatherProfile(
       ],
       totalDurationMs,
     };
+
     throw new RedditFetchError(
       reason instanceof Error ? reason.message : String(reason),
       combined
@@ -132,10 +143,21 @@ export async function bonGatherProfile(
     ? Date.now()
     : (extra.botBouncerCheckedAt ?? null);
 
+  const webSearchResults = webSearchResult?.results ?? [];
+  const webSearchDurationMs = webSearchResult?.durationMs ?? 0;
+  const webSearchStatus = webSearchResult?.status ?? "error";
+  const webSearchError =
+    webSearchResult?.error ??
+    (webSearchSettled.status === "rejected"
+      ? webSearchSettled.reason instanceof Error
+        ? webSearchSettled.reason.message
+        : String(webSearchSettled.reason)
+      : null);
+
   const summary = bonSummarizeProfile(username, profile, {
     ...(botBouncerStatus ? { botBouncerStatus } : {}),
     ...(botBouncerCheckedAt != null ? { botBouncerCheckedAt } : {}),
-    contextItems: extra.contextItems,
+    webSearchResults,
   });
   const activityData = bonExtractActivityData(profile);
 
@@ -146,6 +168,10 @@ export async function bonGatherProfile(
     botBouncerStatus,
     botBouncerCheckedAt,
     redditMetrics,
+    webSearchResults,
+    webSearchDurationMs,
+    webSearchStatus,
+    webSearchError,
   };
 }
 
@@ -157,6 +183,7 @@ interface ClaudeVerdictPayload {
   factors: Factor[];
   summary: string;
   persona: unknown;
+  region: unknown;
 }
 
 function parseClaudeVerdict(rawText: string): ClaudeVerdictPayload {
@@ -164,11 +191,13 @@ function parseClaudeVerdict(rawText: string): ClaudeVerdictPayload {
   if (!extracted || typeof extracted !== "object") {
     throw new Error("Could not parse verdict JSON from Claude response");
   }
+
   const payload = extracted as Record<string, unknown>;
 
   if (!Array.isArray(payload.factors)) {
     throw new Error("Claude response missing required `factors` array");
   }
+
   if (typeof payload.summary !== "string") {
     throw new Error("Claude response missing required `summary` string");
   }
@@ -177,22 +206,26 @@ function parseClaudeVerdict(rawText: string): ClaudeVerdictPayload {
     factors: payload.factors as Factor[],
     summary: payload.summary,
     persona: payload.persona,
+    region: payload.region,
   };
 }
 
-// Runs the 1D bot↔human analysis against an already-built summary.
+// Runs the 1D bot↔human analysis against an already-built summary. The
+// summary may already carry `web_search_results` from bonGatherProfile;
+// the prompt reads them directly so the Claude call has no server-side
+// search tool anymore.
 export async function bonRunOneDAnalysis(
   apiKey: string,
-  profileSummary: ProfileSummary
+  profileSummary: ProfileSummary,
+  avatarUrl: string | null = null
 ): Promise<OneDAnalysisResult> {
-  const { rawText, usage, model, webSearchCount, costUsd } =
-    await bonCallClaude(
-      apiKey,
-      BON_ANALYSIS_PROMPT,
-      profileSummary,
-      "claude 1D",
-      { webSearch: true }
-    );
+  const { rawText, usage, model, costUsd } = await bonCallClaude(
+    apiKey,
+    BON_ANALYSIS_PROMPT,
+    profileSummary,
+    "claude 1D",
+    { avatarUrl }
+  );
 
   const parsed = parseClaudeVerdict(rawText);
   const derived = bonComputeVerdict(parsed.factors);
@@ -203,11 +236,13 @@ export async function bonRunOneDAnalysis(
     botProbability: derived.botProbability,
     summary: parsed.summary,
     persona: bonNormalizePersona(parsed.persona),
+    region: bonNormalizeRegionInference(parsed.region),
     factors: parsed.factors,
     runAt: Date.now(),
     model,
     usage,
-    webSearchCount,
+    webSearchCount:
+      (profileSummary.web_search_results ?? []).length > 0 ? 1 : 0,
     costUsd,
   };
 }
@@ -231,7 +266,12 @@ export async function bonInvestigateUser(
   extra: GatherProfileExtra = {}
 ): Promise<InvestigateUserResult> {
   const gathered = await bonGatherProfile(username, extra);
-  const analysisResult = await bonRunOneDAnalysis(apiKey, gathered.summary);
+  const avatarUrl = bonExtractSnoovatarUrl(gathered.raw);
+  const analysisResult = await bonRunOneDAnalysis(
+    apiKey,
+    gathered.summary,
+    avatarUrl
+  );
 
   return {
     ...analysisResult,
@@ -247,3 +287,4 @@ export async function bonInvestigateUser(
 }
 
 export { RedditFetchError };
+export { bonExtractSnoovatarUrl };

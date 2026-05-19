@@ -10,9 +10,10 @@
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@500;700&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="reports.css" />
-    <link rel="stylesheet" href="features/analytics/styles.css" />
-    <link rel="stylesheet" href="features/diagnostics/styles.css" />
+    <link rel="stylesheet" href="app.css" />
+    <link rel="stylesheet" href="features/reports/reports.css" />
+    <link rel="stylesheet" href="features/analytics/analytics.css" />
+    <link rel="stylesheet" href="features/diagnostics/diagnostics.css" />
   </head>
   <body>
     <div class="bon-page">
@@ -20,14 +21,24 @@
         <img
           src="../icons/chromes.png"
           width="56"
-          height="80"
+          height="84"
           alt="Sherlock Chromes"
           class="bon-header-mascot"
         />
         <div class="bon-header-titles">
           <h1>Bot <em>or</em> Not</h1>
+          <p class="bon-header-tagline">A field dossier · Reddit</p>
         </div>
         <div class="bon-header-actions">
+          <button
+            type="button"
+            id="bon-jazz-egg"
+            class="bon-btn bon-jazz-egg"
+            aria-label="Play late-night jazz"
+            title="♪"
+          >
+            <span class="bon-jazz-egg-icon">🎷</span>
+          </button>
           <button
             type="button"
             id="bon-settings-btn"
@@ -83,34 +94,36 @@
         aria-labelledby="bon-tab-reports"
       >
         <div class="bon-toolbar">
-          <input
-            type="search"
-            id="bon-search"
-            class="bon-search"
-            placeholder="Search username, subreddit, or post title…"
-            autocomplete="off"
-          />
-          <span class="bon-ring-status" id="bon-ring-status" hidden></span>
+          <div class="bon-command-bar" id="bon-command-bar">
+            <span class="bon-command-bar-prefix" aria-hidden="true">✦</span>
+            <input
+              type="search"
+              id="bon-search"
+              class="bon-command-bar-input"
+              placeholder="Search reports, or ask Sherlock Chromes to investigate, link, filter…"
+              autocomplete="off"
+            />
+            <span class="bon-command-bar-hint" aria-hidden="true">
+              <span class="bon-command-bar-hint-label">Ask Sherlock Chromes</span>
+              <kbd class="bon-command-bar-hint-key bon-command-bar-hint-key--focus"
+                >/</kbd
+              >
+              <kbd class="bon-command-bar-hint-key bon-command-bar-hint-key--submit"
+                >↵</kbd
+              >
+            </span>
+          </div>
+          <p class="bon-command-status" id="bon-command-status" hidden></p>
+        </div>
+
+        <div class="bon-agent-filter" id="bon-agent-filter" hidden>
+          <span id="bon-agent-filter-label"></span>
           <button
             type="button"
-            id="bon-ring-link-btn"
-            class="bon-btn"
-            hidden
-            disabled
+            id="bon-agent-filter-clear"
+            class="bon-link-btn"
           >
-            Link as ring
-          </button>
-          <button
-            type="button"
-            id="bon-ring-unlink-btn"
-            class="bon-btn"
-            hidden
-            disabled
-          >
-            Unlink
-          </button>
-          <button type="button" id="bon-ring-mode-btn" class="bon-btn">
-            Link rings
+            Clear filter
           </button>
         </div>
 
@@ -120,7 +133,6 @@
               <table class="bon-table" id="bon-table">
                 <thead>
                   <tr>
-                    <th class="bon-row-select-cell" aria-label="Select"></th>
                     <th class="bon-sortable" data-sort="username">
                       User <span class="bon-sort-indicator"></span>
                     </th>

@@ -17,7 +17,7 @@ export type ArchetypeKey =
   | "farmer"
   | "teen"
   | "thirst"
-  | "crank"
+  | "zealot"
   | "hustler"
   | "doomer";
 
@@ -46,6 +46,16 @@ export interface Persona {
   label: PersonaLabel;
   reasoning: string;
   archetypes: Record<ArchetypeKey, number> | null;
+}
+
+// AI-inferred region. `code` is a 2-letter ISO key from BON_REGION_INFO or
+// null when the model can't tell. Lives alongside the deterministic region
+// pipeline — the AI pick takes precedence when present and the deterministic
+// signals become supporting context / contradiction detection.
+export interface RegionInferenceAi {
+  code: string | null;
+  confidence: number;
+  reasoning: string;
 }
 
 // Anthropic Messages API usage block — only the fields we read.
@@ -116,6 +126,7 @@ export interface Investigation {
   botProbability: number | null;
   factors: Factor[];
   persona: Persona | null;
+  region: RegionInferenceAi | null;
   summary: string;
   model: string | null;
   usage: ClaudeUsage | null;
@@ -146,9 +157,17 @@ export interface HistoryEntry {
 export interface ActivityData {
   postTimestamps: number[];
   commentTimestamps: number[];
+
+  // Parallel to postTimestamps / commentTimestamps — lowercase subreddit name
+  // each item appeared in, or "" if Reddit didn't surface one. Drives the
+  // per-subreddit sparkline view. Older stored snapshots predate this field
+  // and will be missing it; renderers must tolerate undefined.
+  postSubreddits?: string[];
+  commentSubreddits?: string[];
   subredditCounts: Record<string, number>;
   scriptSignals: Record<string, number>;
   languageSignals: Record<string, number>;
+  languageSamples?: Record<string, string[]>;
   moderatedSubs: string[];
   corpusChars: number;
   postsLimited: boolean;
@@ -157,26 +176,6 @@ export interface ActivityData {
   earliestCommentAt: number | null;
   fetchLimit: number;
   fetchedAt: number;
-}
-
-// Operator-collected dossier entry. Captured automatically when a report is
-// filed (provenance: "auto") and manually via the in-page "Add context" button
-// (provenance: "manual"). Trimmed to ~1KB per item so dossiers can grow without
-// blowing the investigation prompt budget.
-//
-// Every field is always present — bonFetchContextItem sets all of them, using
-// `null` for absent data. No two-way optionality.
-export interface ContextItem {
-  permalink: string;
-  kind: "post" | "comment";
-  subreddit: string | null;
-  author: string;
-  title: string | null;
-  body: string | null;
-  score: number | null;
-  createdAt: string | null;
-  addedAt: number;
-  provenance: "auto" | "manual";
 }
 
 // Canonical Report shape produced by bonNormalizeReport. Every field is always
@@ -188,11 +187,11 @@ export interface Report {
   userStatus: UserStatus;
   userStatusCheckedAt: number;
   createdAt: number | null;
+  totalKarma: number | null;
   botBouncerStatus: BotBouncerStatus;
   botBouncerCheckedAt: number;
   investigation: Investigation | null;
   activityData: ActivityData | null;
-  contextItems: ContextItem[];
   ringId: string | null;
 }
 
@@ -270,21 +269,26 @@ export interface SummaryComment {
   removed_by_category: string | null;
 }
 
-export interface OperatorContextSummary {
-  kind: "post" | "comment";
-  subreddit: string | null;
-  title: string | null;
-  body: string | null;
-  score: number | null;
-  created_at: string | null;
-  permalink: string;
-  added_at: string;
-  provenance: "auto" | "manual";
+// Single web-search result handed to Claude in the profile summary.
+// Comes from our own DuckDuckGo fetch (see src/features/web-search/);
+// the prompt consumes them in place of an Anthropic web_search tool
+// call, which keeps the per-investigation cost predictable and lets the
+// search run in parallel with the Reddit fetch.
+export interface WebSearchResult {
+  title: string;
+  snippet: string;
+  link: string;
 }
 
 export interface ProfileSummary {
   username: string;
   account: AccountSummary;
+
+  // Snoovatar customization flag. When `customized: true`, the user
+  // message also carries the avatar PNG as an image content block — the
+  // prompt's `avatar_style` factor scores it. `customized: false` means
+  // the default snoo; no image is attached.
+  avatar: { customized: boolean };
   activity: {
     posts_fetched: number;
     comments_fetched: number;
@@ -298,7 +302,7 @@ export interface ProfileSummary {
   };
   recent_posts: SummaryPost[];
   recent_comments: SummaryComment[];
-  operator_collected_context?: OperatorContextSummary[];
+  web_search_results?: WebSearchResult[];
 }
 
 // Raw Reddit JSON envelopes we look into. Field set is intentionally
@@ -313,6 +317,11 @@ export interface RedditAboutEnvelope {
     is_employee?: boolean;
     verified?: boolean;
     has_verified_email?: boolean;
+
+    // Customized snoovatar PNG. Empty string when the account uses the
+    // default snoo — only treat a non-empty URL as a customization signal.
+    snoovatar_img?: string;
+    icon_img?: string;
   };
 }
 

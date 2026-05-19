@@ -63,6 +63,7 @@ export function bonReportsRenderInvestigateButton(
         type: "investigate-user",
         username,
       })) as { ok?: boolean; error?: string };
+
       if (response?.ok === false && response.error === "no-api-key") {
         onNoApiKey?.();
       }

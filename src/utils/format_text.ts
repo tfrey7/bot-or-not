@@ -5,6 +5,7 @@ export function bonFormatVerdict(verdict: string | null | undefined): string {
   if (!verdict) {
     return "";
   }
+
   const spaced = verdict.replace(/-/g, " ");
   return spaced.charAt(0).toUpperCase() + spaced.slice(1);
 }
@@ -14,6 +15,7 @@ export function bonCssEscape(value: string): string {
   if (typeof CSS !== "undefined" && typeof CSS.escape === "function") {
     return CSS.escape(value);
   }
+
   return String(value).replace(/[^a-zA-Z0-9_-]/g, "\\$&");
 }
 

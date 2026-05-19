@@ -99,6 +99,7 @@ export function bonAnalyticsRedditEndpointTimingChart(
           "start"
         )
       );
+
       return;
     }
 

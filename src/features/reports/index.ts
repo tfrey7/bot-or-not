@@ -4,10 +4,16 @@
 // lives in its own file in this directory; this file just wires them
 // together.
 
+import {
+  bonAiCommandFormatSummary,
+  type AiCommandAction,
+  type AiCommandResult,
+} from "../ai-command";
 import { bonRenderAnalytics } from "../analytics";
 import { bonRenderDiagnostics } from "../diagnostics";
 import { BON_REGION_INFO } from "../regions/data.ts";
 import type { Report } from "../../types.ts";
+import { bonExpectedDurationMs } from "../../utils/expected_duration.ts";
 import { bonIsInvestigationStale } from "../../verdict.ts";
 import { bonReportsDetailEmpty, bonReportsDetailPane } from "./detail_pane.ts";
 import {
@@ -22,10 +28,10 @@ import {
   bonReportsCompareBy,
   bonReportsDefaultDirFor,
   bonReportsDiagnoseLoadError,
-  bonReportsExpectedDurationMs,
   bonReportsFormatRunningCellText,
   bonReportsFormatRunningTitle,
   bonReportsHasStructuralChange,
+  bonReportsInputIsCommand,
   bonReportsIsActivityFresh,
   bonReportsSanitizeUsernameQuery,
   type ReportRow,
@@ -38,6 +44,10 @@ const tableWrap = document.getElementById("bon-table-wrap") as HTMLElement;
 const emptyEl = document.getElementById("bon-empty") as HTMLElement;
 const detailPane = document.getElementById("bon-detail-pane") as HTMLElement;
 const searchInput = document.getElementById("bon-search") as HTMLInputElement;
+const commandBarEl = document.getElementById("bon-command-bar") as HTMLElement;
+const commandStatusEl = document.getElementById(
+  "bon-command-status"
+) as HTMLElement;
 const paginationContainer = document.getElementById(
   "bon-pagination-container"
 ) as HTMLElement;
@@ -50,6 +60,7 @@ const diagnosticsContainer = document.getElementById(
 
 const BON_REPORTS_PAGE_SIZE = 50;
 const BON_REPORTS_URL_USER_PARAM = "user";
+
 // Vite inlines import.meta.env.DEV at build time, so the suffix only ships
 // in `vite dev` builds — published AMO builds (vite build) get a clean
 // version string.
@@ -65,6 +76,7 @@ const REGION_LABELS: Record<string, string> = Object.fromEntries(
 
 let allReports: ReportRow[] = [];
 let hasApiKey = false;
+
 // Median duration across all completed runs. Drives the progress ring and
 // "~Xs left" countdown on in-flight investigations. Recomputed before
 // render and before each poll tick. Null until we have ≥3 completed runs.
@@ -73,10 +85,18 @@ let sortKey: SortKey = "investigatedAt";
 let sortDir: SortDir = "desc";
 let currentPage = 1;
 let selectedUsername: string | null = readSelectedUsernameFromUrl();
+
+// Tracks which selection the detail pane last animated for, so polling-driven
+// re-renders (activity load, in-flight investigation ticks) don't re-fire the
+// swap animation. `undefined` means "no render yet" — the first render is
+// silent so deep-linked loads don't fade in on page open.
+let lastAnimatedSelection: string | null | undefined = undefined;
+
 // Set when the selection came from the URL (deep link) and we still need to
 // page-jump to it on the next render. Cleared after one render so subsequent
 // user-driven paging isn't yanked back.
 let pendingScrollToSelected = !!selectedUsername;
+
 // Username to promote to selectedUsername as soon as it shows up in
 // allReports. Used by the "Investigate u/<name>" empty-state button: the
 // background hasn't written the record yet at click time, so the selection
@@ -84,31 +104,31 @@ let pendingScrollToSelected = !!selectedUsername;
 // storage-change listener.
 let pendingSelectionUsername: string | null = null;
 const inflightActivity = new Set<string>();
-const selectedForRing = new Set<string>();
-let linkMode = false;
-let ringStatusMessage: string | null = null;
-let ringStatusMessageKind: "info" | "error" = "info";
 
-const ringStatusEl = document.getElementById("bon-ring-status") as HTMLElement;
-const ringLinkBtn = document.getElementById(
-  "bon-ring-link-btn"
-) as HTMLButtonElement;
-const ringUnlinkBtn = document.getElementById(
-  "bon-ring-unlink-btn"
-) as HTMLButtonElement;
-const ringModeBtn = document.getElementById(
-  "bon-ring-mode-btn"
+// Username allowlist set by the AI command agent's `filter_users` tool. When
+// non-null, render() intersects the visible rows with this set on top of any
+// search-text filter. Cleared on Esc, on the Clear-filter button, on a new
+// search-shaped keystroke, or by the agent itself with an empty list.
+let agentFilter: Set<string> | null = null;
+const agentFilterEl = document.getElementById(
+  "bon-agent-filter"
+) as HTMLElement;
+const agentFilterLabelEl = document.getElementById(
+  "bon-agent-filter-label"
+) as HTMLElement;
+const agentFilterClearBtn = document.getElementById(
+  "bon-agent-filter-clear"
 ) as HTMLButtonElement;
 
-ringLinkBtn.addEventListener("click", () => {
-  void linkSelectedAsRing();
+agentFilterClearBtn.addEventListener("click", () => {
+  clearAgentFilter();
 });
-ringUnlinkBtn.addEventListener("click", () => {
-  void unlinkSelectedFromRing();
-});
-ringModeBtn.addEventListener("click", () => {
-  toggleLinkMode();
-});
+
+// Each fresh load of the reports page starts a new AI conversation. The
+// background keeps the transcript across messages within one page session,
+// but a refresh wipes it — keeps the lifetime intuitive and avoids needing
+// any user-facing reset control.
+void browser.runtime.sendMessage({ type: "ai-command-reset" }).catch(() => {});
 
 // While any investigation is "running", poll storage so the elapsed timer
 // ticks and completion/error transitions land without a manual refresh.
@@ -124,6 +144,7 @@ async function loadActivityIfStale(
   if (bonReportsIsActivityFresh(activityData)) {
     return;
   }
+
   if (inflightActivity.has(username)) {
     return;
   }
@@ -142,22 +163,100 @@ browser.storage.onChanged.addListener((changes, area) => {
   if (area !== "local") {
     return;
   }
+
   if (changes.reports) {
     void load();
   }
+
   if (changes.claudeApiKey) {
     void refreshApiKeyState();
   }
 });
 
+const BON_SEARCH_PLACEHOLDER =
+  "Search reports, or ask Sherlock Chromes to investigate, link, filter…";
+const BON_COMMAND_PLACEHOLDER = "Press ↵ to ask Sherlock Chromes…";
+
 searchInput.addEventListener("input", () => {
   currentPage = 1;
+  updateSearchPlaceholder();
+
+  // Typing a fresh search-shaped query supersedes any active agent filter —
+  // two competing visibility gates feels confusing. Command-shaped input
+  // (multi-word, punctuation) leaves the filter intact so commands like
+  // "now narrow to bots" can stack on the previous filter.
+  if (agentFilter && !bonReportsInputIsCommand(searchInput.value)) {
+    agentFilter = null;
+    renderAgentFilterBanner();
+  }
+
   render();
 });
+
+searchInput.addEventListener("keydown", (event) => {
+  if (event.key !== "Enter") {
+    return;
+  }
+
+  const raw = searchInput.value.trim();
+  if (!raw || !bonReportsInputIsCommand(raw)) {
+    return;
+  }
+
+  event.preventDefault();
+  void runAiCommand(raw);
+});
+
+function updateSearchPlaceholder(): void {
+  const isCommand = bonReportsInputIsCommand(searchInput.value);
+  searchInput.placeholder = isCommand
+    ? BON_COMMAND_PLACEHOLDER
+    : BON_SEARCH_PLACEHOLDER;
+  commandBarEl.classList.toggle("bon-command-bar--ready", isCommand);
+}
 
 bonReportsInitConfirmModal({ onConfirm: load });
 bonReportsInitSettingsModal();
 bonReportsCloseModalsOnEscape();
+
+document.addEventListener("keydown", (event) => {
+  if (event.key !== "Escape" || !agentFilter) {
+    return;
+  }
+
+  // Modal Esc handlers run alongside this one; if a modal is open, let it
+  // win and leave the filter for the next Esc press.
+  const confirmModal = document.getElementById("bon-confirm-modal");
+  const settingsModal = document.getElementById("bon-settings-modal");
+  if (
+    (confirmModal && !confirmModal.hidden) ||
+    (settingsModal && !settingsModal.hidden)
+  ) {
+    return;
+  }
+
+  clearAgentFilter();
+});
+
+document.addEventListener("keydown", (event) => {
+  if (event.key !== "/" || event.metaKey || event.ctrlKey || event.altKey) {
+    return;
+  }
+
+  const target = event.target as HTMLElement | null;
+  if (
+    target &&
+    (target.tagName === "INPUT" ||
+      target.tagName === "TEXTAREA" ||
+      target.isContentEditable)
+  ) {
+    return;
+  }
+
+  event.preventDefault();
+  searchInput.focus();
+  searchInput.select();
+});
 
 initTabs();
 
@@ -219,6 +318,7 @@ async function refreshApiKeyState(): Promise<void> {
     if (next === hasApiKey) {
       return;
     }
+
     hasApiKey = next;
     render();
     renderDiagnostics();
@@ -272,6 +372,7 @@ function renderAnalytics(): void {
   if (!analyticsContainer) {
     return;
   }
+
   bonRenderAnalytics(allReports, analyticsContainer);
 }
 
@@ -279,17 +380,21 @@ function renderDiagnostics(): void {
   if (!diagnosticsContainer) {
     return;
   }
+
   const reportsMap: Record<string, Report> = {};
+
   for (const row of allReports) {
     reportsMap[row.username] = row;
   }
+
   bonRenderDiagnostics(reportsMap, diagnosticsContainer, {
     apiKeySet: hasApiKey,
   });
 }
 
 function render(): void {
-  expectedDurationMs = bonReportsExpectedDurationMs(allReports);
+  expectedDurationMs = bonExpectedDurationMs(allReports);
+  renderAgentFilterBanner();
 
   if (
     pendingSelectionUsername &&
@@ -301,9 +406,18 @@ function render(): void {
     updateUrlForSelection();
   }
 
-  const query = searchInput.value.trim().toLowerCase();
+  // Skip filtering when the input looks like a pending AI command — typing
+  // "link alice and bob" shouldn't collapse the table to no-matches while
+  // the operator is mid-sentence. The agent fires on Enter regardless.
+  const rawQuery = searchInput.value;
+  const isCommand = bonReportsInputIsCommand(rawQuery);
+  const query = isCommand ? "" : rawQuery.trim().toLowerCase();
 
   const filtered = allReports.filter((report) => {
+    if (agentFilter && !agentFilter.has(report.username)) {
+      return false;
+    }
+
     if (!query) {
       return true;
     }
@@ -318,6 +432,7 @@ function render(): void {
       .filter(Boolean)
       .join(" ")
       .toLowerCase();
+
     return haystack.includes(query);
   });
 
@@ -356,6 +471,7 @@ function render(): void {
     const idx = filtered.findIndex(
       (report) => report.username === selectedUsername
     );
+
     if (idx >= 0) {
       currentPage = Math.floor(idx / BON_REPORTS_PAGE_SIZE) + 1;
     }
@@ -365,9 +481,11 @@ function render(): void {
     1,
     Math.ceil(filtered.length / BON_REPORTS_PAGE_SIZE)
   );
+
   if (currentPage > totalPages) {
     currentPage = totalPages;
   }
+
   if (currentPage < 1) {
     currentPage = 1;
   }
@@ -380,9 +498,7 @@ function render(): void {
     const summary = bonReportsRow(report, {
       selectedUsername,
       expectedDurationMs,
-      isChecked: selectedForRing.has(report.username),
       onSelect: selectRow,
-      onToggleCheck: toggleRowSelectedForRing,
     });
     tbody.appendChild(summary);
   }
@@ -393,9 +509,8 @@ function render(): void {
     );
     row?.scrollIntoView({ block: "nearest" });
   }
-  pendingScrollToSelected = false;
 
-  renderRingControls();
+  pendingScrollToSelected = false;
 
   if (totalPages > 1) {
     paginationContainer.appendChild(
@@ -420,6 +535,7 @@ function selectRow(username: string): void {
   if (selectedUsername === username) {
     return;
   }
+
   selectedUsername = username;
   updateUrlForSelection();
 
@@ -450,11 +566,13 @@ function updateUrlForSelection(): void {
     if (current === selectedUsername) {
       return;
     }
+
     params.set(BON_REPORTS_URL_USER_PARAM, selectedUsername);
   } else {
     if (current === null) {
       return;
     }
+
     params.delete(BON_REPORTS_URL_USER_PARAM);
   }
 
@@ -463,164 +581,6 @@ function updateUrlForSelection(): void {
     ? `${window.location.pathname}?${query}`
     : window.location.pathname;
   window.history.replaceState({}, "", newUrl);
-}
-
-function toggleRowSelectedForRing(username: string, checked: boolean): void {
-  if (checked) {
-    selectedForRing.add(username);
-  } else {
-    selectedForRing.delete(username);
-  }
-  ringStatusMessage = null;
-  renderRingControls();
-}
-
-function toggleLinkMode(): void {
-  linkMode = !linkMode;
-  if (!linkMode) {
-    selectedForRing.clear();
-    ringStatusMessage = null;
-  }
-  tableWrap.classList.toggle("bon-table-wrap--link-mode", linkMode);
-  renderRingControls();
-}
-
-function renderRingControls(): void {
-  // Drop selections that no longer point at a real report (search filter
-  // hides them but they shouldn't accumulate after deletes).
-  for (const name of [...selectedForRing]) {
-    if (!allReports.some((report) => report.username === name)) {
-      selectedForRing.delete(name);
-    }
-  }
-
-  if (!linkMode) {
-    ringStatusEl.hidden = true;
-    ringLinkBtn.hidden = true;
-    ringUnlinkBtn.hidden = true;
-    ringModeBtn.textContent = "Link rings";
-    return;
-  }
-
-  ringLinkBtn.hidden = false;
-  ringUnlinkBtn.hidden = false;
-  ringModeBtn.textContent = "Done";
-
-  const count = selectedForRing.size;
-  const distinctRingIds = new Set<string>();
-  let anyWithoutRing = false;
-  for (const name of selectedForRing) {
-    const report = allReports.find((report) => report.username === name);
-    if (!report) {
-      continue;
-    }
-    if (report.ringId) {
-      distinctRingIds.add(report.ringId);
-    } else {
-      anyWithoutRing = true;
-    }
-  }
-
-  ringStatusEl.classList.remove("bon-ring-status--error");
-  if (ringStatusMessage) {
-    ringStatusEl.textContent = ringStatusMessage;
-    ringStatusEl.hidden = false;
-    if (ringStatusMessageKind === "error") {
-      ringStatusEl.classList.add("bon-ring-status--error");
-    }
-  } else if (count === 0) {
-    ringStatusEl.textContent = "Tick rows to link";
-    ringStatusEl.hidden = false;
-  } else {
-    const ringSummary =
-      distinctRingIds.size === 1
-        ? ` · ring ${[...distinctRingIds][0]}`
-        : distinctRingIds.size > 1
-          ? ` · spans ${distinctRingIds.size} rings`
-          : "";
-    ringStatusEl.textContent = `${count} selected${ringSummary}`;
-    ringStatusEl.hidden = false;
-  }
-
-  // Link is available when the selection can resolve to a single ring: either
-  // brand-new (no existing rings) or extending one existing ring. Two distinct
-  // rings in one selection would be a merge — keep that explicit by requiring
-  // an unlink first.
-  const canLink = count >= 2 && distinctRingIds.size <= 1;
-  ringLinkBtn.disabled = !canLink;
-  ringLinkBtn.textContent =
-    distinctRingIds.size === 1 && anyWithoutRing
-      ? `Add to ring ${[...distinctRingIds][0]}`
-      : "Link as ring";
-
-  ringUnlinkBtn.disabled = distinctRingIds.size === 0;
-}
-
-async function linkSelectedAsRing(): Promise<void> {
-  const usernames = [...selectedForRing];
-  if (usernames.length < 2) {
-    return;
-  }
-
-  ringLinkBtn.disabled = true;
-  try {
-    const response = (await browser.runtime.sendMessage({
-      type: "link-ring",
-      usernames,
-    })) as { ok: boolean; ringId?: string; error?: string };
-
-    if (!response?.ok) {
-      ringStatusMessage =
-        response?.error === "multiple-existing-rings"
-          ? "Selection spans multiple rings — unlink first."
-          : `Couldn't link ring: ${response?.error ?? "unknown error"}`;
-      ringStatusMessageKind = "error";
-      renderRingControls();
-      return;
-    }
-
-    ringStatusMessage = `Linked as ring ${response.ringId}`;
-    ringStatusMessageKind = "info";
-    selectedForRing.clear();
-    await load();
-  } catch (error) {
-    console.error("[Bot or Not] link-ring failed", error);
-    ringStatusMessage = "Link failed — see console.";
-    ringStatusMessageKind = "error";
-    renderRingControls();
-  }
-}
-
-async function unlinkSelectedFromRing(): Promise<void> {
-  const usernames = [...selectedForRing];
-  if (usernames.length === 0) {
-    return;
-  }
-
-  ringUnlinkBtn.disabled = true;
-  try {
-    const response = (await browser.runtime.sendMessage({
-      type: "unlink-ring",
-      usernames,
-    })) as { ok: boolean; error?: string };
-
-    if (!response?.ok) {
-      ringStatusMessage = `Couldn't unlink: ${response?.error ?? "unknown error"}`;
-      ringStatusMessageKind = "error";
-      renderRingControls();
-      return;
-    }
-
-    ringStatusMessage = `Unlinked ${usernames.length}`;
-    ringStatusMessageKind = "info";
-    selectedForRing.clear();
-    await load();
-  } catch (error) {
-    console.error("[Bot or Not] unlink-ring failed", error);
-    ringStatusMessage = "Unlink failed — see console.";
-    ringStatusMessageKind = "error";
-    renderRingControls();
-  }
 }
 
 function renderDetail(): void {
@@ -638,17 +598,22 @@ function renderDetail(): void {
         bonReportsDetailEmpty("Select a user from the list to see the dossier.")
       );
     }
+
+    maybeAnimateDetailSwap();
     return;
   }
 
   const report = allReports.find(
     (report) => report.username === selectedUsername
   );
+
   if (!report) {
     selectedUsername = null;
     detailPane.appendChild(
       bonReportsDetailEmpty("Select a user from the list to see the dossier.")
     );
+
+    maybeAnimateDetailSwap();
     return;
   }
 
@@ -659,6 +624,34 @@ function renderDetail(): void {
       onActivityNeedsLoad: loadActivityIfStale,
       onNoApiKey: bonReportsOpenSettings,
     })
+  );
+
+  maybeAnimateDetailSwap();
+}
+
+function maybeAnimateDetailSwap(): void {
+  const isFirstRender = lastAnimatedSelection === undefined;
+  const changed = lastAnimatedSelection !== selectedUsername;
+  lastAnimatedSelection = selectedUsername;
+
+  if (isFirstRender || !changed) {
+    return;
+  }
+
+  const reduced = window.matchMedia?.(
+    "(prefers-reduced-motion: reduce)"
+  ).matches;
+
+  if (reduced) {
+    return;
+  }
+
+  detailPane.animate(
+    [
+      { opacity: 0, transform: "translateY(4px)" },
+      { opacity: 1, transform: "translateY(0)" },
+    ],
+    { duration: 200, easing: "ease-out" }
   );
 }
 
@@ -673,6 +666,7 @@ function renderEmptyState(query: string): void {
   } else {
     text.textContent = "No reports match the search.";
   }
+
   emptyEl.appendChild(text);
 
   if (!query) {
@@ -791,16 +785,18 @@ async function pollTick(): Promise<void> {
 function updateRunningInPlace(): void {
   // Recompute in case a run completed between full renders and we have a
   // new sample for the median (no full re-render fires for that alone).
-  expectedDurationMs = bonReportsExpectedDurationMs(allReports);
+  expectedDurationMs = bonExpectedDurationMs(allReports);
 
   for (const report of allReports) {
     const investigation = report.investigation;
     if (investigation?.status !== "running") {
       continue;
     }
+
     if (bonIsInvestigationStale(investigation)) {
       continue;
     }
+
     if (investigation.startedAt === null) {
       continue;
     }
@@ -812,6 +808,7 @@ function updateRunningInPlace(): void {
     const cells = tbody.querySelectorAll<HTMLTableCellElement>(
       "[data-bon-running-cell]"
     );
+
     for (const cell of cells) {
       if (cell.dataset.bonRunningCell === report.username) {
         cell.textContent = bonReportsFormatRunningCellText(
@@ -824,10 +821,12 @@ function updateRunningInPlace(): void {
     const buttons = document.querySelectorAll<HTMLButtonElement>(
       "[data-bon-running-btn]"
     );
+
     for (const button of buttons) {
       if (button.dataset.bonRunningBtn !== report.username) {
         continue;
       }
+
       button.textContent = bonReportsFormatRunningCellText(
         elapsedSec,
         expectedDurationMs
@@ -850,11 +849,13 @@ function initTabs(): void {
       if (!target) {
         return;
       }
+
       for (const other of tabs) {
         const isActive = other === tab;
         other.classList.toggle("bon-tab--active", isActive);
         other.setAttribute("aria-selected", isActive ? "true" : "false");
       }
+
       for (const panel of panels) {
         panel.hidden = panel.id !== `bon-panel-${target}`;
       }
@@ -877,4 +878,165 @@ function updateSortIndicators(): void {
         indicator.textContent = "";
       }
     });
+}
+
+let commandInflight = false;
+
+async function runAiCommand(input: string): Promise<void> {
+  if (commandInflight) {
+    return;
+  }
+
+  commandInflight = true;
+  searchInput.disabled = true;
+  setCommandStatus("running", `Running: ${input}`);
+
+  try {
+    const response = (await browser.runtime.sendMessage({
+      type: "ai-command",
+      input,
+    })) as AiCommandResult | { ok: false; error: string };
+
+    if (!response?.ok) {
+      const error = (response as { error?: string })?.error ?? "unknown error";
+      if (error === "no-api-key") {
+        setCommandStatus("error", "No Claude API key — add one in Settings.");
+      } else {
+        setCommandStatus("error", `Command failed: ${error}`);
+      }
+
+      return;
+    }
+
+    const result = response as AiCommandResult;
+    const summary = bonAiCommandFormatSummary(result.summary);
+    setCommandStatus("ok", summary, { html: true });
+    searchInput.value = "";
+    updateSearchPlaceholder();
+    currentPage = 1;
+    await load();
+    applyClientActions(result.actions);
+  } catch (error) {
+    console.error("[Bot or Not] ai-command failed", error);
+    setCommandStatus(
+      "error",
+      `Command failed: ${String(
+        (error as { message?: string })?.message ?? error
+      )}`
+    );
+  } finally {
+    commandInflight = false;
+    searchInput.disabled = false;
+    searchInput.focus();
+  }
+}
+
+// Some agent tools (navigate_to_user, filter_users) are UI-side effects
+// rather than storage mutations — the background returns ok with hints, and
+// we apply them here once the data reload settles. Iterate in order so a
+// multi-step command can end on a specific selection or filter.
+function applyClientActions(actions: AiCommandAction[]): void {
+  for (const action of actions) {
+    if (!action.ok) {
+      continue;
+    }
+
+    if (action.tool === "navigate_to_user") {
+      const resolved =
+        (action.result as { username?: string } | undefined)?.username ??
+        (action.input as { username?: string }).username;
+
+      if (!resolved) {
+        continue;
+      }
+
+      const match = allReports.find(
+        (report) => report.username.toLowerCase() === resolved.toLowerCase()
+      );
+
+      if (!match) {
+        continue;
+      }
+
+      selectedUsername = match.username;
+      updateUrlForSelection();
+      pendingScrollToSelected = true;
+      render();
+    }
+
+    if (action.tool === "filter_users") {
+      const usernames = (action.input as { usernames?: unknown }).usernames;
+      const list = Array.isArray(usernames) ? (usernames as string[]) : [];
+      if (list.length === 0) {
+        clearAgentFilter();
+      } else {
+        // Resolve to canonical stored keys (case-insensitive) so the filter
+        // works even if Claude shifted casing.
+        const resolved = new Set<string>();
+
+        for (const name of list) {
+          const match = allReports.find(
+            (report) => report.username.toLowerCase() === name.toLowerCase()
+          );
+
+          if (match) {
+            resolved.add(match.username);
+          }
+        }
+
+        agentFilter = resolved;
+        currentPage = 1;
+        renderAgentFilterBanner();
+        render();
+      }
+    }
+  }
+}
+
+function clearAgentFilter(): void {
+  if (!agentFilter) {
+    return;
+  }
+
+  agentFilter = null;
+  currentPage = 1;
+  renderAgentFilterBanner();
+  render();
+}
+
+function renderAgentFilterBanner(): void {
+  if (!agentFilter) {
+    agentFilterEl.hidden = true;
+    agentFilterLabelEl.textContent = "";
+    return;
+  }
+
+  agentFilterEl.hidden = false;
+  agentFilterLabelEl.textContent = `AI filter · showing ${agentFilter.size} of ${allReports.length} users`;
+}
+
+function setCommandStatus(
+  kind: "running" | "ok" | "error" | "hidden",
+  content: string,
+  options: { html?: boolean } = {}
+): void {
+  if (kind === "hidden") {
+    commandStatusEl.hidden = true;
+    commandStatusEl.textContent = "";
+    return;
+  }
+
+  commandStatusEl.hidden = false;
+  if (options.html) {
+    commandStatusEl.innerHTML = content;
+  } else {
+    commandStatusEl.textContent = content;
+  }
+
+  commandStatusEl.classList.remove(
+    "bon-command-status--running",
+    "bon-command-status--ok",
+    "bon-command-status--error"
+  );
+  commandStatusEl.classList.add(`bon-command-status--${kind}`);
 }

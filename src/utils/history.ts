@@ -10,7 +10,6 @@
 // `Array.isArray` / `typeof === "number"` / `?? null` checks.
 
 import type {
-  ContextItem,
   Factor,
   HistoryEntry,
   Investigation,
@@ -20,6 +19,7 @@ import type {
   Report,
   RunSnapshot,
 } from "../types.ts";
+import { bonNormalizeRegionInference } from "./region_inference.ts";
 
 export function bonMergeHistoryEntries(
   a: HistoryEntry,
@@ -49,6 +49,7 @@ export function bonDedupeHistory(history: HistoryEntry[]): HistoryEntry[] {
       if (key) {
         seen.set(key, out.length);
       }
+
       out.push({ ...entry });
     }
   }
@@ -67,11 +68,11 @@ export function bonNormalizeReport(value: unknown): Report {
       userStatus: null,
       userStatusCheckedAt: 0,
       createdAt: null,
+      totalKarma: null,
       botBouncerStatus: null,
       botBouncerCheckedAt: 0,
       investigation: null,
       activityData: null,
-      contextItems: [],
       ringId: null,
     };
   }
@@ -97,6 +98,8 @@ export function bonNormalizeReport(value: unknown): Report {
         ? record.userStatusCheckedAt
         : 0,
     createdAt: typeof record.createdAt === "number" ? record.createdAt : null,
+    totalKarma:
+      typeof record.totalKarma === "number" ? record.totalKarma : null,
     botBouncerStatus:
       (record.botBouncerStatus as Report["botBouncerStatus"]) ?? null,
     botBouncerCheckedAt:
@@ -105,9 +108,6 @@ export function bonNormalizeReport(value: unknown): Report {
         : 0,
     investigation: canonicalizeInvestigation(record.investigation),
     activityData: (record.activityData as Report["activityData"]) ?? null,
-    contextItems: Array.isArray(record.contextItems)
-      ? (record.contextItems as ContextItem[])
-      : [],
     ringId: typeof record.ringId === "string" ? record.ringId : null,
   };
 }
@@ -119,6 +119,7 @@ function canonicalizeInvestigation(value: unknown): Investigation | null {
   if (!value || typeof value !== "object") {
     return null;
   }
+
   const investigation = value as Record<string, unknown>;
   const status = investigation.status as Investigation["status"];
   if (status !== "running" && status !== "done" && status !== "error") {
@@ -150,6 +151,7 @@ function canonicalizeInvestigation(value: unknown): Investigation | null {
       ? (investigation.factors as Factor[])
       : [],
     persona: (investigation.persona as Persona | null) ?? null,
+    region: bonNormalizeRegionInference(investigation.region),
     summary:
       typeof investigation.summary === "string" ? investigation.summary : "",
     model: typeof investigation.model === "string" ? investigation.model : null,
@@ -253,6 +255,7 @@ export function bonFreshInvestigation(
     botProbability: null,
     factors: [],
     persona: null,
+    region: null,
     summary: "",
     model: null,
     usage: null,
@@ -274,9 +277,11 @@ export async function bonReadReports(): Promise<Record<string, Report>> {
     reports?: Record<string, unknown>;
   };
   const out: Record<string, Report> = {};
+
   for (const [username, value] of Object.entries(raw.reports ?? {})) {
     out[username] = bonNormalizeReport(value);
   }
+
   return out;
 }
 
@@ -297,6 +302,7 @@ export function bonFindReportKey(
   }
 
   const target = username.toLowerCase();
+
   for (const key of Object.keys(reports)) {
     if (key.toLowerCase() === target) {
       return key;

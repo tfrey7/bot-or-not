@@ -24,6 +24,7 @@ function detectUserStatus(): void {
   const profileMatch = window.location.pathname.match(
     /^\/(?:user|u)\/([^/?#]+)/i
   );
+
   if (!profileMatch) {
     return;
   }
@@ -32,6 +33,7 @@ function detectUserStatus(): void {
   if (now - lastUserStatusScanAt < STATUS_SCAN_THROTTLE_MS) {
     return;
   }
+
   lastUserStatusScanAt = now;
 
   const username = profileMatch[1];
@@ -68,6 +70,7 @@ function reportPostStatus(
   if (!permalink || !status) {
     return;
   }
+
   if (reportedPostPermalinks.has(permalink)) {
     return;
   }
@@ -107,6 +110,7 @@ function detectStandalonePostStatus(): void {
   const match = window.location.pathname.match(
     /^(\/r\/[^/]+\/comments\/[^/]+\/[^/?#]+\/?)/i
   );
+
   if (!match) {
     return;
   }
@@ -120,6 +124,7 @@ function detectStandalonePostStatus(): void {
   if (now - lastStandalonePostScanAt < STATUS_SCAN_THROTTLE_MS) {
     return;
   }
+
   lastStandalonePostScanAt = now;
 
   const bodyText = document.body?.textContent || "";
@@ -147,6 +152,7 @@ function detectBotBouncerStatuses(): void {
       post.getAttribute("subreddit-name") ||
       ""
     ).toLowerCase();
+
     if (!/(^|\/)botbouncer$/.test(subreddit)) {
       return;
     }
@@ -178,6 +184,7 @@ function detectBotBouncerStatuses(): void {
     const status = ["banned", "pending", "organic"].find(
       (candidate) => candidate === flairText
     );
+
     if (!status) {
       return;
     }

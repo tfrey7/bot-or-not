@@ -22,19 +22,26 @@ export function bonInlineTagVariant(info: UserTagInfo): TagVariant {
   if (info.verdict) {
     return info.verdict;
   }
+
   if (info.investigationStatus === "running") {
     return "running";
   }
+
   if (info.count > 0) {
     return "reported";
   }
+
   if (info.botBouncerStatus === "banned") {
     return "bot";
   }
+
   if (info.userStatus === "suspended") {
     return "bot";
   }
-  return "reported";
+
+  // No signal yet — used on post-detail pages so the OP byline always has
+  // a clickable entry point to kick off an investigation.
+  return "idle";
 }
 
 export function bonInlineTagLabel(
@@ -44,11 +51,17 @@ export function bonInlineTagLabel(
   if (variant === "running") {
     return "Investigating";
   }
+
+  if (variant === "idle") {
+    return "Bot?";
+  }
+
   if (variant === "reported") {
     return info.count > 0
       ? `${info.count} report${info.count === 1 ? "" : "s"}`
       : "Flagged";
   }
+
   return bonFormatVerdict(variant);
 }
 
@@ -68,6 +81,8 @@ export function bonInlineTagTitle(
     );
   } else if (variant === "running") {
     parts.push("AI investigation in progress");
+  } else if (variant === "idle") {
+    parts.push("Click to investigate");
   }
 
   if (info.count > 0) {
@@ -75,12 +90,15 @@ export function bonInlineTagTitle(
       `${info.count} report${info.count === 1 ? "" : "s"} from this extension`
     );
   }
+
   if (info.botBouncerStatus) {
     parts.push(`Bot Bouncer: ${info.botBouncerStatus}`);
   }
+
   if (info.userStatus) {
     parts.push(`Account: ${info.userStatus}`);
   }
+
   if (info.ringId) {
     parts.push(`Ring ${info.ringId}`);
   }
@@ -95,5 +113,6 @@ export function bonInlineTagIsAvatarLink(element: Element): boolean {
   if (element.textContent && element.textContent.trim()) {
     return false;
   }
+
   return !!element.querySelector("img, svg, shreddit-avatar, faceplate-img");
 }

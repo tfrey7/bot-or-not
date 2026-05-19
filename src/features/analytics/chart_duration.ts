@@ -56,6 +56,7 @@ export function bonAnalyticsDurationChart(
   const barW = iw / buckets.length;
 
   const yTicks = Math.min(4, maxCount);
+
   for (let i = 0; i <= yTicks; i++) {
     const frac = i / yTicks;
     const y = PAD.t + ih - frac * ih;

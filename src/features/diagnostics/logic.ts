@@ -29,7 +29,6 @@ export interface DiagnosticsSummary {
 
   withRing: number;
   distinctRings: number;
-  withDossier: number;
   withActivity: number;
   withHistory: number;
 
@@ -68,7 +67,6 @@ export function bonDiagnosticsSummarize(
     userUnknown: 0,
     withRing: 0,
     distinctRings: 0,
-    withDossier: 0,
     withActivity: 0,
     withHistory: 0,
     verdictCounts: {
@@ -94,6 +92,7 @@ export function bonDiagnosticsSummarize(
       ) {
         summary.oldestReportedAt = report.lastReportedAt;
       }
+
       if (
         summary.newestReportedAt === null ||
         report.lastReportedAt > summary.newestReportedAt
@@ -120,6 +119,7 @@ export function bonDiagnosticsSummarize(
           runAt: investigation.runAt,
         });
       }
+
       summary.totalRuns += investigation.runs.length;
     }
 
@@ -145,12 +145,11 @@ export function bonDiagnosticsSummarize(
       summary.withRing += 1;
       rings.add(report.ringId);
     }
-    if (report.contextItems.length > 0) {
-      summary.withDossier += 1;
-    }
+
     if (report.activityData) {
       summary.withActivity += 1;
     }
+
     if (report.history.length > 0) {
       summary.withHistory += 1;
     }
@@ -174,6 +173,7 @@ function utf8ByteSize(value: unknown): number {
     if (!json) {
       return 0;
     }
+
     return new Blob([json]).size;
   } catch {
     return 0;
@@ -184,8 +184,10 @@ export function bonDiagnosticsFormatBytes(bytes: number): string {
   if (bytes < 1024) {
     return `${bytes} B`;
   }
+
   if (bytes < 1024 * 1024) {
     return `${(bytes / 1024).toFixed(1)} KB`;
   }
+
   return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
 }

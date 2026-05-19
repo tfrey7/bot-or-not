@@ -24,15 +24,18 @@ export function bonDiagnosticsErrorList(
 
   const head = document.createElement("thead");
   const headRow = document.createElement("tr");
+
   for (const label of ["User", "When", "Message"]) {
     const th = document.createElement("th");
     th.textContent = label;
     headRow.appendChild(th);
   }
+
   head.appendChild(headRow);
   table.appendChild(head);
 
   const body = document.createElement("tbody");
+
   for (const row of errors) {
     const tr = document.createElement("tr");
 
@@ -53,6 +56,7 @@ export function bonDiagnosticsErrorList(
 
     body.appendChild(tr);
   }
+
   table.appendChild(body);
 
   card.appendChild(table);

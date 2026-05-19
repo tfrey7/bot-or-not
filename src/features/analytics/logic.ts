@@ -130,6 +130,7 @@ export function bonAnalyticsCollect(
       for (const run of investigation.runs) {
         entries.push(buildAnalyticsEntry(report.username, run));
       }
+
       // If a run is currently in flight, runs[] doesn't include it yet —
       // skip it (analytics only cares about completed runs).
       continue;
@@ -139,6 +140,7 @@ export function bonAnalyticsCollect(
     // one run.
     entries.push(buildAnalyticsEntry(report.username, investigation));
   }
+
   return entries;
 }
 

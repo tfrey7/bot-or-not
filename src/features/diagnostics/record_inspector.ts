@@ -51,6 +51,7 @@ export function bonDiagnosticsRecordInspector(
 
   const picker = document.createElement("select");
   picker.className = "bon-diag-picker";
+
   for (const name of usernames) {
     const option = document.createElement("option");
     option.value = name;
@@ -58,8 +59,10 @@ export function bonDiagnosticsRecordInspector(
     if (name === state.selectedUsername) {
       option.selected = true;
     }
+
     picker.appendChild(option);
   }
+
   wrap.appendChild(picker);
 
   const pane = document.createElement("div");
@@ -136,7 +139,6 @@ function buildRecordView(username: string, report: Report): DocumentFragment {
   fragment.appendChild(buildInvestigationBlock(report));
   fragment.appendChild(buildFactorsBlock(report));
   fragment.appendChild(buildActivityBlock(report));
-  fragment.appendChild(buildDossierBlock(report));
   fragment.appendChild(buildHistoryBlock(report));
   fragment.appendChild(buildRunsBlock(report));
 
@@ -198,6 +200,7 @@ function buildInvestigationBlock(report: Report): HTMLElement {
         ? bonFmtDuration(investigation.redditMetrics.totalDurationMs)
         : "—",
     ]);
+
     if (investigation.persona) {
       rows.push(["Persona", investigation.persona.label]);
     }
@@ -228,6 +231,7 @@ function formatUsageBrief(
   if (!usage) {
     return "—";
   }
+
   const inputTokens = usage.input_tokens ?? 0;
   const outputTokens = usage.output_tokens ?? 0;
   const cached = usage.cache_read_input_tokens ?? 0;
@@ -257,15 +261,18 @@ function buildFactorsBlock(report: Report): HTMLElement {
 
   const head = document.createElement("thead");
   const headRow = document.createElement("tr");
+
   for (const label of ["Factor", "Score", "Confidence", "Reasoning"]) {
     const th = document.createElement("th");
     th.textContent = label;
     headRow.appendChild(th);
   }
+
   head.appendChild(headRow);
   table.appendChild(head);
 
   const body = document.createElement("tbody");
+
   for (const factor of factors) {
     const tr = document.createElement("tr");
 
@@ -291,6 +298,7 @@ function buildFactorsBlock(report: Report): HTMLElement {
 
     body.appendChild(tr);
   }
+
   table.appendChild(body);
 
   block.appendChild(table);
@@ -339,58 +347,6 @@ function buildActivityBlock(report: Report): HTMLElement {
         .join(", ") || "no",
     ],
   ]);
-}
-
-function buildDossierBlock(report: Report): HTMLElement {
-  const items = report.contextItems;
-  const block = document.createElement("section");
-  block.className = "bon-diag-block";
-
-  const heading = document.createElement("p");
-  heading.className = "bon-diag-block-title";
-  heading.textContent = `Dossier items (${items.length})`;
-  block.appendChild(heading);
-
-  if (items.length === 0) {
-    const empty = document.createElement("p");
-    empty.className = "bon-diag-empty";
-    empty.textContent = "No dossier items.";
-    block.appendChild(empty);
-    return block;
-  }
-
-  const list = document.createElement("ul");
-  list.className = "bon-diag-list";
-
-  for (const item of items) {
-    const li = document.createElement("li");
-
-    const meta = document.createElement("span");
-    meta.className = "bon-diag-list-meta";
-    const parts = [
-      item.kind,
-      item.provenance,
-      item.subreddit ? `r/${item.subreddit}` : null,
-      `added ${bonFormatDate(item.addedAt)}`,
-    ].filter(Boolean);
-    meta.textContent = parts.join(" · ");
-    li.appendChild(meta);
-
-    const link = document.createElement("a");
-    link.className = "bon-diag-list-link";
-    link.href = item.permalink.startsWith("http")
-      ? item.permalink
-      : `https://www.reddit.com${item.permalink}`;
-    link.target = "_blank";
-    link.rel = "noreferrer noopener";
-    link.textContent = item.title || item.body?.slice(0, 80) || item.permalink;
-    li.appendChild(link);
-
-    list.appendChild(li);
-  }
-  block.appendChild(list);
-
-  return block;
 }
 
 function buildHistoryBlock(report: Report): HTMLElement {
@@ -445,6 +401,7 @@ function buildHistoryBlock(report: Report): HTMLElement {
 
     list.appendChild(li);
   }
+
   block.appendChild(list);
   return block;
 }
@@ -472,15 +429,18 @@ function buildRunsBlock(report: Report): HTMLElement {
 
   const head = document.createElement("thead");
   const headRow = document.createElement("tr");
+
   for (const label of ["When", "Status", "Verdict", "Duration", "Cost"]) {
     const th = document.createElement("th");
     th.textContent = label;
     headRow.appendChild(th);
   }
+
   head.appendChild(headRow);
   table.appendChild(head);
 
   const body = document.createElement("tbody");
+
   for (const run of [...runs].sort((a, b) => b.runAt - a.runAt)) {
     const tr = document.createElement("tr");
 
@@ -506,6 +466,7 @@ function buildRunsBlock(report: Report): HTMLElement {
 
     body.appendChild(tr);
   }
+
   table.appendChild(body);
   block.appendChild(table);
   return block;
@@ -551,5 +512,6 @@ function formatSignedNum(value: number): string {
   if (value > 0) {
     return `+${value.toFixed(2)}`;
   }
+
   return value.toFixed(2);
 }

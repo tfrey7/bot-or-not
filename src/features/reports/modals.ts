@@ -35,6 +35,16 @@ const clearAllBtn = document.getElementById(
   "bon-clear-btn"
 ) as HTMLButtonElement;
 
+const jazzEgg = document.getElementById("bon-jazz-egg") as HTMLButtonElement;
+const jazzAudio = new Audio(
+  "https://raw.githubusercontent.com/tfrey7/bot-or-not/main/jazz.ogg"
+);
+jazzAudio.loop = true;
+jazzAudio.preload = "none";
+jazzAudio.addEventListener("ended", () => {
+  jazzEgg.classList.remove("bon-jazz-egg--playing");
+});
+
 let pendingConfirmAction: (() => Promise<unknown> | unknown) | null = null;
 
 export interface ConfirmModalOpts {
@@ -177,6 +187,19 @@ export function bonReportsInitSettingsModal(): void {
       action: () => browser.runtime.sendMessage({ type: "clear-all-reports" }),
     });
   });
+
+  jazzEgg.addEventListener("click", toggleJazz);
+}
+
+async function toggleJazz(): Promise<void> {
+  if (!jazzAudio.paused) {
+    jazzAudio.pause();
+    jazzEgg.classList.remove("bon-jazz-egg--playing");
+    return;
+  }
+
+  await jazzAudio.play();
+  jazzEgg.classList.add("bon-jazz-egg--playing");
 }
 
 export function bonReportsCloseModalsOnEscape(): void {

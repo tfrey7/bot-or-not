@@ -51,7 +51,6 @@ export function bonDiagnosticsStateBreakdown(
     buildTable("Attached data", [
       ["With report history", summary.withHistory],
       ["With activity heatmap", summary.withActivity],
-      ["With dossier items", summary.withDossier],
       [
         "In a ring",
         summary.withRing,

@@ -6,10 +6,12 @@ const BON_RING_ID_LENGTH = 4;
 
 export function bonRandomRingId(): string {
   let id = "";
+
   for (let i = 0; i < BON_RING_ID_LENGTH; i++) {
     const index = Math.floor(Math.random() * BON_RING_ID_ALPHABET.length);
     id += BON_RING_ID_ALPHABET[index];
   }
+
   return id;
 }
 
@@ -18,9 +20,11 @@ export function bonRandomRingId(): string {
 // with visually-distinct chips even when their IDs differ by one character.
 export function bonRingHue(ringId: string): number {
   let hash = 5381;
+
   for (let i = 0; i < ringId.length; i++) {
     hash = ((hash << 5) + hash) ^ ringId.charCodeAt(i);
   }
+
   return ((hash % 360) + 360) % 360;
 }
 
@@ -31,6 +35,7 @@ export function bonGenerateRingId(existing: Set<string>): string {
       return id;
     }
   }
+
   // ~1M-element space, dozens of rings — 100 attempts colliding every time
   // would be cosmic-ray territory. If it ever happens, fall back to a longer
   // ID rather than spinning forever.

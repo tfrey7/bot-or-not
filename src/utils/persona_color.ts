@@ -17,9 +17,11 @@ function interpolateHue(h1: number, h2: number, t: number): number {
   if (diff > 180) {
     diff -= 360;
   }
+
   if (diff < -180) {
     diff += 360;
   }
+
   const result = h1 + diff * t;
   return ((result % 360) + 360) % 360;
 }

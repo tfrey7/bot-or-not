@@ -134,6 +134,7 @@ export function bonAnalyticsModelsTable(
     });
     tbody.appendChild(tr);
   }
+
   table.appendChild(tbody);
 
   const scroll = document.createElement("div");

@@ -26,9 +26,11 @@ export function bonTopReasonsList(
   if (split.human.length) {
     container.appendChild(buildColumn("Human signals", split.human));
   }
+
   if (split.bot.length) {
     container.appendChild(buildColumn("Bot signals", split.bot));
   }
+
   return container;
 }
 
@@ -43,9 +45,11 @@ function buildColumn(title: string, factors: RankedFactor[]): HTMLDivElement {
 
   const list = document.createElement("ul");
   list.className = "bon-top-reasons__list";
+
   for (const factor of factors) {
     list.appendChild(buildReason(factor));
   }
+
   column.appendChild(list);
 
   return column;
@@ -75,6 +79,7 @@ function buildReason(factor: Factor): HTMLLIElement {
     text.appendChild(document.createTextNode(" — "));
     text.appendChild(bonLinkifyReddit(factor.reasoning));
   }
+
   listItem.appendChild(text);
 
   return listItem;

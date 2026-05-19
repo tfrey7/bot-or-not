@@ -4,49 +4,11 @@
 
 import { bonInferRegion, type RegionInferenceResult } from "../regions";
 import type { ActivityData, Investigation, Report } from "../../types.ts";
-import { bonAugmentActivityWithContext } from "../../utils/reddit_activity.ts";
+import { bonExpectedDurationSec } from "../../utils/expected_duration.ts";
 import { bonIsInvestigationStale } from "../../verdict.ts";
 import { BON_REPORTS_VERDICT_RANK } from "./data.ts";
 
 export type ReportRow = Report & { username: string };
-
-// Median across every prior completed run, including runs[] history.
-// Returns null below 3 samples — not enough signal to predict against.
-export function bonReportsExpectedDurationMs(
-  allReports: ReportRow[]
-): number | null {
-  const durations: number[] = [];
-  for (const report of allReports) {
-    const investigation = report.investigation;
-    if (!investigation) {
-      continue;
-    }
-
-    if (investigation.runs.length > 0) {
-      for (const run of investigation.runs) {
-        if (run.status === "done" && run.durationMs !== null) {
-          durations.push(run.durationMs);
-        }
-      }
-    } else if (
-      investigation.status === "done" &&
-      investigation.durationMs !== null
-    ) {
-      durations.push(investigation.durationMs);
-    }
-  }
-
-  if (durations.length < 3) {
-    return null;
-  }
-
-  durations.sort((a, b) => a - b);
-  return durations[Math.floor(durations.length / 2)];
-}
-
-export function bonReportsFormatExpectedSec(ms: number): number {
-  return Math.max(1, Math.round(ms / 1000));
-}
 
 export function bonReportsFormatRunningCellText(
   elapsedSec: number,
@@ -55,7 +17,8 @@ export function bonReportsFormatRunningCellText(
   if (!expectedMs) {
     return `Running… ${elapsedSec}s`;
   }
-  return `Running… ${elapsedSec}s / ~${bonReportsFormatExpectedSec(expectedMs)}s`;
+
+  return `Running… ${elapsedSec}s / ~${bonExpectedDurationSec(expectedMs)}s`;
 }
 
 export function bonReportsFormatRunningTitle(
@@ -66,7 +29,7 @@ export function bonReportsFormatRunningTitle(
     return `Investigation running… ${elapsedSec}s elapsed (large accounts can take 60–90s)`;
   }
 
-  const expSec = bonReportsFormatExpectedSec(expectedMs);
+  const expSec = bonExpectedDurationSec(expectedMs);
   if (elapsedSec > expSec) {
     return `Running ${elapsedSec}s — longer than the typical ${expSec}s. Hang tight.`;
   }
@@ -84,6 +47,20 @@ export function bonReportsIsActivityFresh(
     !!activityData?.fetchedAt &&
     Date.now() - activityData.fetchedAt < BON_ACTIVITY_TTL_MS
   );
+}
+
+// Decide whether the input box is being used to search or to compose an
+// AI command. Anything that's pure username/path characters (or empty) is
+// search-shaped; the moment a space or punctuation creeps in, treat it as
+// a pending command so the table doesn't flicker to "no results" while
+// the operator is mid-sentence.
+export function bonReportsInputIsCommand(raw: string): boolean {
+  const value = raw.trim();
+  if (!value) {
+    return false;
+  }
+
+  return !/^[A-Za-z0-9_/\\-]+$/.test(value);
 }
 
 export function bonReportsSanitizeUsernameQuery(
@@ -143,12 +120,15 @@ export function bonReportsHasStructuralChange(
     if (prevStatus !== nextStatus) {
       return true;
     }
+
     if (prevReport.investigation?.verdict !== report.investigation?.verdict) {
       return true;
     }
+
     if (prevReport.count !== report.count) {
       return true;
     }
+
     if (prevReport.lastReportedAt !== report.lastReportedAt) {
       return true;
     }
@@ -158,10 +138,12 @@ export function bonReportsHasStructuralChange(
       bonIsInvestigationStale(prevReport.investigation);
     const nextStale =
       nextStatus === "running" && bonIsInvestigationStale(report.investigation);
+
     if (prevStale !== nextStale) {
       return true;
     }
   }
+
   return false;
 }
 
@@ -188,6 +170,7 @@ export function bonReportsInferTimezoneFromTimestamps(
   }
 
   const utcCounts = new Array<number>(24).fill(0);
+
   for (const timestamp of timestamps) {
     utcCounts[new Date(timestamp).getUTCHours()]++;
   }
@@ -199,13 +182,16 @@ export function bonReportsInferTimezoneFromTimestamps(
 
   for (let start = 0; start < 24; start++) {
     let sum = 0;
+
     for (let i = 0; i < WINDOW; i++) {
       sum += utcCounts[(start + i) % 24];
     }
+
     if (sum < minSum) {
       minSum = sum;
       minStart = start;
     }
+
     if (sum > maxSum) {
       maxSum = sum;
     }
@@ -226,6 +212,7 @@ export function bonReportsInferTimezoneFromTimestamps(
   if (offset > 12) {
     offset -= 24;
   }
+
   if (offset <= -12) {
     offset += 24;
   }
@@ -251,10 +238,104 @@ export function bonReportsComputeRegionForReport(
   ];
 
   const timezone = bonReportsInferTimezoneFromTimestamps(timestamps);
-  const augmented = activityData
-    ? bonAugmentActivityWithContext(activityData, report.contextItems)
-    : null;
-  return bonInferRegion(augmented, timezone);
+  const deterministic = bonInferRegion(activityData, timezone);
+
+  const aiRegion = report.investigation?.region;
+  if (aiRegion?.code) {
+    return {
+      kind: "ai",
+      region: aiRegion.code,
+      confidence: aiRegion.confidence,
+      reasoning: aiRegion.reasoning,
+      deterministic,
+    };
+  }
+
+  return deterministic;
+}
+
+export interface SubredditTimeline {
+  sub: string;
+  posts: number;
+  comments: number;
+  total: number;
+  firstSeen: number;
+  lastSeen: number;
+  postEvents: number[];
+  commentEvents: number[];
+}
+
+// Buckets each visible post/comment into a per-subreddit timeline. Returns
+// null when the snapshot predates the parallel `postSubreddits` /
+// `commentSubreddits` arrays — the renderer surfaces a "refresh" prompt.
+export function bonReportsBuildSubredditTimelines(
+  activityData: ActivityData
+): SubredditTimeline[] | null {
+  const postSubs = activityData.postSubreddits;
+  const commentSubs = activityData.commentSubreddits;
+  if (!postSubs || !commentSubs) {
+    return null;
+  }
+
+  const byName = new Map<string, { posts: number[]; comments: number[] }>();
+
+  const ensure = (sub: string) => {
+    let bucket = byName.get(sub);
+    if (!bucket) {
+      bucket = { posts: [], comments: [] };
+      byName.set(sub, bucket);
+    }
+
+    return bucket;
+  };
+
+  const postTimestamps = activityData.postTimestamps;
+
+  for (let i = 0; i < postTimestamps.length; i++) {
+    const sub = postSubs[i];
+    if (!sub) {
+      continue;
+    }
+
+    ensure(sub).posts.push(postTimestamps[i]);
+  }
+
+  const commentTimestamps = activityData.commentTimestamps;
+
+  for (let i = 0; i < commentTimestamps.length; i++) {
+    const sub = commentSubs[i];
+    if (!sub) {
+      continue;
+    }
+
+    ensure(sub).comments.push(commentTimestamps[i]);
+  }
+
+  const timelines: SubredditTimeline[] = [];
+
+  for (const [sub, { posts, comments }] of byName) {
+    posts.sort((a, b) => a - b);
+    comments.sort((a, b) => a - b);
+
+    const all = [...posts, ...comments];
+    if (all.length === 0) {
+      continue;
+    }
+
+    timelines.push({
+      sub,
+      posts: posts.length,
+      comments: comments.length,
+      total: all.length,
+      firstSeen: Math.min(...all),
+      lastSeen: Math.max(...all),
+      postEvents: posts,
+      commentEvents: comments,
+    });
+  }
+
+  timelines.sort((a, b) => b.total - a.total);
+  return timelines;
 }
 
 export function bonReportsComputeEarliestFullyVisible(
@@ -267,6 +348,7 @@ export function bonReportsComputeEarliestFullyVisible(
   if (postsLimited && earliestPostAt) {
     bounds.push(earliestPostAt);
   }
+
   if (commentsLimited && earliestCommentAt) {
     bounds.push(earliestCommentAt);
   }
@@ -305,13 +387,16 @@ export function bonReportsSortValue(
   if (key === "username") {
     return report.username.toLowerCase();
   }
+
   if (key === "count") {
     return report.count || 0;
   }
+
   if (key === "verdict") {
     const verdict = report.investigation?.verdict;
     return verdict ? (BON_REPORTS_VERDICT_RANK[verdict] ?? 5) : 5;
   }
+
   if (key === "investigatedAt") {
     const investigation: Investigation | null = report.investigation;
     if (!investigation) {
@@ -323,6 +408,7 @@ export function bonReportsSortValue(
     // bottom.
     return investigation.runAt ?? investigation.startedAt ?? 0;
   }
+
   if (key === "region") {
     // Sort by region label so same-country rows cluster; rows with no
     // inferred region sink to the bottom.
@@ -331,12 +417,13 @@ export function bonReportsSortValue(
       return "￿";
     }
 
-    if (region.kind === "deterministic") {
+    if (region.kind === "ai" || region.kind === "deterministic") {
       return (regionLabels[region.region] || region.region) + "_a";
     }
 
     return "￾_" + (region.offsetHours ?? 99);
   }
+
   return null;
 }
 
@@ -354,15 +441,19 @@ export function bonReportsCompareBy(
     if (aValue == null && bValue == null) {
       return 0;
     }
+
     if (aValue == null) {
       return 1;
     }
+
     if (bValue == null) {
       return -1;
     }
+
     if (aValue < bValue) {
       return -1 * multiplier;
     }
+
     if (aValue > bValue) {
       return 1 * multiplier;
     }

@@ -58,6 +58,20 @@
   animation: bon-user-tag-pulse 1.4s ease-in-out infinite;
 }
 
+/* "Bot?" entry-point pill — no investigation yet, click to kick one off.
+   Outlined rather than solid so it reads as an action prompt rather than a
+   verdict. */
+.bon-user-tag--idle {
+  background: transparent;
+  color: inherit;
+  border: 1px dashed currentColor;
+  opacity: 0.7;
+}
+
+.bon-user-tag--idle:hover {
+  opacity: 1;
+}
+
 .bon-ring-chip {
   display: inline-flex;
   align-items: center;
@@ -123,22 +137,10 @@
   align-items: center;
   gap: 0.6em;
   padding: 0.55em 0.75em;
-  cursor: pointer;
   font: inherit;
   color: inherit;
   text-align: left;
-  border-radius: 0.5em;
-  transition: background 0.15s;
   box-sizing: border-box;
-}
-
-.bon-profile-panel__header:hover {
-  background: rgba(128, 128, 128, 0.08);
-}
-
-.bon-profile-panel__header:focus-visible {
-  outline: 2px solid rgba(128, 128, 128, 0.55);
-  outline-offset: -2px;
 }
 
 .bon-profile-panel__header > .bon-panel-btn {
@@ -146,6 +148,11 @@
   min-width: 2.1em;
   justify-content: center;
   text-align: center;
+}
+
+/* Push the action buttons to the right edge of the header. */
+.bon-profile-panel__header > .bon-panel-btn:first-of-type {
+  margin-left: auto;
 }
 
 .bon-profile-panel__title {
@@ -157,106 +164,8 @@
   flex-shrink: 0;
 }
 
-.bon-profile-panel__stats {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.4em;
-  flex: 1;
-  align-items: center;
-  min-width: 0;
-}
-
-.bon-profile-panel__toggle {
-  appearance: none;
-  background: none;
-  border: 0;
-  padding: 0;
-  margin: 0;
-  font: inherit;
-  font-size: 0.78rem;
-  font-weight: 500;
-  color: rgba(128, 128, 128, 0.95);
-  cursor: pointer;
-  text-decoration: underline;
-  text-underline-offset: 0.2em;
-  transition:
-    color 0.15s,
-    opacity 0.15s;
-}
-
-.bon-profile-panel__toggle:hover,
-.bon-profile-panel__toggle:focus-visible {
-  color: inherit;
-  outline: none;
-}
-
-.bon-profile-panel__toggle-row {
-  padding: 0 0.85em 0.75em;
-}
-
-.bon-profile-panel__preview .bon-profile-panel__toggle {
-  display: block;
-  margin-top: 0.65em;
-  margin-left: auto;
-  width: fit-content;
-}
-
-.bon-stat-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.3em;
-  font-size: 0.75rem;
-  padding: 0.25em 0.75em;
-  border-radius: 999px;
-  background: rgba(128, 128, 128, 0.18);
-  color: inherit;
-  white-space: nowrap;
-  line-height: 1.2;
-  font-weight: 500;
-}
-
-.bon-stat-pill--verdict-bot {
-  background: #c0392b;
-  color: #fff;
-}
-
-.bon-stat-pill--verdict-likely-bot {
-  background: #e67e22;
-  color: #fff;
-}
-
-.bon-stat-pill--verdict-uncertain {
-  background: #7f8c8d;
-  color: #fff;
-}
-
-.bon-stat-pill--verdict-likely-human {
-  background: #16a085;
-  color: #fff;
-}
-
-.bon-stat-pill--verdict-human {
-  background: #27ae60;
-  color: #fff;
-}
-
-.bon-stat-pill--verdict-running {
-  background: #3498db;
-  color: #fff;
-}
-
-.bon-stat-pill--verdict-error {
-  background: #555;
-  color: #fff;
-}
-
 .bon-profile-panel__preview {
   padding: 0.85em 1.1em 1em;
-  cursor: pointer;
-}
-
-.bon-profile-panel__preview .bon-panel-actions {
-  cursor: auto;
 }
 
 .bon-profile-panel__summary {
@@ -332,53 +241,6 @@
   font-weight: 600;
 }
 
-.bon-profile-panel__body {
-  display: grid;
-  grid-template-rows: 0fr;
-  border-top: 1px solid rgba(128, 128, 128, 0);
-  transition:
-    grid-template-rows 0.25s ease,
-    border-top-color 0.25s ease;
-}
-
-.bon-profile-panel__body--expanded {
-  grid-template-rows: 1fr;
-  border-top-color: rgba(128, 128, 128, 0.18);
-}
-
-.bon-profile-panel__body-inner {
-  overflow: hidden;
-  padding: 0 0.85em 0.85em;
-}
-
-.bon-panel-section {
-  padding-top: 0.75em;
-}
-
-.bon-panel-section + .bon-panel-section {
-  border-top: 1px dashed rgba(128, 128, 128, 0.2);
-  margin-top: 0.75em;
-}
-
-.bon-panel-section__title {
-  font-size: 0.7rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: rgba(128, 128, 128, 0.9);
-  margin: 0 0 0.5em;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.5em;
-}
-
-.bon-panel-actions {
-  display: flex;
-  gap: 0.4em;
-  flex-wrap: wrap;
-}
-
 .bon-panel-btn {
   appearance: none;
   background: rgba(128, 128, 128, 0.12);
@@ -418,25 +280,6 @@
   }
 }
 
-.bon-panel-empty {
-  font-size: 0.8rem;
-  color: rgba(128, 128, 128, 0.85);
-  font-style: italic;
-  margin: 0 0 0.5em;
-}
-
-.bon-panel-summary {
-  font-size: 0.82rem;
-  line-height: 1.45;
-  margin: 0 0 0.4em;
-}
-
-.bon-panel-meta {
-  font-size: 0.7rem;
-  color: rgba(128, 128, 128, 0.85);
-  margin: 0 0 0.6em;
-}
-
 .bon-profile-panel__preview-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 13em;
@@ -461,9 +304,9 @@
   padding: 0;
   /* Hue comes from inline style set by persona_strip.ts (bonPersonaHue).
      Same HSL pair as the reports detail pane so the radar polygon renders
-     the identical color on both surfaces — see reports.css. bot/normal
-     personas have no hue and the overrides below swap the accent to a
-     neutral gray; the hsl() fallback never renders for them. */
+     the identical color on both surfaces — see features/reports/reports.css.
+     bot/normal personas have no hue and the overrides below swap the accent
+     to a neutral gray; the hsl() fallback never renders for them. */
   --bon-persona-accent: hsl(var(--bon-persona-hue, 0) 60% 38%);
 }
 
@@ -497,8 +340,8 @@
 }
 
 /* Radar widget — shared with reports detail pane via bonPersonaRadar.
-   Keep these rules in sync with .bon-radar-* in reports.css; both
-   surfaces consume --bon-persona-accent so a given persona renders the
+   Keep these rules in sync with .bon-radar-* in features/reports/reports.css;
+   both surfaces consume --bon-persona-accent so a given persona renders the
    identical polygon color on either page. */
 .bon-persona-radar {
   width: 100%;
@@ -564,342 +407,6 @@
   }
 }
 
-.bon-panel-factor-dots {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.35em;
-  margin: 0;
-}
-
-.bon-profile-panel__header > .bon-panel-factor-dots {
-  flex-shrink: 0;
-  flex-wrap: nowrap;
-  align-self: center;
-  gap: 0.3em;
-  line-height: 1;
-}
-
-.bon-profile-panel__header > .bon-panel-factor-dots .bon-panel-factor-dot {
-  width: 1.1em;
-  height: 1.1em;
-}
-
-.bon-panel-factor-dot {
-  position: relative;
-  width: 0.9em;
-  height: 0.9em;
-  border-radius: 0.2em;
-  background: rgba(128, 128, 128, 0.3);
-  display: inline-block;
-  cursor: default;
-  outline: none;
-  transition: transform 0.15s;
-  /* Picked up by the hover card's border-top so each tooltip carries its
-     leaning's color without redundant per-leaning rules. */
-  --bon-panel-factor-accent: rgba(128, 128, 128, 0.55);
-}
-.bon-panel-factor-dot:hover,
-.bon-panel-factor-dot:focus-visible {
-  transform: scale(1.25);
-  z-index: 5;
-}
-
-.bon-panel-factor-dot--bot {
-  background: #c0392b;
-  --bon-panel-factor-accent: #c0392b;
-}
-
-.bon-panel-factor-dot--likely-bot {
-  background: #e67e22;
-  --bon-panel-factor-accent: #e67e22;
-}
-
-.bon-panel-factor-dot--neutral {
-  background: rgba(128, 128, 128, 0.55);
-  --bon-panel-factor-accent: rgba(128, 128, 128, 0.55);
-}
-
-.bon-panel-factor-dot--likely-human {
-  background: #16a085;
-  --bon-panel-factor-accent: #16a085;
-}
-
-.bon-panel-factor-dot--human {
-  background: #27ae60;
-  --bon-panel-factor-accent: #27ae60;
-}
-
-.bon-panel-factor-dot--missing {
-  background: transparent;
-  border: 1px dashed rgba(128, 128, 128, 0.5);
-  --bon-panel-factor-accent: rgba(128, 128, 128, 0.5);
-}
-
-.bon-panel-factor-dot--new {
-  background: repeating-linear-gradient(
-    135deg,
-    rgba(245, 158, 11, 0.4) 0 3px,
-    rgba(245, 158, 11, 0.7) 3px 6px
-  );
-  --bon-panel-factor-accent: #d97706;
-}
-
-/* ----- Hover card popover ------------------------------------------------
-   Lives inside each dot; CSS-only reveal. Adapts to Reddit's theme via
-   currentColor + transparent rgba — readable on both light and dark surfaces. */
-.bon-panel-factor-card {
-  /* position: fixed escapes every parent stacking/clipping context — Reddit's
-     nested panels, our own profile panel, the factor strip — and positions
-     the tooltip relative to the viewport. attachFactorCardPositioning() in
-     content_script.js sets left/top on mouseenter to keep the card within
-     an 8px viewport margin. */
-  position: fixed;
-  left: 0;
-  top: 0;
-  transform: scale(0.92);
-  transform-origin: center bottom;
-  width: 20em;
-  max-width: 80vw;
-  padding: 0.75em 0.9em 0.85em;
-  background: rgba(20, 20, 22, 0.97);
-  color: rgba(255, 255, 255, 0.92);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-top: 3px solid var(--bon-panel-factor-accent);
-  border-radius: 0.45em;
-  box-shadow:
-    0 1px 2px rgba(0, 0, 0, 0.3),
-    0 16px 36px -10px rgba(0, 0, 0, 0.55);
-  font-size: 0.78rem;
-  font-weight: 400;
-  line-height: 1.5;
-  letter-spacing: normal;
-  text-transform: none;
-  white-space: normal;
-  text-align: left;
-  display: flex;
-  flex-direction: column;
-  gap: 0.45em;
-  opacity: 0;
-  visibility: hidden;
-  pointer-events: none;
-  z-index: 2147483647;
-  transition:
-    opacity 0.12s ease-out,
-    transform 0.12s ease-out,
-    visibility 0s linear 0.12s;
-}
-.bon-panel-factor-card--visible {
-  opacity: 1;
-  visibility: visible;
-  transform: scale(1);
-  transition-delay: 0s;
-}
-
-/* The card is appended to document.body on hover, so it no longer inherits
-   --bon-panel-factor-accent from the dot. Re-declare per leaning here so the
-   colored top border and the signal pill's outline still come through. */
-.bon-panel-factor-card--bot {
-  --bon-panel-factor-accent: #c0392b;
-}
-.bon-panel-factor-card--likely-bot {
-  --bon-panel-factor-accent: #e67e22;
-}
-.bon-panel-factor-card--neutral {
-  --bon-panel-factor-accent: rgba(128, 128, 128, 0.55);
-}
-.bon-panel-factor-card--likely-human {
-  --bon-panel-factor-accent: #16a085;
-}
-.bon-panel-factor-card--human {
-  --bon-panel-factor-accent: #27ae60;
-}
-.bon-panel-factor-card--missing {
-  --bon-panel-factor-accent: rgba(128, 128, 128, 0.5);
-}
-.bon-panel-factor-card--new {
-  --bon-panel-factor-accent: #d97706;
-}
-
-.bon-panel-factor-card__header {
-  display: flex;
-  align-items: center;
-  gap: 0.6em;
-}
-.bon-panel-factor-card__name {
-  font-weight: 700;
-  font-size: 0.8rem;
-}
-.bon-panel-factor-card__signal {
-  margin-left: auto;
-  font-size: 0.62rem;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  padding: 0.22em 0.5em 0.2em;
-  border-radius: 0.25em;
-  border: 1px solid currentColor;
-  color: var(--bon-panel-factor-accent);
-  white-space: nowrap;
-}
-.bon-panel-factor-card__confidence {
-  font-size: 0.68rem;
-  opacity: 0.7;
-  letter-spacing: 0.03em;
-}
-.bon-panel-factor-card__reasoning {
-  font-size: 0.8rem;
-  line-height: 1.5;
-  opacity: 0.92;
-}
-.bon-panel-factor-card__reasoning--muted {
-  opacity: 0.65;
-  font-style: italic;
-}
-.bon-panel-factor-card__evidence {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.28em;
-  font-size: 0.72rem;
-  line-height: 1.45;
-  opacity: 0.85;
-}
-.bon-panel-factor-card__evidence li {
-  position: relative;
-  padding-left: 0.9em;
-}
-.bon-panel-factor-card__evidence li::before {
-  content: "›";
-  position: absolute;
-  left: 0;
-  top: 0;
-  opacity: 0.55;
-  font-weight: 700;
-}
-
-.bon-panel-factors {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-}
-
-.bon-panel-factor {
-  font-size: 0.75rem;
-  padding: 0.5em 0;
-  border-top: 1px solid rgba(128, 128, 128, 0.12);
-}
-
-.bon-panel-factor:first-child {
-  border-top: none;
-  padding-top: 0;
-}
-
-.bon-panel-factor__header {
-  display: flex;
-  align-items: baseline;
-  gap: 0.5em;
-  margin-bottom: 0.15em;
-}
-
-.bon-panel-factor__name {
-  font-weight: 600;
-  font-size: 0.75rem;
-}
-
-.bon-panel-factor__signal {
-  margin-left: auto;
-  font-size: 0.6rem;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: rgba(128, 128, 128, 0.95);
-}
-
-.bon-panel-factor__signal--bot {
-  color: #e57368;
-}
-
-.bon-panel-factor__signal--likely-bot {
-  color: #e89a5a;
-}
-
-.bon-panel-factor__signal--neutral {
-  color: rgba(128, 128, 128, 0.75);
-}
-
-.bon-panel-factor__signal--likely-human {
-  color: #4cb8a0;
-}
-
-.bon-panel-factor__signal--human {
-  color: #4cc26a;
-}
-
-.bon-panel-factor__signal--new {
-  color: #f59e0b;
-}
-
-.bon-panel-factor--new .bon-panel-factor__name {
-  opacity: 0.7;
-}
-
-.bon-panel-factor__reasoning {
-  color: inherit;
-  opacity: 0.8;
-  line-height: 1.4;
-  font-size: 0.72rem;
-}
-
-.bon-panel-factor__reasoning--muted {
-  font-style: italic;
-  opacity: 0.7;
-}
-
-.bon-panel-reports {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  font-size: 0.78rem;
-  max-height: 14em;
-  overflow-y: auto;
-}
-
-.bon-panel-reports li {
-  display: flex;
-  align-items: baseline;
-  gap: 0.5em;
-  padding: 0.2em 0;
-  border-bottom: 1px solid rgba(128, 128, 128, 0.1);
-}
-
-.bon-panel-reports li:last-child {
-  border-bottom: none;
-}
-
-.bon-panel-reports time {
-  flex-shrink: 0;
-  color: rgba(128, 128, 128, 0.85);
-  font-size: 0.7rem;
-  min-width: 4.5em;
-}
-
-.bon-panel-reports a {
-  color: #0366d6;
-  text-decoration: none;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  flex: 1;
-  min-width: 0;
-}
-
-.bon-panel-reports a:hover {
-  text-decoration: underline;
-}
-
 .bon-reddit-link {
   color: #1f6fce;
   text-decoration: underline;
@@ -920,98 +427,185 @@
   }
 }
 
-.bon-panel-reports__more {
-  font-size: 0.7rem;
-  color: rgba(128, 128, 128, 0.85);
-  font-style: italic;
-  padding: 0.3em 0 0;
+/* ---------- Inline-tag flyout ----------
+   Click-anchored popover that replaces the old embedded post-author panel.
+   Positioned via JS in flyout.ts (position: fixed, viewport-aware). Sits
+   above every Reddit stacking context so the panel doesn't get clipped by
+   sticky headers or sidebars. */
+.bon-inline-flyout {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 2147483646;
+  width: min(48em, 95vw);
+  background: #fff;
+  color: #111;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  border-radius: 0.6em;
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.18),
+    0 22px 50px -12px rgba(0, 0, 0, 0.45);
+  font-size: 14px;
+  line-height: 1.4;
 }
 
-/* ---------- Dossier "Add context" button ----------
-   Floating pill anchored absolutely under each reported user's comment/post
-   action row. Inline injection isn't reliable — Reddit's faceplate-tracker
-   wrappers use `display: contents` and lit-html reconciles unauthorized
-   children away. Absolute positioning to document.body sidesteps both. */
+@media (prefers-color-scheme: dark) {
+  .bon-inline-flyout {
+    background: #1a1a1c;
+    color: rgba(255, 255, 255, 0.92);
+    border-color: rgba(255, 255, 255, 0.12);
+  }
+}
 
-.bon-dossier-btn--floating {
-  position: absolute;
-  z-index: 100;
-  pointer-events: auto;
-  /* `top` is set to the row's vertical midpoint; this transform centers the
-     pill on that point so it visually sits on the same line as Vote/Share. */
-  transform: translateY(-50%);
+/* The panel inside the flyout already has its own border + translucent
+   background tuned for embedding in a profile page. Drop them here so the
+   flyout's own surface carries the affordance. */
+.bon-inline-flyout .bon-profile-panel {
   margin: 0;
-  font-size: 12px;
-  font-weight: 600;
-  padding: 0.3em 0.7em;
-  /* Color/bg are overridden by the state classes below but default to the
-     same orange palette as the rest of the report UI. */
-  background: rgba(214, 122, 28, 0.15);
-  color: #f0a04b;
-  border: 1px solid rgba(214, 122, 28, 0.5);
-}
-
-.bon-dossier-btn--floating:hover:not(:disabled) {
-  background: rgba(214, 122, 28, 0.28);
-  border-color: rgba(214, 122, 28, 0.8);
-}
-
-.bon-dossier-btn {
-  display: inline-flex;
-  align-items: center;
-  margin: 0 0 0 0.25em;
-  padding: 0.4em 0.85em;
-  font-family: inherit;
-  font-size: 0.78em;
-  font-weight: 600;
-  line-height: 1.2;
-  color: inherit;
+  border: none;
   background: transparent;
-  border: 1px solid currentColor;
-  border-radius: 999px;
-  cursor: pointer;
-  white-space: nowrap;
-  user-select: none;
-  opacity: 0.7;
-  transition: opacity 0.15s, transform 0.15s, background 0.15s, border-color 0.15s;
-  flex: 0 0 auto;
-  align-self: center;
-  vertical-align: middle;
 }
 
-.bon-dossier-btn:hover:not(:disabled) {
-  opacity: 1;
-  background: rgba(255, 255, 255, 0.08);
+/* Top-down fade-slide on the panel's direct children when the flyout opens.
+   Speed sits in the same neighborhood as the radar's per-vertex race-out
+   (360ms) so the two motions feel of-a-piece. Stagger is short — there are
+   only two rows (header + preview), so a long stagger would feel laggy. */
+.bon-inline-flyout .bon-profile-panel > * {
+  animation: bon-flyout-row-in 320ms ease-out both;
+}
+.bon-inline-flyout .bon-profile-panel > *:nth-child(2) {
+  animation-delay: 80ms;
 }
 
-.bon-dossier-btn:disabled {
-  cursor: progress;
-  opacity: 0.5;
+@keyframes bon-flyout-row-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
-.bon-dossier-btn--added {
-  opacity: 1;
-  background: rgba(214, 122, 28, 0.18);
-  border-color: rgba(214, 122, 28, 0.65);
-  color: #f0a04b;
+@media (prefers-reduced-motion: reduce) {
+  .bon-inline-flyout .bon-profile-panel > * {
+    animation: none;
+  }
 }
 
-.bon-dossier-btn--added:hover:not(:disabled) {
-  background: rgba(214, 122, 28, 0.28);
+/* ---------- Investigation loading slideshow (flyout, compact variant) ----------
+   Mirrors the slideshow shown in the reports page's investigation detail, but
+   scaled to fit inside the inline flyout. Geometry constants in JS
+   (`COMPACT_GEOMETRY` in src/utils/investigation_loading.ts) match the
+   reduced photo offsets here. */
+.bon-investigation-loading--compact {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 1.5em 0.5em 1.75em;
+  min-height: 12em;
+}
+.bon-investigation-loading--compact .bon-investigation-loading__stage {
+  position: relative;
+  width: 100%;
+  max-width: 22em;
+  aspect-ratio: 3 / 2;
+  max-height: 14em;
+}
+.bon-investigation-loading--compact .bon-investigation-loading__overlay {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25em;
+  pointer-events: none;
+}
+.bon-investigation-loading--compact
+  .bon-investigation-loading__overlay
+  .bon-investigation-loading__caption,
+.bon-investigation-loading--compact
+  .bon-investigation-loading__overlay
+  .bon-investigation-loading__meta {
+  /* Halo so caption stays legible over whichever slide is on top — the slide
+     palette is warm cream paper, so a white halo reads as a soft glow. */
+  text-shadow:
+    0 0 3px rgba(255, 255, 255, 0.9),
+    0 0 8px rgba(255, 255, 255, 0.7),
+    0 0 14px rgba(255, 255, 255, 0.5);
+  color: #111;
+}
+@media (prefers-color-scheme: dark) {
+  .bon-investigation-loading--compact
+    .bon-investigation-loading__overlay
+    .bon-investigation-loading__caption,
+  .bon-investigation-loading--compact
+    .bon-investigation-loading__overlay
+    .bon-investigation-loading__meta {
+    color: rgba(255, 255, 255, 0.95);
+    text-shadow:
+      0 0 3px rgba(0, 0, 0, 0.9),
+      0 0 8px rgba(0, 0, 0, 0.7),
+      0 0 14px rgba(0, 0, 0, 0.5);
+  }
+}
+.bon-investigation-loading--compact .bon-investigation-loading__photo {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: #f5ede0;
+  border-radius: 0.25em;
+  padding: 0.35em;
+  box-sizing: border-box;
+  box-shadow:
+    0 4px 12px rgba(0, 0, 0, 0.32),
+    0 1px 2px rgba(0, 0, 0, 0.2);
+  opacity: 0;
+  transform-origin: center center;
+  will-change: transform, opacity;
+}
+.bon-investigation-loading--compact .bon-investigation-loading__caption {
+  font-style: italic;
+  font-size: 0.9rem;
+  margin: 0;
+  letter-spacing: 0.01em;
+}
+.bon-investigation-loading--compact .bon-investigation-loading__caption::after {
+  content: "";
+  display: inline-block;
+  width: 1.4em;
+  text-align: left;
+  animation: bon-investigation-loading-dots 1.6s steps(4, end) infinite;
+}
+.bon-investigation-loading--compact .bon-investigation-loading__meta {
+  font-size: 0.7rem;
+  opacity: 0.75;
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
+}
+@keyframes bon-investigation-loading-dots {
+  0% {
+    content: "";
+  }
+  25% {
+    content: ".";
+  }
+  50% {
+    content: "..";
+  }
+  75% {
+    content: "...";
+  }
 }
 
-.bon-dossier-btn--loading {
-  opacity: 0.55;
-}
-
-.bon-dossier-btn--error {
-  border-color: rgba(192, 57, 43, 0.7);
-  color: #e57360;
-  opacity: 1;
-}
-
-/* Comments live in tighter rows — shave the size a touch. */
-.bon-dossier-btn--comment {
-  font-size: 0.72em;
-  padding: 0.3em 0.7em;
-}

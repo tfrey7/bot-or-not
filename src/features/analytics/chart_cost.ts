@@ -33,6 +33,7 @@ export function bonAnalyticsCostChart(
     root.appendChild(
       bonAnalyticsEmptyChart(W, H, "No timestamped runs to plot.")
     );
+
     return root;
   }
 
@@ -99,6 +100,7 @@ export function bonAnalyticsCostChart(
 
   // Highlight the most expensive single run
   let maxIndex = 0;
+
   for (let i = 1; i < points.length; i++) {
     if (sorted[i].totalCost > sorted[maxIndex].totalCost) {
       maxIndex = i;
@@ -182,5 +184,6 @@ export function bonAnalyticsCostChart(
     hit.appendChild(tooltip);
     root.appendChild(hit);
   }
+
   return root;
 }

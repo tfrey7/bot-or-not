@@ -1,12 +1,8 @@
 // Pure transform: raw Reddit JSON → activity summary used by the analyzer
 // and the heatmap.
 
-import { bonNormalizeSubName, bonScanTextSignals } from "../features/regions";
-import type {
-  ActivityData,
-  ContextItem,
-  RedditActivityFetch,
-} from "../types.ts";
+import { bonScanTextSignals } from "../features/regions";
+import type { ActivityData, RedditActivityFetch } from "../types.ts";
 
 interface RedditPost {
   subreddit?: string;
@@ -33,23 +29,44 @@ export function bonExtractActivityData(
     .map((child) => child.data as RedditComment | undefined)
     .filter((comment): comment is RedditComment => Boolean(comment));
 
-  const postTimestamps = posts
-    .map((post) => (post.created_utc ? post.created_utc * 1000 : null))
-    .filter((timestamp): timestamp is number => typeof timestamp === "number");
-  const commentTimestamps = comments
-    .map((comment) => (comment.created_utc ? comment.created_utc * 1000 : null))
-    .filter((timestamp): timestamp is number => typeof timestamp === "number");
-
-  const subredditCounts: Record<string, number> = {};
-  for (const item of [...posts, ...comments]) {
-    const subreddit = (
+  const itemSub = (item: RedditPost | RedditComment): string =>
+    (
       item.subreddit ??
       (item.subreddit_name_prefixed ?? "").replace(/^r\//i, "")
     ).toLowerCase();
-    if (!subreddit) {
+
+  const postTimestamps: number[] = [];
+  const postSubreddits: string[] = [];
+
+  for (const post of posts) {
+    if (!post.created_utc) {
       continue;
     }
-    subredditCounts[subreddit] = (subredditCounts[subreddit] ?? 0) + 1;
+
+    postTimestamps.push(post.created_utc * 1000);
+    postSubreddits.push(itemSub(post));
+  }
+
+  const commentTimestamps: number[] = [];
+  const commentSubreddits: string[] = [];
+
+  for (const comment of comments) {
+    if (!comment.created_utc) {
+      continue;
+    }
+
+    commentTimestamps.push(comment.created_utc * 1000);
+    commentSubreddits.push(itemSub(comment));
+  }
+
+  const subredditCounts: Record<string, number> = {};
+
+  for (const sub of [...postSubreddits, ...commentSubreddits]) {
+    if (!sub) {
+      continue;
+    }
+
+    subredditCounts[sub] = (subredditCounts[sub] ?? 0) + 1;
   }
 
   // Concatenate all visible user-authored text and scan for region signals
@@ -71,9 +88,12 @@ export function bonExtractActivityData(
   return {
     postTimestamps,
     commentTimestamps,
+    postSubreddits,
+    commentSubreddits,
     subredditCounts,
     scriptSignals: scanned.scripts,
     languageSignals: scanned.languages,
+    languageSamples: scanned.languageSamples,
     moderatedSubs,
     corpusChars: corpus.length,
     postsLimited: posts.length >= fetchLimit,
@@ -84,62 +104,5 @@ export function bonExtractActivityData(
       : null,
     fetchLimit,
     fetchedAt: Date.now(),
-  };
-}
-
-// Fold operator-collected dossier items into an ActivityData snapshot so the
-// deterministic region inference (subreddit counts, scripts, language markers)
-// sees them the same way it sees API-fetched posts and comments. Critical for
-// accounts with hidden post histories where the operator-pasted items ARE the
-// only evidence of country-coded participation.
-//
-// Returns the original snapshot unchanged when there are no items to merge,
-// so call sites don't pay for a copy when context is empty.
-export function bonAugmentActivityWithContext(
-  activityData: ActivityData,
-  contextItems: ContextItem[] | null | undefined
-): ActivityData {
-  if (!contextItems || contextItems.length === 0) {
-    return activityData;
-  }
-
-  const subredditCounts = { ...activityData.subredditCounts };
-  const textParts: string[] = [];
-
-  for (const item of contextItems) {
-    if (item.subreddit) {
-      const normalized = bonNormalizeSubName(item.subreddit);
-
-      if (normalized) {
-        subredditCounts[normalized] = (subredditCounts[normalized] ?? 0) + 1;
-      }
-    }
-
-    if (item.title) {
-      textParts.push(item.title);
-    }
-
-    if (item.body) {
-      textParts.push(item.body);
-    }
-  }
-
-  const scanned = bonScanTextSignals(textParts.join("\n"));
-
-  const scriptSignals = { ...activityData.scriptSignals };
-  for (const [script, count] of Object.entries(scanned.scripts)) {
-    scriptSignals[script] = (scriptSignals[script] ?? 0) + count;
-  }
-
-  const languageSignals = { ...activityData.languageSignals };
-  for (const [language, count] of Object.entries(scanned.languages)) {
-    languageSignals[language] = (languageSignals[language] ?? 0) + count;
-  }
-
-  return {
-    ...activityData,
-    subredditCounts,
-    scriptSignals,
-    languageSignals,
   };
 }

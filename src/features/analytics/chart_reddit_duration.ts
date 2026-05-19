@@ -29,6 +29,7 @@ export function bonAnalyticsRedditDurationChart(
     root.appendChild(
       bonAnalyticsEmptyChart(W, H, "No Reddit fetch timing data yet.")
     );
+
     return root;
   }
 

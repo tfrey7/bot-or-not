@@ -1,9 +1,9 @@
 // Thin wrapper over the Anthropic Messages API. Marks the system prompt
 // for ephemeral (5-min) caching since it's byte-identical across runs;
 // back-to-back investigations within ~5 min hit the cache at ~10% of the
-// input rate. Optional server-side web_search lets the model fact-check
-// suspicious accounts against external context — capped at 1 use so the
-// cost stays predictable.
+// input rate. The profile summary already carries `web_search_results`
+// from our own DuckDuckGo fetch (see src/features/web-search/) — Claude
+// reads them as plain data, no server-side search tool needed.
 
 import type { ClaudeUsage, ProfileSummary } from "../../types.ts";
 import { bonEstimateCostUsd } from "../../utils/cost.ts";
@@ -20,12 +20,7 @@ export interface ClaudeCallResult {
   rawText: string;
   usage: ClaudeUsage | null;
   model: string;
-  webSearchCount: number;
   costUsd: number | null;
-}
-
-export interface ClaudeCallOptions {
-  webSearch?: boolean;
 }
 
 interface ClaudeContentBlock {
@@ -40,6 +35,13 @@ interface ClaudeResponse {
   model?: string;
 }
 
+// `avatarUrl` is the customized Snoovatar PNG URL. When set, the call
+// attaches it as an image content block in front of the JSON text so the
+// prompt's `avatar_style` factor can score it.
+export interface ClaudeCallOptions {
+  avatarUrl?: string | null;
+}
+
 export async function bonCallClaude(
   apiKey: string,
   systemPrompt: string,
@@ -48,15 +50,27 @@ export async function bonCallClaude(
   options: ClaudeCallOptions = {}
 ): Promise<ClaudeCallResult> {
   const startedAt = performance.now();
-  const webSearchOn = !!options.webSearch;
+
+  const userContent: Array<Record<string, unknown>> = [];
+
+  if (options.avatarUrl) {
+    userContent.push({
+      type: "image",
+      source: { type: "url", url: options.avatarUrl },
+    });
+  }
+
+  userContent.push({
+    type: "text",
+    text:
+      "Analyze the following Reddit account and return ONLY the JSON verdict object as specified in your instructions.\n\n```json\n" +
+      JSON.stringify(profileSummary, null, 2) +
+      "\n```",
+  });
 
   const body: Record<string, unknown> = {
     model: BON_CLAUDE_MODEL,
-    // Bumped from 4096 — with web_search the response can include
-    // intermediate text blocks (Claude narrating before/after the search)
-    // on top of the final JSON verdict. Sonnet 4.6 supports much higher;
-    // 8192 is safe headroom without becoming a runaway expense.
-    max_tokens: webSearchOn ? 8192 : 4096,
+    max_tokens: 4096,
     system: [
       {
         type: "text",
@@ -67,28 +81,10 @@ export async function bonCallClaude(
     messages: [
       {
         role: "user",
-        content: [
-          {
-            type: "text",
-            text:
-              "Analyze the following Reddit account and return ONLY the JSON verdict object as specified in your instructions.\n\n```json\n" +
-              JSON.stringify(profileSummary, null, 2) +
-              "\n```",
-          },
-        ],
+        content: userContent,
       },
     ],
   };
-
-  if (webSearchOn) {
-    body.tools = [
-      {
-        type: "web_search_20250305",
-        name: "web_search",
-        max_uses: 1,
-      },
-    ];
-  }
 
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), BON_CLAUDE_TIMEOUT_MS);
@@ -140,31 +136,21 @@ export async function bonCallClaude(
     .map((block) => block.text ?? "")
     .join("\n");
 
-  // Count actual web_search invocations so the UI can show whether a
-  // search happened (the model may decline to search if it judges the
-  // data sufficient).
-  const webSearchCount = blocks.filter(
-    (block) =>
-      (block.type === "server_tool_use" || block.type === "tool_use") &&
-      block.name === "web_search"
-  ).length;
-
   const elapsedMs = Math.round(performance.now() - startedAt);
   const inputTokens = payload.usage?.input_tokens ?? "?";
   const outputTokens = payload.usage?.output_tokens ?? "?";
   const model = payload.model ?? BON_CLAUDE_MODEL;
-  const costUsd = bonEstimateCostUsd(payload.usage, model, webSearchCount);
+  const costUsd = bonEstimateCostUsd(payload.usage, model);
   const costString = costUsd !== null ? ` $${costUsd.toFixed(4)}` : "";
 
   console.log(
-    `[Bot or Not] timing: ${label} ${elapsedMs}ms (in=${inputTokens} out=${outputTokens}${webSearchCount ? ` web=${webSearchCount}` : ""})${costString}`
+    `[Bot or Not] timing: ${label} ${elapsedMs}ms (in=${inputTokens} out=${outputTokens})${costString}`
   );
 
   return {
     rawText: text,
     usage: payload.usage ?? null,
     model,
-    webSearchCount,
     costUsd,
   };
 }

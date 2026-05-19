@@ -12,6 +12,7 @@ export function bonLinkifyReddit(text: string): DocumentFragment {
   }
 
   let cursor = 0;
+
   for (const match of text.matchAll(REDDIT_REF_RE)) {
     const start = match.index ?? 0;
     if (start > cursor) {

@@ -1,5 +1,5 @@
 /* Investigation analytics dashboard styles. Loaded by reports.html alongside
-   analytics.js. Inherits the --bon-* tokens defined in reports.css. */
+   analytics.js. Inherits the --bon-* tokens defined in app.css. */
 
 .bon-analytics {
   margin-top: 0;
@@ -16,23 +16,21 @@
 }
 
 .bon-analytics-subhead h2 {
-  font-family: var(--bon-font-serif);
-  font-size: 1.55rem;
-  font-weight: 400;
-  letter-spacing: -0.01em;
+  font-size: 1.25rem;
+  font-weight: 700;
+  letter-spacing: -0.015em;
   margin: 0 0 0.15em;
   color: var(--bon-text);
-  line-height: 1.05;
+  line-height: 1.15;
 }
 
 .bon-analytics-header h2 {
-  font-family: var(--bon-font-serif);
-  font-size: 2rem;
-  font-weight: 400;
-  letter-spacing: -0.01em;
+  font-size: 1.6rem;
+  font-weight: 700;
+  letter-spacing: -0.015em;
   margin: 0 0 0.15em;
   color: var(--bon-text);
-  line-height: 1.05;
+  line-height: 1.15;
 }
 
 .bon-analytics-subtitle {
@@ -93,13 +91,12 @@
 }
 
 .bon-stat-value {
-  font-family: var(--bon-font-serif);
-  font-size: 1.85rem;
-  font-weight: 400;
-  letter-spacing: -0.012em;
+  font-size: 1.55rem;
+  font-weight: 700;
+  letter-spacing: -0.015em;
   color: var(--bon-text);
   font-variant-numeric: tabular-nums;
-  line-height: 1.05;
+  line-height: 1.15;
   word-break: break-word;
 }
 
@@ -354,11 +351,10 @@
 
 .bon-analytics-top-list li::before {
   content: counter(bon-rank);
-  font-family: var(--bon-font-serif);
   font-variant-numeric: tabular-nums;
-  font-weight: 400;
+  font-weight: 600;
   color: var(--bon-muted-soft);
-  font-size: 1.1rem;
+  font-size: 0.95rem;
   text-align: right;
   line-height: 1;
 }
@@ -427,5 +423,4 @@
   color: var(--bon-muted-soft);
   text-align: center;
   font-style: italic;
-  font-family: var(--bon-font-serif);
 }

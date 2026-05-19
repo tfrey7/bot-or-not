@@ -1,8 +1,8 @@
 // Right-side detail pane of the master-detail view. Composes the
 // existing per-user widgets (investigation, activity heatmap, report
-// history, dossier) and footer delete button into one scrollable column.
-// When no user is selected, renders a quiet placeholder so the pane
-// doesn't appear broken.
+// history) and footer delete button into one scrollable column. When
+// no user is selected, renders a quiet placeholder so the pane doesn't
+// appear broken.
 
 import type { ActivityData } from "../../types.ts";
 import {
@@ -13,10 +13,11 @@ import {
   bonReportsRenderDeleteButton,
   bonReportsRenderInvestigateButton,
 } from "./cell_actions.ts";
-import { bonReportsDossierSection } from "./dossier_section.ts";
 import { bonReportsHistoryTable } from "./history_table.ts";
 import { bonReportsInvestigationDetail } from "./investigation_detail.ts";
 import type { ReportRow } from "./logic.ts";
+import { bonReportsProfileSection } from "./profile_section.ts";
+import { bonReportsRegionSection } from "./region_section.ts";
 
 export interface DetailPaneOptions {
   inflightActivity: Set<string>;
@@ -55,16 +56,11 @@ export function bonReportsDetailPane(
     onActivityNeedsLoad,
     onNoApiKey,
   } = opts;
-  const {
-    username,
-    history,
-    investigation,
-    activityData,
-    contextItems,
-    ringId,
-  } = report;
+  const { username, history, investigation, activityData, ringId } = report;
 
   const fragment = document.createDocumentFragment();
+
+  fragment.appendChild(bonReportsProfileSection(report));
 
   const actions = [
     bonReportsRenderInvestigateButton(username, investigation, {
@@ -75,19 +71,19 @@ export function bonReportsDetailPane(
   ];
 
   fragment.appendChild(
-    bonReportsInvestigationDetail(
-      investigation,
-      contextItems.length,
-      actions,
-      !!ringId
-    )
+    bonReportsInvestigationDetail(investigation, actions, !!ringId, {
+      expectedDurationMs,
+    })
   );
+
+  fragment.appendChild(bonReportsRegionSection(report));
 
   if (inflightActivity.has(username) && !activityData) {
     fragment.appendChild(bonReportsActivityLoadingPlaceholder());
   } else {
     fragment.appendChild(bonReportsActivitySection(report));
   }
+
   void onActivityNeedsLoad(username, activityData);
 
   if (history && history.length > 0) {
@@ -102,8 +98,6 @@ export function bonReportsDetailPane(
     wrap.appendChild(bonReportsHistoryTable(history));
     fragment.appendChild(wrap);
   }
-
-  fragment.appendChild(bonReportsDossierSection(username, contextItems));
 
   return fragment;
 }

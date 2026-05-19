@@ -100,6 +100,7 @@ function renderHistoryEntry(entry: HistoryEntry): HTMLTableRowElement {
   } else {
     dateCell.textContent = "unknown";
   }
+
   row.appendChild(dateCell);
 
   const kindCell = document.createElement("td");
@@ -108,6 +109,7 @@ function renderHistoryEntry(entry: HistoryEntry): HTMLTableRowElement {
   if (leadIcon) {
     kindCell.appendChild(leadIcon);
   }
+
   row.appendChild(kindCell);
 
   const labelCell = document.createElement("td");
@@ -119,6 +121,7 @@ function renderHistoryEntry(entry: HistoryEntry): HTMLTableRowElement {
   if (entry.subreddit) {
     labelParts.push(entry.subreddit);
   }
+
   if (entry.postTitle) {
     labelParts.push(entry.postTitle);
   }
@@ -137,6 +140,7 @@ function renderHistoryEntry(entry: HistoryEntry): HTMLTableRowElement {
     labelCell.textContent = label;
     labelCell.title = label;
   }
+
   row.appendChild(labelCell);
 
   return row;
@@ -150,6 +154,7 @@ export function bonReportsHistoryTable(
 
   const tbody = document.createElement("tbody");
   const sorted = [...history].sort((a, b) => (b.at || 0) - (a.at || 0));
+
   for (const entry of sorted) {
     tbody.appendChild(renderHistoryEntry(entry));
   }

@@ -1,7 +1,9 @@
 // Claude API pricing table + cost estimation. Pure — no I/O.
 //
 // USD per million tokens. Verify against current Anthropic pricing — these
-// drift. Web search is billed per request, not per token.
+// drift. Web search USD-per-request is retained for legacy investigation
+// records (which used Anthropic's server-side `web_search` tool) — set to
+// 0 because the live pipeline now fetches DuckDuckGo for free.
 
 import type { ClaudeUsage } from "../types.ts";
 
@@ -37,7 +39,7 @@ export const BON_MODEL_PRICING: Record<string, ModelPricing> = {
   },
 };
 
-export const BON_WEB_SEARCH_USD_PER_REQUEST = 0.01;
+export const BON_WEB_SEARCH_USD_PER_REQUEST = 0;
 
 // Look up a pricing row by the model id the API echoed back. The API often
 // returns a dated suffix (e.g. "claude-sonnet-4-6-20251022"); match by prefix.
@@ -79,6 +81,7 @@ export function bonEstimateCostUsd(
   const cacheCreate = usage.cache_creation_input_tokens || 0;
   const write5m = usage.cache_creation?.ephemeral_5m_input_tokens;
   const write1h = usage.cache_creation?.ephemeral_1h_input_tokens;
+
   // Prefer the split if present; otherwise treat all cache creation as 5m.
   const write5mTokens = write5m != null ? write5m : cacheCreate;
   const write1hTokens = write1h != null ? write1h : 0;

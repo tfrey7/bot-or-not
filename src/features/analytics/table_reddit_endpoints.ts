@@ -49,6 +49,7 @@ export function bonAnalyticsRedditEndpointsTable(
     if (column.align) {
       th.style.textAlign = column.align;
     }
+
     headRow.appendChild(th);
   });
   thead.appendChild(headRow);
@@ -103,6 +104,7 @@ export function bonAnalyticsRedditEndpointsTable(
 
     tbody.appendChild(tr);
   }
+
   table.appendChild(tbody);
 
   const scroll = document.createElement("div");

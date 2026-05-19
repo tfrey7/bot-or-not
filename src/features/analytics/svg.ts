@@ -26,6 +26,7 @@ export function bonAnalyticsSvgEl(
       element.setAttribute(attrName, String(attrValue));
     }
   }
+
   return element;
 }
 
@@ -71,6 +72,7 @@ export function bonAnalyticsTimeAxisFormatter(
         minute: "2-digit",
       });
   }
+
   return (timestamp) =>
     new Date(timestamp).toLocaleDateString(undefined, {
       month: "short",

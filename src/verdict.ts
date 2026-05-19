@@ -65,6 +65,7 @@ export function bonComputeVerdict(
 
   let evidenceSum = 0;
   let redFlagCount = 0;
+
   for (const factor of factors) {
     const score = typeof factor?.score === "number" ? factor.score : 0;
     const confidence =
@@ -80,6 +81,7 @@ export function bonComputeVerdict(
       redFlagCount += 1;
     }
   }
+
   let botProbability = 1 / (1 + Math.exp(-2 * evidenceSum));
 
   if (redFlagCount >= 2) {
@@ -117,9 +119,11 @@ export function bonNormalizeInvestigation<
   if (!investigation) {
     return investigation;
   }
+
   if (investigation.status === "running" || investigation.status === "error") {
     return investigation;
   }
+
   if (investigation.factors.length === 0) {
     return investigation;
   }
@@ -156,6 +160,7 @@ export function bonTopReasonsSplit(
       const score = typeof factor?.score === "number" ? factor.score : 0;
       const confidence =
         typeof factor?.confidence === "number" ? factor.confidence : 0;
+
       return Math.abs(score) >= 0.2 && confidence >= 0.3;
     })
     .map((factor) => ({
