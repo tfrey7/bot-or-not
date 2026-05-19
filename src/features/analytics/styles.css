@@ -2,24 +2,27 @@
    analytics.js. Inherits the --bon-* tokens defined in reports.css. */
 
 .bon-analytics {
-  margin-top: 3.5em;
-  padding-top: 2em;
-  border-top: 2px solid var(--bon-rule);
-  position: relative;
-}
-.bon-analytics::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 5px;
-  height: 1px;
-  background: var(--bon-rule);
-  opacity: 0.5;
+  margin-top: 0;
 }
 
 .bon-analytics-header {
   margin-bottom: 1.75em;
+}
+
+.bon-analytics-subhead {
+  margin: 2.5em 0 1.25em;
+  padding-top: 1.25em;
+  border-top: 1px solid var(--bon-rule);
+}
+
+.bon-analytics-subhead h2 {
+  font-family: var(--bon-font-serif);
+  font-size: 1.55rem;
+  font-weight: 400;
+  letter-spacing: -0.01em;
+  margin: 0 0 0.15em;
+  color: var(--bon-text);
+  line-height: 1.05;
 }
 
 .bon-analytics-header h2 {

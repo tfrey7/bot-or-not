@@ -1,161 +1,13 @@
-// Persona aside in the expanded investigation detail: radar chart of
-// archetype strengths + dominant label + the LLM's one-line reasoning.
-// Returns null if the investigation has no persona data. Legacy
-// investigations stored before the radar (no `archetypes`) still render —
-// just the label + reasoning, no chart.
+// Persona aside in the expanded investigation detail: shared radar widget
+// + dominant label + the LLM's one-line reasoning. Returns null if the
+// investigation has no persona data. Legacy investigations stored before
+// the radar (no `archetypes`) still render — just the label + reasoning,
+// no chart.
 
-import { BON_ARCHETYPES } from "../../factors.ts";
-import type { ArchetypeKey, Persona } from "../../types.ts";
-
-function renderPersonaRadar(
-  archetypes: Record<ArchetypeKey, number>
-): HTMLDivElement | null {
-  const svgns = "http://www.w3.org/2000/svg";
-
-  // Vertices are laid out starting at top (12 o'clock) and going clockwise,
-  // one per BON_ARCHETYPES entry — chart grows if a new archetype is added.
-  const layout = {
-    size: 220,
-    center: 110,
-    radius: 76,
-    labelPad: 14,
-    gridLevels: 4,
-  };
-
-  const axes = BON_ARCHETYPES;
-  const N = axes.length;
-
-  if (N < 3) {
-    return null;
-  }
-
-  const step = (Math.PI * 2) / N;
-  const angle = (i: number): number => -Math.PI / 2 + i * step;
-
-  const vertex = (i: number, scale: number): { x: number; y: number } => {
-    const t = angle(i);
-    return {
-      x: layout.center + layout.radius * scale * Math.cos(t),
-      y: layout.center + layout.radius * scale * Math.sin(t),
-    };
-  };
-
-  const points = (scale: number): string =>
-    axes
-      .map((_, i) => {
-        const point = vertex(i, scale);
-        return `${point.x.toFixed(2)},${point.y.toFixed(2)}`;
-      })
-      .join(" ");
-
-  const wrap = document.createElement("div");
-  wrap.className = "bon-persona-radar";
-  wrap.title = axes
-    .map(
-      (axis) =>
-        `${axis.label} ${Math.round((archetypes[axis.key] || 0) * 100)}%`
-    )
-    .join("  ·  ");
-
-  const svg = document.createElementNS(svgns, "svg");
-  svg.setAttribute("viewBox", `0 0 ${layout.size} ${layout.size}`);
-  svg.setAttribute("class", "bon-radar");
-  svg.setAttribute("role", "img");
-  svg.setAttribute(
-    "aria-label",
-    `Persona radar: ${axes
-      .map(
-        (axis) =>
-          `${axis.label} ${Math.round((archetypes[axis.key] || 0) * 100)}%`
-      )
-      .join(", ")}`
-  );
-
-  for (let g = 1; g <= layout.gridLevels; g++) {
-    const poly = document.createElementNS(svgns, "polygon");
-    poly.setAttribute("points", points(g / layout.gridLevels));
-    poly.setAttribute(
-      "class",
-      g === layout.gridLevels
-        ? "bon-radar-grid bon-radar-grid--outer"
-        : "bon-radar-grid"
-    );
-    svg.appendChild(poly);
-  }
-
-  for (let i = 0; i < N; i++) {
-    const point = vertex(i, 1);
-    const line = document.createElementNS(svgns, "line");
-    line.setAttribute("x1", String(layout.center));
-    line.setAttribute("y1", String(layout.center));
-    line.setAttribute("x2", point.x.toFixed(2));
-    line.setAttribute("y2", point.y.toFixed(2));
-    line.setAttribute("class", "bon-radar-axis");
-    svg.appendChild(line);
-  }
-
-  const dataPolyPts = axes
-    .map((axis, i) => {
-      const score = Math.max(0, Math.min(1, archetypes[axis.key] || 0));
-      const point = vertex(i, score);
-      return `${point.x.toFixed(2)},${point.y.toFixed(2)}`;
-    })
-    .join(" ");
-
-  const dataPoly = document.createElementNS(svgns, "polygon");
-  dataPoly.setAttribute("points", dataPolyPts);
-  dataPoly.setAttribute("class", "bon-radar-data");
-  svg.appendChild(dataPoly);
-
-  for (let i = 0; i < N; i++) {
-    const score = archetypes[axes[i].key] || 0;
-    if (score <= 0.05) {
-      continue;
-    }
-
-    const point = vertex(i, score);
-    const dot = document.createElementNS(svgns, "circle");
-    dot.setAttribute("cx", point.x.toFixed(2));
-    dot.setAttribute("cy", point.y.toFixed(2));
-    dot.setAttribute("r", "3");
-    dot.setAttribute("class", "bon-radar-dot");
-    svg.appendChild(dot);
-  }
-
-  for (let i = 0; i < N; i++) {
-    const t = angle(i);
-    const lx = layout.center + (layout.radius + layout.labelPad) * Math.cos(t);
-    const ly = layout.center + (layout.radius + layout.labelPad) * Math.sin(t);
-    const cosT = Math.cos(t);
-    const sinT = Math.sin(t);
-
-    let anchor = "middle";
-    if (cosT > 0.3) {
-      anchor = "start";
-    } else if (cosT < -0.3) {
-      anchor = "end";
-    }
-
-    let dy = "0.35em";
-    if (sinT > 0.4) {
-      dy = "0.85em";
-    } else if (sinT < -0.4) {
-      dy = "-0.1em";
-    }
-
-    const text = document.createElementNS(svgns, "text");
-    text.setAttribute("x", lx.toFixed(2));
-    text.setAttribute("y", ly.toFixed(2));
-    text.setAttribute("text-anchor", anchor);
-    text.setAttribute("dy", dy);
-    text.setAttribute("class", "bon-radar-label");
-    text.textContent = axes[i].label;
-    svg.appendChild(text);
-  }
-
-  wrap.appendChild(svg);
-  return wrap;
-}
+import type { Persona } from "../../types.ts";
+import { bonPersonaHue } from "../../utils/persona_color.ts";
+import { bonPersonaRadar } from "../../utils/persona_radar.ts";
+import { bonPersonaTitle } from "../../utils/persona_title.ts";
 
 export function bonReportsPersonaBlock(
   persona: Persona | null | undefined
@@ -167,28 +19,22 @@ export function bonReportsPersonaBlock(
   const block = document.createElement("aside");
   block.className = `bon-persona bon-persona--${persona.label}`;
 
-  const heading = document.createElement("p");
-  heading.className = "bon-persona-heading";
-  heading.textContent = "Persona profile";
-  block.appendChild(heading);
+  const hue = bonPersonaHue(persona);
+  if (hue !== null) {
+    block.style.setProperty("--bon-persona-hue", String(Math.round(hue)));
+  }
+
+  const label = document.createElement("p");
+  label.className = `bon-persona-label bon-persona-label--${persona.label}`;
+  label.textContent = bonPersonaTitle(persona);
+  block.appendChild(label);
 
   if (persona.archetypes) {
-    const radar = renderPersonaRadar(persona.archetypes);
+    const radar = bonPersonaRadar(persona.archetypes);
     if (radar) {
       block.appendChild(radar);
     }
   }
-
-  const labelText =
-    persona.label === "normal"
-      ? "Normal"
-      : BON_ARCHETYPES.find((archetype) => archetype.key === persona.label)
-          ?.label || persona.label;
-
-  const label = document.createElement("p");
-  label.className = `bon-persona-label bon-persona-label--${persona.label}`;
-  label.textContent = labelText;
-  block.appendChild(label);
 
   if (persona.reasoning) {
     const blurb = document.createElement("p");

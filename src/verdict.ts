@@ -2,10 +2,23 @@
 // the headline number is reproducible from what's shown on the cards.
 //
 // Formula:
-//   evidenceSum = Σ (-score × confidence)  // positive = bot evidence
+//   evidenceSum = Σ (-score × confidence), with bot contributions weighted 1.5×
+//                 so a few strong red flags aren't drowned by a sea of "no signal"
+//                 weak-positive factors.
 //   botProbability = 1 / (1 + exp(-2 × evidenceSum))
+//   Red-flag floor: any factor with score ≤ -0.6 AND confidence ≥ 0.6 is a red flag.
+//                   ≥1 red flag floors botProbability at 0.36 (verdict ≥ uncertain);
+//                   ≥2 red flags floor it at 0.66 (verdict ≥ likely-bot).
+//   Ring floor: operator-curated ring membership floors botProbability at 0.85
+//               (verdict ≥ bot). Claude only sees one account at a time, so
+//               coordination signal can only come from the operator.
 //   verdict bands map botProbability to one of the 5 labels
 //   confidence = how far the probability is from a coin flip, in the verdict's direction
+
+const BON_BOT_EVIDENCE_WEIGHT = 1.5;
+const BON_RED_FLAG_SCORE_THRESHOLD = -0.6;
+const BON_RED_FLAG_CONFIDENCE_THRESHOLD = 0.6;
+const BON_RING_BOT_PROBABILITY_FLOOR = 0.85;
 
 import type { Factor, Investigation, Verdict } from "./types.ts";
 
@@ -37,7 +50,10 @@ export interface VerdictResult {
   evidenceSum: number;
 }
 
-export function bonComputeVerdict(factors: Factor[]): VerdictResult {
+export function bonComputeVerdict(
+  factors: Factor[],
+  inRing = false
+): VerdictResult {
   if (factors.length === 0) {
     return {
       verdict: "uncertain",
@@ -48,13 +64,33 @@ export function bonComputeVerdict(factors: Factor[]): VerdictResult {
   }
 
   let evidenceSum = 0;
+  let redFlagCount = 0;
   for (const factor of factors) {
     const score = typeof factor?.score === "number" ? factor.score : 0;
     const confidence =
       typeof factor?.confidence === "number" ? factor.confidence : 0;
-    evidenceSum += -score * confidence;
+    const contribution = -score * confidence;
+    evidenceSum +=
+      contribution > 0 ? contribution * BON_BOT_EVIDENCE_WEIGHT : contribution;
+
+    if (
+      score <= BON_RED_FLAG_SCORE_THRESHOLD &&
+      confidence >= BON_RED_FLAG_CONFIDENCE_THRESHOLD
+    ) {
+      redFlagCount += 1;
+    }
   }
-  const botProbability = 1 / (1 + Math.exp(-2 * evidenceSum));
+  let botProbability = 1 / (1 + Math.exp(-2 * evidenceSum));
+
+  if (redFlagCount >= 2) {
+    botProbability = Math.max(botProbability, 0.66);
+  } else if (redFlagCount >= 1) {
+    botProbability = Math.max(botProbability, 0.36);
+  }
+
+  if (inRing) {
+    botProbability = Math.max(botProbability, BON_RING_BOT_PROBABILITY_FLOOR);
+  }
 
   let verdict: Verdict;
   if (botProbability >= 0.85) {
@@ -77,7 +113,7 @@ export function bonComputeVerdict(factors: Factor[]): VerdictResult {
 // from the factor math. Leaves status: "running" / "error" untouched.
 export function bonNormalizeInvestigation<
   T extends Investigation | null | undefined,
->(investigation: T): T {
+>(investigation: T, inRing = false): T {
   if (!investigation) {
     return investigation;
   }
@@ -88,7 +124,7 @@ export function bonNormalizeInvestigation<
     return investigation;
   }
 
-  const derived = bonComputeVerdict(investigation.factors);
+  const derived = bonComputeVerdict(investigation.factors, inRing);
   return {
     ...investigation,
     verdict: derived.verdict,
@@ -101,12 +137,21 @@ export interface RankedFactor extends Factor {
   weight: number;
 }
 
+export interface TopReasonsSplit {
+  human: RankedFactor[];
+  bot: RankedFactor[];
+}
+
 // Ranks factors by decisiveness (|score| × confidence — the same weight
-// bonComputeVerdict uses for the overall verdict) and returns the top N
-// that carried real signal. Neutrals and low-confidence factors are filtered
-// out so the bullets don't include "no signal" filler.
-export function bonTopReasons(factors: Factor[], count = 3): RankedFactor[] {
-  return factors
+// bonComputeVerdict uses for the overall verdict) and splits them by sign
+// so the UI can show human-leaning and bot-leaning signals side by side.
+// Neutrals and low-confidence factors are filtered out so the columns
+// don't include "no signal" filler.
+export function bonTopReasonsSplit(
+  factors: Factor[],
+  perSide = 3
+): TopReasonsSplit {
+  const ranked = factors
     .filter((factor) => {
       const score = typeof factor?.score === "number" ? factor.score : 0;
       const confidence =
@@ -116,7 +161,17 @@ export function bonTopReasons(factors: Factor[], count = 3): RankedFactor[] {
     .map((factor) => ({
       ...factor,
       weight: Math.abs(factor.score) * factor.confidence,
-    }))
+    }));
+
+  const human = ranked
+    .filter((factor) => factor.score > 0)
     .sort((a, b) => b.weight - a.weight)
-    .slice(0, count);
+    .slice(0, perSide);
+
+  const bot = ranked
+    .filter((factor) => factor.score < 0)
+    .sort((a, b) => b.weight - a.weight)
+    .slice(0, perSide);
+
+  return { human, bot };
 }

@@ -5,6 +5,7 @@
 import { BON_FACTOR_KEYS, BON_FACTOR_LABELS } from "../../factors.ts";
 import type { Factor, Investigation } from "../../types.ts";
 import { bonFormatVerdict } from "../../utils/format_text.ts";
+import { bonLinkifyReddit } from "../../utils/linkify_reddit.ts";
 import { bonScoreLeaning } from "../../utils/scoring.ts";
 
 interface FactorWithExtras extends Factor {
@@ -63,7 +64,7 @@ function buildFactorDotCard(
   if (factor?.reasoning) {
     const reasoning = document.createElement("span");
     reasoning.className = "bon-panel-factor-card__reasoning";
-    reasoning.textContent = factor.reasoning;
+    reasoning.appendChild(bonLinkifyReddit(factor.reasoning));
     card.appendChild(reasoning);
   } else if (!factor && hasRun) {
     const reasoning = document.createElement("span");
@@ -86,7 +87,7 @@ function buildFactorDotCard(
 
     for (const cite of factor.evidence) {
       const item = document.createElement("li");
-      item.textContent = cite;
+      item.appendChild(bonLinkifyReddit(cite));
       list.appendChild(item);
     }
 

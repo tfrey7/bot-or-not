@@ -18,23 +18,42 @@ export function bonPanelBuildInvestigateBtn(
   const stale = running && bonIsInvestigationStale(investigation);
   const verdict = investigation?.verdict;
 
+  const setState = (
+    kind: "investigating" | "retry" | "reinvestigate" | "investigate"
+  ): void => {
+    if (kind === "investigating") {
+      button.textContent = "⏳";
+      button.title = "Investigating…";
+    } else if (kind === "retry") {
+      button.textContent = "🔁";
+      button.title = "Retry (stalled)";
+    } else if (kind === "reinvestigate") {
+      button.textContent = "🔁";
+      button.title = "Re-investigate";
+    } else {
+      button.textContent = "🤖";
+      button.title = "Investigate";
+    }
+    button.setAttribute("aria-label", button.title);
+  };
+
   if (running && !stale) {
-    button.textContent = "⏳ Investigating…";
+    setState("investigating");
     button.disabled = true;
     button.classList.add("bon-spinning");
   } else if (stale) {
-    button.textContent = "🔁 Retry (stalled)";
+    setState("retry");
   } else if (verdict) {
-    button.textContent = "🔁 Re-investigate";
+    setState("reinvestigate");
   } else {
-    button.textContent = "🤖 Investigate";
+    setState("investigate");
   }
 
   button.addEventListener("click", async (event) => {
     event.stopPropagation();
     button.disabled = true;
     button.classList.add("bon-spinning");
-    button.textContent = "⏳ Investigating…";
+    setState("investigating");
 
     try {
       const response = (await browser.runtime.sendMessage({
@@ -48,14 +67,14 @@ export function bonPanelBuildInvestigateBtn(
         );
         button.disabled = false;
         button.classList.remove("bon-spinning");
-        button.textContent = verdict ? "🔁 Re-investigate" : "🤖 Investigate";
+        setState(verdict ? "reinvestigate" : "investigate");
       }
       // storage.onChanged will trigger refreshProfilePanel.
     } catch (error) {
       console.error("[Bot or Not] investigate failed", error);
       button.disabled = false;
       button.classList.remove("bon-spinning");
-      button.textContent = verdict ? "🔁 Re-investigate" : "🤖 Investigate";
+      setState(verdict ? "reinvestigate" : "investigate");
     }
   });
 

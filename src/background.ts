@@ -7,6 +7,7 @@ import {
   bonFetchUserActivity,
   bonGatherProfile,
   bonRunOneDAnalysis,
+  RedditFetchError,
 } from "./features/investigation";
 import type { ActivityData, Investigation, Report } from "./types.ts";
 import {
@@ -18,6 +19,7 @@ import {
   bonSnapshotRun,
   bonWriteReports,
 } from "./utils/history.ts";
+import { bonGenerateRingId } from "./utils/ring_id.ts";
 import {
   bonIsInvestigationStale,
   bonNormalizeInvestigation,
@@ -109,6 +111,9 @@ browser.runtime.onMessage.addListener((message: BaseMessage) => {
   if (message.type === "open-popup") {
     return handleOpenPopup();
   }
+  if (message.type === "open-reports-tab") {
+    return handleOpenReportsTab(message);
+  }
   if (message.type === "investigate-user") {
     return handleInvestigateUser(message);
   }
@@ -133,20 +138,37 @@ browser.runtime.onMessage.addListener((message: BaseMessage) => {
   if (message.type === "dossier-has-map") {
     return handleDossierHasMap(message);
   }
+  if (message.type === "link-ring") {
+    return handleLinkRing(message);
+  }
+  if (message.type === "unlink-ring") {
+    return handleUnlinkRing(message);
+  }
 });
 
 browser.action.onClicked.addListener(() => {
   void openReportsTab();
 });
 
-async function openReportsTab(): Promise<void> {
-  const url = browser.runtime.getURL("src/reports.html");
+async function openReportsTab(username?: string): Promise<void> {
+  const baseUrl = browser.runtime.getURL("src/reports.html");
+  const targetUrl = username
+    ? `${baseUrl}?user=${encodeURIComponent(username)}`
+    : baseUrl;
+
   try {
-    const existing = await browser.tabs.query({ url });
+    // Match any reports tab regardless of query string so the deep-link from
+    // a profile reuses an already-open reports tab and navigates it to the
+    // requested user.
+    const existing = await browser.tabs.query({ url: `${baseUrl}*` });
     if (existing && existing.length > 0) {
       const tab = existing[0];
       if (tab.id != null) {
-        await browser.tabs.update(tab.id, { active: true });
+        const update: { active: true; url?: string } = { active: true };
+        if (tab.url !== targetUrl) {
+          update.url = targetUrl;
+        }
+        await browser.tabs.update(tab.id, update);
       }
       if (tab.windowId != null) {
         await browser.windows.update(tab.windowId, { focused: true });
@@ -154,7 +176,7 @@ async function openReportsTab(): Promise<void> {
       return;
     }
 
-    await browser.tabs.create({ url });
+    await browser.tabs.create({ url: targetUrl });
   } catch (error) {
     console.error("[Bot or Not] openReportsTab failed", error);
   }
@@ -162,6 +184,17 @@ async function openReportsTab(): Promise<void> {
 
 async function handleOpenPopup(): Promise<void> {
   await openReportsTab();
+}
+
+async function handleOpenReportsTab(
+  message: BaseMessage
+): Promise<{ ok: true }> {
+  const username =
+    typeof message.username === "string" && message.username
+      ? message.username
+      : undefined;
+  await openReportsTab(username);
+  return { ok: true };
 }
 
 async function handleReportUser(
@@ -398,6 +431,7 @@ interface UserTag {
   investigationStartedAt: number | null;
   botBouncerStatus: string | null;
   userStatus: string | null;
+  ringId: string | null;
 }
 
 async function handleGetUserTags(): Promise<{ tags: Record<string, UserTag> }> {
@@ -414,7 +448,10 @@ async function handleGetUserTags(): Promise<{ tags: Record<string, UserTag> }> {
 }
 
 function summarizeUserTag(username: string, report: Report): UserTag | null {
-  const investigation = bonNormalizeInvestigation(report.investigation);
+  const investigation = bonNormalizeInvestigation(
+    report.investigation,
+    !!report.ringId
+  );
   const verdict =
     investigation?.status === "done" ? investigation.verdict : null;
   const investigationStatus = investigation?.status ?? null;
@@ -424,6 +461,7 @@ function summarizeUserTag(username: string, report: Report): UserTag | null {
     report.count > 0 ||
     report.userStatus ||
     report.botBouncerStatus ||
+    report.ringId ||
     investigationStatus === "running";
 
   if (!hasSignal) {
@@ -439,6 +477,7 @@ function summarizeUserTag(username: string, report: Report): UserTag | null {
     investigationStartedAt: investigation?.startedAt ?? null,
     botBouncerStatus: report.botBouncerStatus,
     userStatus: report.userStatus,
+    ringId: report.ringId,
   };
 }
 
@@ -582,6 +621,7 @@ async function handleInvestigateUser(
       commentsFetched: inputs.raw.comments.data?.children?.length ?? 0,
       accountCreatedAt: inputs.summary.account.created_at,
       accountAgeDays: inputs.summary.account.age_days,
+      redditMetrics: inputs.redditMetrics,
     };
 
     await setInvestigationState(username, {
@@ -617,6 +657,9 @@ async function handleInvestigateUser(
       startedAt: null,
       error: String((error as { message?: string })?.message ?? error),
       durationMs: Date.now() - startedAt,
+      ...(error instanceof RedditFetchError
+        ? { redditMetrics: error.metrics }
+        : {}),
     });
 
     return {
@@ -709,4 +752,98 @@ async function handleGetUserReport(
   }
 
   return { report: reports[key] };
+}
+
+async function handleLinkRing(
+  message: BaseMessage
+): Promise<{ ok: boolean; ringId?: string; error?: string }> {
+  const usernames = Array.isArray(message.usernames)
+    ? (message.usernames as string[]).filter(
+        (name) => typeof name === "string" && name.length > 0
+      )
+    : [];
+
+  if (usernames.length < 2) {
+    return { ok: false, error: "need-at-least-two" };
+  }
+
+  const reports = await bonReadReports();
+  const keys: string[] = [];
+  for (const username of usernames) {
+    const key = bonFindReportKey(reports, username);
+    if (!key) {
+      return { ok: false, error: `unknown-user:${username}` };
+    }
+    keys.push(key);
+  }
+
+  const existingRingIds = new Set<string>();
+  for (const key of keys) {
+    const ringId = reports[key].ringId;
+    if (ringId) {
+      existingRingIds.add(ringId);
+    }
+  }
+
+  if (existingRingIds.size > 1) {
+    return { ok: false, error: "multiple-existing-rings" };
+  }
+
+  const ringId =
+    existingRingIds.size === 1
+      ? [...existingRingIds][0]
+      : bonGenerateRingId(collectExistingRingIds(reports));
+
+  for (const key of keys) {
+    if (reports[key].ringId === ringId) {
+      continue;
+    }
+    reports[key] = { ...reports[key], ringId };
+  }
+
+  await bonWriteReports(reports);
+  return { ok: true, ringId };
+}
+
+async function handleUnlinkRing(
+  message: BaseMessage
+): Promise<{ ok: boolean; error?: string }> {
+  const usernames = Array.isArray(message.usernames)
+    ? (message.usernames as string[]).filter(
+        (name) => typeof name === "string" && name.length > 0
+      )
+    : [];
+
+  if (usernames.length === 0) {
+    return { ok: false, error: "no-usernames" };
+  }
+
+  const reports = await bonReadReports();
+  let changed = false;
+  for (const username of usernames) {
+    const key = bonFindReportKey(reports, username);
+    if (!key) {
+      continue;
+    }
+    if (reports[key].ringId === null) {
+      continue;
+    }
+    reports[key] = { ...reports[key], ringId: null };
+    changed = true;
+  }
+
+  if (changed) {
+    await bonWriteReports(reports);
+  }
+  return { ok: true };
+}
+
+function collectExistingRingIds(reports: Record<string, Report>): Set<string> {
+  const out = new Set<string>();
+  for (const report of Object.values(reports)) {
+    if (report.ringId) {
+      out.add(report.ringId);
+    }
+  }
+  return out;
 }

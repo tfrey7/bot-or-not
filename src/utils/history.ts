@@ -16,6 +16,7 @@ import type {
   Investigation,
   InvestigationStatus,
   Persona,
+  RedditMetrics,
   Report,
   RunSnapshot,
 } from "../types.ts";
@@ -71,6 +72,7 @@ export function bonNormalizeReport(value: unknown): Report {
       investigation: null,
       activityData: null,
       contextItems: [],
+      ringId: null,
     };
   }
 
@@ -106,6 +108,7 @@ export function bonNormalizeReport(value: unknown): Report {
     contextItems: Array.isArray(record.contextItems)
       ? (record.contextItems as ContextItem[])
       : [],
+    ringId: typeof record.ringId === "string" ? record.ringId : null,
   };
 }
 
@@ -173,9 +176,64 @@ function canonicalizeInvestigation(value: unknown): Investigation | null {
       typeof investigation.accountAgeDays === "number"
         ? investigation.accountAgeDays
         : null,
+    redditMetrics: canonicalizeRedditMetrics(investigation.redditMetrics),
     runs: Array.isArray(investigation.runs)
-      ? (investigation.runs as RunSnapshot[])
+      ? (investigation.runs as RunSnapshot[]).map(canonicalizeRunSnapshot)
       : [],
+  };
+}
+
+function canonicalizeRedditMetrics(value: unknown): RedditMetrics | null {
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+
+  const record = value as Record<string, unknown>;
+  const fetches = Array.isArray(record.fetches)
+    ? (record.fetches as RedditMetrics["fetches"])
+    : null;
+
+  if (!fetches) {
+    return null;
+  }
+
+  return {
+    fetches,
+    totalDurationMs:
+      typeof record.totalDurationMs === "number" ? record.totalDurationMs : 0,
+  };
+}
+
+// Older RunSnapshot entries on disk predate redditMetrics. Mapping
+// through the canonicalizer fills in the missing field so downstream
+// consumers can read `run.redditMetrics` without an `in` check.
+function canonicalizeRunSnapshot(value: unknown): RunSnapshot {
+  const record = (value && typeof value === "object" ? value : {}) as Record<
+    string,
+    unknown
+  >;
+
+  return {
+    runAt: typeof record.runAt === "number" ? record.runAt : 0,
+    durationMs:
+      typeof record.durationMs === "number" ? record.durationMs : null,
+    status: (record.status as RunSnapshot["status"]) ?? "done",
+    verdict: (record.verdict as RunSnapshot["verdict"]) ?? null,
+    confidence:
+      typeof record.confidence === "number" ? record.confidence : null,
+    botProbability:
+      typeof record.botProbability === "number" ? record.botProbability : null,
+    model: typeof record.model === "string" ? record.model : null,
+    usage: (record.usage as RunSnapshot["usage"]) ?? null,
+    costUsd: typeof record.costUsd === "number" ? record.costUsd : null,
+    webSearchCount:
+      typeof record.webSearchCount === "number" ? record.webSearchCount : 0,
+    postsFetched:
+      typeof record.postsFetched === "number" ? record.postsFetched : 0,
+    commentsFetched:
+      typeof record.commentsFetched === "number" ? record.commentsFetched : 0,
+    redditMetrics: canonicalizeRedditMetrics(record.redditMetrics),
+    error: typeof record.error === "string" ? record.error : null,
   };
 }
 
@@ -204,6 +262,7 @@ export function bonFreshInvestigation(
     commentsFetched: 0,
     accountCreatedAt: null,
     accountAgeDays: null,
+    redditMetrics: null,
     runs: [],
   };
 }
@@ -266,6 +325,7 @@ export function bonSnapshotRun(
     webSearchCount: investigation.webSearchCount,
     postsFetched: investigation.postsFetched,
     commentsFetched: investigation.commentsFetched,
+    redditMetrics: investigation.redditMetrics,
     error: status === "error" ? investigation.error : null,
   };
 }

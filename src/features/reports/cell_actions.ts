@@ -1,31 +1,22 @@
-// Investigate button (🤖 / 🔁 / progress-ring) shown in the actions column,
-// plus the "Delete report" danger button shown in the row's expanded footer.
-// The investigate button's running state participates in the poll-tick's
-// in-place updates (via data-bon-running-btn attributes) so the spinner /
-// progress ring don't jitter on every render.
+// Investigate + Delete buttons shown in the detail-pane footer. The
+// investigate button's running state participates in the poll-tick's
+// in-place text updates via data-bon-running-btn.
 
 import type { Investigation } from "../../types.ts";
 import { bonIsInvestigationStale } from "../../verdict.ts";
-import { bonReportsFormatRunningTitle } from "./logic.ts";
+import {
+  bonReportsFormatRunningCellText,
+  bonReportsFormatRunningTitle,
+} from "./logic.ts";
 import { bonReportsOpenConfirmModal } from "./modals.ts";
-
-export function bonReportsApplyProgressVisual(
-  button: HTMLButtonElement,
-  elapsedMs: number,
-  expectedMs: number | null | undefined
-): void {
-  if (!expectedMs) {
-    return;
-  }
-
-  const percent = Math.min(100, (elapsedMs / expectedMs) * 100);
-  button.style.setProperty("--bon-progress", `${percent.toFixed(1)}%`);
-  button.classList.toggle("bon-progress--overtime", elapsedMs > expectedMs);
-}
 
 export interface InvestigateButtonOpts {
   expectedDurationMs: number | null;
   onNoApiKey?: () => void;
+}
+
+function idleLabel(verdict: string | null | undefined): string {
+  return verdict ? "Re-run AI investigation" : "Run AI investigation";
 }
 
 export function bonReportsRenderInvestigateButton(
@@ -35,48 +26,38 @@ export function bonReportsRenderInvestigateButton(
 ): HTMLButtonElement {
   const button = document.createElement("button");
   button.type = "button";
-  button.className = "bon-investigate-btn";
+  button.className = "bon-btn";
 
   const running = investigation?.status === "running";
   const stale = running && bonIsInvestigationStale(investigation);
   const verdict = investigation?.verdict;
 
   if (running && !stale && investigation) {
-    button.textContent = "";
     button.disabled = true;
     button.dataset.bonRunningBtn = username;
 
     const startedAt = investigation.startedAt || Date.now();
     button.dataset.bonRunningStartedAt = String(startedAt);
 
-    const elapsedMs = Math.max(0, Date.now() - startedAt);
-    const elapsedSec = Math.round(elapsedMs / 1000);
-
-    if (expectedDurationMs) {
-      button.classList.add("bon-progress");
-      bonReportsApplyProgressVisual(button, elapsedMs, expectedDurationMs);
-    } else {
-      button.classList.add("bon-spinning");
-    }
-
+    const elapsedSec = Math.round(Math.max(0, Date.now() - startedAt) / 1000);
+    button.textContent = bonReportsFormatRunningCellText(
+      elapsedSec,
+      expectedDurationMs
+    );
     button.title = bonReportsFormatRunningTitle(elapsedSec, expectedDurationMs);
   } else if (stale) {
-    button.textContent = "🔁";
+    button.textContent = "Retry stalled investigation";
     button.title = "Retry stalled investigation";
-  } else if (verdict) {
-    button.textContent = "🔁";
-    button.title = "Re-run AI investigation";
   } else {
-    button.textContent = "🤖";
-    button.title = "Run AI investigation";
+    button.textContent = idleLabel(verdict);
+    button.title = button.textContent;
   }
 
   button.setAttribute("aria-label", button.title);
 
   button.addEventListener("click", async () => {
     button.disabled = true;
-    button.classList.add("bon-spinning");
-    button.textContent = "";
+    button.textContent = "Starting…";
     try {
       const response = (await browser.runtime.sendMessage({
         type: "investigate-user",
@@ -85,12 +66,10 @@ export function bonReportsRenderInvestigateButton(
       if (response?.ok === false && response.error === "no-api-key") {
         onNoApiKey?.();
       }
-      // storage.onChanged will reload and re-render.
     } catch (error) {
       console.error("[Bot or Not] investigate failed", error);
       button.disabled = false;
-      button.classList.remove("bon-spinning");
-      button.textContent = verdict ? "🔁" : "🤖";
+      button.textContent = idleLabel(verdict);
     }
   });
 

@@ -6,6 +6,7 @@
 import { BON_FACTOR_KEYS, BON_FACTOR_LABELS } from "../../factors.ts";
 import type { Factor } from "../../types.ts";
 import { bonFormatVerdict } from "../../utils/format_text.ts";
+import { bonLinkifyReddit } from "../../utils/linkify_reddit.ts";
 import { bonScoreLeaning } from "../../utils/scoring.ts";
 
 interface FactorWithName extends Factor {
@@ -75,7 +76,7 @@ function buildFactor(factor: FactorWithName): HTMLLIElement {
   if (factor.reasoning) {
     const reasoning = document.createElement("div");
     reasoning.className = "bon-panel-factor__reasoning";
-    reasoning.textContent = factor.reasoning;
+    reasoning.appendChild(bonLinkifyReddit(factor.reasoning));
     li.appendChild(reasoning);
   }
 

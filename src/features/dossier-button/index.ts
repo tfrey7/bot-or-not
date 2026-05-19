@@ -108,29 +108,19 @@ function findPostAnchor(post: HTMLElement): HTMLElement | null {
   // Post action buttons live in Reddit's shadow DOM; we can't reach them
   // directly. The Share dropdown is slotted from light DOM into the action
   // row on the post-detail page — its bounding rect is the most reliable
-  // proxy there. On subreddit listing cards the share slot is absent, so
-  // pick the rightmost light-DOM slotted child (overflow menu / share /
-  // comment-count link) as the row anchor.
+  // proxy there.
   const detailShare = post.querySelector<HTMLElement>(
     'faceplate-dropdown-menu[slot="ssr-share-button"]'
   );
   if (detailShare) {
     return detailShare;
   }
-  const slotted = post.querySelectorAll<HTMLElement>("[slot]");
-  let rightmost: HTMLElement | null = null;
-  let maxRight = -Infinity;
-  for (const element of slotted) {
-    const rect = element.getBoundingClientRect();
-    if (rect.width === 0 || rect.height === 0) {
-      continue;
-    }
-    if (rect.right > maxRight) {
-      maxRight = rect.right;
-      rightmost = element;
-    }
-  }
-  return rightmost;
+  // Listing cards (subreddit feeds, profile feeds) keep their action row
+  // entirely in shadow DOM. The only slotted children are full-post-link
+  // (covers the whole card), credit-bar, title, and post-media — all at
+  // top/middle. Anchor to the post host itself; updatePillPosition pins to
+  // the bottom-right so the pill lines up with the hidden action row.
+  return post;
 }
 
 function updatePillPosition(
@@ -143,11 +133,16 @@ function updatePillPosition(
     return;
   }
   pill.style.display = "";
-  // Vertical-center on the row, slot in to the right of the rightmost
-  // existing button. Below-the-row placement collides with the next nested
-  // comment's avatar / the "Join the conversation" composer; right-of-row
-  // lands in the empty space all of Reddit's templates leave.
-  pill.style.top = `${rect.top + window.scrollY + rect.height / 2}px`;
+  // Listing-card posts use the post host itself as the anchor (action row
+  // is in shadow DOM, unreachable). Pin to its bottom-right corner so the
+  // pill sits next to the hidden Share / Comments row instead of dead-
+  // center on the card. Everything else (comment rows, post-detail Share
+  // dropdown) vertical-centers on the anchor.
+  const anchorIsPostHost = anchor.tagName === "SHREDDIT-POST";
+  const verticalCenter = anchorIsPostHost
+    ? rect.bottom - 22
+    : rect.top + rect.height / 2;
+  pill.style.top = `${verticalCenter + window.scrollY}px`;
   pill.style.left = `${rect.right + window.scrollX + 8}px`;
 }
 

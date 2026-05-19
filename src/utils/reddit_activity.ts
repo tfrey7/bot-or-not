@@ -8,8 +8,6 @@ import type {
   RedditActivityFetch,
 } from "../types.ts";
 
-const BON_REDDIT_FETCH_LIMIT = 100;
-
 interface RedditPost {
   subreddit?: string;
   subreddit_name_prefixed?: string;
@@ -24,7 +22,10 @@ interface RedditComment {
   body?: string;
 }
 
-export function bonExtractActivityData(raw: RedditActivityFetch): ActivityData {
+export function bonExtractActivityData(
+  raw: RedditActivityFetch,
+  fetchLimit: number = 100
+): ActivityData {
   const posts: RedditPost[] = (raw.submitted.data?.children ?? [])
     .map((child) => child.data as RedditPost | undefined)
     .filter((post): post is RedditPost => Boolean(post));
@@ -75,13 +76,13 @@ export function bonExtractActivityData(raw: RedditActivityFetch): ActivityData {
     languageSignals: scanned.languages,
     moderatedSubs,
     corpusChars: corpus.length,
-    postsLimited: posts.length >= BON_REDDIT_FETCH_LIMIT,
-    commentsLimited: comments.length >= BON_REDDIT_FETCH_LIMIT,
+    postsLimited: posts.length >= fetchLimit,
+    commentsLimited: comments.length >= fetchLimit,
     earliestPostAt: postTimestamps.length ? Math.min(...postTimestamps) : null,
     earliestCommentAt: commentTimestamps.length
       ? Math.min(...commentTimestamps)
       : null,
-    fetchLimit: BON_REDDIT_FETCH_LIMIT,
+    fetchLimit,
     fetchedAt: Date.now(),
   };
 }

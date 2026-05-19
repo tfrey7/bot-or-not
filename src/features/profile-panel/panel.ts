@@ -5,10 +5,13 @@
 // post-author panel — the orchestrator decides where to anchor it.
 
 import type { Report } from "../../types.ts";
+import { bonRingChip } from "../../utils/ring_chip.ts";
 import { bonNormalizeInvestigation } from "../../verdict.ts";
+import { bonPanelBuildFactorDots } from "./factor_dots.ts";
 import { bonPanelBuildInvestigateBtn } from "./investigate_btn.ts";
 import { bonPanelBuildInvestigationSection } from "./investigation_section.ts";
 import { bonPanelBuildPreview } from "./preview.ts";
+import { bonPanelBuildReportsLink } from "./reports_link.ts";
 import { bonPanelBuildReportsSection } from "./reports_section.ts";
 import { bonPanelAppendStatPills } from "./verdict_pill.ts";
 
@@ -27,7 +30,10 @@ export function bonPanelBuildProfilePanel(
   panel.className = "bon-profile-panel";
   panel.dataset.username = username;
 
-  const investigation = bonNormalizeInvestigation(report?.investigation);
+  const investigation = bonNormalizeInvestigation(
+    report?.investigation,
+    !!report?.ringId
+  );
 
   // Nested <button> is invalid HTML, and we want the re-investigate button
   // sitting inside the header — so the toggle target is a div with button
@@ -43,11 +49,21 @@ export function bonPanelBuildProfilePanel(
   title.textContent = "Bot or Not";
   header.appendChild(title);
 
+  const ringChip = bonRingChip(report?.ringId ?? null);
+  if (ringChip) {
+    header.appendChild(ringChip);
+  }
+
   const stats = document.createElement("span");
   stats.className = "bon-profile-panel__stats";
   bonPanelAppendStatPills(stats, report);
   header.appendChild(stats);
 
+  if (investigation?.status === "done" && investigation.factors.length > 0) {
+    header.appendChild(bonPanelBuildFactorDots(investigation));
+  }
+
+  header.appendChild(bonPanelBuildReportsLink(username));
   header.appendChild(bonPanelBuildInvestigateBtn(username, investigation));
 
   const preview = bonPanelBuildPreview(username, report);

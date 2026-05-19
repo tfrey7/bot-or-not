@@ -3,48 +3,72 @@
 // per-factor card list.
 
 import type { Investigation } from "../../types.ts";
-import { bonFmtDuration } from "../../utils/format_time.ts";
 import {
   bonIsInvestigationStale,
   bonNormalizeInvestigation,
 } from "../../verdict.ts";
+import { bonLinkifyReddit } from "../../utils/linkify_reddit.ts";
+import { bonTopReasonsList } from "../../utils/top_reasons_list.ts";
 import { bonReportsFactorsList } from "./investigation_factors.ts";
+import { bonReportsInvestigationLoading } from "./investigation_loading.ts";
 import { bonReportsPersonaBlock } from "./persona_block.ts";
-import { bonReportsTopReasonsList } from "./top_reasons.ts";
 
 export function bonReportsInvestigationDetail(
-  rawInvestigation: Investigation,
-  contextItemsCount: number = 0
+  rawInvestigation: Investigation | null | undefined,
+  contextItemsCount: number = 0,
+  actions: HTMLElement[] = [],
+  inRing = false
 ): HTMLDivElement {
-  const investigation = bonNormalizeInvestigation(rawInvestigation);
   const contextLabel = formatContextLabel(contextItemsCount);
 
   const wrap = document.createElement("div");
   wrap.className = "bon-detail-wrap";
 
+  const header = document.createElement("div");
+  header.className = "bon-detail-header";
+
   const title = document.createElement("p");
   title.className = "bon-detail-title";
   title.textContent = "AI investigation";
-  wrap.appendChild(title);
+  header.appendChild(title);
+
+  if (actions.length > 0) {
+    const actionsRow = document.createElement("div");
+    actionsRow.className = "bon-detail-header-actions";
+    for (const action of actions) {
+      actionsRow.appendChild(action);
+    }
+    header.appendChild(actionsRow);
+  }
+
+  wrap.appendChild(header);
+
+  if (!rawInvestigation) {
+    const empty = document.createElement("p");
+    empty.className = "bon-verdict-meta";
+    empty.textContent = "Not yet investigated.";
+    wrap.appendChild(empty);
+    return wrap;
+  }
+
+  const investigation = bonNormalizeInvestigation(rawInvestigation, inRing);
 
   if (investigation.status === "running") {
     const stale = bonIsInvestigationStale(investigation);
 
-    const message = document.createElement("p");
-    message.className = "bon-verdict-meta";
-
     if (stale) {
+      const message = document.createElement("p");
+      message.className = "bon-verdict-meta";
       message.textContent = investigation.startedAt
         ? `Stalled — started ${new Date(investigation.startedAt).toLocaleString()}, never completed. Click the retry button above to re-run.`
         : "Stalled — never completed. Click the retry button above to re-run.";
-    } else {
-      const base = investigation.startedAt
-        ? `Running since ${new Date(investigation.startedAt).toLocaleString()}…`
-        : "Running…";
-      message.textContent = contextLabel ? `${base} · ${contextLabel}` : base;
+      wrap.appendChild(message);
+      return wrap;
     }
 
-    wrap.appendChild(message);
+    wrap.appendChild(
+      bonReportsInvestigationLoading(investigation.startedAt, contextLabel)
+    );
     return wrap;
   }
 
@@ -62,12 +86,12 @@ export function bonReportsInvestigationDetail(
   if (investigation.summary) {
     const summary = document.createElement("p");
     summary.className = "bon-verdict-summary";
-    summary.textContent = investigation.summary;
+    summary.appendChild(bonLinkifyReddit(investigation.summary));
     summaryCol.appendChild(summary);
   }
 
   if (investigation.factors.length > 0) {
-    const reasons = bonReportsTopReasonsList(investigation.factors);
+    const reasons = bonTopReasonsList(investigation.factors);
     if (reasons) {
       summaryCol.appendChild(reasons);
     }
@@ -90,39 +114,12 @@ export function bonReportsInvestigationDetail(
     }
   }
 
-  const meta = document.createElement("p");
-  meta.className = "bon-verdict-meta";
-
-  const metaParts: string[] = [];
-  if (investigation.confidence !== null) {
-    metaParts.push(
-      `overall confidence ${Math.round(investigation.confidence * 100)}%`
-    );
-  }
-  if (investigation.model) {
-    metaParts.push(investigation.model);
-  }
-  if (investigation.runAt !== null) {
-    const runAt = new Date(investigation.runAt).toLocaleString();
-    metaParts.push(`run ${runAt}`);
-  }
-  if (investigation.durationMs !== null) {
-    metaParts.push(`took ${bonFmtDuration(investigation.durationMs)}`);
-  }
-  metaParts.push(
-    `${investigation.postsFetched} posts, ${investigation.commentsFetched} comments analyzed`
-  );
   if (contextLabel) {
-    metaParts.push(`📎 ${contextLabel}`);
+    const contextMeta = document.createElement("p");
+    contextMeta.className = "bon-verdict-meta";
+    contextMeta.textContent = `📎 ${contextLabel}`;
+    wrap.appendChild(contextMeta);
   }
-  metaParts.push(
-    investigation.webSearchCount > 0
-      ? `🌐 web search: ${investigation.webSearchCount}`
-      : "🌐 web search: skipped"
-  );
-
-  meta.textContent = metaParts.join(" · ");
-  wrap.appendChild(meta);
 
   if (investigation.factors.length > 0) {
     wrap.appendChild(bonReportsFactorsList(investigation.factors));

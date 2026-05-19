@@ -12,6 +12,7 @@
     />
     <link rel="stylesheet" href="reports.css" />
     <link rel="stylesheet" href="features/analytics/styles.css" />
+    <link rel="stylesheet" href="features/diagnostics/styles.css" />
   </head>
   <body>
     <div class="bon-page">
@@ -39,58 +40,144 @@
         </div>
       </header>
 
-      <div class="bon-toolbar">
-        <input
-          type="search"
-          id="bon-search"
-          class="bon-search"
-          placeholder="Search username, subreddit, or post title…"
-          autocomplete="off"
-        />
-      </div>
+      <nav class="bon-tabs" role="tablist" aria-label="Page sections">
+        <button
+          type="button"
+          class="bon-tab bon-tab--active"
+          role="tab"
+          aria-selected="true"
+          aria-controls="bon-panel-reports"
+          id="bon-tab-reports"
+          data-tab="reports"
+        >
+          Reports
+        </button>
+        <button
+          type="button"
+          class="bon-tab"
+          role="tab"
+          aria-selected="false"
+          aria-controls="bon-panel-metrics"
+          id="bon-tab-metrics"
+          data-tab="metrics"
+        >
+          Metrics
+        </button>
+        <button
+          type="button"
+          class="bon-tab"
+          role="tab"
+          aria-selected="false"
+          aria-controls="bon-panel-diagnostics"
+          id="bon-tab-diagnostics"
+          data-tab="diagnostics"
+        >
+          Diagnostics
+        </button>
+      </nav>
 
-      <div class="bon-table-wrap" id="bon-table-wrap">
-        <table class="bon-table" id="bon-table">
-          <thead>
-            <tr>
-              <th style="width: 2em"></th>
-              <th class="bon-sortable" data-sort="username">
-                User <span class="bon-sort-indicator"></span>
-              </th>
-              <th class="bon-sortable" data-sort="region">
-                Region <span class="bon-sort-indicator"></span>
-              </th>
-              <th class="bon-sortable" data-sort="verdict">
-                AI verdict <span class="bon-sort-indicator"></span>
-              </th>
-              <th>Factors</th>
-              <th
-                class="bon-sortable"
-                data-sort="investigatedAt"
-                data-default-dir="desc"
-              >
-                Investigated <span class="bon-sort-indicator"></span>
-              </th>
-              <th
-                class="bon-sortable"
-                data-sort="lastReportedAt"
-                data-default-dir="desc"
-              >
-                Last reported <span class="bon-sort-indicator">▼</span>
-              </th>
-              <th style="width: 5em"></th>
-            </tr>
-          </thead>
-          <tbody id="bon-tbody"></tbody>
-        </table>
-      </div>
+      <section
+        class="bon-tab-panel"
+        role="tabpanel"
+        id="bon-panel-reports"
+        aria-labelledby="bon-tab-reports"
+      >
+        <div class="bon-toolbar">
+          <input
+            type="search"
+            id="bon-search"
+            class="bon-search"
+            placeholder="Search username, subreddit, or post title…"
+            autocomplete="off"
+          />
+          <span class="bon-ring-status" id="bon-ring-status" hidden></span>
+          <button
+            type="button"
+            id="bon-ring-link-btn"
+            class="bon-btn"
+            hidden
+            disabled
+          >
+            Link as ring
+          </button>
+          <button
+            type="button"
+            id="bon-ring-unlink-btn"
+            class="bon-btn"
+            hidden
+            disabled
+          >
+            Unlink
+          </button>
+          <button type="button" id="bon-ring-mode-btn" class="bon-btn">
+            Link rings
+          </button>
+        </div>
 
-      <div id="bon-empty" class="bon-empty" hidden>
-        No reports yet. Flag a Reddit user from their profile page to start
-        tracking.
-      </div>
+        <div class="bon-split" id="bon-split">
+          <div class="bon-split-list">
+            <div class="bon-table-wrap" id="bon-table-wrap">
+              <table class="bon-table" id="bon-table">
+                <thead>
+                  <tr>
+                    <th class="bon-row-select-cell" aria-label="Select"></th>
+                    <th class="bon-sortable" data-sort="username">
+                      User <span class="bon-sort-indicator"></span>
+                    </th>
+                    <th class="bon-sortable" data-sort="region">
+                      Region <span class="bon-sort-indicator"></span>
+                    </th>
+                    <th class="bon-sortable" data-sort="verdict">
+                      AI verdict <span class="bon-sort-indicator"></span>
+                    </th>
+                    <th
+                      class="bon-sortable"
+                      data-sort="investigatedAt"
+                      data-default-dir="desc"
+                    >
+                      Investigated <span class="bon-sort-indicator"></span>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody id="bon-tbody"></tbody>
+              </table>
+            </div>
 
-      <div id="bon-analytics-container"></div>
+            <div id="bon-pagination-container"></div>
+
+            <div id="bon-empty" class="bon-empty" hidden>
+              No reports yet. Flag a Reddit user from their profile page to
+              start tracking.
+            </div>
+          </div>
+
+          <aside
+            class="bon-split-detail"
+            id="bon-detail-pane"
+            aria-live="polite"
+          ></aside>
+        </div>
+      </section>
+
+      <section
+        class="bon-tab-panel"
+        role="tabpanel"
+        id="bon-panel-metrics"
+        aria-labelledby="bon-tab-metrics"
+        hidden
+      >
+        <div id="bon-analytics-container"></div>
+      </section>
+
+      <section
+        class="bon-tab-panel"
+        role="tabpanel"
+        id="bon-panel-diagnostics"
+        aria-labelledby="bon-tab-diagnostics"
+        hidden
+      >
+        <div id="bon-diagnostics-container"></div>
+      </section>
 
       <footer class="bon-footer">
         Bot or Not v<span id="bon-version"></span>

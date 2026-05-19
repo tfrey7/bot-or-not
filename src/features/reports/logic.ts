@@ -281,7 +281,6 @@ export function bonReportsComputeEarliestFullyVisible(
 export type SortKey =
   | "username"
   | "count"
-  | "lastReportedAt"
   | "verdict"
   | "investigatedAt"
   | "region";
@@ -308,9 +307,6 @@ export function bonReportsSortValue(
   }
   if (key === "count") {
     return report.count || 0;
-  }
-  if (key === "lastReportedAt") {
-    return report.lastReportedAt || 0;
   }
   if (key === "verdict") {
     const verdict = report.investigation?.verdict;

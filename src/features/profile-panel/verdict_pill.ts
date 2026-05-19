@@ -10,7 +10,8 @@ import {
 } from "../../verdict.ts";
 
 function buildVerdictPill(
-  investigation: Investigation | null | undefined
+  investigation: Investigation | null | undefined,
+  inRing: boolean
 ): HTMLSpanElement | null {
   if (!investigation) {
     return null;
@@ -36,7 +37,7 @@ function buildVerdictPill(
     return span;
   }
 
-  const normalized = bonNormalizeInvestigation(investigation);
+  const normalized = bonNormalizeInvestigation(investigation, inRing);
   if (!normalized.verdict) {
     return null;
   }
@@ -51,7 +52,7 @@ export function bonPanelAppendStatPills(
   container: HTMLElement,
   report: Report | null | undefined
 ): void {
-  const verdictPill = buildVerdictPill(report?.investigation);
+  const verdictPill = buildVerdictPill(report?.investigation, !!report?.ringId);
 
   if (verdictPill) {
     container.appendChild(verdictPill);

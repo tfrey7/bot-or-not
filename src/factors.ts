@@ -27,6 +27,7 @@ export const BON_FACTORS: readonly FactorMeta[] = [
   { key: "moderator_removal_history", label: "Moderator removal history" },
   { key: "posting_volume", label: "Posting volume" },
   { key: "moderated_subreddits", label: "Moderated subreddits" },
+  { key: "promotional_account", label: "Promotional account" },
 ];
 
 export const BON_FACTOR_KEYS: readonly string[] = BON_FACTORS.map(
@@ -40,7 +41,7 @@ export const BON_FACTOR_LABELS: Record<string, string> = Object.fromEntries(
 export interface ArchetypeMeta {
   key: ArchetypeKey;
   label: string;
-  color: string;
+  hue: number;
 }
 
 // Persona archetype axes for the radar chart. Each is an independent 0–1
@@ -48,8 +49,10 @@ export interface ArchetypeMeta {
 // must keep the same keys, in the same order, since the chart walks this list
 // to lay out vertices clockwise from the top.
 //
-// `label` is the short tag rendered next to the axis. `color` is a CSS var
-// used to tint the data polygon when this axis is the dominant pick.
+// `hue` positions the archetype on the HSL color wheel (0–360). The persona
+// card's accent is computed from this hue, and when a blend kicks in the hue
+// is interpolated along the shorter arc — so combo titles get a naturally
+// in-between color (Cam Hustler = hustler teal pulled toward thirst magenta).
 //
 // Axes describe flavors of *human* behavior. `bot` is not on the radar — the
 // bot↔human verdict already answers that question, so giving it a spoke would
@@ -57,13 +60,13 @@ export interface ArchetypeMeta {
 // (an account that isn't a flavor of human is still labelled, just with an
 // empty radar).
 export const BON_ARCHETYPES: readonly ArchetypeMeta[] = [
-  { key: "stan", label: "Stan", color: "var(--bon-stamp-amber)" },
-  { key: "farmer", label: "Farmer", color: "var(--bon-stamp-blue)" },
-  { key: "teen", label: "Teen", color: "var(--bon-stamp-moss)" },
-  { key: "thirst", label: "Thirst", color: "var(--bon-stamp-rust)" },
-  { key: "crank", label: "Crank", color: "var(--bon-stamp-red)" },
-  { key: "hustler", label: "Hustler", color: "var(--bon-stamp-forest)" },
-  { key: "doomer", label: "Doomer", color: "var(--bon-stamp-slate)" },
+  { key: "stan", label: "Stan", hue: 45 },
+  { key: "farmer", label: "Farmer", hue: 210 },
+  { key: "teen", label: "Teen", hue: 95 },
+  { key: "thirst", label: "Thirst", hue: 320 },
+  { key: "crank", label: "Crank", hue: 0 },
+  { key: "hustler", label: "Hustler", hue: 155 },
+  { key: "doomer", label: "Doomer", hue: 260 },
 ];
 
 export const BON_ARCHETYPE_KEYS: readonly ArchetypeKey[] = BON_ARCHETYPES.map(

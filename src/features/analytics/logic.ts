@@ -6,6 +6,9 @@
 import type {
   ClaudeUsage,
   Investigation,
+  RedditEndpoint,
+  RedditFetchMetric,
+  RedditMetrics,
   Report,
   RunSnapshot,
   Verdict,
@@ -39,6 +42,7 @@ export interface AnalyticsEntry {
   commentsFetched: number;
   calls: AnalyticsCall[];
   totalCost: number;
+  redditMetrics: RedditMetrics | null;
 }
 
 export interface AnalyticsModelTotals {
@@ -80,6 +84,29 @@ export interface AnalyticsSummary {
   runsPerActiveDay: number;
   recentCost: number;
   recentDays: number;
+  reddit: AnalyticsRedditSummary;
+}
+
+export interface AnalyticsEndpointTotals {
+  endpoint: RedditEndpoint;
+  fetches: number;
+  errors: number;
+  totalDurationMs: number;
+  durations: number[];
+  totalItems: number;
+  itemSamples: number;
+  errorStatuses: Record<string, number>;
+}
+
+export interface AnalyticsRedditSummary {
+  runsWithMetrics: number;
+  totalFetches: number;
+  totalErrors: number;
+  errorRate: number;
+  avgWallClockMs: number;
+  medianWallClockMs: number;
+  p95WallClockMs: number;
+  endpoints: AnalyticsEndpointTotals[];
 }
 
 // Anything with the per-run fields buildAnalyticsEntry looks at.
@@ -153,7 +180,126 @@ function buildAnalyticsEntry(username: string, run: RunLike): AnalyticsEntry {
     commentsFetched: run.commentsFetched || 0,
     calls,
     totalCost,
+    redditMetrics:
+      "redditMetrics" in run && run.redditMetrics ? run.redditMetrics : null,
   };
+}
+
+// All five Reddit endpoints we currently hit. Listed explicitly (rather
+// than derived from observed metrics) so the per-endpoint chart always
+// renders the same row order even when an endpoint has zero fetches.
+const BON_REDDIT_ENDPOINTS: RedditEndpoint[] = [
+  "about",
+  "submitted",
+  "comments",
+  "moderated",
+  "botbouncer",
+];
+
+export function bonSummarizeRedditMetrics(
+  runs: AnalyticsEntry[]
+): AnalyticsRedditSummary {
+  const totals: Record<RedditEndpoint, AnalyticsEndpointTotals> = {} as Record<
+    RedditEndpoint,
+    AnalyticsEndpointTotals
+  >;
+
+  for (const endpoint of BON_REDDIT_ENDPOINTS) {
+    totals[endpoint] = {
+      endpoint,
+      fetches: 0,
+      errors: 0,
+      totalDurationMs: 0,
+      durations: [],
+      totalItems: 0,
+      itemSamples: 0,
+      errorStatuses: {},
+    };
+  }
+
+  const wallClocks: number[] = [];
+  let runsWithMetrics = 0;
+  let totalFetches = 0;
+  let totalErrors = 0;
+
+  for (const run of runs) {
+    if (!run.redditMetrics) {
+      continue;
+    }
+
+    runsWithMetrics++;
+    if (run.redditMetrics.totalDurationMs > 0) {
+      wallClocks.push(run.redditMetrics.totalDurationMs);
+    }
+
+    for (const fetch of run.redditMetrics.fetches) {
+      const bucket = totals[fetch.endpoint];
+      if (!bucket) {
+        continue;
+      }
+
+      bucket.fetches++;
+      totalFetches++;
+      bucket.totalDurationMs += fetch.durationMs;
+      bucket.durations.push(fetch.durationMs);
+
+      if (fetch.status === "error") {
+        bucket.errors++;
+        totalErrors++;
+        const statusKey = fetch.httpStatus
+          ? String(fetch.httpStatus)
+          : "network";
+        bucket.errorStatuses[statusKey] =
+          (bucket.errorStatuses[statusKey] || 0) + 1;
+      }
+
+      if (typeof fetch.itemCount === "number") {
+        bucket.totalItems += fetch.itemCount;
+        bucket.itemSamples++;
+      }
+    }
+  }
+
+  wallClocks.sort((a, b) => a - b);
+  const sumWall = wallClocks.reduce((acc, value) => acc + value, 0);
+
+  return {
+    runsWithMetrics,
+    totalFetches,
+    totalErrors,
+    errorRate: totalFetches ? totalErrors / totalFetches : 0,
+    avgWallClockMs: wallClocks.length ? sumWall / wallClocks.length : 0,
+    medianWallClockMs: bonPercentile(wallClocks, 0.5),
+    p95WallClockMs: bonPercentile(wallClocks, 0.95),
+    endpoints: BON_REDDIT_ENDPOINTS.map((endpoint) => totals[endpoint]),
+  };
+}
+
+export function bonAnalyticsRedditFetchTimeline(
+  runs: AnalyticsEntry[]
+): Array<{ runAt: number; totalDurationMs: number; hadError: boolean }> {
+  const out: Array<{
+    runAt: number;
+    totalDurationMs: number;
+    hadError: boolean;
+  }> = [];
+
+  for (const run of runs) {
+    if (!run.redditMetrics || !run.runAt) {
+      continue;
+    }
+
+    out.push({
+      runAt: run.runAt,
+      totalDurationMs: run.redditMetrics.totalDurationMs,
+      hadError: run.redditMetrics.fetches.some(
+        (fetch: RedditFetchMetric) => fetch.status === "error"
+      ),
+    });
+  }
+
+  out.sort((a, b) => a.runAt - b.runAt);
+  return out;
 }
 
 export function bonAnalyticsSummarize(
@@ -187,6 +333,16 @@ export function bonAnalyticsSummarize(
     runsPerActiveDay: 0,
     recentCost: 0,
     recentDays: 7,
+    reddit: {
+      runsWithMetrics: 0,
+      totalFetches: 0,
+      totalErrors: 0,
+      errorRate: 0,
+      avgWallClockMs: 0,
+      medianWallClockMs: 0,
+      p95WallClockMs: 0,
+      endpoints: [],
+    },
   };
   const durations: number[] = [];
   const days = new Set<string>();

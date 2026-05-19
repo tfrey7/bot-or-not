@@ -10,7 +10,8 @@ import {
 } from "../../verdict.ts";
 
 export function bonReportsVerdictBadge(
-  rawInvestigation: Investigation | null | undefined
+  rawInvestigation: Investigation | null | undefined,
+  inRing = false
 ): HTMLSpanElement | null {
   if (!rawInvestigation) {
     return null;
@@ -37,7 +38,7 @@ export function bonReportsVerdictBadge(
     return span;
   }
 
-  const investigation = bonNormalizeInvestigation(rawInvestigation);
+  const investigation = bonNormalizeInvestigation(rawInvestigation, inRing);
 
   if (!investigation.verdict) {
     return null;

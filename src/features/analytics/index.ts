@@ -18,14 +18,19 @@ import { bonAnalyticsActivityChart } from "./chart_activity.ts";
 import { bonAnalyticsChartCard } from "./chart_card.ts";
 import { bonAnalyticsCostChart } from "./chart_cost.ts";
 import { bonAnalyticsDurationChart } from "./chart_duration.ts";
+import { bonAnalyticsRedditDurationChart } from "./chart_reddit_duration.ts";
+import { bonAnalyticsRedditEndpointTimingChart } from "./chart_reddit_endpoint_timing.ts";
 import { bonAnalyticsTokenMix } from "./chart_tokens.ts";
 import {
   bonAnalyticsCollect,
   bonAnalyticsSummarize,
+  bonSummarizeRedditMetrics,
   type AnalyticsSummary,
 } from "./logic.ts";
+import { bonAnalyticsRedditStatGrid } from "./reddit_stat_grid.ts";
 import { bonAnalyticsStatGrid } from "./stat_grid.ts";
 import { bonAnalyticsModelsTable } from "./table_models.ts";
+import { bonAnalyticsRedditEndpointsTable } from "./table_reddit_endpoints.ts";
 import { bonAnalyticsRunLog } from "./table_run_log.ts";
 import { bonAnalyticsTopSpenders } from "./table_top_spenders.ts";
 
@@ -98,9 +103,58 @@ export function bonRenderAnalytics(
   section.appendChild(bonAnalyticsModelsTable(runs));
   section.appendChild(bonAnalyticsTopSpenders(runs));
   section.appendChild(bonAnalyticsRunLog(runs));
+
+  // Reddit metrics include errored investigations — the failure modes
+  // (rate limits, suspended users) are exactly what we want to surface.
+  const redditEligible = investigations.filter(
+    (entry) => entry.status === "done" || entry.status === "error"
+  );
+  const reddit = bonSummarizeRedditMetrics(redditEligible);
+
+  if (reddit.runsWithMetrics > 0) {
+    section.appendChild(buildRedditHeader(reddit.runsWithMetrics));
+    section.appendChild(bonAnalyticsRedditStatGrid(reddit));
+
+    const redditCharts = document.createElement("div");
+    redditCharts.className = "bon-analytics-charts";
+
+    redditCharts.appendChild(
+      bonAnalyticsChartCard(
+        "Per-endpoint timing",
+        "median bar · p95 marker · error count on the right",
+        bonAnalyticsRedditEndpointTimingChart(reddit)
+      )
+    );
+    redditCharts.appendChild(
+      bonAnalyticsChartCard(
+        "Wall-clock per investigation",
+        `total round-trip time (all endpoints in parallel) — ${reddit.runsWithMetrics} run${reddit.runsWithMetrics === 1 ? "" : "s"}`,
+        bonAnalyticsRedditDurationChart(redditEligible)
+      )
+    );
+    section.appendChild(redditCharts);
+    section.appendChild(bonAnalyticsRedditEndpointsTable(reddit));
+  }
+
   section.appendChild(buildFootnote(summary));
 
   container.appendChild(section);
+}
+
+function buildRedditHeader(runsWithMetrics: number): HTMLElement {
+  const header = document.createElement("header");
+  header.className = "bon-analytics-subhead";
+
+  const h2 = document.createElement("h2");
+  h2.textContent = "Reddit performance";
+  header.appendChild(h2);
+
+  const sub = document.createElement("p");
+  sub.className = "bon-analytics-subtitle";
+  sub.textContent = `Per-endpoint timing, payload, and failure across ${runsWithMetrics} investigation${runsWithMetrics === 1 ? "" : "s"} with captured fetch metrics.`;
+  header.appendChild(sub);
+
+  return header;
 }
 
 // Page chrome — three tiny helpers used only by the orchestrator. Kept

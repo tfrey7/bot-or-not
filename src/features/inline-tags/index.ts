@@ -5,6 +5,7 @@
 // links.
 
 import { bonCssEscape } from "../../utils/format_text.ts";
+import { bonRingChip } from "../../utils/ring_chip.ts";
 import {
   bonInlineTagIsAvatarLink,
   bonInlineTagLabel,
@@ -105,7 +106,13 @@ export function bonInlineTagsMark(): void {
         return;
       }
 
-      anchor.insertAdjacentElement("afterend", buildUserTag(info));
+      const tag = buildUserTag(info);
+      anchor.insertAdjacentElement("afterend", tag);
+
+      const ringChip = bonRingChip(info.ringId ?? null);
+      if (ringChip) {
+        tag.insertAdjacentElement("afterend", ringChip);
+      }
     });
 }
 
@@ -114,7 +121,13 @@ function refreshUserTag(username: string): void {
 
   document
     .querySelectorAll(`.bon-user-tag[data-bon-tag-for="${bonCssEscape(key)}"]`)
-    .forEach((tag) => tag.remove());
+    .forEach((tag) => {
+      const next = tag.nextElementSibling;
+      if (next?.classList.contains("bon-ring-chip")) {
+        next.remove();
+      }
+      tag.remove();
+    });
 
   document
     .querySelectorAll<HTMLAnchorElement>('a[href*="/user/"], a[href*="/u/"]')
@@ -137,6 +150,7 @@ function refreshUserTag(username: string): void {
 
 function resetAndMarkAll(): void {
   document.querySelectorAll(".bon-user-tag").forEach((tag) => tag.remove());
+  document.querySelectorAll(".bon-ring-chip").forEach((chip) => chip.remove());
   document
     .querySelectorAll<HTMLAnchorElement>("a[data-bon-marked]")
     .forEach((anchor) => delete anchor.dataset.bonMarked);

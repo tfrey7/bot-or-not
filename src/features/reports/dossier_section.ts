@@ -4,6 +4,7 @@
 
 import type { ContextItem } from "../../types.ts";
 import { bonFormatDate } from "../../utils/format_time.ts";
+import { bonLinkifyReddit } from "../../utils/linkify_reddit.ts";
 
 function resolveUrl(permalink: string): string {
   if (permalink.startsWith("http")) {
@@ -78,14 +79,14 @@ function renderItem(item: ContextItem, username: string): HTMLLIElement {
   if (item.title) {
     const title = document.createElement("p");
     title.className = "bon-dossier-item__title";
-    title.textContent = item.title;
+    title.appendChild(bonLinkifyReddit(item.title));
     listItem.appendChild(title);
   }
 
   if (item.body) {
     const body = document.createElement("p");
     body.className = "bon-dossier-item__body";
-    body.textContent = item.body;
+    body.appendChild(bonLinkifyReddit(item.body));
     listItem.appendChild(body);
   }
 

@@ -19,6 +19,8 @@ import type {
   Factor,
   Persona,
   ProfileSummary,
+  RedditFetchMetric,
+  RedditMetrics,
   RedditProfile,
   Verdict,
 } from "../../types.ts";
@@ -29,8 +31,10 @@ import { bonComputeVerdict } from "../../verdict.ts";
 import { bonCallClaude } from "./api.ts";
 import {
   bonFetchBotBouncerStatus,
+  BON_REDDIT_DEEP_FETCH_LIMIT,
   bonFetchRedditActivity,
   bonFetchRedditProfile,
+  RedditFetchError,
 } from "./fetch.ts";
 import { bonSummarizeProfile } from "./summarize.ts";
 
@@ -49,6 +53,7 @@ export interface GatheredProfile {
   raw: RedditProfile;
   botBouncerStatus: BotBouncerStatus;
   botBouncerCheckedAt: number | null;
+  redditMetrics: RedditMetrics;
 }
 
 export interface OneDAnalysisResult {
@@ -68,7 +73,8 @@ export interface OneDAnalysisResult {
 export async function bonFetchUserActivity(
   username: string
 ): Promise<ActivityData> {
-  return bonExtractActivityData(await bonFetchRedditActivity(username));
+  const { activity } = await bonFetchRedditActivity(username);
+  return bonExtractActivityData(activity, BON_REDDIT_DEEP_FETCH_LIMIT);
 }
 
 // Fetch + summarize the account once so the analyzer works from a
@@ -77,30 +83,69 @@ export async function bonGatherProfile(
   username: string,
   extra: GatherProfileExtra = {}
 ): Promise<GatheredProfile> {
-  const [raw, freshBotBouncerStatus] = await Promise.all([
+  const wallStart = performance.now();
+
+  // BotBouncer never throws — its fetch result is folded back into the
+  // metrics regardless. Profile may throw RedditFetchError on a critical
+  // miss; we want the partial metrics + the botbouncer metric on that
+  // path too, so use Promise.allSettled.
+  const [profileSettled, botBouncerSettled] = await Promise.allSettled([
     bonFetchRedditProfile(username),
     bonFetchBotBouncerStatus(username),
   ]);
 
+  const botBouncerResult =
+    botBouncerSettled.status === "fulfilled" ? botBouncerSettled.value : null;
+
+  const totalDurationMs = Math.round(performance.now() - wallStart);
+
+  if (profileSettled.status === "rejected") {
+    const reason = profileSettled.reason;
+    const profileFetches: RedditFetchMetric[] =
+      reason instanceof RedditFetchError ? reason.metrics.fetches : [];
+    const combined: RedditMetrics = {
+      fetches: [
+        ...profileFetches,
+        ...(botBouncerResult ? [botBouncerResult.metric] : []),
+      ],
+      totalDurationMs,
+    };
+    throw new RedditFetchError(
+      reason instanceof Error ? reason.message : String(reason),
+      combined
+    );
+  }
+
+  const { profile, fetches: profileFetches } = profileSettled.value;
+  const redditMetrics: RedditMetrics = {
+    fetches: [
+      ...profileFetches,
+      ...(botBouncerResult ? [botBouncerResult.metric] : []),
+    ],
+    totalDurationMs,
+  };
+
+  const freshBotBouncerStatus = botBouncerResult?.status ?? null;
   const botBouncerStatus: BotBouncerStatus =
     freshBotBouncerStatus ?? extra.botBouncerStatus ?? null;
   const botBouncerCheckedAt: number | null = freshBotBouncerStatus
     ? Date.now()
     : (extra.botBouncerCheckedAt ?? null);
 
-  const summary = bonSummarizeProfile(username, raw, {
+  const summary = bonSummarizeProfile(username, profile, {
     ...(botBouncerStatus ? { botBouncerStatus } : {}),
     ...(botBouncerCheckedAt != null ? { botBouncerCheckedAt } : {}),
     contextItems: extra.contextItems,
   });
-  const activityData = bonExtractActivityData(raw);
+  const activityData = bonExtractActivityData(profile);
 
   return {
     summary,
     activityData,
-    raw,
+    raw: profile,
     botBouncerStatus,
     botBouncerCheckedAt,
+    redditMetrics,
   };
 }
 
@@ -175,6 +220,7 @@ export interface InvestigateUserResult extends OneDAnalysisResult {
   activityData: ActivityData;
   botBouncerStatus: BotBouncerStatus;
   botBouncerCheckedAt: number | null;
+  redditMetrics: RedditMetrics;
 }
 
 // Single-call entry point: fetch the profile, run the 1D analyzer,
@@ -196,5 +242,8 @@ export async function bonInvestigateUser(
     activityData: gathered.activityData,
     botBouncerStatus: gathered.botBouncerStatus,
     botBouncerCheckedAt: gathered.botBouncerCheckedAt,
+    redditMetrics: gathered.redditMetrics,
   };
 }
+
+export { RedditFetchError };

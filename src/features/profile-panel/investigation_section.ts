@@ -13,7 +13,10 @@ export function bonPanelBuildInvestigationSection(
   _username: string,
   report: Report | null | undefined
 ): HTMLDivElement {
-  const investigation = bonNormalizeInvestigation(report?.investigation);
+  const investigation = bonNormalizeInvestigation(
+    report?.investigation,
+    !!report?.ringId
+  );
 
   const section = document.createElement("div");
   section.className = "bon-panel-section";

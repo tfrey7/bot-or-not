@@ -1,0 +1,281 @@
+/* Diagnostics tab — labeled key/value blocks for the record inspector,
+   compact tables for the count breakdowns, and an error list. Inherits
+   the --bon-* tokens from reports.css and the .bon-analytics-* layout
+   primitives from analytics/styles.css. */
+
+.bon-diagnostics {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5em;
+}
+
+.bon-diag-tables {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(18em, 1fr));
+  gap: 1em;
+}
+
+.bon-diag-table,
+.bon-diag-section {
+  background: var(--bon-surface);
+  border: 1px solid var(--bon-border);
+  border-radius: 0.5em;
+  padding: 1em 1.1em;
+  box-shadow: var(--bon-shadow-sm);
+}
+
+.bon-diag-table-title,
+.bon-diag-section-title {
+  margin: 0 0 0.6em;
+  font-family: var(--bon-font-mono);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--bon-muted);
+}
+
+.bon-diag-kv {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--bon-font-mono);
+  font-size: 0.82rem;
+  color: var(--bon-text-soft);
+  font-variant-numeric: tabular-nums;
+}
+
+.bon-diag-kv td {
+  padding: 0.25em 0.4em;
+  vertical-align: top;
+}
+
+.bon-diag-kv-label {
+  color: var(--bon-muted);
+  width: 12em;
+  padding-left: 0 !important;
+}
+
+.bon-diag-kv-value {
+  color: var(--bon-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.bon-diag-kv-hint {
+  color: var(--bon-muted-soft);
+  text-align: right;
+  padding-right: 0 !important;
+  font-size: 0.82em;
+}
+
+/* ---------- Error list ---------- */
+
+.bon-diag-error-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--bon-font-mono);
+  font-size: 0.82rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.bon-diag-error-table th {
+  text-align: left;
+  font-family: var(--bon-font-mono);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--bon-muted);
+  padding: 0.4em 0.5em 0.4em 0;
+  border-bottom: 1px solid var(--bon-border);
+}
+
+.bon-diag-error-table td {
+  padding: 0.45em 0.5em 0.45em 0;
+  border-bottom: 1px solid var(--bon-border);
+  vertical-align: top;
+}
+
+.bon-diag-error-user {
+  color: var(--bon-link);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.bon-diag-error-when {
+  color: var(--bon-muted);
+  white-space: nowrap;
+}
+
+.bon-diag-error-msg {
+  color: var(--bon-text-soft);
+  font-family: var(--bon-font-mono);
+  font-size: 0.82em;
+  word-break: break-word;
+}
+
+/* ---------- Inspector ---------- */
+
+.bon-diag-inspector {
+  display: flex;
+  flex-direction: column;
+  gap: 1em;
+}
+
+.bon-diag-picker {
+  appearance: none;
+  background: var(--bon-surface-soft);
+  border: 1px solid var(--bon-border);
+  border-radius: 0.4em;
+  padding: 0.5em 2em 0.5em 0.7em;
+  font-size: 0.95rem;
+  color: var(--bon-text);
+  max-width: 24em;
+  background-image: linear-gradient(
+    45deg,
+    transparent 50%,
+    var(--bon-muted) 50%
+  ),
+  linear-gradient(135deg, var(--bon-muted) 50%, transparent 50%);
+  background-position:
+    right 1em center,
+    right 0.65em center;
+  background-size:
+    0.35em 0.35em,
+    0.35em 0.35em;
+  background-repeat: no-repeat;
+  cursor: pointer;
+}
+
+.bon-diag-inspector-pane {
+  display: flex;
+  flex-direction: column;
+  gap: 1em;
+}
+
+.bon-diag-block {
+  background: var(--bon-surface-soft);
+  border: 1px solid var(--bon-border);
+  border-radius: 0.4em;
+  padding: 0.85em 1em;
+}
+
+.bon-diag-block-title {
+  margin: 0 0 0.5em;
+  font-family: var(--bon-font-mono);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--bon-muted);
+}
+
+.bon-diag-note {
+  margin: 0.6em 0 0;
+  padding-top: 0.6em;
+  border-top: 1px dashed var(--bon-border);
+  color: var(--bon-text-soft);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.bon-diag-empty {
+  margin: 0;
+  color: var(--bon-muted-soft);
+  font-size: 0.85rem;
+  font-style: italic;
+}
+
+/* ---------- Factor + run tables ---------- */
+
+.bon-diag-factor-table,
+.bon-diag-run-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--bon-font-mono);
+  font-size: 0.82rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.bon-diag-factor-table th,
+.bon-diag-run-table th {
+  text-align: left;
+  font-family: var(--bon-font-mono);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--bon-muted);
+  padding: 0.35em 0.5em 0.35em 0;
+  border-bottom: 1px solid var(--bon-border);
+}
+
+.bon-diag-factor-table td,
+.bon-diag-run-table td {
+  padding: 0.4em 0.5em 0.4em 0;
+  border-bottom: 1px solid var(--bon-border);
+  vertical-align: top;
+  color: var(--bon-text);
+}
+
+.bon-diag-factor-table tr:last-child td,
+.bon-diag-run-table tr:last-child td {
+  border-bottom: none;
+}
+
+.bon-diag-factor-key {
+  font-family: var(--bon-font-mono);
+  font-size: 0.78rem;
+  color: var(--bon-text-soft);
+  white-space: nowrap;
+}
+
+.bon-diag-factor-num {
+  font-variant-numeric: tabular-nums;
+  width: 4.5em;
+}
+
+.bon-diag-factor-reason {
+  color: var(--bon-text-soft);
+  line-height: 1.4;
+}
+
+/* ---------- List blocks ---------- */
+
+.bon-diag-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5em;
+}
+
+.bon-diag-list li {
+  padding: 0.4em 0;
+  border-bottom: 1px solid var(--bon-border);
+  display: flex;
+  flex-direction: column;
+  gap: 0.15em;
+}
+
+.bon-diag-list li:last-child {
+  border-bottom: none;
+}
+
+.bon-diag-list-meta {
+  font-family: var(--bon-font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  color: var(--bon-muted);
+}
+
+.bon-diag-list-link {
+  color: var(--bon-link);
+  text-decoration: none;
+  font-size: 0.9rem;
+  word-break: break-word;
+}
+
+.bon-diag-list-link:hover {
+  text-decoration: underline;
+}

@@ -7,6 +7,7 @@
 import { BON_FACTOR_KEYS, BON_FACTOR_LABELS } from "../../factors.ts";
 import type { Factor } from "../../types.ts";
 import { bonFormatVerdict } from "../../utils/format_text.ts";
+import { bonLinkifyReddit } from "../../utils/linkify_reddit.ts";
 import { bonScoreLeaning } from "../../utils/scoring.ts";
 import { bonReportsScoreBar } from "./score_bar.ts";
 
@@ -65,8 +66,13 @@ function renderMissingFactor(key: string): HTMLLIElement {
 }
 
 function renderFactor(factor: FactorWithExtras): HTMLLIElement {
+  const leaning =
+    typeof factor.score === "number"
+      ? bonScoreLeaning(factor.score, factor.confidence)
+      : "neutral";
+
   const listItem = document.createElement("li");
-  listItem.className = "bon-factor";
+  listItem.className = `bon-factor bon-factor--${leaning}`;
 
   const meta = document.createElement("div");
   meta.className = "bon-factor-meta";
@@ -80,8 +86,6 @@ function renderFactor(factor: FactorWithExtras): HTMLLIElement {
   header.appendChild(name);
 
   if (typeof factor.score === "number") {
-    const leaning = bonScoreLeaning(factor.score, factor.confidence);
-
     const pill = document.createElement("span");
     const pillClass =
       leaning === "likely-bot"
@@ -121,7 +125,7 @@ function renderFactor(factor: FactorWithExtras): HTMLLIElement {
   if (factor.reasoning) {
     const reasoning = document.createElement("div");
     reasoning.className = "bon-factor-reasoning";
-    reasoning.textContent = factor.reasoning;
+    reasoning.appendChild(bonLinkifyReddit(factor.reasoning));
     content.appendChild(reasoning);
   }
 
@@ -130,7 +134,7 @@ function renderFactor(factor: FactorWithExtras): HTMLLIElement {
     evidence.className = "bon-factor-evidence";
     for (const cite of factor.evidence) {
       const item = document.createElement("li");
-      item.textContent = cite;
+      item.appendChild(bonLinkifyReddit(cite));
       evidence.appendChild(item);
     }
     content.appendChild(evidence);

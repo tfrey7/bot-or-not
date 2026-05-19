@@ -13,6 +13,7 @@ export interface UserTagInfo {
   investigationStartedAt?: number | null;
   botBouncerStatus?: string | null;
   userStatus?: string | null;
+  ringId?: string | null;
 }
 
 export type TagVariant = string;
@@ -79,6 +80,9 @@ export function bonInlineTagTitle(
   }
   if (info.userStatus) {
     parts.push(`Account: ${info.userStatus}`);
+  }
+  if (info.ringId) {
+    parts.push(`Ring ${info.ringId}`);
   }
 
   return parts.join(" — ");

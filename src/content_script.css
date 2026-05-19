@@ -58,6 +58,35 @@
   animation: bon-user-tag-pulse 1.4s ease-in-out infinite;
 }
 
+.bon-ring-chip {
+  display: inline-flex;
+  align-items: center;
+  vertical-align: middle;
+  position: relative;
+  top: -0.05em;
+  margin: 0 0.25em;
+  padding: 0.05em 0.45em;
+  font-size: 0.72em;
+  font-weight: 600;
+  line-height: 1.4;
+  letter-spacing: 0.04em;
+  border-radius: 0.3em;
+  color: hsl(var(--bon-ring-hue, 40) 50% 22%);
+  background: hsl(var(--bon-ring-hue, 40) 32% 82%);
+  border: 1px solid rgba(0, 0, 0, 0.18);
+  white-space: nowrap;
+  user-select: none;
+  cursor: default;
+}
+
+@media (prefers-color-scheme: dark) {
+  .bon-ring-chip {
+    color: hsl(var(--bon-ring-hue, 40) 42% 78%);
+    background: hsl(var(--bon-ring-hue, 40) 24% 26%);
+    border-color: rgba(255, 255, 255, 0.14);
+  }
+}
+
 @keyframes bon-user-tag-pulse {
   0%,
   100% {
@@ -114,6 +143,9 @@
 
 .bon-profile-panel__header > .bon-panel-btn {
   flex-shrink: 0;
+  min-width: 2.1em;
+  justify-content: center;
+  text-align: center;
 }
 
 .bon-profile-panel__title {
@@ -163,8 +195,10 @@
 }
 
 .bon-profile-panel__preview .bon-profile-panel__toggle {
-  display: inline-block;
+  display: block;
   margin-top: 0.65em;
+  margin-left: auto;
+  width: fit-content;
 }
 
 .bon-stat-pill {
@@ -217,7 +251,7 @@
 }
 
 .bon-profile-panel__preview {
-  padding: 0.6em 0.85em 0.75em;
+  padding: 0.85em 1.1em 1em;
   cursor: pointer;
 }
 
@@ -231,10 +265,32 @@
   margin: 0;
 }
 
-.bon-profile-panel__reasons {
+.bon-top-reasons {
+  margin: 0.5em 0 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14em, 1fr));
+  gap: 0.6em 1.2em;
+}
+
+.bon-top-reasons__column {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35em;
+}
+
+.bon-top-reasons__heading {
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(128, 128, 128, 0.85);
+  margin: 0;
+}
+
+.bon-top-reasons__list {
   list-style: none;
   padding: 0;
-  margin: 0.5em 0 0;
+  margin: 0;
   display: grid;
   gap: 0.3em;
 }
@@ -383,8 +439,8 @@
 
 .bon-profile-panel__preview-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 14em;
-  gap: 1.1em;
+  grid-template-columns: minmax(0, 1fr) 13em;
+  gap: 1.75em;
   align-items: start;
 }
 
@@ -392,113 +448,98 @@
   min-width: 0;
 }
 
+.bon-profile-panel__preview-row > .bon-profile-panel__preview-summary {
+  padding-right: 1.75em;
+  border-right: 1px solid rgba(128, 128, 128, 0.18);
+}
+
 .bon-panel-persona {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  text-align: center;
-  padding: 0.65em 0.7em 0.75em;
-  border-radius: 0.45em;
-  background: rgba(128, 128, 128, 0.08);
-  border: 1px solid rgba(128, 128, 128, 0.18);
-  border-top: 3px solid var(--bon-panel-persona-accent, rgba(128, 128, 128, 0.55));
+  align-items: stretch;
+  text-align: left;
+  padding: 0;
+  /* Hue comes from inline style set by persona_strip.ts (bonPersonaHue).
+     Same HSL pair as the reports detail pane so the radar polygon renders
+     the identical color on both surfaces — see reports.css. bot/normal
+     personas have no hue and the overrides below swap the accent to a
+     neutral gray; the hsl() fallback never renders for them. */
+  --bon-persona-accent: hsl(var(--bon-persona-hue, 0) 60% 38%);
 }
 
-.bon-panel-persona__tag {
-  margin: 0 0 0.35em;
-  font-size: 0.62rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
-  color: rgba(128, 128, 128, 0.9);
+@media (prefers-color-scheme: dark) {
+  .bon-panel-persona {
+    --bon-persona-accent: hsl(var(--bon-persona-hue, 0) 65% 60%);
+  }
 }
 
 .bon-panel-persona__label {
-  margin: 0.1em 0 0.4em;
+  margin: 0 0 0.5em;
   font-size: 0.82rem;
   font-weight: 700;
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: var(--bon-panel-persona-accent, inherit);
+  text-align: center;
+  color: var(--bon-persona-accent, inherit);
 }
 
 .bon-panel-persona__blurb {
-  font-size: 0.75rem;
-  line-height: 1.45;
+  font-size: 0.78rem;
+  line-height: 1.55;
   margin: 0;
   color: inherit;
   opacity: 0.85;
 }
 
-.bon-panel-persona--bot {
-  --bon-panel-persona-accent: rgba(160, 160, 160, 0.85);
-}
-.bon-panel-persona--stan {
-  --bon-panel-persona-accent: #f1c40f;
-}
-.bon-panel-persona--farmer {
-  --bon-panel-persona-accent: #3498db;
-}
-.bon-panel-persona--teen {
-  --bon-panel-persona-accent: #16a085;
-}
-.bon-panel-persona--thirst {
-  --bon-panel-persona-accent: #e67e22;
-}
-.bon-panel-persona--crank {
-  --bon-panel-persona-accent: #e74c3c;
-}
-.bon-panel-persona--hustler {
-  --bon-panel-persona-accent: #27ae60;
-}
-.bon-panel-persona--doomer {
-  --bon-panel-persona-accent: #6c7a89;
-}
+.bon-panel-persona--bot,
 .bon-panel-persona--normal {
-  --bon-panel-persona-accent: rgba(160, 160, 160, 0.85);
+  --bon-persona-accent: rgba(160, 160, 160, 0.85);
 }
 
-.bon-panel-persona-radar {
+/* Radar widget — shared with reports detail pane via bonPersonaRadar.
+   Keep these rules in sync with .bon-radar-* in reports.css; both
+   surfaces consume --bon-persona-accent so a given persona renders the
+   identical polygon color on either page. */
+.bon-persona-radar {
   width: 100%;
   max-width: 11em;
   margin: 0 auto 0.25em;
   line-height: 0;
 }
-.bon-panel-persona-radar .bon-panel-radar {
+.bon-persona-radar .bon-radar {
   width: 100%;
   height: auto;
   display: block;
   overflow: visible;
 }
-.bon-panel-radar-grid {
+.bon-radar-grid {
   fill: rgba(128, 128, 128, 0.05);
   stroke: rgba(128, 128, 128, 0.3);
   stroke-width: 1;
 }
-.bon-panel-radar-grid--outer {
+.bon-radar-grid--outer {
   fill: none;
   stroke: rgba(128, 128, 128, 0.55);
   stroke-width: 1.25;
 }
-.bon-panel-radar-axis {
+.bon-radar-axis {
   stroke: rgba(128, 128, 128, 0.3);
   stroke-width: 1;
   stroke-dasharray: 2 3;
 }
-.bon-panel-radar-data {
-  fill: var(--bon-panel-persona-accent, rgba(128, 128, 128, 0.7));
-  fill-opacity: 0.28;
-  stroke: var(--bon-panel-persona-accent, rgba(128, 128, 128, 0.7));
+.bon-radar-data {
+  fill: var(--bon-persona-accent);
+  fill-opacity: 0.22;
+  stroke: var(--bon-persona-accent);
   stroke-width: 1.6;
   stroke-linejoin: round;
 }
-.bon-panel-radar-dot {
-  fill: var(--bon-panel-persona-accent, rgba(128, 128, 128, 0.7));
-  stroke: rgba(20, 20, 22, 0.6);
-  stroke-width: 1;
+.bon-radar-dot {
+  fill: var(--bon-persona-accent);
+  stroke: rgba(255, 255, 255, 0.55);
+  stroke-width: 1.2;
 }
-.bon-panel-radar-label {
-  font-family: inherit;
+.bon-radar-label {
   font-size: 9.5px;
   font-weight: 700;
   letter-spacing: 0.08em;
@@ -509,6 +550,13 @@
 @media (max-width: 36em) {
   .bon-profile-panel__preview-row {
     grid-template-columns: minmax(0, 1fr);
+    gap: 1.25em;
+  }
+  .bon-profile-panel__preview-row > .bon-profile-panel__preview-summary {
+    padding-right: 0;
+    padding-bottom: 1.25em;
+    border-right: none;
+    border-bottom: 1px solid rgba(128, 128, 128, 0.18);
   }
   .bon-panel-persona {
     max-width: 18em;
@@ -516,28 +564,25 @@
   }
 }
 
-.bon-panel-factor-signals {
-  margin: 0.9em 0 0;
-}
-
-.bon-panel-factor-signals__label {
-  font-size: 0.65rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: rgba(128, 128, 128, 0.9);
-  margin: 0 0 0.4em;
-}
-
-.bon-panel-factor-signals .bon-panel-factor-dots {
-  margin: 0;
-}
-
 .bon-panel-factor-dots {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: 0.35em;
-  margin: 0.65em 0 0;
+  margin: 0;
+}
+
+.bon-profile-panel__header > .bon-panel-factor-dots {
+  flex-shrink: 0;
+  flex-wrap: nowrap;
+  align-self: center;
+  gap: 0.3em;
+  line-height: 1;
+}
+
+.bon-profile-panel__header > .bon-panel-factor-dots .bon-panel-factor-dot {
+  width: 1.1em;
+  height: 1.1em;
 }
 
 .bon-panel-factor-dot {
@@ -853,6 +898,26 @@
 
 .bon-panel-reports a:hover {
   text-decoration: underline;
+}
+
+.bon-reddit-link {
+  color: #1f6fce;
+  text-decoration: underline;
+  text-decoration-color: rgba(31, 111, 206, 0.4);
+  text-underline-offset: 0.15em;
+}
+.bon-reddit-link:hover {
+  color: #155bb0;
+  text-decoration-color: currentColor;
+}
+@media (prefers-color-scheme: dark) {
+  .bon-reddit-link {
+    color: #8fbdec;
+    text-decoration-color: rgba(143, 189, 236, 0.4);
+  }
+  .bon-reddit-link:hover {
+    color: #b3d2f3;
+  }
 }
 
 .bon-panel-reports__more {

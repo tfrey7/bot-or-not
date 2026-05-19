@@ -60,6 +60,26 @@ export interface ClaudeUsage {
   };
 }
 
+export type RedditEndpoint =
+  | "about"
+  | "submitted"
+  | "comments"
+  | "moderated"
+  | "botbouncer";
+
+export interface RedditFetchMetric {
+  endpoint: RedditEndpoint;
+  durationMs: number;
+  status: "ok" | "error";
+  itemCount: number | null;
+  httpStatus: number | null;
+}
+
+export interface RedditMetrics {
+  fetches: RedditFetchMetric[];
+  totalDurationMs: number;
+}
+
 export interface RunSnapshot {
   runAt: number;
   durationMs: number | null;
@@ -73,6 +93,7 @@ export interface RunSnapshot {
   webSearchCount: number;
   postsFetched: number;
   commentsFetched: number;
+  redditMetrics: RedditMetrics | null;
   error: string | null;
 }
 
@@ -104,6 +125,7 @@ export interface Investigation {
   commentsFetched: number;
   accountCreatedAt: string | null;
   accountAgeDays: number | null;
+  redditMetrics: RedditMetrics | null;
   runs: RunSnapshot[];
 }
 
@@ -171,6 +193,7 @@ export interface Report {
   investigation: Investigation | null;
   activityData: ActivityData | null;
   contextItems: ContextItem[];
+  ringId: string | null;
 }
 
 // Profile summary handed to Claude as JSON. The prompt does the actual schema
@@ -295,6 +318,7 @@ export interface RedditAboutEnvelope {
 
 export interface RedditListing<T = Record<string, unknown>> {
   data?: {
+    after?: string | null;
     children?: Array<{ data?: T }>;
   };
 }

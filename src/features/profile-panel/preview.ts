@@ -4,61 +4,20 @@
 // there's no investigation to preview so the panel can fall back to a
 // single bare toggle row.
 
-import { bonNormalizeInvestigation, bonTopReasons } from "../../verdict.ts";
-import { BON_FACTOR_LABELS } from "../../factors.ts";
-import type { Factor, Report } from "../../types.ts";
-import { bonScoreLeaning } from "../../utils/scoring.ts";
-import { bonPanelBuildFactorDots } from "./factor_dots.ts";
-import { bonPanelBuildPersonaStrip } from "./persona_radar.ts";
-
-function buildTopReasonsList(factors: Factor[]): HTMLUListElement | null {
-  const topReasons = bonTopReasons(factors, 3);
-
-  if (!topReasons.length) {
-    return null;
-  }
-
-  const ul = document.createElement("ul");
-  ul.className = "bon-profile-panel__reasons";
-
-  for (const factor of topReasons) {
-    const li = document.createElement("li");
-    const leaning = bonScoreLeaning(factor.score, factor.confidence);
-
-    li.className = `bon-reason bon-reason--${leaning}`;
-
-    const bullet = document.createElement("span");
-    bullet.className = "bon-reason__bullet";
-    bullet.setAttribute("aria-hidden", "true");
-    li.appendChild(bullet);
-
-    const text = document.createElement("span");
-    text.className = "bon-reason__text";
-
-    const label = document.createElement("strong");
-    label.textContent =
-      BON_FACTOR_LABELS[factor.key] ??
-      (factor as { name?: string }).name ??
-      factor.key;
-
-    text.appendChild(label);
-
-    if (factor.reasoning) {
-      text.appendChild(document.createTextNode(` — ${factor.reasoning}`));
-    }
-
-    li.appendChild(text);
-    ul.appendChild(li);
-  }
-
-  return ul;
-}
+import { bonNormalizeInvestigation } from "../../verdict.ts";
+import type { Report } from "../../types.ts";
+import { bonLinkifyReddit } from "../../utils/linkify_reddit.ts";
+import { bonTopReasonsList } from "../../utils/top_reasons_list.ts";
+import { bonPanelBuildPersonaStrip } from "./persona_strip.ts";
 
 export function bonPanelBuildPreview(
   _username: string,
   report: Report | null | undefined
 ): HTMLDivElement | null {
-  const investigation = bonNormalizeInvestigation(report?.investigation);
+  const investigation = bonNormalizeInvestigation(
+    report?.investigation,
+    !!report?.ringId
+  );
   const hasFactors = (investigation?.factors.length ?? 0) > 0;
 
   if (!investigation?.summary && !hasFactors) {
@@ -74,33 +33,15 @@ export function bonPanelBuildPreview(
   if (investigation?.summary) {
     const summary = document.createElement("p");
     summary.className = "bon-profile-panel__summary";
-    summary.textContent = investigation.summary;
+    summary.appendChild(bonLinkifyReddit(investigation.summary));
     summaryCol.appendChild(summary);
   }
 
   if (investigation && hasFactors) {
-    const reasons = buildTopReasonsList(investigation.factors);
+    const reasons = bonTopReasonsList(investigation.factors);
     if (reasons) {
       summaryCol.appendChild(reasons);
     }
-  }
-
-  // Factor dot strip lives in the always-visible preview so the at-a-glance
-  // signal map is readable without expanding the panel. Each dot carries a
-  // hover-card popover with the full factor reasoning + evidence. Tucked
-  // under the summary in the left column so it fills the vertical space
-  // the persona card claims on the right.
-  if (investigation?.status === "done") {
-    const dotsGroup = document.createElement("div");
-    dotsGroup.className = "bon-panel-factor-signals";
-
-    const dotsLabel = document.createElement("p");
-    dotsLabel.className = "bon-panel-factor-signals__label";
-    dotsLabel.textContent = "Factor signals — hover for details";
-    dotsGroup.appendChild(dotsLabel);
-
-    dotsGroup.appendChild(bonPanelBuildFactorDots(investigation));
-    summaryCol.appendChild(dotsGroup);
   }
 
   const personaBlock = investigation?.persona?.label

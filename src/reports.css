@@ -188,7 +188,7 @@ body {
 }
 
 .bon-page {
-  max-width: 78em;
+  max-width: 104em;
   margin: 0 auto;
   padding: 1.5em 2em 5em;
 }
@@ -256,6 +256,46 @@ body {
   display: flex;
   gap: 0.5em;
   align-items: center;
+}
+
+/* ============================================================
+   Tabs
+   ============================================================ */
+
+.bon-tabs {
+  display: flex;
+  gap: 0.25em;
+  margin: 0 0 1.75em;
+  border-bottom: 1px solid var(--bon-border);
+}
+.bon-tab {
+  appearance: none;
+  background: none;
+  border: none;
+  padding: 0.55em 1em 0.7em;
+  margin-bottom: -1px;
+  font-family: var(--bon-font-mono);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--bon-muted);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition:
+    color 0.15s,
+    border-color 0.15s;
+}
+.bon-tab:hover {
+  color: var(--bon-text-soft);
+}
+.bon-tab--active,
+.bon-tab--active:hover {
+  color: var(--bon-text);
+  border-bottom-color: var(--bon-accent);
+}
+.bon-tab-panel[hidden] {
+  display: none;
 }
 
 /* ============================================================
@@ -339,6 +379,104 @@ body {
 }
 
 /* ============================================================
+   Master-detail split
+   ============================================================ */
+
+.bon-split {
+  display: grid;
+  /* List trimmed to ~40% so the detail pane carries the heavier reading;
+     the list table now has four columns (factor dots ride under the
+     username) so it can run comfortably narrow. */
+  grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+  gap: 1.5em;
+  align-items: start;
+}
+.bon-split-list {
+  min-width: 0;
+  position: sticky;
+  top: 1em;
+  align-self: start;
+}
+.bon-split-detail {
+  background: var(--bon-surface);
+  border: 1px solid var(--bon-border);
+  border-radius: 0.5em;
+  box-shadow: var(--bon-shadow-md);
+  min-width: 0;
+  position: sticky;
+  top: 1em;
+  align-self: start;
+  /* Establish a container so inner widgets (summary-row, persona) can
+     respond to the pane's actual inline size rather than the viewport.
+     Without this, the nested two-column summary/persona layout keeps its
+     side-by-side track even when the pane is squeezed, and the radar's
+     overflow:visible labels paint into the summary text. */
+  container-type: inline-size;
+  container-name: bon-detail;
+}
+.bon-split-list .bon-table tbody td,
+.bon-split-list .bon-table thead th {
+  padding-left: 0.45em;
+  padding-right: 0.45em;
+}
+.bon-split-list .bon-table tbody td:first-child,
+.bon-split-list .bon-table thead th:first-child {
+  padding-left: 0.85em;
+}
+.bon-split-list .bon-table tbody td:last-child,
+.bon-split-list .bon-table thead th:last-child {
+  padding-right: 0.65em;
+}
+.bon-split-list .bon-table tbody td {
+  padding-top: 0.7em;
+  padding-bottom: 0.7em;
+}
+.bon-split-list .bon-table thead th {
+  padding-top: 0.8em;
+  padding-bottom: 0.8em;
+}
+.bon-detail-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4em 2em;
+  text-align: center;
+  color: var(--bon-muted);
+  font-family: var(--bon-font-mono);
+  font-size: 0.82rem;
+  letter-spacing: 0.02em;
+  min-height: 18em;
+  gap: 0.4em;
+}
+.bon-detail-empty-icon {
+  font-size: 1.5rem;
+  opacity: 0.55;
+  margin-bottom: 0.4em;
+}
+/* Inside the detail pane the inner section padding had a deep left
+   indent meant to align with the row's expand caret. No caret here, so
+   restore symmetric padding. */
+.bon-split-detail .bon-detail-wrap {
+  padding: 2em 2.25em 2.25em;
+}
+.bon-split-detail > .bon-detail-wrap:first-child {
+  padding-top: 1.25em;
+}
+.bon-split-detail .bon-row-footer {
+  padding: 0.4em 2.25em 1.6em;
+}
+@media (max-width: 82em) {
+  .bon-split {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .bon-split-list,
+  .bon-split-detail {
+    position: static;
+  }
+}
+
+/* ============================================================
    Table
    ============================================================ */
 
@@ -355,6 +493,39 @@ table.bon-table {
   width: 100%;
   border-collapse: collapse;
   font-size: 0.875rem;
+}
+/* Single-column layout (below the split breakpoint): with auto layout the
+   USER column hoovers up all the leftover width because the factor-dot strip
+   is the widest content in the row, leaving REGION / AI VERDICT /
+   INVESTIGATED bunched against the right edge and a confusing empty gap
+   mid-row that reads like a missing column. Switch to fixed layout with
+   proportional widths so the spare spreads across all columns. Above the
+   breakpoint the table sits in a 2fr column that's already snug, so leave
+   the default auto layout alone. */
+@media (max-width: 82em) {
+  table.bon-table {
+    table-layout: fixed;
+  }
+  .bon-table th:nth-child(1),
+  .bon-table td:nth-child(1) {
+    width: 4%;
+  }
+  .bon-table th:nth-child(2),
+  .bon-table td:nth-child(2) {
+    width: 30%;
+  }
+  .bon-table th:nth-child(3),
+  .bon-table td:nth-child(3) {
+    width: 16%;
+  }
+  .bon-table th:nth-child(4),
+  .bon-table td:nth-child(4) {
+    width: 22%;
+  }
+  .bon-table th:nth-child(5),
+  .bon-table td:nth-child(5) {
+    width: 28%;
+  }
 }
 .bon-table thead th {
   text-align: left;
@@ -398,23 +569,28 @@ table.bon-table {
 }
 .bon-table tbody tr.bon-row-summary {
   transition: background 0.12s;
+  cursor: pointer;
 }
 .bon-table tbody tr.bon-row-summary:hover {
   background: var(--bon-row-hover);
 }
-.bon-row-history > td {
-  background: var(--bon-surface-soft);
-  padding: 0;
-}
-.bon-row-history[hidden] {
-  display: none;
+.bon-table tbody tr.bon-row-summary--selected,
+.bon-table tbody tr.bon-row-summary--selected:hover {
+  background: var(--bon-accent-soft);
+  box-shadow: inset 3px 0 0 var(--bon-accent);
 }
 
 .bon-username-cell {
   display: inline-flex;
-  align-items: baseline;
+  flex-direction: column;
+  align-items: flex-start;
   gap: 0.4em;
   min-width: 0;
+}
+.bon-username-cell-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
 }
 .bon-username-cell a {
   font-family: var(--bon-font-mono);
@@ -423,10 +599,22 @@ table.bon-table {
   letter-spacing: 0.01em;
   color: var(--bon-link);
   text-decoration: none;
+  white-space: nowrap;
 }
 .bon-username-cell a:hover {
   text-decoration: underline;
   color: var(--bon-link-hover);
+}
+
+.bon-reddit-link {
+  color: var(--bon-link);
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--bon-link) 40%, transparent);
+  text-underline-offset: 0.15em;
+}
+.bon-reddit-link:hover {
+  color: var(--bon-link-hover);
+  text-decoration-color: var(--bon-link-hover);
 }
 .bon-cell-muted {
   color: var(--bon-muted);
@@ -437,21 +625,6 @@ table.bon-table {
   text-align: right;
   font-variant-numeric: tabular-nums;
   font-weight: 500;
-}
-
-.bon-expand-btn {
-  background: none;
-  border: none;
-  cursor: pointer;
-  color: var(--bon-muted);
-  font-size: 0.85rem;
-  padding: 0;
-  line-height: 1;
-  width: 1.25em;
-  transition: transform 0.15s;
-}
-.bon-expand-btn[aria-expanded="true"] {
-  transform: rotate(90deg);
 }
 
 .bon-status-icon {
@@ -466,6 +639,60 @@ table.bon-table {
 .bon-bb-empty {
   color: var(--bon-muted-soft);
   font-size: 0.78rem;
+}
+
+.bon-ring-chip {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 0.4em;
+  padding: 0.05em 0.45em;
+  font-family: var(--bon-font-mono);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  line-height: 1.4;
+  border-radius: 0.3em;
+  background: hsl(var(--bon-ring-hue, 40) 32% 82%);
+  color: hsl(var(--bon-ring-hue, 40) 50% 22%);
+  border: 1px solid rgba(0, 0, 0, 0.18);
+  white-space: nowrap;
+  user-select: none;
+}
+
+@media (prefers-color-scheme: dark) {
+  .bon-ring-chip {
+    background: hsl(var(--bon-ring-hue, 40) 24% 26%);
+    color: hsl(var(--bon-ring-hue, 40) 42% 78%);
+    border-color: rgba(255, 255, 255, 0.14);
+  }
+}
+
+.bon-row-select-cell {
+  display: none;
+  width: 2em;
+  padding-left: 0.4em;
+  padding-right: 0;
+  text-align: center;
+}
+.bon-table-wrap--link-mode .bon-row-select-cell {
+  display: table-cell;
+}
+.bon-row-select-cell input[type="checkbox"] {
+  cursor: pointer;
+  margin: 0;
+}
+
+.bon-ring-status {
+  font-size: 0.85rem;
+  color: var(--bon-muted);
+  white-space: nowrap;
+}
+.bon-ring-status[hidden] {
+  display: none;
+}
+.bon-ring-status--error {
+  color: var(--bon-stamp-red);
+  font-weight: 500;
 }
 
 .bon-region-cell {
@@ -556,8 +783,9 @@ table.bon-table {
    ============================================================ */
 
 .bon-factors-cell {
-  display: inline-grid;
-  grid-template-columns: repeat(7, auto);
+  display: inline-flex;
+  flex-wrap: nowrap;
+  align-items: center;
   gap: 0.25em;
 }
 
@@ -771,101 +999,49 @@ table.bon-table {
   color: var(--bon-muted);
   font-size: 0.72rem;
 }
-.bon-actions-cell {
-  white-space: nowrap;
-  text-align: right;
-}
-.bon-actions-cell > button {
-  vertical-align: middle;
-}
-.bon-actions-cell > button + button {
-  margin-left: 0.4em;
-}
+/* ============================================================
+   Pagination footer
+   ============================================================ */
 
-.bon-investigate-btn {
-  appearance: none;
-  background: none;
-  border: none;
-  cursor: pointer;
-  font-size: 1rem;
-  padding: 0;
-  line-height: 1;
-  transition:
-    opacity 0.15s,
-    transform 0.15s;
+.bon-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75em;
+  margin-top: 0.85em;
+  padding: 0.5em 0.25em 0;
+  font-family: var(--bon-font-mono);
+  font-size: 0.74rem;
+  color: var(--bon-muted);
+  letter-spacing: 0.02em;
 }
-.bon-investigate-btn:hover {
-  transform: scale(1.15);
-  opacity: 0.85;
+.bon-pagination-caption {
+  font-variant-numeric: tabular-nums;
 }
-.bon-investigate-btn:disabled {
+.bon-pagination-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+}
+.bon-pagination-status {
+  font-variant-numeric: tabular-nums;
+  color: var(--bon-text-soft);
+  padding: 0 0.4em;
+}
+.bon-pagination-btn {
+  padding: 0.4em 0.75em;
+  font-size: 0.72rem;
+}
+.bon-pagination-btn:disabled {
+  opacity: 0.45;
   cursor: default;
-  opacity: 0.6;
-}
-.bon-investigate-btn.bon-spinning {
-  width: 0.95em;
-  height: 0.95em;
-  box-sizing: border-box;
-  border: 0.14em solid var(--bon-border-strong);
-  border-top-color: var(--bon-stamp-blue);
-  border-radius: 50%;
-  vertical-align: middle;
-  color: transparent;
-  animation: bon-spin 0.8s linear infinite;
-}
-.bon-investigate-btn.bon-spinning:hover {
-  transform: none;
-  opacity: 1;
-}
-
-.bon-investigate-btn.bon-progress {
-  width: 1.1em;
-  height: 1.1em;
-  box-sizing: border-box;
-  border-radius: 50%;
-  background: conic-gradient(
-    var(--bon-stamp-blue) var(--bon-progress, 0%),
-    var(--bon-border-strong) 0
-  );
-  vertical-align: middle;
-  color: transparent;
-  position: relative;
-  transition: background 0.4s linear;
-}
-.bon-investigate-btn.bon-progress::after {
-  content: "";
-  position: absolute;
-  inset: 0.22em;
   background: var(--bon-surface);
-  border-radius: 50%;
+  border-color: var(--bon-border);
+  color: var(--bon-muted);
 }
-.bon-investigate-btn.bon-progress--overtime {
-  background: conic-gradient(
-    var(--bon-stamp-rust) 100%,
-    var(--bon-stamp-rust) 0
-  );
-  animation: bon-pulse 1.4s ease-in-out infinite;
-}
-.bon-investigate-btn.bon-progress:hover {
-  transform: none;
-  opacity: 1;
-}
-@keyframes bon-pulse {
-  0%,
-  100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.55;
-  }
-}
-@keyframes bon-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+.bon-pagination-btn:disabled:hover {
+  background: var(--bon-surface);
+  border-color: var(--bon-border);
 }
 
 /* ============================================================
@@ -888,39 +1064,147 @@ table.bon-table {
   margin: 0 0 0.9em;
   font-weight: 700;
 }
+.bon-detail-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1em;
+  margin-bottom: 1.5em;
+  padding-bottom: 0.95em;
+  border-bottom: 1px solid var(--bon-border);
+}
+.bon-detail-header .bon-detail-title {
+  font-size: 0.95rem;
+  letter-spacing: 0.14em;
+  color: var(--bon-text);
+  margin: 0;
+}
+.bon-detail-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+}
 .bon-verdict-summary {
-  font-family: var(--bon-font-serif);
-  font-style: italic;
-  font-size: 1.4rem;
-  line-height: 1.32;
-  margin: 0 0 0.75em;
+  font-family: var(--bon-font-mono);
+  font-size: 0.85rem;
+  line-height: 1.6;
+  margin: 0 0 1.2em;
+  padding-left: 0.95em;
+  border-left: 2px solid var(--bon-border-strong);
   color: var(--bon-text);
   font-weight: 400;
-  letter-spacing: -0.005em;
 }
 .bon-verdict-meta {
   font-family: var(--bon-font-mono);
   font-size: 0.72rem;
   color: var(--bon-muted);
-  margin: 0 0 1.15em;
+  margin: 0 0 1.75em;
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.04em;
 }
+.bon-investigation-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 1em;
+  padding: 2.5em 1em 3em;
+  min-height: 22em;
+}
+.bon-investigation-loading__art {
+  display: block;
+  width: auto;
+  height: auto;
+  max-width: min(32em, 100%);
+  max-height: 18em;
+  object-fit: contain;
+  border-radius: 0.4em;
+  animation: bon-investigation-loading-breathe 3.6s ease-in-out infinite;
+}
+.bon-investigation-loading__caption {
+  font-family: var(--bon-font-serif);
+  font-style: italic;
+  font-size: 1.25rem;
+  color: var(--bon-text);
+  margin: 0;
+  letter-spacing: 0.01em;
+}
+.bon-investigation-loading__caption::after {
+  content: "";
+  display: inline-block;
+  width: 1.5em;
+  text-align: left;
+  animation: bon-investigation-loading-dots 1.6s steps(4, end) infinite;
+}
+.bon-investigation-loading__meta {
+  font-family: var(--bon-font-mono);
+  font-size: 0.72rem;
+  color: var(--bon-muted);
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
+}
+@keyframes bon-investigation-loading-breathe {
+  0%,
+  100% {
+    opacity: 0.92;
+    transform: translateY(0);
+  }
+  50% {
+    opacity: 1;
+    transform: translateY(-2px);
+  }
+}
+@keyframes bon-investigation-loading-dots {
+  0% {
+    content: "";
+  }
+  25% {
+    content: ".";
+  }
+  50% {
+    content: "..";
+  }
+  75% {
+    content: "...";
+  }
+}
 .bon-top-reasons {
-  list-style: none;
-  padding: 0.75em 0 0;
+  padding: 1.1em 0 0;
   margin: 0;
   display: grid;
-  gap: 0.5em;
+  grid-template-columns: repeat(auto-fit, minmax(20em, 1fr));
+  gap: 1.4em 2.5em;
   border-top: 1px solid var(--bon-border);
+}
+.bon-top-reasons__column {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75em;
+}
+.bon-top-reasons__heading {
+  font-family: var(--bon-font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--bon-muted);
+  margin: 0;
+}
+.bon-top-reasons__list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 0.7em;
 }
 .bon-top-reasons .bon-reason {
   display: flex;
   align-items: baseline;
-  gap: 0.65em;
+  gap: 0.75em;
   font-family: var(--bon-font-mono);
   font-size: 0.78rem;
-  line-height: 1.5;
+  line-height: 1.6;
   color: var(--bon-text-soft);
 }
 .bon-top-reasons .bon-reason__bullet {
@@ -956,17 +1240,29 @@ table.bon-table {
   padding: 0;
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(22em, 1fr));
-  gap: 1em;
+  gap: 1.4em 2.5em;
 }
 .bon-factor {
   font-family: var(--bon-font-mono);
   font-size: 0.78rem;
-  padding: 1.1em 1.3em 1.2em;
-  background: var(--bon-surface);
-  border: 1px solid var(--bon-border);
-  border-radius: 0.5em;
-  box-shadow: var(--bon-shadow-sm);
-  border-top: 3px solid var(--bon-border-strong);
+  padding: 0.15em 0 0.35em 1em;
+  --bon-factor-accent: var(--bon-border-strong);
+  border-left: 3px solid var(--bon-factor-accent);
+}
+.bon-factor--bot {
+  --bon-factor-accent: var(--bon-stamp-red);
+}
+.bon-factor--likely-bot {
+  --bon-factor-accent: var(--bon-stamp-rust);
+}
+.bon-factor--neutral {
+  --bon-factor-accent: var(--bon-stamp-charcoal);
+}
+.bon-factor--likely-human {
+  --bon-factor-accent: var(--bon-stamp-moss);
+}
+.bon-factor--human {
+  --bon-factor-accent: var(--bon-stamp-forest);
 }
 .bon-factor-meta {
   min-width: 0;
@@ -978,7 +1274,7 @@ table.bon-table {
   display: flex;
   align-items: center;
   gap: 0.6em;
-  margin-bottom: 0.7em;
+  margin-bottom: 0.85em;
 }
 .bon-factor-name {
   font-family: var(--bon-font-mono);
@@ -1014,9 +1310,8 @@ table.bon-table {
   background: var(--bon-warning-bg);
 }
 .bon-factor--new {
-  border-style: dashed;
-  background: var(--bon-warning-bg-soft);
-  border-top-style: dashed;
+  --bon-factor-accent: var(--bon-warning-accent);
+  border-left-style: dashed;
 }
 .bon-factor-reasoning--muted {
   color: var(--bon-muted);
@@ -1049,24 +1344,24 @@ table.bon-table {
   font-family: var(--bon-font-mono);
   font-size: 0.7rem;
   color: var(--bon-muted);
-  margin: 0 0 0.9em;
+  margin: 0 0 1.05em;
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.02em;
 }
 .bon-factor-reasoning {
   color: var(--bon-text-soft);
   margin: 0;
-  line-height: 1.65;
+  line-height: 1.7;
 }
 .bon-factor-evidence {
-  margin: 0.9em 0 0;
+  margin: 1.1em 0 0;
   padding-left: 1.25em;
   color: var(--bon-muted);
   font-size: 0.74rem;
-  line-height: 1.65;
+  line-height: 1.7;
 }
 .bon-factor-evidence li {
-  margin-bottom: 0.15em;
+  margin-bottom: 0.25em;
 }
 
 /* ============================================================
@@ -1263,6 +1558,7 @@ table.bon-table {
 .bon-row-footer {
   display: flex;
   justify-content: flex-end;
+  gap: 0.5em;
   padding: 0.4em 1.75em 1.4em 3.5em;
   background: var(--bon-surface-soft);
 }
@@ -1481,13 +1777,13 @@ table.bon-table {
 .bon-summary-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 16em;
-  gap: 1.75em;
+  gap: 2.25em;
   align-items: start;
-  margin-bottom: 1.15em;
+  margin-bottom: 1.75em;
 }
 .bon-summary-col {
   min-width: 0;
-  padding-right: 1.75em;
+  padding-right: 2.25em;
   border-right: 1px solid var(--bon-border);
 }
 .bon-summary-col > :last-child {
@@ -1497,64 +1793,31 @@ table.bon-table {
 .bon-persona {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  text-align: center;
-  padding: 0.9em 1em 1.1em;
-  background: var(--bon-surface);
-  border: 1px solid var(--bon-border);
-  border-top: 3px solid var(--bon-border-strong);
-  border-radius: 0.5em;
-  box-shadow: var(--bon-shadow-sm);
-  /* Per-archetype accent — overridden by .bon-persona--<label> below. The
-     radar polygon picks this up via currentColor + opacity, so a single var
-     swap re-tints the whole chart. */
-  --bon-persona-accent: var(--bon-stamp-charcoal);
+  align-items: stretch;
+  text-align: left;
+  padding: 0.1em 0 0;
+  /* Hue comes from inline style set by persona_block.ts (bonPersonaHue). The
+     archetype hues are spaced around the color wheel, so a blend interpolates
+     to a hue between them — Cam Hustler lands between hustler teal and thirst
+     magenta. bot/normal personas have no hue and the override below swaps the
+     accent to a neutral charcoal; the hsl() fallback never renders for them.
+     The same accent/lightness pair drives the radar on the profile panel,
+     so colors match across surfaces — see content_script.css. */
+  --bon-persona-accent: hsl(var(--bon-persona-hue, 0) 60% 38%);
 }
-.bon-persona--bot {
-  border-top-color: var(--bon-stamp-charcoal);
-  --bon-persona-accent: var(--bon-stamp-charcoal);
-}
-.bon-persona--stan {
-  border-top-color: var(--bon-stamp-amber);
-  --bon-persona-accent: var(--bon-stamp-amber);
-}
-.bon-persona--farmer {
-  border-top-color: var(--bon-stamp-blue);
-  --bon-persona-accent: var(--bon-stamp-blue);
-}
-.bon-persona--teen {
-  border-top-color: var(--bon-stamp-moss);
-  --bon-persona-accent: var(--bon-stamp-moss);
-}
-.bon-persona--thirst {
-  border-top-color: var(--bon-stamp-rust);
-  --bon-persona-accent: var(--bon-stamp-rust);
-}
-.bon-persona--crank {
-  border-top-color: var(--bon-stamp-red);
-  --bon-persona-accent: var(--bon-stamp-red);
-}
-.bon-persona--hustler {
-  border-top-color: var(--bon-stamp-forest);
-  --bon-persona-accent: var(--bon-stamp-forest);
-}
-.bon-persona--doomer {
-  border-top-color: var(--bon-stamp-slate);
-  --bon-persona-accent: var(--bon-stamp-slate);
-}
+.bon-persona--bot,
 .bon-persona--normal {
-  border-top-color: var(--bon-border-strong);
   --bon-persona-accent: var(--bon-stamp-charcoal);
 }
 
-.bon-persona-heading {
-  margin: 0 0 0.35em;
-  font-family: var(--bon-font-mono);
-  font-size: 0.62rem;
-  text-transform: uppercase;
-  letter-spacing: 0.16em;
-  color: var(--bon-muted);
-  font-weight: 700;
+@media (prefers-color-scheme: dark) {
+  .bon-persona {
+    --bon-persona-accent: hsl(var(--bon-persona-hue, 0) 65% 60%);
+  }
+  .bon-persona--bot,
+  .bon-persona--normal {
+    --bon-persona-accent: var(--bon-stamp-charcoal);
+  }
 }
 
 .bon-persona-radar {
@@ -1607,21 +1870,45 @@ table.bon-table {
 }
 
 .bon-persona-label {
-  margin: 0.1em 0 0.45em;
+  margin: 0 0 0.55em;
   font-family: var(--bon-font-mono);
   font-size: 0.88rem;
   font-weight: 700;
   letter-spacing: 0.2em;
   text-transform: uppercase;
+  text-align: center;
   color: var(--bon-persona-accent);
 }
 .bon-persona-blurb {
   margin: 0;
-  font-size: 0.8rem;
-  line-height: 1.45;
+  font-family: var(--bon-font-mono);
+  font-size: 0.78rem;
+  line-height: 1.55;
   color: var(--bon-text-soft);
 }
 
+/* Stack when the surrounding detail pane (not the viewport) is too narrow
+   to fit summary text + 16em persona card side-by-side. The persona's
+   radar uses overflow:visible, so a too-tight grid makes the labels
+   bleed into the summary column instead of being cleanly clipped. */
+@container bon-detail (max-width: 42em) {
+  .bon-summary-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .bon-summary-col {
+    padding-right: 0;
+    border-right: none;
+    padding-bottom: 1.25em;
+    border-bottom: 1px solid var(--bon-border);
+  }
+  .bon-persona {
+    max-width: 24em;
+    margin: 0 auto;
+  }
+}
+
+/* Fallback for any future call site that renders investigation_detail
+   outside the detail pane (currently none). */
 @media (max-width: 56em) {
   .bon-summary-row {
     grid-template-columns: minmax(0, 1fr);
