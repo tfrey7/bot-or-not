@@ -5,6 +5,10 @@
         {
           "version": "3.10.2",
           "update_link": "https://github.com/tfrey7/bot-or-not/releases/download/v3.10.2/fe5aa4514b5d4cb3aa94-3.10.2.xpi"
+        },
+        {
+          "version": "3.11.0",
+          "update_link": "https://github.com/tfrey7/bot-or-not/releases/download/v3.11.0/fe5aa4514b5d4cb3aa94-3.11.0.xpi"
         }
       ]
     }
