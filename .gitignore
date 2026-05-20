@@ -11,3 +11,6 @@ references/
 reddit-page.png
 .claude/
 dev/
+.dev-server.pid
+.dev-server.log
+.active-feature

@@ -43,11 +43,13 @@ export default defineConfig(({ mode }) => {
           mode === "development" ? { build: { watch: {} } } : undefined,
         webExtConfig: {
           startUrl: ["https://www.reddit.com/"],
-          // web-ext spins up a fresh profile on every dev run, so Firefox
-          // shows its "Welcome to Firefox" / first-run UI every time. These
-          // prefs make the new profile look like an upgraded existing one
-          // so the welcome modal, what's-new tab, and privacy first-run
-          // URL all stay out of the way of the Reddit start tab.
+          // Persistent profile shared across all worktrees so that switching
+          // which worktree is live (scripts/switch-dev.sh) doesn't lose
+          // extension storage, the open reports tab, or other Firefox state.
+          firefoxProfile: `${process.env.HOME}/.bot-or-not-dev-profile`,
+          keepProfileChanges: true,
+          // First-run prefs still useful for the very first launch when the
+          // persistent profile doesn't exist yet.
           pref: {
             "browser.aboutwelcome.enabled": false,
             "browser.startup.homepage_override.mstone": "ignore",
