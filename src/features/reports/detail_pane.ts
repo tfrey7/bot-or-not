@@ -10,9 +10,16 @@ import {
   bonReportsRenderInvestigateButton,
 } from "./cell_actions.ts";
 import { bonReportsRenderGoogleSearchButton } from "./cell_google_search.ts";
-import { bonReportsGoogleDossierSection } from "./google_dossier_section.ts";
+import {
+  bonReportsGoogleDossierCountFresh,
+  bonReportsGoogleDossierSection,
+} from "./google_dossier_section.ts";
 import { bonReportsInvestigationDetail } from "./investigation_detail.ts";
 import type { ReportRow } from "./logic.ts";
+import {
+  bonReportsPassiveHarvestCountFresh,
+  bonReportsPassiveHarvestSection,
+} from "./passive_harvest_section.ts";
 import { bonReportsProfileSection } from "./profile_section.ts";
 import { bonReportsRegionSection } from "./region_section.ts";
 import { bonReportsUserNotesSection } from "./user_notes_section.ts";
@@ -50,10 +57,20 @@ export function bonReportsDetailPane(
 
   const fragment = document.createDocumentFragment();
 
+  // Combined "new since last analysis" tally across both dossier sources
+  // (Google SERP + passive DOM scrape). The button surfaces a single
+  // number — operator-facing language stays source-agnostic since the
+  // re-investigation incorporates every new item regardless of origin.
+  const lastRunAt = investigation?.runAt ?? 0;
+  const freshHarvestCount =
+    bonReportsGoogleDossierCountFresh(report.googleHarvest, lastRunAt) +
+    bonReportsPassiveHarvestCountFresh(report.passiveHarvest, lastRunAt);
+
   const actions = [
     bonReportsRenderInvestigateButton(username, investigation, {
       expectedDurationMs,
       queueAhead,
+      freshHarvestCount,
       onNoApiKey,
       onInvestigate,
     }),
@@ -80,6 +97,15 @@ export function bonReportsDetailPane(
   const dossier = bonReportsGoogleDossierSection(report);
   if (dossier) {
     fragment.appendChild(dossier);
+  }
+
+  // Passive harvest: posts/comments the extension caught in feeds for
+  // this hidden-profile user. Returns null when the report has no
+  // harvested items yet (the common case until the operator browses
+  // somewhere this user has posted).
+  const passive = bonReportsPassiveHarvestSection(report);
+  if (passive) {
+    fragment.appendChild(passive);
   }
 
   // While a re-investigation is queued/running, the prior activity data

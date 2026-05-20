@@ -10,7 +10,11 @@
 //   /r/<sub>(/(new|hot|top|...))?          → subreddit
 //   everything else                        → other
 
-import type { GoogleHarvestPost, GoogleHarvestPostKind } from "../../types.ts";
+import type {
+  GoogleHarvestAttribution,
+  GoogleHarvestPost,
+  GoogleHarvestPostKind,
+} from "../../types.ts";
 import type { BonGoogleResult } from "./scrape.ts";
 
 // Pre-merge post shape. Identical to GoogleHarvestPost minus the
@@ -21,6 +25,20 @@ export type BonScrapedPost = Omit<
   GoogleHarvestPost,
   "firstSeenAt" | "lastSeenAt"
 >;
+
+// profile-root / profile-post URLs embed the username — those are
+// self-attributing without a Reddit fetch. Everything else has to go
+// through the attribution worker because Google may have matched the
+// username in someone else's reply or in a deleted comment.
+function initialAttribution(
+  kind: GoogleHarvestPostKind
+): GoogleHarvestAttribution {
+  if (kind === "profile-root" || kind === "profile-post") {
+    return "authored";
+  }
+
+  return "unknown";
+}
 
 // Returns the harvest minus the envelope timestamps + query — those are
 // added by the content script entry / merge layer.
@@ -135,6 +153,9 @@ export function bonGoogleHarvestParse(
       ageHint: extractAgeHint(result.snippet),
       commentCountHint: extractCommentCount(result.snippet),
       snippetText: result.snippet,
+      attribution: initialAttribution(classification.kind),
+      attributionCheckedAt: null,
+      attributionAttempts: 0,
     };
   });
 

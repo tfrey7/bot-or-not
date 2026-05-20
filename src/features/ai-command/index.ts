@@ -8,5 +8,7 @@ export {
 export { bonAiCommandFormatSummary } from "./format.ts";
 export {
   bonAiCommandBuildSnapshot,
+  bonAiCommandBuildUserDetails,
   type AiCommandSnapshotEntry,
+  type AiCommandUserDetails,
 } from "./snapshot.ts";

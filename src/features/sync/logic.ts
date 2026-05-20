@@ -192,6 +192,10 @@ function mergeOneReport(local: Report, incoming: Report): Required<Report> {
   const incomingHarvestAt = incoming.googleHarvest?.lastCapturedAt ?? 0;
   const useIncomingHarvest = incomingHarvestAt > localHarvestAt;
 
+  const localPassiveAt = local.passiveHarvest?.lastSeenAt ?? 0;
+  const incomingPassiveAt = incoming.passiveHarvest?.lastSeenAt ?? 0;
+  const useIncomingPassive = incomingPassiveAt > localPassiveAt;
+
   return {
     count: history.length,
     lastReportedAt: Math.max(local.lastReportedAt, incoming.lastReportedAt),
@@ -217,6 +221,12 @@ function mergeOneReport(local: Report, incoming: Report): Required<Report> {
     googleHarvest: useIncomingHarvest
       ? incoming.googleHarvest
       : local.googleHarvest,
+    profileHidden: useIncomingInvestigation
+      ? incoming.profileHidden
+      : local.profileHidden,
+    passiveHarvest: useIncomingPassive
+      ? incoming.passiveHarvest
+      : local.passiveHarvest,
   };
 }
 

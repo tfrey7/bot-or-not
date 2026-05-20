@@ -106,4 +106,21 @@ export const BON_AI_COMMAND_TOOLS: ClaudeToolSpec[] = [
       required: ["username", "status"],
     },
   },
+  {
+    name: "read_user_details",
+    description:
+      "Read the full stored dossier for one or more reported users — investigation summary, persona reasoning, per-factor reasoning and evidence, region call, operator's notes, and recent report history. Use this whenever the operator asks a question whose answer lives inside the stored prose (explaining a term used in a summary, comparing two users, recapping why a verdict landed where it did, recalling the operator's own notes, etc.). Resolve usernames against the snapshot before passing them.",
+    input_schema: {
+      type: "object",
+      properties: {
+        usernames: {
+          type: "array",
+          items: { type: "string" },
+          minItems: 1,
+          description: "Canonical usernames from the snapshot.",
+        },
+      },
+      required: ["usernames"],
+    },
+  },
 ];

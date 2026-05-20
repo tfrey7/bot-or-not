@@ -30,7 +30,11 @@ export const BON_REDDIT_PAGE_LIMIT = 100;
 // Target item count per listing (submitted / comments). The investigation
 // fetch paginates to this depth so the heatmap, calendar, region inference,
 // and timezone signal all share the same dataset as the AI verdict.
-export const BON_REDDIT_FETCH_LIMIT = 300;
+// 1000 is Reddit's hard ceiling on user-listing endpoints — going higher
+// would silently get clamped. Prolific posters whose recent-300 window
+// spans only a week or two get sampled as bot-shaped (topically monotone),
+// so we cast a wider net and let the AI see more variety.
+export const BON_REDDIT_FETCH_LIMIT = 1000;
 
 export class RedditFetchError extends Error {
   metrics: RedditMetrics;

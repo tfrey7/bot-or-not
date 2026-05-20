@@ -13,12 +13,29 @@ import { bonReportsOpenConfirmModal } from "./confirm_modal.ts";
 export interface InvestigateButtonOpts {
   expectedDurationMs: number | null;
   queueAhead: number;
+
+  // Combined count of dossier items (Google + passive) captured strictly
+  // after the last investigation run. Surfaces in the idle button label
+  // as "Re-Investigate · N new" so the operator sees, without scrolling
+  // to the dossier sections, that fresh evidence is waiting to be
+  // incorporated. Re-running stays a manual choice — investigations cost
+  // money.
+  freshHarvestCount?: number;
+
   onNoApiKey?: () => void;
   onInvestigate?: () => void;
 }
 
-function idleLabel(verdict: string | null | undefined): string {
-  return verdict ? "Re-Investigate" : "Investigate";
+function idleLabel(
+  verdict: string | null | undefined,
+  freshHarvestCount: number
+): string {
+  const base = verdict ? "Re-Investigate" : "Investigate";
+  if (freshHarvestCount > 0) {
+    return `${base} · ${freshHarvestCount} new`;
+  }
+
+  return base;
 }
 
 function queuedLabel(ahead: number): string {
@@ -35,6 +52,7 @@ export function bonReportsRenderInvestigateButton(
   {
     expectedDurationMs,
     queueAhead,
+    freshHarvestCount = 0,
     onNoApiKey,
     onInvestigate,
   }: InvestigateButtonOpts
@@ -47,6 +65,10 @@ export function bonReportsRenderInvestigateButton(
   const running = investigation?.status === "running";
   const stale = running && bonIsInvestigationStale(investigation);
   const verdict = investigation?.verdict;
+
+  if (freshHarvestCount > 0 && !queued && !running) {
+    button.classList.add("bon-btn--fresh-harvest");
+  }
 
   if (queued) {
     button.disabled = true;
@@ -73,8 +95,11 @@ export function bonReportsRenderInvestigateButton(
     button.textContent = "Retry stalled investigation";
     button.title = "Retry stalled investigation";
   } else {
-    button.textContent = idleLabel(verdict);
-    button.title = button.textContent;
+    button.textContent = idleLabel(verdict, freshHarvestCount);
+    button.title =
+      freshHarvestCount > 0
+        ? `${freshHarvestCount} item${freshHarvestCount === 1 ? "" : "s"} captured since last analysis — re-investigate to incorporate.`
+        : button.textContent;
   }
 
   button.setAttribute("aria-label", button.title);
@@ -95,7 +120,7 @@ export function bonReportsRenderInvestigateButton(
     } catch (error) {
       console.error("[Bot or Not] investigate failed", error);
       button.disabled = false;
-      button.textContent = idleLabel(verdict);
+      button.textContent = idleLabel(verdict, freshHarvestCount);
     }
   });
 

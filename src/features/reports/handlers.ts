@@ -255,12 +255,14 @@ export async function bonReportsUpdatePostStatus(
 
 const PERSONA_LABEL_SET = new Set<string>(BON_PERSONA_LABELS);
 
-// Single editable note + persona pick per username. Saving an empty rating
-// AND an empty note clears the record entirely so the detail pane returns
-// to its "no notes yet" state instead of holding onto an empty placeholder.
+// Editable note + persona picks per username. The picker is multi-select,
+// so `ratings` is an array (de-duped, preserves the user's pick order).
+// Saving an empty rating set AND an empty note clears the record entirely
+// so the detail pane returns to its "no notes yet" state instead of
+// holding onto an empty placeholder.
 export async function bonReportsSetUserNotes(
   username: string,
-  patch: { rating: string | null; note: string }
+  patch: { ratings: string[]; note: string }
 ): Promise<{ ok: boolean; userNotes: UserNotes | null }> {
   const reports = await bonReadReports();
   const key = bonFindReportKey(reports, username);
@@ -268,16 +270,29 @@ export async function bonReportsSetUserNotes(
     return { ok: false, userNotes: null };
   }
 
-  const rating: PersonaLabel | null =
-    typeof patch.rating === "string" && PERSONA_LABEL_SET.has(patch.rating)
-      ? (patch.rating as PersonaLabel)
-      : null;
+  const seen = new Set<PersonaLabel>();
+  const ratings: PersonaLabel[] = [];
+
+  for (const entry of patch.ratings ?? []) {
+    if (typeof entry !== "string" || !PERSONA_LABEL_SET.has(entry)) {
+      continue;
+    }
+
+    const label = entry as PersonaLabel;
+    if (seen.has(label)) {
+      continue;
+    }
+
+    seen.add(label);
+    ratings.push(label);
+  }
+
   const note = (patch.note ?? "").trim();
 
   const userNotes: UserNotes | null =
-    rating === null && note === ""
+    ratings.length === 0 && note === ""
       ? null
-      : { rating, note, updatedAt: Date.now() };
+      : { ratings, note, updatedAt: Date.now() };
 
   reports[key] = { ...reports[key], userNotes };
   await bonWriteReports(reports);

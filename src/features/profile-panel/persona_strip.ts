@@ -12,7 +12,10 @@ import {
   bonHidePersonaLabel,
   bonRevealPersonaLabel,
 } from "../../utils/persona_label_reveal.ts";
-import { bonPersonaRadar } from "../../utils/persona_radar.ts";
+import {
+  BON_PERSONA_RADAR_DURATION_MS,
+  bonPersonaRadar,
+} from "../../utils/persona_radar.ts";
 import { bonPersonaTitle } from "../../utils/persona_title.ts";
 
 export interface BonPanelPersonaStripOpts {
@@ -38,13 +41,13 @@ export function bonPanelBuildPersonaStrip(
   if (persona.archetypes) {
     bonHidePersonaLabel(label);
     const radar = bonPersonaRadar(persona.archetypes, {
-      onLock: () => bonRevealPersonaLabel(label),
       iconUrl: bonPersonaIcon(persona),
     });
 
     if (radar) {
       wrap.appendChild(label);
       wrap.appendChild(radar);
+      bonRevealPersonaLabel(label, BON_PERSONA_RADAR_DURATION_MS);
     } else {
       wrap.appendChild(label);
     }

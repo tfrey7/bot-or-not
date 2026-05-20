@@ -14,92 +14,123 @@
     <link rel="stylesheet" href="features/reports/reports.css" />
     <link rel="stylesheet" href="features/analytics/analytics.css" />
     <link rel="stylesheet" href="features/diagnostics/diagnostics.css" />
-    <link rel="stylesheet" href="features/self-improvement/self-improvement.css" />
+    <link
+      rel="stylesheet"
+      href="features/self-improvement/self-improvement.css"
+    />
     <link rel="stylesheet" href="features/sync/sync.css" />
   </head>
   <body>
     <div class="bon-page">
-      <header class="bon-header">
-        <button
-          type="button"
-          id="bon-mascot-btn"
-          class="bon-header-mascot-btn"
-          aria-label="Play late-night jazz"
-          aria-pressed="false"
-          title="Late-night jazz"
-        >
-          <img
-            src="../icons/chromes.png"
-            width="56"
-            height="84"
-            alt="Sherlock Chromes"
-            class="bon-header-mascot"
-            id="bon-mascot-img"
-          />
-        </button>
-        <div class="bon-header-titles">
-          <h1>Bot <em>or</em> Not</h1>
-          <p class="bon-header-tagline">A field dossier · Reddit</p>
-        </div>
-      </header>
+      <div class="bon-sticky-shell">
+        <header class="bon-header">
+          <div class="bon-header-masthead">
+            <button
+              type="button"
+              id="bon-mascot-btn"
+              class="bon-header-mascot-btn"
+              aria-label="Play late-night jazz"
+              aria-pressed="false"
+              title="Late-night jazz"
+            >
+              <img
+                src="../icons/chromes.png"
+                width="56"
+                height="84"
+                alt="Sherlock Chromes"
+                class="bon-header-mascot"
+                id="bon-mascot-img"
+              />
+            </button>
+            <div class="bon-header-titles">
+              <h1>Bot <em>or</em> Not</h1>
+              <p class="bon-header-tagline">A field dossier · Reddit</p>
+            </div>
+          </div>
 
-      <nav class="bon-tabs" role="tablist" aria-label="Page sections">
-        <button
-          type="button"
-          class="bon-tab bon-tab--active"
-          role="tab"
-          aria-selected="true"
-          aria-controls="bon-panel-reports"
-          id="bon-tab-reports"
-          data-tab="reports"
-        >
-          Reports
-        </button>
-        <button
-          type="button"
-          class="bon-tab"
-          role="tab"
-          aria-selected="false"
-          aria-controls="bon-panel-metrics"
-          id="bon-tab-metrics"
-          data-tab="metrics"
-        >
-          Metrics
-        </button>
-        <button
-          type="button"
-          class="bon-tab"
-          role="tab"
-          aria-selected="false"
-          aria-controls="bon-panel-diagnostics"
-          id="bon-tab-diagnostics"
-          data-tab="diagnostics"
-        >
-          Diagnostics
-        </button>
-        <button
-          type="button"
-          class="bon-tab"
-          role="tab"
-          aria-selected="false"
-          aria-controls="bon-panel-self-improvement"
-          id="bon-tab-self-improvement"
-          data-tab="self-improvement"
-        >
-          Self-improvement
-        </button>
-        <button
-          type="button"
-          class="bon-tab"
-          role="tab"
-          aria-selected="false"
-          aria-controls="bon-panel-settings"
-          id="bon-tab-settings"
-          data-tab="settings"
-        >
-          Settings
-        </button>
-      </nav>
+          <div class="bon-header-command">
+            <div class="bon-command-bar" id="bon-command-bar">
+              <span class="bon-command-bar-prefix" aria-hidden="true">✦</span>
+              <input
+                type="search"
+                id="bon-search"
+                class="bon-command-bar-input"
+                placeholder="Search or ask Sherlock Chromes…"
+                autocomplete="off"
+              />
+              <span class="bon-command-bar-hint" aria-hidden="true">
+                <kbd
+                  class="bon-command-bar-hint-key bon-command-bar-hint-key--focus"
+                  >/</kbd
+                >
+                <kbd
+                  class="bon-command-bar-hint-key bon-command-bar-hint-key--submit"
+                  >↵</kbd
+                >
+              </span>
+            </div>
+            <p class="bon-command-status" id="bon-command-status" hidden></p>
+          </div>
+        </header>
+
+        <nav class="bon-tabs" role="tablist" aria-label="Page sections">
+          <button
+            type="button"
+            class="bon-tab bon-tab--active"
+            role="tab"
+            aria-selected="true"
+            aria-controls="bon-panel-reports"
+            id="bon-tab-reports"
+            data-tab="reports"
+          >
+            Reports
+          </button>
+          <button
+            type="button"
+            class="bon-tab"
+            role="tab"
+            aria-selected="false"
+            aria-controls="bon-panel-metrics"
+            id="bon-tab-metrics"
+            data-tab="metrics"
+          >
+            Metrics
+          </button>
+          <button
+            type="button"
+            class="bon-tab"
+            role="tab"
+            aria-selected="false"
+            aria-controls="bon-panel-diagnostics"
+            id="bon-tab-diagnostics"
+            data-tab="diagnostics"
+          >
+            Diagnostics
+          </button>
+          <button
+            type="button"
+            class="bon-tab"
+            role="tab"
+            aria-selected="false"
+            aria-controls="bon-panel-self-improvement"
+            id="bon-tab-self-improvement"
+            data-tab="self-improvement"
+          >
+            Self-improvement
+          </button>
+          <button
+            type="button"
+            class="bon-tab"
+            role="tab"
+            aria-selected="false"
+            aria-controls="bon-panel-settings"
+            id="bon-tab-settings"
+            data-tab="settings"
+          >
+            Settings
+          </button>
+        </nav>
+      </div>
 
       <section
         class="bon-tab-panel"
@@ -107,29 +138,6 @@
         id="bon-panel-reports"
         aria-labelledby="bon-tab-reports"
       >
-        <div class="bon-toolbar">
-          <div class="bon-command-bar" id="bon-command-bar">
-            <span class="bon-command-bar-prefix" aria-hidden="true">✦</span>
-            <input
-              type="search"
-              id="bon-search"
-              class="bon-command-bar-input"
-              placeholder="Search reports, or ask Sherlock Chromes to investigate, link, filter…"
-              autocomplete="off"
-            />
-            <span class="bon-command-bar-hint" aria-hidden="true">
-              <span class="bon-command-bar-hint-label">Ask Sherlock Chromes</span>
-              <kbd class="bon-command-bar-hint-key bon-command-bar-hint-key--focus"
-                >/</kbd
-              >
-              <kbd class="bon-command-bar-hint-key bon-command-bar-hint-key--submit"
-                >↵</kbd
-              >
-            </span>
-          </div>
-          <p class="bon-command-status" id="bon-command-status" hidden></p>
-        </div>
-
         <div class="bon-agent-filter" id="bon-agent-filter" hidden>
           <span id="bon-agent-filter-label"></span>
           <button
@@ -143,6 +151,27 @@
 
         <div class="bon-split" id="bon-split">
           <div class="bon-split-list">
+            <section
+              class="bon-list-section bon-list-section--active"
+              id="bon-active-section"
+              hidden
+            >
+              <p class="bon-list-section-title" id="bon-active-title">
+                In progress
+              </p>
+              <div class="bon-table-wrap">
+                <table class="bon-table">
+                  <thead>
+                    <tr>
+                      <th>User</th>
+                      <th>Tags</th>
+                    </tr>
+                  </thead>
+                  <tbody id="bon-tbody-active"></tbody>
+                </table>
+              </div>
+            </section>
+
             <div class="bon-table-wrap" id="bon-table-wrap">
               <table class="bon-table" id="bon-table">
                 <thead>
@@ -233,8 +262,8 @@
             <p class="bon-settings-section-title">Sync</p>
             <p class="bon-settings-section-desc">
               Download a backup of your reports, or import one from another
-              browser. Imports merge per-username — nothing in your current
-              data is overwritten.
+              browser. Imports merge per-username — nothing in your current data
+              is overwritten.
             </p>
             <div id="bon-sync-container"></div>
           </section>

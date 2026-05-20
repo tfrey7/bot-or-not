@@ -4,23 +4,16 @@
    modals, heatmap, persona radar, and profile sidebar. */
 
 /* ============================================================
-   Toolbar / command bar
+   Command bar (lives in .bon-header on the right; compact)
    ============================================================ */
 
-.bon-toolbar {
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 0.55em;
-  margin-bottom: 1.1em;
-}
 .bon-command-bar {
   display: flex;
   align-items: center;
-  gap: 0.7em;
-  padding: 0.65em 0.85em 0.65em 0.95em;
+  gap: 0.5em;
+  padding: 0.4em 0.55em 0.4em 0.65em;
   border: 1px solid var(--bon-border-strong);
-  border-radius: 0.55em;
+  border-radius: 0.45em;
   background: var(--bon-surface);
   box-shadow: var(--bon-shadow-sm);
   transition:
@@ -32,7 +25,7 @@
   box-shadow: 0 0 0 3px var(--bon-accent-soft);
 }
 .bon-command-bar-prefix {
-  font-size: 1.1rem;
+  font-size: 0.95rem;
   line-height: 1;
   color: var(--bon-muted);
   flex-shrink: 0;
@@ -45,12 +38,12 @@
 .bon-command-bar-input {
   flex: 1;
   min-width: 0;
-  padding: 0.15em 0;
+  padding: 0.1em 0;
   border: none;
   background: transparent;
   color: var(--bon-text);
   font-family: var(--bon-font-mono);
-  font-size: 0.88rem;
+  font-size: 0.82rem;
   letter-spacing: 0.01em;
   /* Hide the type=search cancel button so the wrapper border stays visually clean. */
   appearance: textfield;
@@ -67,33 +60,23 @@
 .bon-command-bar-hint {
   display: inline-flex;
   align-items: center;
-  gap: 0.4em;
-  font-family: var(--bon-font-mono);
-  font-size: 0.7rem;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--bon-muted-soft);
+  gap: 0.3em;
   flex-shrink: 0;
-  transition:
-    color 0.15s,
-    opacity 0.15s;
+  transition: opacity 0.15s;
 }
 .bon-command-bar-hint-key {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 1.5em;
-  padding: 0.1em 0.4em;
+  min-width: 1.3em;
+  padding: 0.08em 0.32em;
   border: 1px solid var(--bon-border);
   border-radius: 0.25em;
   background: var(--bon-bg-tint);
-  font-family: inherit;
-  font-size: 0.85em;
+  font-family: var(--bon-font-mono);
+  font-size: 0.68rem;
   color: var(--bon-muted);
   line-height: 1;
-}
-.bon-command-bar--ready .bon-command-bar-hint {
-  color: var(--bon-accent);
 }
 .bon-command-bar--ready .bon-command-bar-hint-key--submit {
   border-color: var(--bon-accent);
@@ -103,11 +86,6 @@
 .bon-command-bar:focus-within .bon-command-bar-hint-key--focus,
 .bon-command-bar--ready .bon-command-bar-hint-key--focus {
   display: none;
-}
-@media (max-width: 48em) {
-  .bon-command-bar-hint-label {
-    display: none;
-  }
 }
 
 /* ============================================================
@@ -142,6 +120,10 @@
      overflow:visible labels paint into the summary text. */
   container-type: inline-size;
   container-name: bon-detail;
+  /* When selectRow scrollIntoView()s us, leave room for the sticky header
+     so the dossier top isn't hidden under it. --bon-sticky-shell-height
+     is published by initStickyShellMeasurement in index.ts. */
+  scroll-margin-top: calc(var(--bon-sticky-shell-height, 0px) + 0.5em);
 }
 .bon-split-list .bon-table tbody td,
 .bon-split-list .bon-table thead th {
@@ -199,6 +181,32 @@
   .bon-split {
     grid-template-columns: minmax(0, 1fr);
   }
+}
+
+/* ============================================================
+   List sections (active / done)
+
+   The list is split: queued + running rows live in
+   .bon-list-section--active above the main table; everything else
+   sits in the main table below it. Both share the same column
+   layout, so a row moving between them visually slides between
+   the two on the next render.
+   ============================================================ */
+
+.bon-list-section {
+  margin-bottom: 1.1em;
+}
+.bon-list-section[hidden] {
+  display: none;
+}
+.bon-list-section-title {
+  font-family: var(--bon-font-mono);
+  font-size: 0.66rem;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--bon-muted);
+  font-weight: 700;
+  margin: 0 0 0.55em;
 }
 
 /* ============================================================
@@ -354,10 +362,15 @@ table.bon-table {
 }
 
 .bon-command-status {
-  font-size: 0.9rem;
-  line-height: 1.45;
-  margin: 0.15em 0 0;
+  font-size: 0.78rem;
+  line-height: 1.4;
+  margin: 0;
+  padding: 0 0.3em;
   color: var(--bon-text-soft);
+  /* Stays inline under the command bar; truncates if very long so the sticky
+     header doesn't grow unbounded. Hover/click to read in full when wrapped. */
+  max-height: 3.4em;
+  overflow: hidden;
 }
 .bon-command-status[hidden] {
   display: none;
@@ -1663,12 +1676,45 @@ table.bon-table {
 .bon-radar-bg {
   opacity: 0.45;
   pointer-events: none;
+  transition: opacity 220ms ease-out;
 }
 .bon-persona-radar:has(.bon-radar-bg) .bon-radar-grid {
   fill: none;
 }
 .bon-persona-radar:has(.bon-radar-bg) .bon-radar-axis {
   opacity: 0.5;
+}
+
+/* Easter egg: hovering the persona title dims the radar overlay and
+   brings the portrait up to near-full opacity, letting you peek at the
+   medallion. Only active once the bg has a portrait; gated by :has so
+   personas without a medallion don't fade their radar to nothing. */
+.bon-persona-radar:has(.bon-radar-bg) .bon-radar-data,
+.bon-persona-radar:has(.bon-radar-bg) .bon-radar-dot,
+.bon-persona-radar:has(.bon-radar-bg) .bon-radar-grid,
+.bon-persona-radar:has(.bon-radar-bg) .bon-radar-axis,
+.bon-persona-radar:has(.bon-radar-bg) .bon-radar-label {
+  transition: opacity 220ms ease-out;
+}
+.bon-persona-label:hover ~ .bon-persona-radar:has(.bon-radar-bg) .bon-radar-bg {
+  opacity: 0.92;
+}
+.bon-persona-label:hover
+  ~ .bon-persona-radar:has(.bon-radar-bg)
+  .bon-radar-data,
+.bon-persona-label:hover
+  ~ .bon-persona-radar:has(.bon-radar-bg)
+  .bon-radar-dot,
+.bon-persona-label:hover
+  ~ .bon-persona-radar:has(.bon-radar-bg)
+  .bon-radar-grid,
+.bon-persona-label:hover
+  ~ .bon-persona-radar:has(.bon-radar-bg)
+  .bon-radar-axis,
+.bon-persona-label:hover
+  ~ .bon-persona-radar:has(.bon-radar-bg)
+  .bon-radar-label {
+  opacity: 0.12;
 }
 
 .bon-persona-label {
@@ -1888,6 +1934,7 @@ table.bon-table {
   align-items: baseline;
   justify-content: space-between;
   gap: 0.8em;
+  flex-wrap: wrap;
   margin-bottom: 0.9em;
 }
 .bon-google-dossier__title-row .bon-detail-title {
@@ -1899,6 +1946,18 @@ table.bon-table {
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--bon-muted);
+}
+.bon-google-dossier__stale-badge {
+  font-family: var(--bon-font-mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--bon-accent);
+  background: var(--bon-accent-soft);
+  border: 1px solid var(--bon-accent);
+  border-radius: 3px;
+  padding: 0.15em 0.55em;
+  cursor: help;
 }
 
 .bon-google-dossier__aggregates {
@@ -1970,6 +2029,13 @@ table.bon-table {
   border-bottom: none;
   padding-bottom: 0;
 }
+.bon-google-dossier__post--fresh {
+  /* Fresh items captured since the last investigation — a hair-thin
+     accent stripe on the leading edge cues "this is what's new" without
+     drawing the eye away from the title text. */
+  padding-left: 0.6em;
+  border-left: 2px solid var(--bon-accent);
+}
 .bon-google-dossier__post-title {
   font-size: 0.92rem;
   color: var(--bon-text);
@@ -1997,6 +2063,157 @@ table.bon-table {
   letter-spacing: 0.04em;
   color: var(--bon-muted);
   font-style: italic;
+}
+
+/* ============================================================
+   Passive harvest (DOM-scraped posts for hidden-profile users)
+   Mirrors the Google dossier styles so the two sections read as
+   sibling enrichment panels — same chip rail, same disclosure list,
+   same per-item layout. The stale-badge + fresh-item stripe + the
+   .bon-btn--fresh-harvest treatment on the Investigate button are
+   shared with the Google dossier — both are dossier sources, so
+   "new since last analysis" reads source-agnostic to the operator.
+   ============================================================ */
+
+.bon-passive-harvest__title-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.8em;
+  flex-wrap: wrap;
+  margin-bottom: 0.9em;
+}
+.bon-passive-harvest__title-row .bon-detail-title {
+  margin-bottom: 0;
+}
+.bon-passive-harvest__meta {
+  font-family: var(--bon-font-mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--bon-muted);
+}
+.bon-passive-harvest__stale-badge {
+  font-family: var(--bon-font-mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--bon-accent);
+  background: var(--bon-accent-soft);
+  border: 1px solid var(--bon-accent);
+  border-radius: 3px;
+  padding: 0.15em 0.55em;
+  cursor: help;
+}
+
+.bon-passive-harvest__aggregates {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4em;
+  margin-bottom: 0.9em;
+}
+.bon-passive-harvest__chip {
+  font-family: var(--bon-font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.02em;
+  color: var(--bon-text);
+  background: var(--bon-surface);
+  border: 1px solid var(--bon-border);
+  border-radius: 3px;
+  padding: 0.15em 0.5em;
+}
+
+.bon-passive-harvest__items-summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4em;
+  font-family: var(--bon-font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--bon-muted);
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+}
+.bon-passive-harvest__items-summary::-webkit-details-marker {
+  display: none;
+}
+.bon-passive-harvest__items-summary::before {
+  content: "▸";
+  display: inline-block;
+  font-size: 0.85em;
+  transition: transform 120ms ease-out;
+}
+.bon-passive-harvest__items-disclosure[open]
+  > .bon-passive-harvest__items-summary::before {
+  transform: rotate(90deg);
+}
+.bon-passive-harvest__items-summary:hover {
+  color: var(--bon-text);
+}
+
+.bon-passive-harvest__items {
+  list-style: none;
+  margin: 0.9em 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.9em;
+}
+.bon-passive-harvest__item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2em;
+  padding-bottom: 0.7em;
+  border-bottom: 1px dashed var(--bon-border);
+}
+.bon-passive-harvest__item:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+.bon-passive-harvest__item--fresh {
+  /* Fresh items captured since the last investigation — a hair-thin
+     accent stripe on the leading edge cues "this is what's new" without
+     drawing the eye away from the title text. */
+  padding-left: 0.6em;
+  border-left: 2px solid var(--bon-accent);
+}
+.bon-passive-harvest__item-title {
+  font-size: 0.92rem;
+  color: var(--bon-text);
+  text-decoration: none;
+  font-weight: 500;
+}
+.bon-passive-harvest__item-title:hover {
+  text-decoration: underline;
+}
+.bon-passive-harvest__item-meta {
+  font-family: var(--bon-font-mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--bon-muted);
+}
+.bon-passive-harvest__item-body {
+  font-size: 0.82rem;
+  color: var(--bon-muted);
+  line-height: 1.35;
+}
+.bon-passive-harvest__overflow {
+  font-family: var(--bon-font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  color: var(--bon-muted);
+  font-style: italic;
+}
+
+.bon-btn--fresh-harvest {
+  /* Subtle accent border so the operator notices new evidence is
+     waiting to be re-investigated. Re-runs cost money — this is a
+     prompt, not an obligation. */
+  border-color: var(--bon-accent);
+  box-shadow: 0 0 0 1px var(--bon-accent-soft);
 }
 
 /* ============================================================
@@ -2042,11 +2259,41 @@ table.bon-table {
 .bon-persona-picker__trigger-label {
   flex: 1;
   text-align: left;
-  padding: 0.35em 0.65em;
+  padding: 0.3em 0.55em;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35em;
+  min-height: 1.5em;
 }
 .bon-persona-picker__trigger-label--empty {
   color: var(--bon-muted);
   font-style: italic;
+}
+
+/* Chip per picked persona inside the trigger. The stripe sits left of the
+   chip label so the color cue stays attached to the persona it represents
+   (rather than floating in a separate column). Mirrors the
+   self-improvement chip vocabulary so the two surfaces feel like the
+   same UI dialect. */
+.bon-persona-picker__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35em;
+  padding: 0.1em 0.5em 0.1em 0.3em;
+  border-radius: 0.25em;
+  background: var(--bon-surface-soft, var(--bon-surface));
+  border: 1px solid var(--bon-border);
+  font-weight: 600;
+}
+.bon-persona-picker__chip .bon-persona-picker__stripe {
+  width: 0.4em;
+  flex: 0 0 0.4em;
+  height: 0.85em;
+  border-radius: 0.1em;
+}
+.bon-persona-picker__chip-label {
+  white-space: nowrap;
 }
 
 .bon-persona-picker__chevron {
@@ -2086,10 +2333,6 @@ table.bon-table {
   flex: 1;
   padding: 0.4em 0.85em 0.4em 0.55em;
 }
-.bon-persona-picker__option--empty .bon-persona-picker__option-label {
-  color: var(--bon-muted);
-  font-style: italic;
-}
 .bon-persona-picker__option:hover,
 .bon-persona-picker__option--focused {
   background: var(--bon-row-hover);
@@ -2103,74 +2346,72 @@ table.bon-table {
   background: var(--bon-accent-soft);
 }
 
-/* Stripe element — same 4px column on both the trigger and the option rows.
-   Color cascades from the modifier class on the parent. The empty/blank
-   slot uses the muted border tone so the visual rhythm stays consistent
-   without implying a real persona pick. Hues mirror BON_ARCHETYPES so the
-   color matches the radar chart accent for the same archetype. */
+/* Checkbox indicator on each option row. Empty square at rest, fills with
+   the accent color + a tick glyph when the option is in the picked set —
+   gives the multi-select affordance the bold-text + tinted-row state
+   doesn't fully signal on its own. */
+.bon-persona-picker__check {
+  flex: 0 0 auto;
+  width: 0.85em;
+  height: 0.85em;
+  margin: 0.55em 0 0 0.55em;
+  border: 1px solid var(--bon-border-strong);
+  border-radius: 2px;
+  background: var(--bon-surface);
+  position: relative;
+}
+.bon-persona-picker__option[aria-selected="true"] .bon-persona-picker__check {
+  background: var(--bon-accent);
+  border-color: var(--bon-accent);
+}
+.bon-persona-picker__option[aria-selected="true"]
+  .bon-persona-picker__check::after {
+  content: "";
+  position: absolute;
+  left: 0.15em;
+  top: 0.02em;
+  width: 0.25em;
+  height: 0.5em;
+  border: solid white;
+  border-width: 0 1.5px 1.5px 0;
+  transform: rotate(45deg);
+}
+
+/* Stripe element — 4px tall column in the menu rows; chip-scoped CSS above
+   overrides size/shape when the same stripe class lives inside a trigger
+   chip. Color comes from the ...--<key> modifier so the rules apply in
+   both places. Hues mirror BON_ARCHETYPES so the color matches the radar
+   chart accent for the same archetype. */
 .bon-persona-picker__stripe {
   width: 4px;
   flex: 0 0 4px;
   background-color: var(--bon-border);
 }
-.bon-persona-picker[data-bon-value=""]
-  .bon-persona-picker__trigger
-  > .bon-persona-picker__stripe,
-.bon-persona-picker__option--empty .bon-persona-picker__stripe {
-  background-color: var(--bon-border);
-}
-.bon-persona-picker[data-bon-value="stan"]
-  .bon-persona-picker__trigger
-  > .bon-persona-picker__stripe,
-.bon-persona-picker__option--stan .bon-persona-picker__stripe {
+.bon-persona-picker__stripe--stan {
   background-color: hsl(45 70% 50%);
 }
-.bon-persona-picker[data-bon-value="farmer"]
-  .bon-persona-picker__trigger
-  > .bon-persona-picker__stripe,
-.bon-persona-picker__option--farmer .bon-persona-picker__stripe {
+.bon-persona-picker__stripe--farmer {
   background-color: hsl(210 65% 50%);
 }
-.bon-persona-picker[data-bon-value="teen"]
-  .bon-persona-picker__trigger
-  > .bon-persona-picker__stripe,
-.bon-persona-picker__option--teen .bon-persona-picker__stripe {
+.bon-persona-picker__stripe--teen {
   background-color: hsl(95 55% 45%);
 }
-.bon-persona-picker[data-bon-value="thirst"]
-  .bon-persona-picker__trigger
-  > .bon-persona-picker__stripe,
-.bon-persona-picker__option--thirst .bon-persona-picker__stripe {
+.bon-persona-picker__stripe--thirst {
   background-color: hsl(320 60% 55%);
 }
-.bon-persona-picker[data-bon-value="zealot"]
-  .bon-persona-picker__trigger
-  > .bon-persona-picker__stripe,
-.bon-persona-picker__option--zealot .bon-persona-picker__stripe {
+.bon-persona-picker__stripe--zealot {
   background-color: hsl(0 65% 50%);
 }
-.bon-persona-picker[data-bon-value="hustler"]
-  .bon-persona-picker__trigger
-  > .bon-persona-picker__stripe,
-.bon-persona-picker__option--hustler .bon-persona-picker__stripe {
+.bon-persona-picker__stripe--hustler {
   background-color: hsl(155 55% 40%);
 }
-.bon-persona-picker[data-bon-value="doomer"]
-  .bon-persona-picker__trigger
-  > .bon-persona-picker__stripe,
-.bon-persona-picker__option--doomer .bon-persona-picker__stripe {
+.bon-persona-picker__stripe--doomer {
   background-color: hsl(260 50% 55%);
 }
-.bon-persona-picker[data-bon-value="bot"]
-  .bon-persona-picker__trigger
-  > .bon-persona-picker__stripe,
-.bon-persona-picker__option--bot .bon-persona-picker__stripe {
+.bon-persona-picker__stripe--bot {
   background-color: var(--bon-stamp-charcoal);
 }
-.bon-persona-picker[data-bon-value="normal"]
-  .bon-persona-picker__trigger
-  > .bon-persona-picker__stripe,
-.bon-persona-picker__option--normal .bon-persona-picker__stripe {
+.bon-persona-picker__stripe--normal {
   background-color: var(--bon-muted);
 }
 

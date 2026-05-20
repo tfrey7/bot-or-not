@@ -16,6 +16,7 @@ import type {
   HistoryEntry,
   Investigation,
   InvestigationStatus,
+  PassiveHarvest,
   Persona,
   PersonaLabel,
   RedditMetrics,
@@ -80,6 +81,8 @@ export function bonNormalizeReport(value: unknown): Report {
       ringId: null,
       userNotes: null,
       googleHarvest: null,
+      profileHidden: false,
+      passiveHarvest: null,
     };
   }
 
@@ -117,7 +120,17 @@ export function bonNormalizeReport(value: unknown): Report {
     ringId: typeof record.ringId === "string" ? record.ringId : null,
     userNotes: canonicalizeUserNotes(record.userNotes),
     googleHarvest: canonicalizeGoogleHarvest(record.googleHarvest),
+    profileHidden: record.profileHidden === true,
+    passiveHarvest: canonicalizePassiveHarvest(record.passiveHarvest),
   };
+}
+
+function canonicalizePassiveHarvest(value: unknown): PassiveHarvest | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return null;
+  }
+
+  return value as PassiveHarvest;
 }
 
 // We trust our own write path to produce the right shape — the canonicalizer
@@ -140,19 +153,40 @@ function canonicalizeUserNotes(value: unknown): UserNotes | null {
   }
 
   const record = value as Record<string, unknown>;
-  const rawRating = record.rating;
-  const rating: PersonaLabel | null =
-    typeof rawRating === "string" && PERSONA_LABEL_SET.has(rawRating)
-      ? (rawRating as PersonaLabel)
-      : null;
+
+  // Accept legacy single-rating shape (`rating: PersonaLabel | null`) and
+  // current multi-rating shape (`ratings: PersonaLabel[]`). Migration
+  // rewrites the stored form to `ratings`; the legacy branch keeps newly
+  // arriving sync payloads from older installs working until they catch up.
+  const seen = new Set<PersonaLabel>();
+  const ratings: PersonaLabel[] = [];
+
+  const rawRatings = record.ratings;
+  if (Array.isArray(rawRatings)) {
+    for (const entry of rawRatings) {
+      if (typeof entry === "string" && PERSONA_LABEL_SET.has(entry)) {
+        const label = entry as PersonaLabel;
+        if (!seen.has(label)) {
+          seen.add(label);
+          ratings.push(label);
+        }
+      }
+    }
+  } else {
+    const rawRating = record.rating;
+    if (typeof rawRating === "string" && PERSONA_LABEL_SET.has(rawRating)) {
+      ratings.push(rawRating as PersonaLabel);
+    }
+  }
+
   const note = typeof record.note === "string" ? record.note : "";
   const updatedAt = typeof record.updatedAt === "number" ? record.updatedAt : 0;
 
-  if (rating === null && note === "") {
+  if (ratings.length === 0 && note === "") {
     return null;
   }
 
-  return { rating, note, updatedAt };
+  return { ratings, note, updatedAt };
 }
 
 // Internal: turn whatever was on disk into the canonical Investigation shape

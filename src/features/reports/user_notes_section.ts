@@ -7,13 +7,10 @@
 // (debounced) and on `blur` (immediate). The status pill reflects state:
 // "Unsaved" → "Saving…" → "Saved <relative>".
 
-import type { UserNotes } from "../../types.ts";
+import type { PersonaLabel, UserNotes } from "../../types.ts";
 import { bonFormatDate } from "../../utils/format_time.ts";
 import type { ReportRow } from "./logic.ts";
-import {
-  bonReportsPersonaPicker,
-  type PersonaPickerValue,
-} from "./persona_picker.ts";
+import { bonReportsPersonaPicker } from "./persona_picker.ts";
 
 const SAVE_DEBOUNCE_MS = 600;
 
@@ -48,11 +45,11 @@ export function bonReportsUserNotesSection(report: ReportRow): HTMLDivElement {
   ratingLabel.textContent = "Your call";
   ratingWrap.appendChild(ratingLabel);
 
-  let currentRating: PersonaPickerValue = userNotes?.rating ?? "";
+  let currentRatings: PersonaLabel[] = [...(userNotes?.ratings ?? [])];
   const picker = bonReportsPersonaPicker({
-    value: currentRating,
+    values: currentRatings,
     onChange: (next) => {
-      currentRating = next;
+      currentRatings = next;
       renderStatus(userNotes ?? null);
       void save();
     },
@@ -71,9 +68,23 @@ export function bonReportsUserNotesSection(report: ReportRow): HTMLDivElement {
   wrap.appendChild(textarea);
 
   let lastSavedNote = userNotes?.note ?? "";
-  let lastSavedRating: PersonaPickerValue = userNotes?.rating ?? "";
+  let lastSavedRatings: PersonaLabel[] = [...(userNotes?.ratings ?? [])];
   let pendingSave = false;
   let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+
+  function ratingsEqual(a: PersonaLabel[], b: PersonaLabel[]): boolean {
+    if (a.length !== b.length) {
+      return false;
+    }
+
+    for (let i = 0; i < a.length; i++) {
+      if (a[i] !== b[i]) {
+        return false;
+      }
+    }
+
+    return true;
+  }
 
   function renderStatus(saved: UserNotes | null): void {
     if (pendingSave) {
@@ -87,7 +98,8 @@ export function bonReportsUserNotesSection(report: ReportRow): HTMLDivElement {
     }
 
     const dirty =
-      textarea.value !== lastSavedNote || currentRating !== lastSavedRating;
+      textarea.value !== lastSavedNote ||
+      !ratingsEqual(currentRatings, lastSavedRatings);
 
     if (dirty) {
       status.textContent = "Unsaved";
@@ -123,13 +135,13 @@ export function bonReportsUserNotesSection(report: ReportRow): HTMLDivElement {
       const response = (await browser.runtime.sendMessage({
         type: "set-user-notes",
         username,
-        rating: currentRating || null,
+        ratings: currentRatings,
         note: textarea.value,
       })) as { ok?: boolean; userNotes?: UserNotes | null };
 
       if (response?.ok) {
         lastSavedNote = textarea.value.trim() === "" ? "" : textarea.value;
-        lastSavedRating = currentRating;
+        lastSavedRatings = [...currentRatings];
         pendingSave = false;
         renderStatus(response.userNotes ?? null);
       } else {

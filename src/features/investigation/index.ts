@@ -15,6 +15,7 @@ import type {
   ClaudeUsage,
   Factor,
   GoogleHarvest,
+  PassiveHarvest,
   Persona,
   ProfileSummary,
   RedditFetchMetric,
@@ -46,6 +47,7 @@ export interface GatherProfileExtra {
   botBouncerStatus?: Exclude<BotBouncerStatus, null>;
   botBouncerCheckedAt?: number;
   googleHarvest?: GoogleHarvest;
+  passiveHarvest?: PassiveHarvest;
 }
 
 export interface GatheredProfile {
@@ -151,6 +153,7 @@ export async function bonGatherProfile(
     ...(botBouncerCheckedAt != null ? { botBouncerCheckedAt } : {}),
     webSearchResults,
     ...(extra.googleHarvest ? { googleHarvest: extra.googleHarvest } : {}),
+    ...(extra.passiveHarvest ? { passiveHarvest: extra.passiveHarvest } : {}),
   });
   const activityData = bonExtractActivityData(profile, BON_REDDIT_FETCH_LIMIT);
 

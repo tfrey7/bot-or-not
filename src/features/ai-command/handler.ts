@@ -14,6 +14,7 @@ import type { Report } from "../../types.ts";
 import { bonFindReportKey, bonReadReports } from "../../utils/history.ts";
 import {
   bonAiCommandBuildSnapshot,
+  bonAiCommandBuildUserDetails,
   bonRunAiCommand,
   type AiCommandDispatch,
   type AiCommandMessage,
@@ -115,6 +116,25 @@ const dispatchTool: AiCommandDispatch = async (tool, args) => {
       : [];
 
     return { ok: true, count: usernames.length };
+  }
+
+  if (tool === "read_user_details") {
+    const requested = Array.isArray(args.usernames)
+      ? (args.usernames as string[])
+      : [];
+
+    const latest = await bonReadReports();
+    const users = requested.map((name) => {
+      const trimmed = (name ?? "").trim();
+      const key = bonFindReportKey(latest, trimmed);
+      if (!key) {
+        return bonAiCommandBuildUserDetails(trimmed, undefined);
+      }
+
+      return bonAiCommandBuildUserDetails(key, latest[key]);
+    });
+
+    return { ok: true, users };
   }
 
   if (tool === "navigate_to_user") {

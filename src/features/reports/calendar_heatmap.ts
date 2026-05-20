@@ -1,5 +1,5 @@
 // GitHub-style 53-week activity heatmap. Cells before the API window
-// boundary (Reddit only returns the most recent 100 posts/comments) get a
+// boundary (Reddit only returns the most recent 1000 posts/comments) get a
 // muted "unknown" style so the visualization doesn't lie about dormancy
 // in the older history we can't see.
 

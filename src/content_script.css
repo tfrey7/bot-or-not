@@ -384,12 +384,47 @@
 .bon-radar-bg {
   opacity: 0.45;
   pointer-events: none;
+  transition: opacity 220ms ease-out;
 }
 .bon-persona-radar:has(.bon-radar-bg) .bon-radar-grid {
   fill: none;
 }
 .bon-persona-radar:has(.bon-radar-bg) .bon-radar-axis {
   opacity: 0.5;
+}
+
+/* Easter egg: hovering the persona title dims the radar overlay and
+   brings the portrait up to near-full opacity, letting you peek at the
+   medallion. Mirrors the same rule in features/reports/reports.css for
+   the panel surface's label class. */
+.bon-persona-radar:has(.bon-radar-bg) .bon-radar-data,
+.bon-persona-radar:has(.bon-radar-bg) .bon-radar-dot,
+.bon-persona-radar:has(.bon-radar-bg) .bon-radar-grid,
+.bon-persona-radar:has(.bon-radar-bg) .bon-radar-axis,
+.bon-persona-radar:has(.bon-radar-bg) .bon-radar-label {
+  transition: opacity 220ms ease-out;
+}
+.bon-panel-persona__label:hover
+  ~ .bon-persona-radar:has(.bon-radar-bg)
+  .bon-radar-bg {
+  opacity: 0.92;
+}
+.bon-panel-persona__label:hover
+  ~ .bon-persona-radar:has(.bon-radar-bg)
+  .bon-radar-data,
+.bon-panel-persona__label:hover
+  ~ .bon-persona-radar:has(.bon-radar-bg)
+  .bon-radar-dot,
+.bon-panel-persona__label:hover
+  ~ .bon-persona-radar:has(.bon-radar-bg)
+  .bon-radar-grid,
+.bon-panel-persona__label:hover
+  ~ .bon-persona-radar:has(.bon-radar-bg)
+  .bon-radar-axis,
+.bon-panel-persona__label:hover
+  ~ .bon-persona-radar:has(.bon-radar-bg)
+  .bon-radar-label {
+  opacity: 0.12;
 }
 
 @media (max-width: 36em) {

@@ -6,6 +6,11 @@
 //
 // Sits next to "Your notes" because both are operator-curated context,
 // not derived AI output.
+//
+// Also surfaces a staleness badge when new posts have arrived since the
+// last investigation ran. Mirrors the passive-harvest treatment — both
+// are dossier sources, so the operator-facing language stays generic
+// ("new since last analysis") rather than naming the source.
 
 import type { GoogleHarvest, GoogleHarvestPost } from "../../types.ts";
 import { bonFormatDate } from "../../utils/format_time.ts";
@@ -21,22 +26,51 @@ export function bonReportsGoogleDossierSection(
     return null;
   }
 
+  const lastRunAt = report.investigation?.runAt ?? 0;
+  const freshPosts = bonReportsGoogleDossierCountFresh(harvest, lastRunAt);
+
   const wrap = document.createElement("div");
   wrap.className = "bon-detail-wrap bon-google-dossier";
 
-  wrap.appendChild(buildTitleRow(harvest));
+  wrap.appendChild(buildTitleRow(harvest, freshPosts));
 
   const aggregates = buildAggregates(harvest);
   if (aggregates) {
     wrap.appendChild(aggregates);
   }
 
-  wrap.appendChild(buildPostsDisclosure(harvest.posts));
+  wrap.appendChild(buildPostsDisclosure(harvest.posts, lastRunAt));
 
   return wrap;
 }
 
-function buildPostsDisclosure(posts: GoogleHarvestPost[]): HTMLDetailsElement {
+// Posts captured strictly after the most recent investigation ran. With
+// lastRunAt == 0 (no investigation yet), everything counts as fresh.
+// Exported so the Investigate button can combine this with the passive
+// count without recomputing the definition independently.
+export function bonReportsGoogleDossierCountFresh(
+  harvest: GoogleHarvest | null,
+  lastRunAt: number
+): number {
+  if (!harvest) {
+    return 0;
+  }
+
+  let n = 0;
+
+  for (const post of harvest.posts) {
+    if (post.firstSeenAt > lastRunAt) {
+      n++;
+    }
+  }
+
+  return n;
+}
+
+function buildPostsDisclosure(
+  posts: GoogleHarvestPost[],
+  lastRunAt: number
+): HTMLDetailsElement {
   const details = document.createElement("details");
   details.className = "bon-google-dossier__posts-disclosure";
 
@@ -49,12 +83,15 @@ function buildPostsDisclosure(posts: GoogleHarvestPost[]): HTMLDetailsElement {
   summary.appendChild(label);
 
   details.appendChild(summary);
-  details.appendChild(buildPostsList(posts));
+  details.appendChild(buildPostsList(posts, lastRunAt));
 
   return details;
 }
 
-function buildTitleRow(harvest: GoogleHarvest): HTMLDivElement {
+function buildTitleRow(
+  harvest: GoogleHarvest,
+  freshPosts: number
+): HTMLDivElement {
   const titleRow = document.createElement("div");
   titleRow.className = "bon-google-dossier__title-row";
 
@@ -62,6 +99,15 @@ function buildTitleRow(harvest: GoogleHarvest): HTMLDivElement {
   title.className = "bon-detail-title";
   title.textContent = "Google dossier";
   titleRow.appendChild(title);
+
+  if (freshPosts > 0) {
+    const badge = document.createElement("span");
+    badge.className = "bon-google-dossier__stale-badge";
+    badge.textContent = `${freshPosts} new since last analysis`;
+    badge.title =
+      "Re-investigate to feed these new items into the verdict. Each run costs money — your call when.";
+    titleRow.appendChild(badge);
+  }
 
   const meta = document.createElement("span");
   meta.className = "bon-google-dossier__meta";
@@ -105,7 +151,10 @@ function buildAggregates(harvest: GoogleHarvest): HTMLDivElement | null {
   return wrap;
 }
 
-function buildPostsList(posts: GoogleHarvestPost[]): HTMLUListElement {
+function buildPostsList(
+  posts: GoogleHarvestPost[],
+  lastRunAt: number
+): HTMLUListElement {
   const list = document.createElement("ul");
   list.className = "bon-google-dossier__posts";
 
@@ -115,7 +164,7 @@ function buildPostsList(posts: GoogleHarvestPost[]): HTMLUListElement {
   const sorted = [...posts].sort((a, b) => b.lastSeenAt - a.lastSeenAt);
 
   for (const post of sorted.slice(0, POST_LIMIT)) {
-    list.appendChild(buildPostItem(post));
+    list.appendChild(buildPostItem(post, lastRunAt));
   }
 
   if (sorted.length > POST_LIMIT) {
@@ -128,9 +177,16 @@ function buildPostsList(posts: GoogleHarvestPost[]): HTMLUListElement {
   return list;
 }
 
-function buildPostItem(post: GoogleHarvestPost): HTMLLIElement {
+function buildPostItem(
+  post: GoogleHarvestPost,
+  lastRunAt: number
+): HTMLLIElement {
   const item = document.createElement("li");
   item.className = "bon-google-dossier__post";
+
+  if (post.firstSeenAt > lastRunAt && lastRunAt > 0) {
+    item.classList.add("bon-google-dossier__post--fresh");
+  }
 
   const titleLink = document.createElement("a");
   titleLink.className = "bon-google-dossier__post-title";

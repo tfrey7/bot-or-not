@@ -1,27 +1,27 @@
-// Custom persona dropdown for the user-notes widget. Native <select> can't
-// render per-option color stripes on macOS (the OS menu shell ignores
-// option background colors), so this rolls a tiny button + popover listbox
-// pair instead. Behavior parity with the native control on the points that
-// matter: keyboard-openable, Escape to close, click-outside to dismiss.
+// Custom persona multi-picker for the user-notes widget. Native <select
+// multiple> renders as an inline list that doesn't fit the row's layout
+// and still can't show per-option color stripes on macOS (the OS menu
+// shell ignores option background colors). This rolls a button + popover
+// listbox pair instead. Behavior parity with a real multi-select on the
+// points that matter: keyboard-openable, Escape to close, click-outside
+// to dismiss, click/Enter toggles inclusion, menu stays open while
+// toggling — so the user can pick multiple personas without reopening.
 //
-// API: caller passes the current value and a change callback. The picker
-// reports back only when the user picks a different value than the
-// current one, so callers can dedupe save side-effects in the same way
-// they would for a real <select>'s change event.
+// API: caller passes the current set of picks and a change callback. The
+// picker reports back on every toggle with the new array (in user pick
+// order, de-duped).
 
 import { BON_ARCHETYPES, BON_PERSONA_LABELS } from "../../factors.ts";
 import type { PersonaLabel } from "../../types.ts";
 
-export type PersonaPickerValue = PersonaLabel | "";
-
 export interface PersonaPickerOptions {
-  value: PersonaPickerValue;
-  onChange: (next: PersonaPickerValue) => void;
+  values: PersonaLabel[];
+  onChange: (next: PersonaLabel[]) => void;
 }
 
 export interface PersonaPickerHandle {
   element: HTMLDivElement;
-  setValue: (next: PersonaPickerValue) => void;
+  setValues: (next: PersonaLabel[]) => void;
 }
 
 const ARCHETYPE_LABEL_MAP: Record<string, string> = Object.fromEntries(
@@ -33,11 +33,7 @@ const EXTRA_LABEL_MAP: Record<string, string> = {
   normal: "Normal",
 };
 
-function labelFor(value: PersonaPickerValue): string {
-  if (!value) {
-    return "— no call —";
-  }
-
+function labelFor(value: PersonaLabel): string {
   return ARCHETYPE_LABEL_MAP[value] || EXTRA_LABEL_MAP[value] || value;
 }
 
@@ -53,11 +49,9 @@ export function bonReportsPersonaPicker(
   trigger.setAttribute("aria-haspopup", "listbox");
   trigger.setAttribute("aria-expanded", "false");
 
-  const triggerStripe = document.createElement("span");
-  triggerStripe.className = "bon-persona-picker__stripe";
-  triggerStripe.setAttribute("aria-hidden", "true");
-  trigger.appendChild(triggerStripe);
-
+  // One chip per picked persona — stripe sits next to its own label so
+  // the color cue stays attached to what it represents instead of
+  // floating in a separate column. Re-rendered on every toggle.
   const triggerLabel = document.createElement("span");
   triggerLabel.className = "bon-persona-picker__trigger-label";
   trigger.appendChild(triggerLabel);
@@ -71,23 +65,27 @@ export function bonReportsPersonaPicker(
   const menu = document.createElement("div");
   menu.className = "bon-persona-picker__menu";
   menu.setAttribute("role", "listbox");
+  menu.setAttribute("aria-multiselectable", "true");
   menu.hidden = true;
 
-  const valueKeys: PersonaPickerValue[] = ["", ...BON_PERSONA_LABELS];
-  const items: { key: PersonaPickerValue; el: HTMLDivElement }[] = [];
+  const items: { key: PersonaLabel; el: HTMLDivElement }[] = [];
 
-  for (const key of valueKeys) {
+  for (const key of BON_PERSONA_LABELS) {
     const item = document.createElement("div");
-    const modifier = key || "empty";
-    item.className = `bon-persona-picker__option bon-persona-picker__option--${modifier}`;
+    item.className = `bon-persona-picker__option bon-persona-picker__option--${key}`;
     item.setAttribute("role", "option");
     item.dataset.bonValue = key;
     item.tabIndex = -1;
 
     const stripe = document.createElement("span");
-    stripe.className = "bon-persona-picker__stripe";
+    stripe.className = `bon-persona-picker__stripe bon-persona-picker__stripe--${key}`;
     stripe.setAttribute("aria-hidden", "true");
     item.appendChild(stripe);
+
+    const check = document.createElement("span");
+    check.className = "bon-persona-picker__check";
+    check.setAttribute("aria-hidden", "true");
+    item.appendChild(check);
 
     const text = document.createElement("span");
     text.className = "bon-persona-picker__option-label";
@@ -99,12 +97,7 @@ export function bonReportsPersonaPicker(
     });
 
     item.addEventListener("click", () => {
-      if (key !== current) {
-        applyValue(key);
-        opts.onChange(key);
-      }
-
-      close();
+      toggle(key);
     });
 
     items.push({ key, el: item });
@@ -114,21 +107,65 @@ export function bonReportsPersonaPicker(
   wrap.appendChild(trigger);
   wrap.appendChild(menu);
 
-  let current: PersonaPickerValue = opts.value;
+  const currentSet = new Set<PersonaLabel>();
   let focusedIndex = -1;
 
-  function applyValue(next: PersonaPickerValue): void {
-    current = next;
-    wrap.dataset.bonValue = next;
-    triggerLabel.textContent = labelFor(next);
-    triggerLabel.classList.toggle(
-      "bon-persona-picker__trigger-label--empty",
-      !next
-    );
+  function applyValues(next: PersonaLabel[]): void {
+    currentSet.clear();
+
+    for (const value of next) {
+      if (!currentSet.has(value)) {
+        currentSet.add(value);
+      }
+    }
+
+    render();
+  }
+
+  function render(): void {
+    const ordered = Array.from(currentSet);
+
+    triggerLabel.replaceChildren();
+
+    if (ordered.length === 0) {
+      triggerLabel.classList.add("bon-persona-picker__trigger-label--empty");
+      triggerLabel.textContent = "— no call —";
+    } else {
+      triggerLabel.classList.remove("bon-persona-picker__trigger-label--empty");
+
+      for (const key of ordered) {
+        const chip = document.createElement("span");
+        chip.className = `bon-persona-picker__chip bon-persona-picker__chip--${key}`;
+
+        const stripe = document.createElement("span");
+        stripe.className = `bon-persona-picker__stripe bon-persona-picker__stripe--${key}`;
+        stripe.setAttribute("aria-hidden", "true");
+        chip.appendChild(stripe);
+
+        const text = document.createElement("span");
+        text.className = "bon-persona-picker__chip-label";
+        text.textContent = labelFor(key);
+        chip.appendChild(text);
+
+        triggerLabel.appendChild(chip);
+      }
+    }
 
     for (const { key, el } of items) {
-      el.setAttribute("aria-selected", key === next ? "true" : "false");
+      const picked = currentSet.has(key);
+      el.setAttribute("aria-selected", picked ? "true" : "false");
     }
+  }
+
+  function toggle(key: PersonaLabel): void {
+    if (currentSet.has(key)) {
+      currentSet.delete(key);
+    } else {
+      currentSet.add(key);
+    }
+
+    render();
+    opts.onChange(Array.from(currentSet));
   }
 
   function setFocusedIndex(index: number): void {
@@ -156,8 +193,12 @@ export function bonReportsPersonaPicker(
     menu.hidden = false;
     trigger.setAttribute("aria-expanded", "true");
 
-    const selectedIndex = items.findIndex(({ key }) => key === current);
-    setFocusedIndex(selectedIndex >= 0 ? selectedIndex : 0);
+    const ordered = Array.from(currentSet);
+    const firstPicked = ordered[0];
+    const startIndex = firstPicked
+      ? items.findIndex(({ key }) => key === firstPicked)
+      : 0;
+    setFocusedIndex(startIndex >= 0 ? startIndex : 0);
 
     document.addEventListener("mousedown", onDocMouseDown, true);
     document.addEventListener("keydown", onKey, true);
@@ -224,14 +265,7 @@ export function bonReportsPersonaPicker(
       }
 
       event.preventDefault();
-      const { key } = items[focusedIndex];
-      if (key !== current) {
-        applyValue(key);
-        opts.onChange(key);
-      }
-
-      close();
-      trigger.focus();
+      toggle(items[focusedIndex].key);
     }
   }
 
@@ -253,10 +287,10 @@ export function bonReportsPersonaPicker(
     }
   });
 
-  applyValue(opts.value);
+  applyValues(opts.values);
 
   return {
     element: wrap,
-    setValue: applyValue,
+    setValues: applyValues,
   };
 }

@@ -17,7 +17,7 @@ export function bonSelfImprovementCollect(
       continue;
     }
 
-    const hasRating = userNotes.rating !== null;
+    const hasRating = userNotes.ratings.length > 0;
     const hasNote = userNotes.note.trim() !== "";
     if (!hasRating && !hasNote) {
       continue;
@@ -33,13 +33,16 @@ export function bonSelfImprovementCollect(
 
 export type AgreementState = "agree" | "disagree" | "no-ai-pick" | "no-rating";
 
+// User picks are a set — "agree" when the AI's single pick is anywhere in
+// that set. Picking stan+hustler and the AI also says stan counts as
+// agreement; the operator already identified that signal.
 export function bonSelfImprovementAgreement(
   annotated: AnnotatedReport
 ): AgreementState {
-  const yourPick = annotated.userNotes.rating;
+  const yourPicks = annotated.userNotes.ratings;
   const aiPick = annotated.report.investigation?.persona?.label ?? null;
 
-  if (yourPick === null) {
+  if (yourPicks.length === 0) {
     return "no-rating";
   }
 
@@ -47,5 +50,5 @@ export function bonSelfImprovementAgreement(
     return "no-ai-pick";
   }
 
-  return yourPick === aiPick ? "agree" : "disagree";
+  return yourPicks.includes(aiPick) ? "agree" : "disagree";
 }

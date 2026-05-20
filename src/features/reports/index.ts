@@ -28,6 +28,7 @@ import {
 import { bonReportsPagination } from "./pagination.ts";
 import { bonReportsRow } from "./table_row.ts";
 import {
+  bonReportsCompareActive,
   bonReportsCompareBy,
   bonReportsCountQueuedAhead,
   bonReportsDiagnoseLoadError,
@@ -35,12 +36,22 @@ import {
   bonReportsFormatRunningTitle,
   bonReportsHasStructuralChange,
   bonReportsInputIsCommand,
+  bonReportsIsActiveRow,
   bonReportsSanitizeUsernameQuery,
   type ReportRow,
 } from "./logic.ts";
 
 const tbody = document.getElementById("bon-tbody") as HTMLTableSectionElement;
 const tableWrap = document.getElementById("bon-table-wrap") as HTMLElement;
+const activeTbody = document.getElementById(
+  "bon-tbody-active"
+) as HTMLTableSectionElement;
+const activeSection = document.getElementById(
+  "bon-active-section"
+) as HTMLElement;
+const activeTitleEl = document.getElementById(
+  "bon-active-title"
+) as HTMLElement;
 const emptyEl = document.getElementById("bon-empty") as HTMLElement;
 const detailPane = document.getElementById("bon-detail-pane") as HTMLElement;
 const searchInput = document.getElementById("bon-search") as HTMLInputElement;
@@ -168,8 +179,7 @@ browser.storage.onChanged.addListener((changes, area) => {
   }
 });
 
-const BON_SEARCH_PLACEHOLDER =
-  "Search reports, or ask Sherlock Chromes to investigate, link, filter…";
+const BON_SEARCH_PLACEHOLDER = "Search or ask Sherlock Chromes…";
 const BON_COMMAND_PLACEHOLDER = "Press ↵ to ask Sherlock Chromes…";
 
 searchInput.addEventListener("input", () => {
@@ -250,6 +260,7 @@ document.addEventListener("keydown", (event) => {
 });
 
 initTabs();
+initStickyShellMeasurement();
 
 bonRenderSync(syncContainer);
 
@@ -423,10 +434,17 @@ function render(): void {
     return haystack.includes(query);
   });
 
-  filtered.sort(bonReportsCompareBy("investigatedAt", "desc", REGION_LABELS));
+  const activeRows = filtered.filter(bonReportsIsActiveRow);
+  const doneRows = filtered.filter((report) => !bonReportsIsActiveRow(report));
 
+  activeRows.sort(bonReportsCompareActive);
+  doneRows.sort(bonReportsCompareBy("investigatedAt", "desc", REGION_LABELS));
+
+  activeTbody.replaceChildren();
   tbody.replaceChildren();
   paginationContainer.replaceChildren();
+
+  renderActiveSection(activeRows);
 
   if (filtered.length === 0) {
     tableWrap.hidden = true;
@@ -440,7 +458,6 @@ function render(): void {
     return;
   }
 
-  tableWrap.hidden = false;
   emptyEl.hidden = true;
 
   if (
@@ -452,8 +469,12 @@ function render(): void {
     pendingScrollToSelected = false;
   }
 
-  if (pendingScrollToSelected && selectedUsername) {
-    const idx = filtered.findIndex(
+  const selectedIsActive =
+    !!selectedUsername &&
+    activeRows.some((report) => report.username === selectedUsername);
+
+  if (pendingScrollToSelected && selectedUsername && !selectedIsActive) {
+    const idx = doneRows.findIndex(
       (report) => report.username === selectedUsername
     );
 
@@ -464,7 +485,7 @@ function render(): void {
 
   const totalPages = Math.max(
     1,
-    Math.ceil(filtered.length / BON_REPORTS_PAGE_SIZE)
+    Math.ceil(doneRows.length / BON_REPORTS_PAGE_SIZE)
   );
 
   if (currentPage > totalPages) {
@@ -477,7 +498,7 @@ function render(): void {
 
   const pageStart = (currentPage - 1) * BON_REPORTS_PAGE_SIZE;
   const pageEnd = pageStart + BON_REPORTS_PAGE_SIZE;
-  const pageRows = filtered.slice(pageStart, pageEnd);
+  const pageRows = doneRows.slice(pageStart, pageEnd);
 
   for (const report of pageRows) {
     const summary = bonReportsRow(report, {
@@ -488,8 +509,11 @@ function render(): void {
     tbody.appendChild(summary);
   }
 
+  tableWrap.hidden = doneRows.length === 0;
+
   if (pendingScrollToSelected && selectedUsername) {
-    const row = tbody.querySelector<HTMLTableRowElement>(
+    const scope = selectedIsActive ? activeTbody : tbody;
+    const row = scope.querySelector<HTMLTableRowElement>(
       `.bon-row-summary[data-bon-username="${CSS.escape(selectedUsername)}"]`
     );
     row?.scrollIntoView({ block: "nearest" });
@@ -502,7 +526,7 @@ function render(): void {
       bonReportsPagination({
         currentPage,
         totalPages,
-        totalItems: filtered.length,
+        totalItems: doneRows.length,
         pageSize: BON_REPORTS_PAGE_SIZE,
         onPageChange: (next) => {
           currentPage = next;
@@ -516,6 +540,25 @@ function render(): void {
   ensurePolling();
 }
 
+function renderActiveSection(rows: ReportRow[]): void {
+  if (rows.length === 0) {
+    activeSection.hidden = true;
+    return;
+  }
+
+  activeSection.hidden = false;
+  activeTitleEl.textContent = `In progress · ${rows.length}`;
+
+  for (const report of rows) {
+    const summary = bonReportsRow(report, {
+      selectedUsername,
+      queueAhead: bonReportsCountQueuedAhead(allReports, report),
+      onSelect: selectRow,
+    });
+    activeTbody.appendChild(summary);
+  }
+}
+
 function selectRow(username: string): void {
   if (selectedUsername === username) {
     return;
@@ -524,15 +567,21 @@ function selectRow(username: string): void {
   selectedUsername = username;
   updateUrlForSelection();
 
-  for (const row of tbody.querySelectorAll<HTMLTableRowElement>(
-    ".bon-row-summary"
-  )) {
+  const rows = document.querySelectorAll<HTMLTableRowElement>(
+    "#bon-tbody .bon-row-summary, #bon-tbody-active .bon-row-summary"
+  );
+
+  for (const row of rows) {
     const isSelected = row.dataset.bonUsername === username;
     row.classList.toggle("bon-row-summary--selected", isSelected);
     row.setAttribute("aria-pressed", isSelected ? "true" : "false");
   }
 
   renderDetail();
+
+  // Bring the dossier top into view (scroll-margin-top on .bon-split-detail
+  // leaves room for the sticky header). No-op if it's already in position.
+  detailPane.scrollIntoView({ block: "start", behavior: "smooth" });
 }
 
 function readSelectedUsernameFromUrl(): string | null {
@@ -818,6 +867,28 @@ function updateRunningInPlace(): void {
       );
     }
   }
+}
+
+// Publish the sticky header+tabs block's measured height as a CSS variable
+// so .bon-split-detail can pin itself flush against the bottom of the sticky
+// shell. The shell's height varies — it grows when the command status line
+// appears and when the header wraps at narrow widths — so observe rather
+// than measure once.
+function initStickyShellMeasurement(): void {
+  const shell = document.querySelector<HTMLElement>(".bon-sticky-shell");
+  if (!shell) {
+    return;
+  }
+
+  const publish = (): void => {
+    document.documentElement.style.setProperty(
+      "--bon-sticky-shell-height",
+      `${shell.offsetHeight}px`
+    );
+  };
+
+  publish();
+  new ResizeObserver(publish).observe(shell);
 }
 
 function initTabs(): void {

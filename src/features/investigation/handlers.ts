@@ -12,6 +12,7 @@ import {
   bonSnapshotRun,
   bonWriteReports,
 } from "../../utils/history.ts";
+import { bonIsProfileHidden } from "../../utils/profile_hidden.ts";
 import { bonIsInvestigationStale } from "../../verdict.ts";
 import {
   bonExtractSnoovatarUrl,
@@ -193,6 +194,9 @@ async function runInvestigation(
       ...(existingRecord.googleHarvest
         ? { googleHarvest: existingRecord.googleHarvest }
         : {}),
+      ...(existingRecord.passiveHarvest
+        ? { passiveHarvest: existingRecord.passiveHarvest }
+        : {}),
     });
     const analysis = await bonRunOneDAnalysis(
       claudeApiKey,
@@ -229,6 +233,15 @@ async function runInvestigation(
     if (inputs.botBouncerStatus) {
       await persistBotBouncerStatus(username, inputs.botBouncerStatus);
     }
+
+    await setProfileHidden(
+      username,
+      bonIsProfileHidden({
+        postsFetched: sharedFields.postsFetched,
+        commentsFetched: sharedFields.commentsFetched,
+        totalKarma: inputs.summary.account.total_karma,
+      })
+    );
   } catch (error) {
     const message = String((error as { message?: string })?.message ?? error);
     const durationMs = Date.now() - startedAt;
@@ -456,6 +469,27 @@ async function saveActivityData(
   const key = bonFindReportKey(reports, username) ?? username;
   const existing = reports[key] ?? bonNormalizeReport(undefined);
   reports[key] = { ...existing, activityData };
+  await bonWriteReports(reports);
+}
+
+// Flips report.profileHidden whenever an investigation completes. The
+// passive-harvest content script reads this flag to decide which
+// usernames to scrape from the DOM as the operator browses — only the
+// hidden ones, since visible accounts can be re-fetched via the Reddit
+// API on the next investigation.
+async function setProfileHidden(
+  username: string,
+  hidden: boolean
+): Promise<void> {
+  const reports = await bonReadReports();
+  const key = bonFindReportKey(reports, username) ?? username;
+  const existing = reports[key] ?? bonNormalizeReport(undefined);
+
+  if (existing.profileHidden === hidden) {
+    return;
+  }
+
+  reports[key] = { ...existing, profileHidden: hidden };
   await bonWriteReports(reports);
 }
 

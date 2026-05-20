@@ -187,12 +187,14 @@ export interface ActivityData {
 }
 
 // User's own take on this account, recorded independently of the AI's
-// investigation. `rating` is a hand-picked persona label (or null = "no
-// call yet"); `note` is a free-form scratchpad. One record per username —
-// editing overwrites, no history. `updatedAt` is unix ms; 0 means never
-// edited but exists because storage migration created a placeholder.
+// investigation. `ratings` is a set of hand-picked persona labels (empty
+// array = no call yet) — multi-pick because some accounts read as more
+// than one archetype at once. `note` is a free-form scratchpad. One record
+// per username — editing overwrites, no history. `updatedAt` is unix ms;
+// 0 means never edited but exists because storage migration created a
+// placeholder.
 export interface UserNotes {
-  rating: PersonaLabel | null;
+  ratings: PersonaLabel[];
   note: string;
   updatedAt: number;
 }
@@ -216,6 +218,23 @@ export type GoogleHarvestPostKind =
   | "subreddit"
   | "other";
 
+// Attribution: did the user we're investigating actually write this post /
+// comment, or does the URL only mention them? A Google search for
+// `<username> site:reddit.com` returns any Reddit page that contains that
+// string — so without verification we can't tell the two apart. The
+// attribution worker (features/google-harvest/attribution.ts) fetches each
+// post's `.json` from Reddit and resolves this field.
+//
+//   "authored"  — confirmed: post author or a visible commenter matches
+//   "mentioned" — confirmed: the user's name appears but they didn't write
+//   "unknown"   — unverified (default) or verification couldn't determine
+//                 (e.g. deleted/removed content)
+//
+// `attributionCheckedAt: null` plus `attribution: "unknown"` is the signal
+// that the worker should look at this post. Anything with a non-null
+// `attributionCheckedAt` is considered settled and won't be rechecked.
+export type GoogleHarvestAttribution = "authored" | "mentioned" | "unknown";
+
 export interface GoogleHarvestPost {
   url: string;
   kind: GoogleHarvestPostKind;
@@ -228,6 +247,9 @@ export interface GoogleHarvestPost {
   snippetText: string;
   firstSeenAt: number;
   lastSeenAt: number;
+  attribution: GoogleHarvestAttribution;
+  attributionCheckedAt: number | null;
+  attributionAttempts: number;
 }
 
 export interface GoogleHarvest {
@@ -237,7 +259,46 @@ export interface GoogleHarvest {
   query: string;
   posts: GoogleHarvestPost[];
   subredditDistribution: Record<string, number>;
+
+  // Subset of subredditDistribution counting only attribution: "authored"
+  // posts. This is the trustworthy sub-clustering signal — entries here
+  // are subs the user actually participated in, not subs where someone
+  // else mentioned their username.
+  authoredSubredditDistribution: Record<string, number>;
   kinds: Record<GoogleHarvestPostKind, number>;
+}
+
+// Posts / comments scraped passively from Reddit's DOM as the operator
+// browses, for users whose profile we already know is hidden (so an
+// investigation can't reach their content via the API). Each item is
+// self-attributing — the harvester only captures from a username byline
+// we see on a post or comment in the wild. Stored per-user, capped at a
+// fixed item count (oldest firstSeenAt evicted first) so the buffer
+// can't grow without bound.
+//
+// Merge semantics mirror GoogleHarvest: items are unioned by canonical
+// permalink, firstSeenAt is immutable, lastSeenAt refreshes every time
+// the same permalink is seen again.
+export type PassiveHarvestItemKind = "post" | "comment";
+
+export interface PassiveHarvestItem {
+  kind: PassiveHarvestItemKind;
+  permalink: string;
+  subreddit: string | null;
+  postTitle: string | null;
+  bodyExcerpt: string;
+  createdAt: number | null;
+  firstSeenAt: number;
+  lastSeenAt: number;
+}
+
+export interface PassiveHarvest {
+  firstSeenAt: number;
+  lastSeenAt: number;
+  captureCount: number;
+  items: PassiveHarvestItem[];
+  subredditDistribution: Record<string, number>;
+  kinds: Record<PassiveHarvestItemKind, number>;
 }
 
 // Canonical Report shape produced by bonNormalizeReport. Every field is always
@@ -257,6 +318,15 @@ export interface Report {
   ringId: string | null;
   userNotes: UserNotes | null;
   googleHarvest: GoogleHarvest | null;
+
+  // Set true on investigation completion when the threshold defined in
+  // the prompt's "Hidden profile handling" section is met
+  // (posts_fetched + comments_fetched ≤ 5 && total_karma ≥ 1000). Gates
+  // whether the passive-harvest content-script captures DOM content for
+  // this username — we only spend the cycles for accounts whose API
+  // path can't reach their content.
+  profileHidden: boolean;
+  passiveHarvest: PassiveHarvest | null;
 }
 
 // Profile summary handed to Claude as JSON. The prompt does the actual schema
@@ -373,6 +443,15 @@ export interface ProfileSummary {
   // at least once. The shape mirrors the GoogleHarvest stored on Report,
   // minus the capturedAt timestamp.
   google_harvest?: GoogleHarvest;
+
+  // Posts / comments scraped passively from Reddit's DOM as the operator
+  // browses, for hidden-profile users we've already investigated. Same
+  // role as google_harvest — supplemental enrichment that gives Claude
+  // visibility into a hidden account's behavior — but the items come
+  // from Reddit feeds the operator happened to be on, not from a
+  // SERP. Sample is biased toward subs the operator browses; the prompt
+  // weights it accordingly.
+  passive_harvest?: PassiveHarvest;
 }
 
 // Raw Reddit JSON envelopes we look into. Field set is intentionally

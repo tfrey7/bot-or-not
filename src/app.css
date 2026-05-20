@@ -215,25 +215,50 @@ body {
    Masthead
    ============================================================ */
 
+/* Header + tab nav stick together as one block. Wrapping them in a single
+   sticky shell avoids the two-sibling sticky problem (both can't pin at
+   top: 0 — the second would slide under the first) and lets the header
+   grow vertically when the command status appears without us hardcoding a
+   tab-offset. */
+.bon-sticky-shell {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: var(--bon-bg);
+  margin-bottom: 1.75em;
+}
+
 .bon-header {
   display: flex;
   align-items: flex-end;
-  gap: 0.4em;
-  padding-bottom: 1.5em;
-  margin-bottom: 2.25em;
+  gap: 1.5em;
+  padding: 0.9em 0 1em;
   position: relative;
-  border-bottom: 2px solid var(--bon-rule);
 }
-.bon-header::after {
-  /* Publication-style double rule below the masthead. */
-  content: "";
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: -5px;
-  height: 1px;
-  background: var(--bon-rule);
-  opacity: 0.5;
+.bon-header-masthead {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.4em;
+  min-width: 0;
+}
+.bon-header-command {
+  margin-left: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: center;
+  gap: 0.35em;
+  min-width: 0;
+  flex: 0 1 28em;
+}
+@media (max-width: 56em) {
+  .bon-header {
+    flex-wrap: wrap;
+  }
+  .bon-header-command {
+    flex-basis: 100%;
+    margin-left: 0;
+  }
 }
 .bon-header-mascot-btn {
   appearance: none;
@@ -334,7 +359,7 @@ body {
 .bon-tabs {
   display: flex;
   gap: 0.25em;
-  margin: 0 0 1.75em;
+  margin: 0;
   border-bottom: 1px solid var(--bon-border);
 }
 .bon-tab {
@@ -362,6 +387,9 @@ body {
 .bon-tab--active:hover {
   color: var(--bon-text);
   border-bottom-color: var(--bon-accent);
+}
+.bon-tab[data-tab="settings"] {
+  margin-left: auto;
 }
 .bon-tab-panel[hidden] {
   display: none;

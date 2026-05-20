@@ -9,6 +9,10 @@ import {
   bonInlineTagsResetNav,
 } from "./features/inline-tags";
 import {
+  bonPassiveHarvestInit,
+  bonPassiveHarvestTick,
+} from "./features/passive-harvest";
+import {
   bonProfileInjectionInit,
   bonProfileInjectionTick,
 } from "./features/profile-injection";
@@ -23,6 +27,7 @@ const { version } = browser.runtime.getManifest();
 console.log(`[Bot or Not] v${version} loaded`);
 
 bonInlineTagsInit();
+bonPassiveHarvestInit();
 bonProfileInjectionInit();
 bonReportingInit();
 bonStatusDetectionInit();
@@ -43,6 +48,7 @@ function scheduleScan(): void {
   requestAnimationFrame(() => {
     scanScheduled = false;
     bonInlineTagsMark();
+    bonPassiveHarvestTick();
     bonProfileInjectionTick();
     bonStatusDetectionScan();
   });

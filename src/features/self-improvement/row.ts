@@ -40,7 +40,7 @@ export function bonSelfImprovementRow(
 
   const grid = document.createElement("div");
   grid.className = "bon-self-improvement-grid";
-  grid.appendChild(buildSideYou(userNotes.rating, userNotes.note));
+  grid.appendChild(buildSideYou(userNotes.ratings, userNotes.note));
   grid.appendChild(
     buildSideAi(
       persona?.label ?? null,
@@ -86,7 +86,7 @@ function buildHeader(
   return header;
 }
 
-function buildSideYou(rating: PersonaLabel | null, note: string): HTMLElement {
+function buildSideYou(ratings: PersonaLabel[], note: string): HTMLElement {
   const side = document.createElement("section");
   side.className = "bon-self-improvement-side bon-self-improvement-side--you";
 
@@ -95,7 +95,18 @@ function buildSideYou(rating: PersonaLabel | null, note: string): HTMLElement {
   title.textContent = "Your call";
   side.appendChild(title);
 
-  side.appendChild(buildPersonaChip(rating, "no call"));
+  if (ratings.length === 0) {
+    side.appendChild(buildPersonaChip(null, "no call"));
+  } else {
+    const chipRow = document.createElement("div");
+    chipRow.className = "bon-self-improvement-pickrow";
+
+    for (const rating of ratings) {
+      chipRow.appendChild(buildPersonaChip(rating, "no call"));
+    }
+
+    side.appendChild(chipRow);
+  }
 
   const noteText = note.trim();
   if (noteText) {

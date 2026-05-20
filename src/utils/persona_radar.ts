@@ -28,13 +28,20 @@ const POLY_FLOOR = 0.06;
 const ANIM_VERTEX_MS = 360;
 const ANIM_STAGGER_MS = 70;
 const easeOutCubic = (t: number): number => 1 - Math.pow(1 - t, 3);
+const easeInCubic = (t: number): number => t * t * t;
 
-// Fires once the last vertex finishes its race-out. Callers use this
-// to chain the persona label's reveal animation onto the same timeline
-// without depending on CSS animation-delay (which doesn't survive
-// every host page's style cascade).
+// Persona medallion fade-in target. Matches the CSS rest opacity on
+// `.bon-radar-bg` — kept in sync here.
+const BG_FADE_FINAL_OPACITY = 0.45;
+
+// Exported so the persona label's reveal animation can match the
+// radar's total runtime — bg fade, spider race-out, and label glow all
+// start and end on the same beat. Derived from the archetype count so
+// it auto-tracks if axes are added.
+export const BON_PERSONA_RADAR_DURATION_MS =
+  (BON_ARCHETYPES.length - 1) * ANIM_STAGGER_MS + ANIM_VERTEX_MS;
+
 export interface BonPersonaRadarOptions {
-  onLock?: () => void;
   iconUrl?: string | null;
 }
 
@@ -93,6 +100,7 @@ export function bonPersonaRadar(
       .join(", ")}`
   );
 
+  let bgPoly: SVGPolygonElement | null = null;
   if (options.iconUrl) {
     // Render the medallion as a <pattern> fill on the same heptagonal
     // <polygon> the radar's outer grid uses. The polygon's geometry IS the
@@ -126,7 +134,7 @@ export function bonPersonaRadar(
     defs.appendChild(pattern);
     svg.appendChild(defs);
 
-    const bgPoly = document.createElementNS(svgns, "polygon");
+    bgPoly = document.createElementNS(svgns, "polygon");
     bgPoly.setAttribute("points", points(1));
     bgPoly.setAttribute("fill", `url(#${patternId})`);
     bgPoly.setAttribute("class", "bon-radar-bg");
@@ -210,12 +218,16 @@ export function bonPersonaRadar(
     dotTargets.push({ el: dot, axisIndex: i, tx: point.x, ty: point.y });
   }
 
+  if (bgPoly && !reduceMotion) {
+    bgPoly.style.opacity = "0";
+  }
+
   if (
     !reduceMotion &&
     typeof window !== "undefined" &&
     typeof window.requestAnimationFrame === "function"
   ) {
-    const totalDuration = ANIM_STAGGER_MS * (N - 1) + ANIM_VERTEX_MS;
+    const totalDuration = BON_PERSONA_RADAR_DURATION_MS;
     let startTime: number | null = null;
 
     const tick = (now: number): void => {
@@ -224,6 +236,13 @@ export function bonPersonaRadar(
       }
 
       const elapsed = now - startTime;
+
+      if (bgPoly) {
+        const bgT = Math.max(0, Math.min(1, elapsed / totalDuration));
+        bgPoly.style.opacity = (
+          easeInCubic(bgT) * BG_FADE_FINAL_OPACITY
+        ).toFixed(3);
+      }
 
       const liveVertices = polyTargets.map((target, i) => {
         const vertexStart = i * ANIM_STAGGER_MS;
@@ -254,14 +273,14 @@ export function bonPersonaRadar(
 
       if (elapsed < totalDuration) {
         window.requestAnimationFrame(tick);
-      } else {
-        options.onLock?.();
+      } else if (bgPoly) {
+        // Hand opacity back to the stylesheet so the hover-to-peek
+        // CSS rule (label:hover ~ radar .bg) can override at rest.
+        bgPoly.style.removeProperty("opacity");
       }
     };
 
     window.requestAnimationFrame(tick);
-  } else if (reduceMotion) {
-    options.onLock?.();
   }
 
   for (let i = 0; i < N; i++) {

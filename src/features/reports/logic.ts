@@ -10,6 +10,41 @@ import { BON_REPORTS_VERDICT_RANK } from "./data.ts";
 
 export type ReportRow = Report & { username: string };
 
+// Rows that belong above the divider — currently running or waiting in the
+// queue. Everything else (done, errored, never investigated) sinks into the
+// main list. Stale running counts as active until the sweeper rewrites it
+// to "error"; that way an obviously-stuck row doesn't quietly disappear.
+export function bonReportsIsActiveRow(report: ReportRow): boolean {
+  const status = report.investigation?.status;
+  return status === "running" || status === "queued";
+}
+
+// Sort order for the active table: running before queued, newest-started
+// running first, oldest-queued first within the queue (FIFO matches the
+// background's pickup order).
+export function bonReportsCompareActive(a: ReportRow, b: ReportRow): number {
+  const aStatus = a.investigation?.status;
+  const bStatus = b.investigation?.status;
+
+  if (aStatus === "running" && bStatus !== "running") {
+    return -1;
+  }
+
+  if (bStatus === "running" && aStatus !== "running") {
+    return 1;
+  }
+
+  if (aStatus === "running") {
+    const aTime = a.investigation?.startedAt ?? a.investigation?.runAt ?? 0;
+    const bTime = b.investigation?.startedAt ?? b.investigation?.runAt ?? 0;
+    return bTime - aTime;
+  }
+
+  const aQueued = a.investigation?.queuedAt ?? 0;
+  const bQueued = b.investigation?.queuedAt ?? 0;
+  return aQueued - bQueued;
+}
+
 // Number of queued investigations ahead of `target` in the FIFO queue —
 // older queuedAt values run first. Returns 0 if `target` isn't queued.
 export function bonReportsCountQueuedAhead(

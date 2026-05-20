@@ -11,6 +11,7 @@ import type {
   ModeratedSubreddit,
   ModeratedSubreddits,
   ModeratorRemovals,
+  PassiveHarvest,
   PostingRate,
   ProfileSummary,
   RedditProfile,
@@ -21,7 +22,7 @@ import type {
 } from "../../types.ts";
 import { BON_REDDIT_FETCH_LIMIT } from "./fetch.ts";
 
-const BON_MAX_ITEMS_TO_AI = 300; // per kind (posts + comments)
+const BON_MAX_ITEMS_TO_AI = 1000; // per kind (posts + comments)
 
 interface RawPost {
   subreddit?: string;
@@ -66,6 +67,7 @@ export interface SummarizeExtra {
   botBouncerCheckedAt?: number;
   webSearchResults?: WebSearchResult[];
   googleHarvest?: GoogleHarvest;
+  passiveHarvest?: PassiveHarvest;
 }
 
 export function bonSummarizeProfile(
@@ -138,6 +140,7 @@ export function bonSummarizeProfile(
     recent_comments: trimmedComments,
     web_search_results: extra.webSearchResults ?? [],
     ...(extra.googleHarvest ? { google_harvest: extra.googleHarvest } : {}),
+    ...(extra.passiveHarvest ? { passive_harvest: extra.passiveHarvest } : {}),
   };
 }
 

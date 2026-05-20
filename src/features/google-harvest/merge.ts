@@ -27,6 +27,18 @@ function mergePost(
 ): GoogleHarvestPost {
   if (existing) {
     // Refresh fields Google might have updated. firstSeenAt stays put.
+    // Attribution fields also stay put — once the worker has resolved a
+    // post, a re-scrape of the same URL shouldn't reset it. The exception
+    // is profile-* kinds, where the URL itself proves authorship; if the
+    // existing record somehow has a different value, take the URL-derived
+    // one (cheap and correct).
+    const incomingIsProfile =
+      incoming.kind === "profile-root" || incoming.kind === "profile-post";
+    const attribution = incomingIsProfile ? "authored" : existing.attribution;
+    const attributionCheckedAt = incomingIsProfile
+      ? (existing.attributionCheckedAt ?? now)
+      : existing.attributionCheckedAt;
+
     return {
       ...existing,
       kind: incoming.kind,
@@ -38,21 +50,33 @@ function mergePost(
       commentCountHint: incoming.commentCountHint,
       snippetText: incoming.snippetText,
       lastSeenAt: now,
+      attribution,
+      attributionCheckedAt,
     };
   }
+
+  // New record. Pre-settle the kinds that don't need a Reddit fetch:
+  // profile-* are self-attributing (URL contains the username), and
+  // subreddit / other URLs have no single author to check. Only sub-post
+  // and comment need to enter the attribution queue.
+  const needsFetch =
+    incoming.kind === "sub-post" || incoming.kind === "comment";
 
   return {
     ...incoming,
     firstSeenAt: now,
     lastSeenAt: now,
+    attributionCheckedAt: needsFetch ? null : now,
   };
 }
 
 function computeAggregates(posts: GoogleHarvestPost[]): {
   subredditDistribution: Record<string, number>;
+  authoredSubredditDistribution: Record<string, number>;
   kinds: Record<GoogleHarvestPostKind, number>;
 } {
   const subredditDistribution: Record<string, number> = {};
+  const authoredSubredditDistribution: Record<string, number> = {};
   const kinds: Record<GoogleHarvestPostKind, number> = {
     "profile-root": 0,
     "profile-post": 0,
@@ -67,10 +91,15 @@ function computeAggregates(posts: GoogleHarvestPost[]): {
     if (post.subreddit) {
       subredditDistribution[post.subreddit] =
         (subredditDistribution[post.subreddit] || 0) + 1;
+
+      if (post.attribution === "authored") {
+        authoredSubredditDistribution[post.subreddit] =
+          (authoredSubredditDistribution[post.subreddit] || 0) + 1;
+      }
     }
   }
 
-  return { subredditDistribution, kinds };
+  return { subredditDistribution, authoredSubredditDistribution, kinds };
 }
 
 export interface BonHarvestMergeInput {

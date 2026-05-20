@@ -5,9 +5,12 @@
 // can quietly suppress class-driven keyframes; WAAPI animations override
 // inline styles directly and don't depend on selector specificity.
 
-const REVEAL_DURATION_MS = 1000;
+const DEFAULT_REVEAL_DURATION_MS = 1000;
 
-export function bonRevealPersonaLabel(label: HTMLElement): void {
+export function bonRevealPersonaLabel(
+  label: HTMLElement,
+  durationMs: number = DEFAULT_REVEAL_DURATION_MS
+): void {
   const reduceMotion =
     typeof window !== "undefined" &&
     typeof window.matchMedia === "function" &&
@@ -30,11 +33,11 @@ export function bonRevealPersonaLabel(label: HTMLElement): void {
         opacity: 1,
         transform: "translateY(0)",
         textShadow: glow,
-        offset: 0.35,
+        offset: 0.55,
       },
       { opacity: 1, transform: "translateY(0)", textShadow: "none" },
     ],
-    { duration: REVEAL_DURATION_MS, easing: "ease-out", fill: "both" }
+    { duration: durationMs, easing: "ease-out", fill: "both" }
   );
 
   anim.addEventListener("finish", () => {

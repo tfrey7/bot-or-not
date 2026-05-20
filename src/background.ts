@@ -2,11 +2,17 @@ import {
   bonAiCommandHandle,
   bonAiCommandReset,
 } from "./features/ai-command/handler.ts";
+import { bonGoogleAttributionDrain } from "./features/google-harvest/attribution.ts";
 import {
   bonInvestigationAutoOnView,
   bonInvestigationStart,
   bonInvestigationSweepOrphans,
 } from "./features/investigation/handlers.ts";
+import {
+  bonPassiveHarvestGetHiddenUsernames,
+  bonPassiveHarvestRecord,
+} from "./features/passive-harvest/handlers.ts";
+import type { BonPassiveHarvestFinding } from "./features/passive-harvest/scrape.ts";
 import {
   bonReportsClearAll,
   bonReportsDelete,
@@ -48,7 +54,12 @@ void bootstrapDevReferenceAccounts();
 
 void bonInvestigationSweepOrphans();
 
-void bonRunMigrations();
+void bonRunMigrations().then(() => {
+  // After migrations finish (legacy harvest posts may have just gained
+  // their attribution fields), kick the worker so any pending sub-post /
+  // comment URLs start trickling toward resolution.
+  bonGoogleAttributionDrain();
+});
 
 async function bootstrapDevClaudeApiKey(): Promise<void> {
   if (!__BON_DEV_CLAUDE_API_KEY__) {
@@ -171,7 +182,9 @@ browser.runtime.onMessage.addListener((message: BaseMessage) => {
 
   if (message.type === "set-user-notes") {
     return bonReportsSetUserNotes(message.username as string, {
-      rating: (message.rating as string | null) ?? null,
+      ratings: Array.isArray(message.ratings)
+        ? (message.ratings as string[])
+        : [],
       note: (message.note as string) ?? "",
     });
   }
@@ -251,6 +264,19 @@ browser.runtime.onMessage.addListener((message: BaseMessage) => {
     });
   }
 
+  if (message.type === "get-hidden-usernames") {
+    return bonPassiveHarvestGetHiddenUsernames();
+  }
+
+  if (message.type === "passive-harvest") {
+    const username = (message.username as string) || "";
+    const items = Array.isArray(message.items)
+      ? (message.items as BonPassiveHarvestFinding["item"][])
+      : [];
+
+    return bonPassiveHarvestRecord(username, items);
+  }
+
   if (message.type === "google-harvest") {
     const username = (message.username as string) || "";
     const query = (message.query as string) || "";
@@ -266,7 +292,15 @@ browser.runtime.onMessage.addListener((message: BaseMessage) => {
       `[Bot or Not] google-harvest: u/${username} — incoming ${incomingPosts.length} post(s) for "${query}"`
     );
 
-    return bonReportsSetGoogleHarvest(username, query, incomingPosts);
+    return bonReportsSetGoogleHarvest(username, query, incomingPosts).then(
+      (result) => {
+        // Trickle attribution checks against Reddit for any newly-added
+        // sub-post / comment URLs. Independent of investigation runs —
+        // the dossier just keeps refining itself in the background.
+        bonGoogleAttributionDrain();
+        return result;
+      }
+    );
   }
 });
 
