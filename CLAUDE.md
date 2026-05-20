@@ -5,6 +5,8 @@
 | Command             | Purpose                                                                                                 |
 | ------------------- | ------------------------------------------------------------------------------------------------------- |
 | `npm run dev`       | Launch extension in Firefox (hot-reloads via web-ext)                                                   |
+| `npm run new-feature -- <slug>` | Spawn an agent worktree for a new feature at `../bot-or-not-worktrees/<slug>/` (branch `agent/<slug>`, with `node_modules` and `.env` symlinked from main) |
+| `npm run ship [-- <slug>]` | Ship the current feature to main: rebase onto main → fast-forward → remove worktree + branch. Infers slug from current branch when run inside an `agent/<slug>` worktree. |
 | `npm run lint`      | Lint all `src/**/*.{ts,js}` with typescript-eslint                                                      |
 | `npm run format`    | Format all `src/**/*.{ts,js}` with Prettier                                                             |
 | `npm run typecheck` | Run `tsc --noEmit` against `src/**/*.ts`                                                                |
@@ -17,9 +19,12 @@
 Parallel agent work on this project uses one git worktree per feature so edits to shared files (`src/types.ts`, `src/background.ts`, `src/migrations/index.ts`, etc.) don't co-mingle in a single tree. The general worktree workflow and sign-off contract are documented in `~/.claude/general/workflow.md`; the project-specific bits:
 
 - Worktrees live at `../bot-or-not-worktrees/<slug>/`. Branches are `agent/<slug>`.
-- Each worktree symlinks `node_modules` from the main checkout — one `npm install`, all worktrees reuse it.
+- Each worktree symlinks `node_modules` and `.env` from the main checkout — one `npm install`, all worktrees reuse it.
 - **Only one worktree can be live in Firefox at a time** — Firefox can load exactly one copy of the extension, so `npm run dev` is mutually exclusive across worktrees. To switch which feature you're evaluating: `Ctrl-C` the current `npm run dev`, `cd` into the other worktree, run `npm run dev` there. Other worktrees keep editing without touching the live extension or knocking out the open reports tab.
-- "Ship this feature" follows the sign-off contract from the global workflow doc: commit → rebase onto current `main` → fast-forward into `main` from the main checkout → delete worktree + branch.
+
+**Spawn a worktree** from the main checkout: `npm run new-feature -- <slug>`. Then `cd` into it and start a Claude session.
+
+**Ship a feature** from inside the worktree's Claude session: `npm run ship`. This implements the sign-off contract from the global workflow doc — commit → rebase onto current `main` → fast-forward into `main` → delete worktree + branch. Rebase conflicts stop the script; resolve in the worktree, `git rebase --continue`, then re-run.
 
 A session enters feature-mode when the user declares "I'm working on feature `<slug>`" inside the matching worktree, and exits when the user says "ship it". While in-feature, the session refuses to start a second feature in the same conversation. The state-machine details are in `~/.claude/general/workflow.md`.
 
