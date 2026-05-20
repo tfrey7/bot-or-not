@@ -58,9 +58,13 @@ function singleLabel(persona: Persona): string {
   return ARCHETYPE_LABELS[persona.label] || persona.label;
 }
 
-export function bonPersonaTitle(persona: Persona): string {
+// Returns the sorted "a+b" archetype-pair key when the persona qualifies as
+// a blend (both top axes >= COMBO_MIN_STRENGTH AND runner-up is at least
+// COMBO_BALANCE_RATIO of the top), else null. Shared between the title and
+// the icon resolver so they always agree on what counts as a blend.
+export function bonPersonaComboKey(persona: Persona): string | null {
   if (!persona.archetypes) {
-    return singleLabel(persona);
+    return null;
   }
 
   const ranked = (
@@ -70,17 +74,25 @@ export function bonPersonaTitle(persona: Persona): string {
   const second = ranked[1];
 
   if (!top || !second) {
-    return singleLabel(persona);
+    return null;
   }
 
   if (top[1] < COMBO_MIN_STRENGTH || second[1] < COMBO_MIN_STRENGTH) {
-    return singleLabel(persona);
+    return null;
   }
 
   if (second[1] / top[1] < COMBO_BALANCE_RATIO) {
-    return singleLabel(persona);
+    return null;
   }
 
-  const comboKey = [top[0], second[0]].sort().join("+");
-  return COMBO_TITLES[comboKey] || singleLabel(persona);
+  return [top[0], second[0]].sort().join("+");
+}
+
+export function bonPersonaTitle(persona: Persona): string {
+  const comboKey = bonPersonaComboKey(persona);
+  if (comboKey) {
+    return COMBO_TITLES[comboKey] || singleLabel(persona);
+  }
+
+  return singleLabel(persona);
 }

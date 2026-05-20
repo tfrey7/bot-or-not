@@ -3,7 +3,11 @@
 // interleaved text nodes and <a> nodes — drop it into any container that
 // would otherwise have received `.textContent = text`.
 
-const REDDIT_REF_RE = /(?<![A-Za-z0-9_/])\/?(r|u)\/([A-Za-z0-9_-]{2,21})/gi;
+// Subreddit names: letters/digits/underscores only (no hyphens). Usernames:
+// letters/digits/underscores AND hyphens. Splitting the alternation prevents
+// "r/FightAntisemitism-modded" from being read as one subreddit ref.
+const REDDIT_REF_RE =
+  /(?<![A-Za-z0-9_/])\/?(r\/[A-Za-z0-9_]{2,21}|u\/[A-Za-z0-9_-]{2,21})/gi;
 
 export function bonLinkifyReddit(text: string): DocumentFragment {
   const fragment = document.createDocumentFragment();
@@ -19,8 +23,8 @@ export function bonLinkifyReddit(text: string): DocumentFragment {
       fragment.appendChild(document.createTextNode(text.slice(cursor, start)));
     }
 
-    const kind = match[1].toLowerCase();
-    const name = match[2];
+    const [kindRaw, name] = match[1].split("/");
+    const kind = kindRaw.toLowerCase();
 
     const link = document.createElement("a");
     link.href = `https://www.reddit.com/${kind}/${name}/`;

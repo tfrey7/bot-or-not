@@ -1,8 +1,7 @@
 // Reports-page orchestrator. Owns the load / render / poll loop, the
 // search input, the sort header click handlers, the analytics container,
-// and the two modals (confirm + settings). Each row + cell renderer
-// lives in its own file in this directory; this file just wires them
-// together.
+// and the confirm modal. Each row + cell renderer lives in its own file
+// in this directory; this file just wires them together.
 
 import {
   bonAiCommandFormatSummary,
@@ -11,28 +10,31 @@ import {
 } from "../ai-command";
 import { bonRenderAnalytics } from "../analytics";
 import { bonRenderDiagnostics } from "../diagnostics";
+import { bonRenderSelfImprovement } from "../self-improvement";
+import { bonRenderSync } from "../sync";
 import { BON_REGION_INFO } from "../regions/data.ts";
 import type { Report } from "../../types.ts";
 import { bonExpectedDurationMs } from "../../utils/expected_duration.ts";
 import { bonIsInvestigationStale } from "../../verdict.ts";
 import { bonReportsDetailEmpty, bonReportsDetailPane } from "./detail_pane.ts";
+import { bonReportsInitConfirmModal } from "./confirm_modal.ts";
+import { bonReportsInitJazzLogo } from "./jazz_logo.ts";
 import {
-  bonReportsCloseModalsOnEscape,
-  bonReportsInitConfirmModal,
-  bonReportsInitSettingsModal,
+  bonReportsInitSettings,
   bonReportsOpenSettings,
-} from "./modals.ts";
+  bonReportsRefreshApiKeyStatus,
+} from "./settings.ts";
 import { bonReportsPagination } from "./pagination.ts";
 import { bonReportsRow } from "./table_row.ts";
 import {
   bonReportsCompareBy,
+  bonReportsCountQueuedAhead,
   bonReportsDefaultDirFor,
   bonReportsDiagnoseLoadError,
   bonReportsFormatRunningCellText,
   bonReportsFormatRunningTitle,
   bonReportsHasStructuralChange,
   bonReportsInputIsCommand,
-  bonReportsIsActivityFresh,
   bonReportsSanitizeUsernameQuery,
   type ReportRow,
   type SortDir,
@@ -56,6 +58,12 @@ const analyticsContainer = document.getElementById(
 ) as HTMLElement | null;
 const diagnosticsContainer = document.getElementById(
   "bon-diagnostics-container"
+) as HTMLElement | null;
+const selfImprovementContainer = document.getElementById(
+  "bon-self-improvement-container"
+) as HTMLElement | null;
+const syncContainer = document.getElementById(
+  "bon-sync-container"
 ) as HTMLElement | null;
 
 const BON_REPORTS_PAGE_SIZE = 50;
@@ -103,7 +111,6 @@ let pendingScrollToSelected = !!selectedUsername;
 // is staged here and applied by render() once the record appears via the
 // storage-change listener.
 let pendingSelectionUsername: string | null = null;
-const inflightActivity = new Set<string>();
 
 // Username allowlist set by the AI command agent's `filter_users` tool. When
 // non-null, render() intersects the visible rows with this set on top of any
@@ -137,35 +144,17 @@ void browser.runtime.sendMessage({ type: "ai-command-reset" }).catch(() => {});
 let pollTimer: ReturnType<typeof setInterval> | null = null;
 const POLL_INTERVAL_MS = 1000;
 
-async function loadActivityIfStale(
-  username: string,
-  activityData: ReportRow["activityData"]
-): Promise<void> {
-  if (bonReportsIsActivityFresh(activityData)) {
-    return;
-  }
-
-  if (inflightActivity.has(username)) {
-    return;
-  }
-
-  inflightActivity.add(username);
-  try {
-    await browser.runtime.sendMessage({ type: "fetch-activity", username });
-  } catch (error) {
-    console.error("[Bot or Not] auto-load activity failed", error);
-  } finally {
-    inflightActivity.delete(username);
-  }
-}
-
 browser.storage.onChanged.addListener((changes, area) => {
   if (area !== "local") {
     return;
   }
 
   if (changes.reports) {
-    void load();
+    // Route through the poll path so non-structural writes (notes, lazy
+    // profile-stat fills) don't tear down whichever widget the operator
+    // is currently typing into. pollTick still does a full re-render when
+    // something actually changed structurally.
+    void pollTick();
   }
 
   if (changes.claudeApiKey) {
@@ -216,22 +205,18 @@ function updateSearchPlaceholder(): void {
 }
 
 bonReportsInitConfirmModal({ onConfirm: load });
-bonReportsInitSettingsModal();
-bonReportsCloseModalsOnEscape();
+bonReportsInitSettings();
+bonReportsInitJazzLogo();
 
 document.addEventListener("keydown", (event) => {
   if (event.key !== "Escape" || !agentFilter) {
     return;
   }
 
-  // Modal Esc handlers run alongside this one; if a modal is open, let it
-  // win and leave the filter for the next Esc press.
+  // The confirm modal's own Esc handler runs alongside this one; if it's
+  // open, let it win and leave the filter for the next Esc press.
   const confirmModal = document.getElementById("bon-confirm-modal");
-  const settingsModal = document.getElementById("bon-settings-modal");
-  if (
-    (confirmModal && !confirmModal.hidden) ||
-    (settingsModal && !settingsModal.hidden)
-  ) {
+  if (confirmModal && !confirmModal.hidden) {
     return;
   }
 
@@ -259,6 +244,8 @@ document.addEventListener("keydown", (event) => {
 });
 
 initTabs();
+
+bonRenderSync(syncContainer);
 
 document
   .querySelectorAll<HTMLTableCellElement>("th.bon-sortable")
@@ -301,6 +288,7 @@ async function load(): Promise<void> {
     render();
     renderAnalytics();
     renderDiagnostics();
+    renderSelfImprovement();
   } catch (error) {
     console.error("[Bot or Not] failed to load reports", error);
     tableWrap.hidden = true;
@@ -310,6 +298,8 @@ async function load(): Promise<void> {
 }
 
 async function refreshApiKeyState(): Promise<void> {
+  void bonReportsRefreshApiKeyStatus();
+
   try {
     const { hasKey } = (await browser.runtime.sendMessage({
       type: "get-claude-api-key",
@@ -390,6 +380,20 @@ function renderDiagnostics(): void {
   bonRenderDiagnostics(reportsMap, diagnosticsContainer, {
     apiKeySet: hasApiKey,
   });
+}
+
+function renderSelfImprovement(): void {
+  if (!selfImprovementContainer) {
+    return;
+  }
+
+  const reportsMap: Record<string, Report> = {};
+
+  for (const row of allReports) {
+    reportsMap[row.username] = row;
+  }
+
+  bonRenderSelfImprovement(reportsMap, selfImprovementContainer);
 }
 
 function render(): void {
@@ -497,7 +501,7 @@ function render(): void {
   for (const report of pageRows) {
     const summary = bonReportsRow(report, {
       selectedUsername,
-      expectedDurationMs,
+      queueAhead: bonReportsCountQueuedAhead(allReports, report),
       onSelect: selectRow,
     });
     tbody.appendChild(summary);
@@ -619,9 +623,8 @@ function renderDetail(): void {
 
   detailPane.appendChild(
     bonReportsDetailPane(report, {
-      inflightActivity,
       expectedDurationMs,
-      onActivityNeedsLoad: loadActivityIfStale,
+      queueAhead: bonReportsCountQueuedAhead(allReports, report),
       onNoApiKey: bonReportsOpenSettings,
     })
   );
@@ -734,11 +737,16 @@ function renderEmptyState(query: string): void {
 }
 
 function ensurePolling(): void {
-  const anyLive = allReports.some(
-    (report) =>
-      report.investigation?.status === "running" &&
-      !bonIsInvestigationStale(report.investigation)
-  );
+  const anyLive = allReports.some((report) => {
+    const status = report.investigation?.status;
+    if (status === "queued") {
+      return true;
+    }
+
+    return (
+      status === "running" && !bonIsInvestigationStale(report.investigation)
+    );
+  });
 
   if (anyLive && !pollTimer) {
     pollTimer = setInterval(pollTick, POLL_INTERVAL_MS);
@@ -773,6 +781,7 @@ async function pollTick(): Promise<void> {
       render();
       renderAnalytics();
       renderDiagnostics();
+      renderSelfImprovement();
     } else {
       updateRunningInPlace();
       ensurePolling();
@@ -804,19 +813,6 @@ function updateRunningInPlace(): void {
     const elapsedSec = Math.round(
       Math.max(0, Date.now() - investigation.startedAt) / 1000
     );
-
-    const cells = tbody.querySelectorAll<HTMLTableCellElement>(
-      "[data-bon-running-cell]"
-    );
-
-    for (const cell of cells) {
-      if (cell.dataset.bonRunningCell === report.username) {
-        cell.textContent = bonReportsFormatRunningCellText(
-          elapsedSec,
-          expectedDurationMs
-        );
-      }
-    }
 
     const buttons = document.querySelectorAll<HTMLButtonElement>(
       "[data-bon-running-btn]"
@@ -858,6 +854,12 @@ function initTabs(): void {
 
       for (const panel of panels) {
         panel.hidden = panel.id !== `bon-panel-${target}`;
+      }
+
+      // Note edits don't trigger a structural re-render, so refresh on
+      // activation to pick up changes made since this tab was last opened.
+      if (target === "self-improvement") {
+        renderSelfImprovement();
       }
     });
   }

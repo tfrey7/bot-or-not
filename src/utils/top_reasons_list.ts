@@ -4,7 +4,6 @@
 // styling is per-context (column-stacking, type scale) and lives in the
 // respective stylesheets.
 
-import { BON_FACTOR_LABELS } from "../factors.ts";
 import type { Factor } from "../types.ts";
 import { bonLinkifyReddit } from "./linkify_reddit.ts";
 import { bonScoreLeaning } from "./scoring.ts";
@@ -68,15 +67,7 @@ function buildReason(factor: Factor): HTMLLIElement {
   const text = document.createElement("span");
   text.className = "bon-reason__text";
 
-  const label = document.createElement("strong");
-  label.textContent =
-    BON_FACTOR_LABELS[factor.key] ??
-    (factor as { name?: string }).name ??
-    factor.key;
-  text.appendChild(label);
-
   if (factor.reasoning) {
-    text.appendChild(document.createTextNode(" — "));
     text.appendChild(bonLinkifyReddit(factor.reasoning));
   }
 

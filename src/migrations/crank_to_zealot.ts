@@ -1,0 +1,51 @@
+import { bonReadReports, bonWriteReports } from "../utils/history.ts";
+
+export async function bonMigrateCrankToZealot(): Promise<void> {
+  try {
+    const reports = await bonReadReports();
+
+    let changed = false;
+
+    for (const [username, report] of Object.entries(reports)) {
+      const persona = report.investigation?.persona;
+      if (!persona) {
+        continue;
+      }
+
+      const archetypes = persona.archetypes as Record<string, number> | null;
+      const hasCrankArchetype = archetypes && "crank" in archetypes;
+      const hasCrankLabel = (persona.label as string) === "crank";
+
+      if (!hasCrankArchetype && !hasCrankLabel) {
+        continue;
+      }
+
+      const nextArchetypes = hasCrankArchetype
+        ? (() => {
+            const { crank, ...rest } = archetypes;
+            return { ...rest, zealot: crank } as Record<string, number>;
+          })()
+        : archetypes;
+
+      reports[username] = {
+        ...report,
+        investigation: {
+          ...report.investigation!,
+          persona: {
+            ...persona,
+            label: hasCrankLabel ? "zealot" : persona.label,
+            archetypes: nextArchetypes as typeof persona.archetypes,
+          },
+        },
+      };
+      changed = true;
+    }
+
+    if (changed) {
+      await bonWriteReports(reports);
+      console.log("[Bot or Not] migrated crank → zealot in stored personas");
+    }
+  } catch (error) {
+    console.error("[Bot or Not] crank → zealot migration failed", error);
+  }
+}

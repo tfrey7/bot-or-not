@@ -10,6 +10,37 @@ import { BON_REPORTS_VERDICT_RANK } from "./data.ts";
 
 export type ReportRow = Report & { username: string };
 
+// Number of queued investigations ahead of `target` in the FIFO queue —
+// older queuedAt values run first. Returns 0 if `target` isn't queued.
+export function bonReportsCountQueuedAhead(
+  reports: ReportRow[],
+  target: ReportRow
+): number {
+  const myQueuedAt = target.investigation?.queuedAt;
+  if (target.investigation?.status !== "queued" || myQueuedAt == null) {
+    return 0;
+  }
+
+  let ahead = 0;
+
+  for (const report of reports) {
+    if (report.username === target.username) {
+      continue;
+    }
+
+    const investigation = report.investigation;
+    if (investigation?.status !== "queued") {
+      continue;
+    }
+
+    if (investigation.queuedAt != null && investigation.queuedAt < myQueuedAt) {
+      ahead++;
+    }
+  }
+
+  return ahead;
+}
+
 export function bonReportsFormatRunningCellText(
   elapsedSec: number,
   expectedMs: number | null | undefined
@@ -36,17 +67,6 @@ export function bonReportsFormatRunningTitle(
 
   const remaining = Math.max(0, expSec - elapsedSec);
   return `Running ${elapsedSec}s · ~${remaining}s left (typical ${expSec}s)`;
-}
-
-const BON_ACTIVITY_TTL_MS = 24 * 60 * 60 * 1000;
-
-export function bonReportsIsActivityFresh(
-  activityData: ActivityData | null | undefined
-): boolean {
-  return (
-    !!activityData?.fetchedAt &&
-    Date.now() - activityData.fetchedAt < BON_ACTIVITY_TTL_MS
-  );
 }
 
 // Decide whether the input box is being used to search or to compose an
@@ -118,6 +138,13 @@ export function bonReportsHasStructuralChange(
     const prevStatus = prevReport.investigation?.status;
     const nextStatus = report.investigation?.status;
     if (prevStatus !== nextStatus) {
+      return true;
+    }
+
+    if (
+      nextStatus === "queued" &&
+      prevReport.investigation?.queuedAt !== report.investigation?.queuedAt
+    ) {
       return true;
     }
 
@@ -336,6 +363,79 @@ export function bonReportsBuildSubredditTimelines(
 
   timelines.sort((a, b) => b.total - a.total);
   return timelines;
+}
+
+export interface SubredditChartSeries {
+  label: string;
+  total: number;
+  isOther: boolean;
+  bucketCounts: number[];
+}
+
+// Top-N subreddits as individual series, everything else collapsed into a
+// single "other" series. Each series is bucketed across the same range so
+// they line up on a shared X-axis. Posts and comments are merged into one
+// "contribution" stream — the per-line chart distinguishes by subreddit,
+// not by event kind.
+export function bonReportsBuildSubredditChartSeries(
+  timelines: SubredditTimeline[],
+  rangeStart: number,
+  rangeEnd: number,
+  bucketCount: number,
+  topN: number
+): SubredditChartSeries[] {
+  const span = rangeEnd - rangeStart;
+  if (span <= 0 || timelines.length === 0) {
+    return [];
+  }
+
+  const top = timelines.slice(0, topN);
+  const rest = timelines.slice(topN);
+
+  const bucketFor = (events: number[]): number[] => {
+    const counts = new Array<number>(bucketCount).fill(0);
+
+    for (const t of events) {
+      if (t < rangeStart || t > rangeEnd) {
+        continue;
+      }
+
+      const ratio = (t - rangeStart) / span;
+      const index = Math.min(bucketCount - 1, Math.floor(ratio * bucketCount));
+      counts[index]++;
+    }
+
+    return counts;
+  };
+
+  const series: SubredditChartSeries[] = top.map((timeline) => ({
+    label: timeline.sub,
+    total: timeline.total,
+    isOther: false,
+    bucketCounts: bucketFor([
+      ...timeline.postEvents,
+      ...timeline.commentEvents,
+    ]),
+  }));
+
+  if (rest.length > 0) {
+    const otherEvents: number[] = [];
+    let otherTotal = 0;
+
+    for (const timeline of rest) {
+      otherEvents.push(...timeline.postEvents, ...timeline.commentEvents);
+      otherTotal += timeline.total;
+    }
+
+    series.push({
+      label: "other",
+      total: otherTotal,
+      isOther: true,
+      bucketCounts: bucketFor(otherEvents),
+    });
+  }
+
+  return series;
 }
 
 export function bonReportsComputeEarliestFullyVisible(

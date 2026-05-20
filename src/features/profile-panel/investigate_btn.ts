@@ -14,14 +14,18 @@ export function bonPanelBuildInvestigateBtn(
   button.type = "button";
   button.className = "bon-panel-btn";
 
+  const queued = investigation?.status === "queued";
   const running = investigation?.status === "running";
   const stale = running && bonIsInvestigationStale(investigation);
   const verdict = investigation?.verdict;
 
   const setState = (
-    kind: "investigating" | "retry" | "reinvestigate" | "investigate"
+    kind: "queued" | "investigating" | "retry" | "reinvestigate" | "investigate"
   ): void => {
-    if (kind === "investigating") {
+    if (kind === "queued") {
+      button.textContent = "⏸";
+      button.title = "Queued — waiting for a slot";
+    } else if (kind === "investigating") {
       button.textContent = "⏳";
       button.title = "Investigating…";
     } else if (kind === "retry") {
@@ -38,7 +42,10 @@ export function bonPanelBuildInvestigateBtn(
     button.setAttribute("aria-label", button.title);
   };
 
-  if (running && !stale) {
+  if (queued) {
+    setState("queued");
+    button.disabled = true;
+  } else if (running && !stale) {
     setState("investigating");
     button.disabled = true;
     button.classList.add("bon-spinning");

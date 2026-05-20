@@ -13,6 +13,7 @@ export function bonDiagnosticsStateBreakdown(
   wrap.appendChild(
     buildTable("Investigations", [
       ["Never run", summary.totalRecords - summary.investigated],
+      ["Queued", summary.investigationQueued],
       ["Running", summary.investigationRunning],
       ["Done", summary.investigationDone],
       ["Errored", summary.investigationError],

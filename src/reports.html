@@ -14,40 +14,32 @@
     <link rel="stylesheet" href="features/reports/reports.css" />
     <link rel="stylesheet" href="features/analytics/analytics.css" />
     <link rel="stylesheet" href="features/diagnostics/diagnostics.css" />
+    <link rel="stylesheet" href="features/self-improvement/self-improvement.css" />
+    <link rel="stylesheet" href="features/sync/sync.css" />
   </head>
   <body>
     <div class="bon-page">
       <header class="bon-header">
-        <img
-          src="../icons/chromes.png"
-          width="56"
-          height="84"
-          alt="Sherlock Chromes"
-          class="bon-header-mascot"
-        />
+        <button
+          type="button"
+          id="bon-mascot-btn"
+          class="bon-header-mascot-btn"
+          aria-label="Play late-night jazz"
+          aria-pressed="false"
+          title="Late-night jazz"
+        >
+          <img
+            src="../icons/chromes.png"
+            width="56"
+            height="84"
+            alt="Sherlock Chromes"
+            class="bon-header-mascot"
+            id="bon-mascot-img"
+          />
+        </button>
         <div class="bon-header-titles">
           <h1>Bot <em>or</em> Not</h1>
           <p class="bon-header-tagline">A field dossier · Reddit</p>
-        </div>
-        <div class="bon-header-actions">
-          <button
-            type="button"
-            id="bon-jazz-egg"
-            class="bon-btn bon-jazz-egg"
-            aria-label="Play late-night jazz"
-            title="♪"
-          >
-            <span class="bon-jazz-egg-icon">🎷</span>
-          </button>
-          <button
-            type="button"
-            id="bon-settings-btn"
-            class="bon-btn"
-            aria-label="Settings"
-            title="Settings"
-          >
-            ⚙ Settings
-          </button>
         </div>
       </header>
 
@@ -84,6 +76,28 @@
           data-tab="diagnostics"
         >
           Diagnostics
+        </button>
+        <button
+          type="button"
+          class="bon-tab"
+          role="tab"
+          aria-selected="false"
+          aria-controls="bon-panel-self-improvement"
+          id="bon-tab-self-improvement"
+          data-tab="self-improvement"
+        >
+          Self-improvement
+        </button>
+        <button
+          type="button"
+          class="bon-tab"
+          role="tab"
+          aria-selected="false"
+          aria-controls="bon-panel-settings"
+          id="bon-tab-settings"
+          data-tab="settings"
+        >
+          Settings
         </button>
       </nav>
 
@@ -136,18 +150,8 @@
                     <th class="bon-sortable" data-sort="username">
                       User <span class="bon-sort-indicator"></span>
                     </th>
-                    <th class="bon-sortable" data-sort="region">
-                      Region <span class="bon-sort-indicator"></span>
-                    </th>
                     <th class="bon-sortable" data-sort="verdict">
-                      AI verdict <span class="bon-sort-indicator"></span>
-                    </th>
-                    <th
-                      class="bon-sortable"
-                      data-sort="investigatedAt"
-                      data-default-dir="desc"
-                    >
-                      Investigated <span class="bon-sort-indicator"></span>
+                      Tags <span class="bon-sort-indicator"></span>
                     </th>
                   </tr>
                 </thead>
@@ -191,56 +195,75 @@
         <div id="bon-diagnostics-container"></div>
       </section>
 
+      <section
+        class="bon-tab-panel"
+        role="tabpanel"
+        id="bon-panel-self-improvement"
+        aria-labelledby="bon-tab-self-improvement"
+        hidden
+      >
+        <div id="bon-self-improvement-container"></div>
+      </section>
+
+      <section
+        class="bon-tab-panel"
+        role="tabpanel"
+        id="bon-panel-settings"
+        aria-labelledby="bon-tab-settings"
+        hidden
+      >
+        <div class="bon-settings">
+          <section class="bon-settings-section">
+            <p class="bon-settings-section-title">Claude API key</p>
+            <div class="bon-settings-field">
+              <input
+                type="password"
+                id="bon-api-key-input"
+                placeholder="sk-ant-..."
+                autocomplete="off"
+                spellcheck="false"
+                aria-label="Claude API key"
+              />
+              <p id="bon-api-key-status" class="bon-settings-status"></p>
+              <div class="bon-settings-actions">
+                <button type="button" id="bon-settings-save" class="bon-btn">
+                  Save
+                </button>
+              </div>
+            </div>
+          </section>
+
+          <section class="bon-settings-section">
+            <p class="bon-settings-section-title">Sync</p>
+            <p class="bon-settings-section-desc">
+              Download a backup of your reports, or import one from another
+              browser. Imports merge per-username — nothing in your current
+              data is overwritten.
+            </p>
+            <div id="bon-sync-container"></div>
+          </section>
+
+          <section class="bon-settings-section">
+            <p class="bon-settings-section-title">Danger zone</p>
+            <div class="bon-settings-danger-row">
+              <span class="bon-settings-danger-desc">
+                Delete every reported user and investigation.
+              </span>
+              <button
+                type="button"
+                id="bon-clear-btn"
+                class="bon-btn bon-btn--danger"
+              >
+                Clear all
+              </button>
+            </div>
+          </section>
+        </div>
+      </section>
+
       <footer class="bon-footer">
         Bot or Not v<span id="bon-version"></span>
       </footer>
-    </div>
-
-    <div id="bon-settings-modal" class="bon-modal-backdrop" hidden>
-      <div
-        class="bon-modal"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="bon-settings-heading"
-      >
-        <p id="bon-settings-heading">
-          <strong>Settings</strong>
-        </p>
-        <div class="bon-settings-field">
-          <label for="bon-api-key-input">Claude API key</label>
-          <input
-            type="password"
-            id="bon-api-key-input"
-            placeholder="sk-ant-..."
-            autocomplete="off"
-            spellcheck="false"
-          />
-          <p id="bon-api-key-status" class="bon-settings-status"></p>
-        </div>
-        <div class="bon-settings-danger">
-          <p class="bon-settings-danger-label">Danger zone</p>
-          <div class="bon-settings-danger-row">
-            <span class="bon-settings-danger-desc">
-              Delete every reported user and investigation.
-            </span>
-            <button
-              type="button"
-              id="bon-clear-btn"
-              class="bon-btn bon-btn--danger"
-            >
-              Clear all
-            </button>
-          </div>
-        </div>
-        <div class="bon-modal-actions">
-          <button type="button" id="bon-settings-cancel" class="bon-btn">
-            Close
-          </button>
-          <button type="button" id="bon-settings-save" class="bon-btn">
-            Save
-          </button>
-        </div>
-      </div>
     </div>
 
     <div id="bon-confirm-modal" class="bon-modal-backdrop" hidden>

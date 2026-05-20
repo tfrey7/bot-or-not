@@ -7,6 +7,7 @@
 
 import type {
   BotBouncerStatus,
+  GoogleHarvest,
   ModeratedSubreddit,
   ModeratedSubreddits,
   ModeratorRemovals,
@@ -20,7 +21,7 @@ import type {
 } from "../../types.ts";
 import { BON_REDDIT_FETCH_LIMIT } from "./fetch.ts";
 
-const BON_MAX_ITEMS_TO_AI = 60; // per kind (posts + comments)
+const BON_MAX_ITEMS_TO_AI = 300; // per kind (posts + comments)
 
 interface RawPost {
   subreddit?: string;
@@ -64,6 +65,7 @@ export interface SummarizeExtra {
   botBouncerStatus?: Exclude<BotBouncerStatus, null>;
   botBouncerCheckedAt?: number;
   webSearchResults?: WebSearchResult[];
+  googleHarvest?: GoogleHarvest;
 }
 
 export function bonSummarizeProfile(
@@ -135,6 +137,7 @@ export function bonSummarizeProfile(
     recent_posts: trimmedPosts,
     recent_comments: trimmedComments,
     web_search_results: extra.webSearchResults ?? [],
+    ...(extra.googleHarvest ? { google_harvest: extra.googleHarvest } : {}),
   };
 }
 
@@ -228,10 +231,10 @@ function countRemovals(
   return removals;
 }
 
-// Posting rate over the visible window. The fetched sample is capped at ~100
-// posts + 100 comments; the window between the oldest and newest item tells us
-// how fast they accumulated. A heavy farmer can hit 50+/day sustained — well
-// above what a normal human (even a Stan) does.
+// Posting rate over the visible window. The fetched sample is capped at
+// BON_REDDIT_FETCH_LIMIT items per kind; the window between the oldest
+// and newest item tells us how fast they accumulated. A heavy farmer can
+// hit 50+/day sustained — well above what a normal human (even a Stan) does.
 function computePostingRate(
   posts: RawPost[],
   comments: RawComment[]

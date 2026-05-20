@@ -1,0 +1,236 @@
+/* Self-improvement tab — list of annotated users, each rendered as a card
+   with two columns: your call vs the AI's. Inherits --bon-* tokens from
+   app.css and the .bon-analytics-header layout from analytics.css. */
+
+.bon-self-improvement-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1em;
+}
+
+.bon-self-improvement-row {
+  background: var(--bon-surface);
+  border: 1px solid var(--bon-border);
+  border-radius: 0.5em;
+  padding: 0.9em 1.1em 1em;
+  box-shadow: var(--bon-shadow-sm);
+}
+
+.bon-self-improvement-row--disagree {
+  border-left: 3px solid var(--bon-stamp-rust);
+}
+
+.bon-self-improvement-row--agree {
+  border-left: 3px solid var(--bon-stamp-moss);
+}
+
+.bon-self-improvement-row--no-ai-pick {
+  border-left: 3px solid var(--bon-border-strong);
+}
+
+.bon-self-improvement-row--no-rating {
+  border-left: 3px solid var(--bon-stamp-slate);
+}
+
+.bon-self-improvement-row__header {
+  display: flex;
+  align-items: center;
+  gap: 0.75em;
+  margin-bottom: 0.75em;
+}
+
+.bon-self-improvement-row__user {
+  font-family: var(--bon-font-mono);
+  font-weight: 700;
+  color: var(--bon-link);
+  text-decoration: none;
+  font-size: 0.95rem;
+}
+
+.bon-self-improvement-row__user:hover {
+  color: var(--bon-link-hover);
+  text-decoration: underline;
+}
+
+.bon-self-improvement-row__time {
+  margin-left: auto;
+  font-family: var(--bon-font-mono);
+  font-size: 0.72rem;
+  color: var(--bon-muted);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.bon-self-improvement-tag {
+  display: inline-block;
+  font-family: var(--bon-font-mono);
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  padding: 0.25em 0.55em;
+  border-radius: 0.25em;
+  border: 1px solid currentColor;
+  background: var(--bon-stamp-bg);
+  line-height: 1.2;
+}
+
+.bon-self-improvement-tag--disagree {
+  color: var(--bon-stamp-rust);
+}
+
+.bon-self-improvement-tag--agree {
+  color: var(--bon-stamp-moss);
+}
+
+.bon-self-improvement-tag--no-ai-pick {
+  color: var(--bon-muted);
+}
+
+.bon-self-improvement-tag--no-rating {
+  color: var(--bon-stamp-slate);
+}
+
+.bon-self-improvement-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.25em;
+}
+
+@media (max-width: 720px) {
+  .bon-self-improvement-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.bon-self-improvement-side {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5em;
+  min-width: 0;
+}
+
+.bon-self-improvement-side__title {
+  margin: 0;
+  font-family: var(--bon-font-mono);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--bon-muted);
+}
+
+.bon-self-improvement-pickrow {
+  display: flex;
+  align-items: center;
+  gap: 0.55em;
+  flex-wrap: wrap;
+}
+
+.bon-self-improvement-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45em;
+  padding: 0.25em 0.65em 0.25em 0.4em;
+  border-radius: 0.3em;
+  background: var(--bon-surface-soft);
+  border: 1px solid var(--bon-border);
+  font-family: var(--bon-font-mono);
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--bon-text);
+}
+
+.bon-self-improvement-chip__stripe {
+  width: 0.55em;
+  height: 0.9em;
+  border-radius: 0.1em;
+  background: var(--bon-border);
+}
+
+.bon-self-improvement-chip--bot .bon-self-improvement-chip__stripe {
+  background: var(--bon-stamp-charcoal);
+}
+
+.bon-self-improvement-chip--normal .bon-self-improvement-chip__stripe {
+  background: var(--bon-muted);
+}
+
+.bon-self-improvement-chip--empty {
+  color: var(--bon-muted);
+  font-style: italic;
+}
+
+.bon-self-improvement-verdict {
+  display: inline-block;
+  font-family: var(--bon-font-mono);
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 0.25em 0.55em;
+  border-radius: 0.25em;
+  border: 1.5px solid currentColor;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  background: var(--bon-stamp-bg);
+  white-space: nowrap;
+  line-height: 1.2;
+}
+
+.bon-self-improvement-verdict--bot {
+  color: var(--bon-stamp-red);
+}
+.bon-self-improvement-verdict--likely-bot {
+  color: var(--bon-stamp-rust);
+}
+.bon-self-improvement-verdict--uncertain {
+  color: var(--bon-stamp-charcoal);
+}
+.bon-self-improvement-verdict--likely-human {
+  color: var(--bon-stamp-moss);
+}
+.bon-self-improvement-verdict--human {
+  color: var(--bon-stamp-forest);
+}
+
+.bon-self-improvement-radar {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45em 0.85em;
+}
+
+.bon-self-improvement-radar__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35em;
+  font-family: var(--bon-font-mono);
+  font-size: 0.72rem;
+  color: var(--bon-text-soft);
+  font-variant-numeric: tabular-nums;
+}
+
+.bon-self-improvement-radar__dot {
+  width: 0.55em;
+  height: 0.55em;
+  border-radius: 50%;
+  background: var(--bon-border);
+}
+
+.bon-self-improvement-note,
+.bon-self-improvement-reasoning {
+  margin: 0;
+  font-family: var(--bon-font-mono);
+  font-size: 0.82rem;
+  line-height: 1.55;
+  color: var(--bon-text-soft);
+  white-space: pre-wrap;
+}
+
+.bon-self-improvement-reasoning--summary {
+  color: var(--bon-muted);
+  border-top: 1px dashed var(--bon-border);
+  padding-top: 0.55em;
+  margin-top: 0.15em;
+}

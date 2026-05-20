@@ -177,8 +177,8 @@
 .bon-top-reasons {
   margin: 0.5em 0 0;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(14em, 1fr));
-  gap: 0.6em 1.2em;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.75em;
 }
 
 .bon-top-reasons__column {
@@ -237,10 +237,6 @@
   background: #27ae60;
 }
 
-.bon-reason__text strong {
-  font-weight: 600;
-}
-
 .bon-panel-btn {
   appearance: none;
   background: rgba(128, 128, 128, 0.12);
@@ -282,16 +278,12 @@
 
 .bon-profile-panel__preview-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 13em;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 1.75em;
   align-items: start;
 }
 
-.bon-profile-panel__preview-summary {
-  min-width: 0;
-}
-
-.bon-profile-panel__preview-row > .bon-profile-panel__preview-summary {
+.bon-profile-panel__preview-row > .bon-panel-persona {
   padding-right: 1.75em;
   border-right: 1px solid rgba(128, 128, 128, 0.18);
 }
@@ -326,12 +318,11 @@
   color: var(--bon-persona-accent, inherit);
 }
 
-.bon-panel-persona__blurb {
-  font-size: 0.78rem;
+.bon-panel-persona__summary {
+  font-size: 0.82rem;
   line-height: 1.55;
-  margin: 0;
+  margin: 0.25em 0 0;
   color: inherit;
-  opacity: 0.85;
 }
 
 .bon-panel-persona--bot,
@@ -390,18 +381,27 @@
   fill: rgba(128, 128, 128, 0.9);
 }
 
+.bon-radar-bg {
+  opacity: 0.45;
+  pointer-events: none;
+}
+.bon-persona-radar:has(.bon-radar-bg) .bon-radar-grid {
+  fill: none;
+}
+.bon-persona-radar:has(.bon-radar-bg) .bon-radar-axis {
+  opacity: 0.5;
+}
+
 @media (max-width: 36em) {
   .bon-profile-panel__preview-row {
     grid-template-columns: minmax(0, 1fr);
     gap: 1.25em;
   }
-  .bon-profile-panel__preview-row > .bon-profile-panel__preview-summary {
+  .bon-profile-panel__preview-row > .bon-panel-persona {
     padding-right: 0;
     padding-bottom: 1.25em;
     border-right: none;
     border-bottom: 1px solid rgba(128, 128, 128, 0.18);
-  }
-  .bon-panel-persona {
     max-width: 18em;
     margin: 0 auto;
   }
@@ -607,5 +607,169 @@
   75% {
     content: "...";
   }
+}
+
+/* ============================================================
+   Embedded Google dossier (Reddit /user/* page)
+
+   Anchored below Reddit's own content (tabs + welcome / post feed).
+   Inherits Reddit's typography and colors so it reads as native
+   page content. The dossier section's renderer is shared with the
+   reports page detail pane, but reports.css is NOT loaded on Reddit
+   — so every rule below provides both layout AND skin, rather than
+   relying on the reports-page base.
+   ============================================================ */
+
+.bon-profile-injection {
+  display: block;
+  width: 100%;
+  margin: 1.5em 0;
+  box-sizing: border-box;
+  text-align: left;
+}
+
+.bon-profile-injection__actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 0.75em;
+}
+
+/* Mirrors the outlined-pill look of Reddit's own "Feed options" /
+   secondary buttons — transparent fill, hairline border, hover fill. */
+.bon-profile-injection__google-btn {
+  font: inherit;
+  font-weight: 500;
+  color: inherit;
+  background: transparent;
+  border: 1px solid rgba(128, 128, 128, 0.4);
+  border-radius: 999px;
+  padding: 0.35em 1em;
+  cursor: pointer;
+  transition: background 0.12s ease-out;
+}
+.bon-profile-injection__google-btn:hover {
+  background: rgba(128, 128, 128, 0.15);
+}
+
+.bon-profile-injection__empty {
+  color: rgba(128, 128, 128, 0.9);
+  margin: 0;
+  font-style: italic;
+}
+
+/* Title + meta line stack vertically. Plain bold heading (no uppercase
+   mono parchment treatment) so it reads as a normal section header. */
+.bon-profile-injection .bon-google-dossier__title-row {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.15em;
+  margin-bottom: 0.9em;
+}
+.bon-profile-injection .bon-detail-title {
+  font: inherit;
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin: 0;
+}
+.bon-profile-injection .bon-google-dossier__meta {
+  font: inherit;
+  font-size: 0.85rem;
+  color: rgba(128, 128, 128, 0.9);
+}
+
+/* Subreddit aggregate chips: soft pills, wrap across multiple rows.
+   The gap requires display:flex on the parent — without it the chips
+   render as inline text running together. */
+.bon-profile-injection .bon-google-dossier__aggregates {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4em;
+  margin-bottom: 1em;
+}
+.bon-profile-injection .bon-google-dossier__chip {
+  font: inherit;
+  font-size: 0.8rem;
+  color: inherit;
+  background: rgba(128, 128, 128, 0.15);
+  border-radius: 999px;
+  padding: 0.15em 0.7em;
+}
+
+/* "Posts (N)" disclosure — native font, with the standard arrow that
+   rotates when open. Strip the default <details> marker. */
+.bon-profile-injection .bon-google-dossier__posts-summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35em;
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: inherit;
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+}
+.bon-profile-injection .bon-google-dossier__posts-summary::-webkit-details-marker {
+  display: none;
+}
+.bon-profile-injection .bon-google-dossier__posts-summary::before {
+  content: "▸";
+  display: inline-block;
+  font-size: 0.85em;
+  transition: transform 120ms ease-out;
+}
+.bon-profile-injection
+  .bon-google-dossier__posts-disclosure[open]
+  > .bon-google-dossier__posts-summary::before {
+  transform: rotate(90deg);
+}
+
+/* Posts list — vertical stack with a subtle separator between items. */
+.bon-profile-injection .bon-google-dossier__posts {
+  list-style: none;
+  margin: 0.75em 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75em;
+}
+.bon-profile-injection .bon-google-dossier__post {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2em;
+  padding-bottom: 0.6em;
+  border-bottom: 1px solid rgba(128, 128, 128, 0.15);
+}
+.bon-profile-injection .bon-google-dossier__post:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+.bon-profile-injection .bon-google-dossier__post-title {
+  font: inherit;
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: inherit;
+  text-decoration: none;
+}
+.bon-profile-injection .bon-google-dossier__post-title:hover {
+  text-decoration: underline;
+}
+.bon-profile-injection .bon-google-dossier__post-meta {
+  font: inherit;
+  font-size: 0.8rem;
+  color: rgba(128, 128, 128, 0.85);
+}
+.bon-profile-injection .bon-google-dossier__post-snippet {
+  font: inherit;
+  font-size: 0.85rem;
+  color: rgba(128, 128, 128, 0.95);
+  line-height: 1.4;
+}
+.bon-profile-injection .bon-google-dossier__overflow {
+  font: inherit;
+  font-size: 0.85rem;
+  color: rgba(128, 128, 128, 0.85);
+  font-style: italic;
 }
 

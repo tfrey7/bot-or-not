@@ -265,7 +265,7 @@ export function bonReportsRegionSection(report: ReportRow): HTMLDivElement {
     const empty = document.createElement("p");
     empty.className = "bon-heatmap-empty";
     empty.textContent =
-      "Load activity below to infer region (country-coded subs, scripts, language markers, moderated subs, posting timezone).";
+      "Investigate this user to infer region (country-coded subs, scripts, language markers, moderated subs, posting timezone).";
     wrap.appendChild(empty);
     return wrap;
   }

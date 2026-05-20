@@ -9,15 +9,19 @@
 // present, Investigation canonicalized so consumers can drop defensive
 // `Array.isArray` / `typeof === "number"` / `?? null` checks.
 
+import { BON_PERSONA_LABELS } from "../factors.ts";
 import type {
   Factor,
+  GoogleHarvest,
   HistoryEntry,
   Investigation,
   InvestigationStatus,
   Persona,
+  PersonaLabel,
   RedditMetrics,
   Report,
   RunSnapshot,
+  UserNotes,
 } from "../types.ts";
 import { bonNormalizeRegionInference } from "./region_inference.ts";
 
@@ -74,6 +78,8 @@ export function bonNormalizeReport(value: unknown): Report {
       investigation: null,
       activityData: null,
       ringId: null,
+      userNotes: null,
+      googleHarvest: null,
     };
   }
 
@@ -109,7 +115,44 @@ export function bonNormalizeReport(value: unknown): Report {
     investigation: canonicalizeInvestigation(record.investigation),
     activityData: (record.activityData as Report["activityData"]) ?? null,
     ringId: typeof record.ringId === "string" ? record.ringId : null,
+    userNotes: canonicalizeUserNotes(record.userNotes),
+    googleHarvest: canonicalizeGoogleHarvest(record.googleHarvest),
   };
+}
+
+// We trust our own write path to produce the right shape — the canonicalizer
+// only defends against legacy records (where the field is missing) and
+// against the trivial "wrong type entirely" case (someone hand-edited
+// storage). Field-by-field validation isn't worth the lines.
+function canonicalizeGoogleHarvest(value: unknown): GoogleHarvest | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return null;
+  }
+
+  return value as GoogleHarvest;
+}
+
+const PERSONA_LABEL_SET = new Set<string>(BON_PERSONA_LABELS);
+
+function canonicalizeUserNotes(value: unknown): UserNotes | null {
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+
+  const record = value as Record<string, unknown>;
+  const rawRating = record.rating;
+  const rating: PersonaLabel | null =
+    typeof rawRating === "string" && PERSONA_LABEL_SET.has(rawRating)
+      ? (rawRating as PersonaLabel)
+      : null;
+  const note = typeof record.note === "string" ? record.note : "";
+  const updatedAt = typeof record.updatedAt === "number" ? record.updatedAt : 0;
+
+  if (rating === null && note === "") {
+    return null;
+  }
+
+  return { rating, note, updatedAt };
 }
 
 // Internal: turn whatever was on disk into the canonical Investigation shape
@@ -122,12 +165,21 @@ function canonicalizeInvestigation(value: unknown): Investigation | null {
 
   const investigation = value as Record<string, unknown>;
   const status = investigation.status as Investigation["status"];
-  if (status !== "running" && status !== "done" && status !== "error") {
+  if (
+    status !== "queued" &&
+    status !== "running" &&
+    status !== "done" &&
+    status !== "error"
+  ) {
     return null;
   }
 
   return {
     status,
+    queuedAt:
+      typeof investigation.queuedAt === "number"
+        ? investigation.queuedAt
+        : null,
     startedAt:
       typeof investigation.startedAt === "number"
         ? investigation.startedAt
@@ -182,6 +234,8 @@ function canonicalizeInvestigation(value: unknown): Investigation | null {
     runs: Array.isArray(investigation.runs)
       ? (investigation.runs as RunSnapshot[]).map(canonicalizeRunSnapshot)
       : [],
+    attempts:
+      typeof investigation.attempts === "number" ? investigation.attempts : 0,
   };
 }
 
@@ -246,6 +300,7 @@ export function bonFreshInvestigation(
 ): Investigation {
   return {
     status,
+    queuedAt: null,
     startedAt: null,
     runAt: null,
     durationMs: null,
@@ -267,6 +322,7 @@ export function bonFreshInvestigation(
     accountAgeDays: null,
     redditMetrics: null,
     runs: [],
+    attempts: 0,
   };
 }
 

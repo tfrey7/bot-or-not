@@ -1,9 +1,9 @@
 // Canonical factor list — single source of truth for factor metadata across
 // the extension's UI and analyzer.
 //
-// CONTRACT: bot_analysis.md must list factors in this exact order, with these
-// exact keys. If you add/remove/rename a factor here, update the prompt file
-// so the data Claude returns matches what the UI expects.
+// CONTRACT: src/features/investigation/prompt.md must list factors in this
+// exact order, with these exact keys. If you add/remove/rename a factor here,
+// update the prompt file so the data Claude returns matches what the UI expects.
 
 import type { ArchetypeKey, PersonaLabel } from "./types.ts";
 
@@ -46,9 +46,9 @@ export interface ArchetypeMeta {
 }
 
 // Persona archetype axes for the radar chart. Each is an independent 0–1
-// strength score Claude produces in `persona.archetypes` — `bot_analysis.md`
-// must keep the same keys, in the same order, since the chart walks this list
-// to lay out vertices clockwise from the top.
+// strength score Claude produces in `persona.archetypes` — the investigation
+// prompt must keep the same keys, in the same order, since the chart walks
+// this list to lay out vertices clockwise from the top.
 //
 // `hue` positions the archetype on the HSL color wheel (0–360). The persona
 // card's accent is computed from this hue, and when a blend kicks in the hue

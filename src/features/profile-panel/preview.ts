@@ -1,8 +1,8 @@
 // The always-visible preview block between the panel header and the
-// collapsible body: investigation summary + top-reasons list + factor-dots
-// strip on the left, persona radar card on the right. Returns null when
-// there's no investigation to preview so the panel can fall back to a
-// single bare toggle row.
+// collapsible body. Mirrors the reports detail pane: persona card (label
+// + radar + summary) on the LEFT, HUMAN/BOT signals list on the RIGHT.
+// Returns null when there's no investigation to preview so the panel can
+// fall back to a single bare toggle row.
 
 import {
   bonIsInvestigationStale,
@@ -29,6 +29,16 @@ export function bonPanelBuildPreview(
   );
   const hasFactors = (investigation?.factors.length ?? 0) > 0;
 
+  if (investigation?.status === "queued") {
+    const preview = document.createElement("div");
+    preview.className = "bon-profile-panel__preview";
+    const message = document.createElement("p");
+    message.className = "bon-profile-panel__summary";
+    message.textContent = "Queued — waiting for an open investigation slot.";
+    preview.appendChild(message);
+    return preview;
+  }
+
   if (
     investigation?.status === "running" &&
     !bonIsInvestigationStale(investigation)
@@ -52,41 +62,40 @@ export function bonPanelBuildPreview(
   const preview = document.createElement("div");
   preview.className = "bon-profile-panel__preview";
 
-  const summaryCol = document.createElement("div");
-  summaryCol.className = "bon-profile-panel__preview-summary";
+  const personaBlock = investigation?.persona?.label
+    ? bonPanelBuildPersonaStrip(investigation.persona, {
+        summary: investigation.summary,
+      })
+    : null;
+
+  const reasonsList =
+    investigation && hasFactors
+      ? bonTopReasonsList(investigation.factors)
+      : null;
+
+  if (personaBlock && reasonsList) {
+    const row = document.createElement("div");
+    row.className = "bon-profile-panel__preview-row";
+    row.appendChild(personaBlock);
+    row.appendChild(reasonsList);
+    preview.appendChild(row);
+    return preview;
+  }
+
+  if (personaBlock) {
+    preview.appendChild(personaBlock);
+    return preview;
+  }
 
   if (investigation?.summary) {
     const summary = document.createElement("p");
     summary.className = "bon-profile-panel__summary";
     summary.appendChild(bonLinkifyReddit(investigation.summary));
-    summaryCol.appendChild(summary);
+    preview.appendChild(summary);
   }
 
-  if (investigation && hasFactors) {
-    const reasons = bonTopReasonsList(investigation.factors);
-    if (reasons) {
-      summaryCol.appendChild(reasons);
-    }
-  }
-
-  const personaBlock = investigation?.persona?.label
-    ? bonPanelBuildPersonaStrip(investigation.persona)
-    : null;
-
-  if (personaBlock && summaryCol.childNodes.length) {
-    const row = document.createElement("div");
-    row.className = "bon-profile-panel__preview-row";
-    row.appendChild(summaryCol);
-    row.appendChild(personaBlock);
-    preview.appendChild(row);
-  } else {
-    if (summaryCol.childNodes.length) {
-      preview.appendChild(summaryCol);
-    }
-
-    if (personaBlock) {
-      preview.appendChild(personaBlock);
-    }
+  if (reasonsList) {
+    preview.appendChild(reasonsList);
   }
 
   return preview;

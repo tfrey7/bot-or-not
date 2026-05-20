@@ -1,0 +1,100 @@
+/* Sync tab — stacked export + import blocks. Inherits --bon-* tokens from
+   app.css and the .bon-analytics-* layout primitives from
+   analytics/analytics.css. */
+
+.bon-sync {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5em;
+}
+
+.bon-sync-block {
+  background: var(--bon-surface);
+  border: 1px solid var(--bon-border);
+  border-radius: 0.5em;
+  padding: 1.2em 1.4em;
+  box-shadow: var(--bon-shadow-sm);
+  display: flex;
+  flex-direction: column;
+  gap: 0.85em;
+}
+
+.bon-sync-block-title {
+  margin: 0;
+  font-family: var(--bon-font-mono);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--bon-muted);
+}
+
+.bon-sync-block-desc {
+  margin: 0;
+  color: var(--bon-text-soft);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.bon-sync-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.7em;
+  flex-wrap: wrap;
+}
+
+.bon-sync-file-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.bon-sync-status {
+  margin: 0;
+  font-family: var(--bon-font-mono);
+  font-size: 0.82rem;
+  color: var(--bon-muted);
+  min-height: 1.2em;
+}
+
+.bon-sync-status--ok {
+  color: var(--bon-stamp-forest);
+}
+
+.bon-sync-status--error {
+  color: var(--bon-danger);
+}
+
+.bon-sync-preview {
+  background: var(--bon-surface-soft);
+  border: 1px solid var(--bon-border);
+  border-radius: 0.4em;
+  padding: 0.9em 1.1em;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85em;
+}
+
+.bon-sync-preview-summary {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.35em 1em;
+  margin: 0;
+  font-family: var(--bon-font-mono);
+  font-size: 0.82rem;
+}
+
+.bon-sync-preview-summary dt {
+  color: var(--bon-muted);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.bon-sync-preview-summary dd {
+  margin: 0;
+  color: var(--bon-text);
+  word-break: break-word;
+}

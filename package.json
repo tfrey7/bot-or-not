@@ -1,6 +1,6 @@
 {
   "name": "bot-or-not",
-  "version": "5.0.0",
+  "version": "6.0.0",
   "description": "",
   "scripts": {
     "dev": "vite dev",
@@ -29,5 +29,8 @@
     "vite": "^8.0.13",
     "vite-plugin-web-extension": "^4.5.1",
     "web-ext": "^10.1.0"
+  },
+  "dependencies": {
+    "uplot": "^1.6.32"
   }
 }

@@ -1,50 +1,12 @@
-// "Activity heatmap" section — fetches and renders the calendar + hour
-// heatmap. The "Load activity" button is only shown when no activity data
-// has been fetched yet; afterward a small ↻ refresh button hides in the
-// meta line. The API-limit banner warns when Reddit only returned the
-// most recent N items and older activity is unknowable from the API.
+// "Activity heatmap" section — renders the calendar + hour heatmap from
+// the activity data captured during investigation. Activity is populated
+// in the same pipeline as the AI verdict; there is no separate Reddit
+// fetch from this surface.
 
-import type { ActivityData } from "../../types.ts";
 import { bonReportsCalendarHeatmap } from "./calendar_heatmap.ts";
 import { bonReportsHourSection } from "./hour_heatmap.ts";
-import { bonReportsSubredditTimelines } from "./subreddit_timelines.ts";
+import { bonReportsSubredditChartOverlaid } from "./subreddit_chart_overlaid.ts";
 import type { ReportRow } from "./logic.ts";
-
-function renderActivityRefresh(
-  username: string,
-  activityData: ActivityData | null,
-  standalone: boolean
-): HTMLButtonElement {
-  const button = document.createElement("button");
-  button.type = "button";
-  button.className = "bon-heatmap-refresh";
-
-  const fetchedAt = activityData?.fetchedAt
-    ? new Date(activityData.fetchedAt).toLocaleString()
-    : "";
-
-  button.textContent = standalone ? "↻ Refresh" : "↻ refresh";
-  button.title = fetchedAt ? `Fetched ${fetchedAt}` : "Refresh from Reddit";
-
-  button.addEventListener("click", async () => {
-    button.disabled = true;
-    button.textContent = "refreshing…";
-    try {
-      await browser.runtime.sendMessage({
-        type: "fetch-activity",
-        username,
-      });
-
-      // storage.onChanged will re-render.
-    } catch (error) {
-      console.error("[Bot or Not] refresh failed", error);
-      button.disabled = false;
-      button.textContent = standalone ? "↻ Refresh" : "↻ refresh";
-    }
-  });
-
-  return button;
-}
 
 export function bonReportsActivitySection(report: ReportRow): HTMLDivElement {
   const wrap = document.createElement("div");
@@ -55,43 +17,14 @@ export function bonReportsActivitySection(report: ReportRow): HTMLDivElement {
   title.textContent = "Activity heatmap";
   wrap.appendChild(title);
 
-  const { username, activityData } = report;
+  const { activityData } = report;
 
   if (!activityData) {
-    const loadButton = document.createElement("button");
-    loadButton.type = "button";
-    loadButton.className = "bon-heatmap-load";
-    loadButton.textContent = "📊 Load activity";
-
-    loadButton.addEventListener("click", async () => {
-      loadButton.disabled = true;
-      loadButton.textContent = "Loading…";
-      try {
-        const response = (await browser.runtime.sendMessage({
-          type: "fetch-activity",
-          username,
-        })) as { ok?: boolean; error?: string };
-
-        if (response?.ok === false) {
-          loadButton.disabled = false;
-          loadButton.textContent = "📊 Load activity";
-
-          const errorMessage = document.createElement("p");
-          errorMessage.className = "bon-heatmap-empty";
-          errorMessage.style.color = "var(--bon-danger)";
-          errorMessage.textContent = `Failed to load: ${response.error || "Unknown error"}`;
-          wrap.appendChild(errorMessage);
-        }
-
-        // storage.onChanged will trigger a re-render on success.
-      } catch (error) {
-        console.error("[Bot or Not] fetch-activity failed", error);
-        loadButton.disabled = false;
-        loadButton.textContent = "📊 Load activity";
-      }
-    });
-
-    wrap.appendChild(loadButton);
+    const empty = document.createElement("p");
+    empty.className = "bon-heatmap-empty";
+    empty.textContent =
+      "Investigate this user to populate the activity heatmap.";
+    wrap.appendChild(empty);
     return wrap;
   }
 
@@ -105,7 +38,6 @@ export function bonReportsActivitySection(report: ReportRow): HTMLDivElement {
     empty.className = "bon-heatmap-empty";
     empty.textContent = "No public posts or comments to plot.";
     wrap.appendChild(empty);
-    wrap.appendChild(renderActivityRefresh(username, activityData, true));
     return wrap;
   }
 
@@ -135,31 +67,13 @@ export function bonReportsActivitySection(report: ReportRow): HTMLDivElement {
   earliestSpan.textContent = `oldest visible: ${new Date(earliest).toLocaleDateString()}`;
   meta.appendChild(earliestSpan);
 
-  meta.appendChild(renderActivityRefresh(username, activityData, false));
   wrap.appendChild(meta);
 
   wrap.appendChild(bonReportsCalendarHeatmap(timestamps, activityData));
   wrap.appendChild(bonReportsHourSection(timestamps));
   wrap.appendChild(
-    bonReportsSubredditTimelines(activityData, report.createdAt)
+    bonReportsSubredditChartOverlaid(activityData, report.createdAt)
   );
-
-  return wrap;
-}
-
-export function bonReportsActivityLoadingPlaceholder(): HTMLDivElement {
-  const wrap = document.createElement("div");
-  wrap.className = "bon-detail-wrap";
-
-  const title = document.createElement("p");
-  title.className = "bon-detail-title";
-  title.textContent = "Activity heatmap";
-  wrap.appendChild(title);
-
-  const loading = document.createElement("p");
-  loading.className = "bon-heatmap-empty";
-  loading.textContent = "Loading activity…";
-  wrap.appendChild(loading);
 
   return wrap;
 }

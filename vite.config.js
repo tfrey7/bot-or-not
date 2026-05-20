@@ -1,6 +1,6 @@
 import { cpSync } from "node:fs";
 import { resolve } from "node:path";
-import { defineConfig } from "vite";
+import { defineConfig, loadEnv } from "vite";
 import webExtension from "vite-plugin-web-extension";
 
 // The webext plugin processes manifest scripts/HTML, but does not walk
@@ -14,35 +14,61 @@ const copyIcons = () => ({
   },
 });
 
-export default defineConfig(({ mode }) => ({
-  plugins: [
-    webExtension({
-      manifest: "manifest.json",
-      browser: "firefox",
-      // reports.html is opened via browser.runtime.getURL from background.js,
-      // not declared in the manifest, so list it here so Vite still builds it.
-      additionalInputs: ["src/reports.html"],
-      // The plugin only re-reads files it bundles, so manifest.json edits
-      // (version bumps, permission changes) are invisible to dev mode
-      // without listing it here. Same for the icons/ tree, which the
-      // copyIcons plugin below ships to dist.
-      watchFilePaths: ["manifest.json", "icons"],
-      // Plugin bug workaround: getMultiPageConfig (used for HTML entries)
-      // omits build.watch, so reports.html and its CSS/JS deps never rebuild
-      // in `vite build --watch`. Force the watcher on in dev only.
-      htmlViteConfig:
-        mode === "development" ? { build: { watch: {} } } : undefined,
-      webExtConfig: {
-        startUrl: ["https://www.reddit.com/"],
-      },
-    }),
-    copyIcons(),
-  ],
-  build: {
-    outDir: "dist",
-    emptyOutDir: true,
-    // Keep the bundle readable so the AMO source-review reviewer (and us) can
-    // diff it against the source.
-    minify: false,
-  },
-}));
+export default defineConfig(({ mode }) => {
+  // Bake the CLAUDE_API_KEY from .env into dev builds only so `npm run dev`
+  // can auto-restore it after Firefox wipes extension storage on reload.
+  // Production builds get null and the bootstrap branch in background.ts
+  // tree-shakes out — the signed XPI never carries the key.
+  const env = mode === "development" ? loadEnv(mode, process.cwd(), "") : {};
+  const devClaudeApiKey =
+    mode === "development" && env.CLAUDE_API_KEY ? env.CLAUDE_API_KEY : null;
+
+  return {
+    plugins: [
+      webExtension({
+        manifest: "manifest.json",
+        browser: "firefox",
+        // reports.html is opened via browser.runtime.getURL from background.js,
+        // not declared in the manifest, so list it here so Vite still builds it.
+        additionalInputs: ["src/reports.html"],
+        // The plugin only re-reads files it bundles, so manifest.json edits
+        // (version bumps, permission changes) are invisible to dev mode
+        // without listing it here. Same for the icons/ tree, which the
+        // copyIcons plugin below ships to dist.
+        watchFilePaths: ["manifest.json", "icons"],
+        // Plugin bug workaround: getMultiPageConfig (used for HTML entries)
+        // omits build.watch, so reports.html and its CSS/JS deps never rebuild
+        // in `vite build --watch`. Force the watcher on in dev only.
+        htmlViteConfig:
+          mode === "development" ? { build: { watch: {} } } : undefined,
+        webExtConfig: {
+          startUrl: ["https://www.reddit.com/"],
+          // web-ext spins up a fresh profile on every dev run, so Firefox
+          // shows its "Welcome to Firefox" / first-run UI every time. These
+          // prefs make the new profile look like an upgraded existing one
+          // so the welcome modal, what's-new tab, and privacy first-run
+          // URL all stay out of the way of the Reddit start tab.
+          pref: {
+            "browser.aboutwelcome.enabled": false,
+            "browser.startup.homepage_override.mstone": "ignore",
+            "startup.homepage_welcome_url": "",
+            "startup.homepage_welcome_url.additional": "",
+            "datareporting.policy.firstRunURL": "",
+            "browser.startup.firstrunSkipsHomepage": true,
+          },
+        },
+      }),
+      copyIcons(),
+    ],
+    define: {
+      __BON_DEV_CLAUDE_API_KEY__: JSON.stringify(devClaudeApiKey),
+    },
+    build: {
+      outDir: "dist",
+      emptyOutDir: true,
+      // Keep the bundle readable so the AMO source-review reviewer (and us) can
+      // diff it against the source.
+      minify: false,
+    },
+  };
+});

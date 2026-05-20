@@ -11,9 +11,8 @@ import { bonEstimateCostUsd } from "../../utils/cost.ts";
 const BON_CLAUDE_MODEL = "claude-sonnet-4-6";
 const BON_CLAUDE_API_URL = "https://api.anthropic.com/v1/messages";
 
-// Hard ceiling on the Claude call. Sonnet 4.6 on a 14k-token prompt
-// typically returns in 40-90s; anything past this is a hung connection,
-// not a slow one.
+// Hard ceiling on the Claude call. Anything past this is a hung
+// connection, not a slow one.
 const BON_CLAUDE_TIMEOUT_MS = 4 * 60 * 1000;
 
 export interface ClaudeCallResult {

@@ -11,10 +11,24 @@ import {
 
 export function bonReportsVerdictBadge(
   rawInvestigation: Investigation | null | undefined,
-  inRing = false
+  inRing = false,
+  queueAhead = 0
 ): HTMLSpanElement | null {
   if (!rawInvestigation) {
     return null;
+  }
+
+  if (rawInvestigation.status === "queued") {
+    const span = document.createElement("span");
+    span.className = "bon-verdict-badge bon-verdict-badge--queued";
+    span.textContent =
+      queueAhead === 0 ? "Queued · next" : `Queued · ${queueAhead} ahead`;
+    span.title =
+      queueAhead === 0
+        ? "Up next — will start when a slot frees"
+        : `Waiting behind ${queueAhead} other investigation${queueAhead === 1 ? "" : "s"}`;
+
+    return span;
   }
 
   if (rawInvestigation.status === "running") {

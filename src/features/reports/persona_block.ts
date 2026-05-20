@@ -1,11 +1,13 @@
 // Persona aside in the expanded investigation detail: shared radar widget
-// + dominant label + the LLM's one-line reasoning. Returns null if the
-// investigation has no persona data. Legacy investigations stored before
-// the radar (no `archetypes`) still render — just the label + reasoning,
-// no chart.
+// + dominant label + a single summary paragraph below the chart. Prefers
+// the investigation's overall summary; falls back to `persona.reasoning`
+// for legacy records that never wrote a top-level summary. Returns null
+// if the investigation has no persona data.
 
 import type { Persona } from "../../types.ts";
+import { bonLinkifyReddit } from "../../utils/linkify_reddit.ts";
 import { bonPersonaHue } from "../../utils/persona_color.ts";
+import { bonPersonaIcon } from "../../utils/persona_icon.ts";
 import {
   bonHidePersonaLabel,
   bonRevealPersonaLabel,
@@ -13,8 +15,13 @@ import {
 import { bonPersonaRadar } from "../../utils/persona_radar.ts";
 import { bonPersonaTitle } from "../../utils/persona_title.ts";
 
+export interface BonReportsPersonaBlockOpts {
+  summary?: string | null;
+}
+
 export function bonReportsPersonaBlock(
-  persona: Persona | null | undefined
+  persona: Persona | null | undefined,
+  options: BonReportsPersonaBlockOpts = {}
 ): HTMLElement | null {
   if (!persona || !persona.label) {
     return null;
@@ -36,6 +43,7 @@ export function bonReportsPersonaBlock(
     bonHidePersonaLabel(label);
     const radar = bonPersonaRadar(persona.archetypes, {
       onLock: () => bonRevealPersonaLabel(label),
+      iconUrl: bonPersonaIcon(persona),
     });
 
     if (radar) {
@@ -48,11 +56,12 @@ export function bonReportsPersonaBlock(
     block.appendChild(label);
   }
 
-  if (persona.reasoning) {
-    const blurb = document.createElement("p");
-    blurb.className = "bon-persona-blurb";
-    blurb.textContent = persona.reasoning;
-    block.appendChild(blurb);
+  const summaryText = options.summary ?? persona.reasoning;
+  if (summaryText) {
+    const summary = document.createElement("p");
+    summary.className = "bon-persona-summary";
+    summary.appendChild(bonLinkifyReddit(summaryText));
+    block.appendChild(summary);
   }
 
   return block;

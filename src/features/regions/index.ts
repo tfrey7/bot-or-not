@@ -181,8 +181,8 @@ function bonDetectLanguageMarkers(text: string): {
   return { counts, samples };
 }
 
-// One-shot scan over a concatenated text corpus. Used by bot_analysis.js
-// during fetch — output is stored in activityData.{scriptSignals,languageSignals,languageSamples}.
+// One-shot scan over a concatenated text corpus. Run during the investigation
+// fetch — output is stored in activityData.{scriptSignals,languageSignals,languageSamples}.
 export function bonScanTextSignals(text: string): {
   scripts: Record<string, number>;
   languages: Record<string, number>;

@@ -35,6 +35,7 @@ const easeOutCubic = (t: number): number => 1 - Math.pow(1 - t, 3);
 // every host page's style cascade).
 export interface BonPersonaRadarOptions {
   onLock?: () => void;
+  iconUrl?: string | null;
 }
 
 export function bonPersonaRadar(
@@ -91,6 +92,46 @@ export function bonPersonaRadar(
       )
       .join(", ")}`
   );
+
+  if (options.iconUrl) {
+    // Render the medallion as a <pattern> fill on the same heptagonal
+    // <polygon> the radar's outer grid uses. The polygon's geometry IS the
+    // clip, so the silhouette is cropped exactly to the radar's outer ring
+    // — no clip-path attribute (those are unreliable on SVG <image>), no
+    // bleed into the curve gaps a circular clip would leave behind.
+    const iconScale = 1.3;
+    const iconRadius = layout.radius * iconScale;
+    const iconSize = iconRadius * 2;
+    const iconOffset = layout.center - iconRadius;
+    const patternId = `bon-radar-bg-pat-${Math.random().toString(36).slice(2, 8)}`;
+
+    const defs = document.createElementNS(svgns, "defs");
+    const pattern = document.createElementNS(svgns, "pattern");
+    pattern.setAttribute("id", patternId);
+    pattern.setAttribute("patternUnits", "userSpaceOnUse");
+    pattern.setAttribute("x", String(iconOffset));
+    pattern.setAttribute("y", String(iconOffset));
+    pattern.setAttribute("width", String(iconSize));
+    pattern.setAttribute("height", String(iconSize));
+
+    const patternImage = document.createElementNS(svgns, "image");
+    patternImage.setAttribute("href", options.iconUrl);
+    patternImage.setAttribute("x", "0");
+    patternImage.setAttribute("y", "0");
+    patternImage.setAttribute("width", String(iconSize));
+    patternImage.setAttribute("height", String(iconSize));
+    patternImage.setAttribute("preserveAspectRatio", "xMidYMid meet");
+    pattern.appendChild(patternImage);
+
+    defs.appendChild(pattern);
+    svg.appendChild(defs);
+
+    const bgPoly = document.createElementNS(svgns, "polygon");
+    bgPoly.setAttribute("points", points(1));
+    bgPoly.setAttribute("fill", `url(#${patternId})`);
+    bgPoly.setAttribute("class", "bon-radar-bg");
+    svg.appendChild(bgPoly);
+  }
 
   for (let g = 1; g <= layout.gridLevels; g++) {
     const poly = document.createElementNS(svgns, "polygon");

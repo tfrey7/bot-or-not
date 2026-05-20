@@ -12,7 +12,6 @@
 
 import type {
   BotBouncerStatus,
-  RedditActivityFetch,
   RedditAboutEnvelope,
   RedditEndpoint,
   RedditFetchMetric,
@@ -23,12 +22,15 @@ import type {
 } from "../../types.ts";
 import { bonShortUrl } from "../../utils/format_text.ts";
 
-export const BON_REDDIT_FETCH_LIMIT = 100;
+// Reddit's per-request listing cap. The API silently clamps anything
+// higher to 100, so we paginate via `after=` cursors to reach the
+// configured target.
+export const BON_REDDIT_PAGE_LIMIT = 100;
 
-// Operator-triggered activity refresh paginates to this many items per
-// listing (3 pages × 100). Investigation fetch stays single-page so we
-// don't bloat the Claude prompt or slow auto-investigations.
-export const BON_REDDIT_DEEP_FETCH_LIMIT = 300;
+// Target item count per listing (submitted / comments). The investigation
+// fetch paginates to this depth so the heatmap, calendar, region inference,
+// and timezone signal all share the same dataset as the AI verdict.
+export const BON_REDDIT_FETCH_LIMIT = 300;
 
 export class RedditFetchError extends Error {
   metrics: RedditMetrics;
@@ -164,7 +166,7 @@ async function measureFetchListingPaginated(
 
   while (allChildren.length < targetCount) {
     const remaining = targetCount - allChildren.length;
-    const pageLimit = Math.min(BON_REDDIT_FETCH_LIMIT, remaining);
+    const pageLimit = Math.min(BON_REDDIT_PAGE_LIMIT, remaining);
     const afterParam: string = cursor
       ? `&after=${encodeURIComponent(cursor)}`
       : "";
@@ -266,13 +268,15 @@ export async function bonFetchRedditProfile(
       "about",
       `https://www.reddit.com/user/${encodedUsername}/about.json`
     ),
-    measureFetch<RedditListing>(
+    measureFetchListingPaginated(
       "submitted",
-      `https://www.reddit.com/user/${encodedUsername}/submitted.json?limit=${BON_REDDIT_FETCH_LIMIT}&raw_json=1`
+      `https://www.reddit.com/user/${encodedUsername}/submitted.json`,
+      BON_REDDIT_FETCH_LIMIT
     ),
-    measureFetch<RedditListing>(
+    measureFetchListingPaginated(
       "comments",
-      `https://www.reddit.com/user/${encodedUsername}/comments.json?limit=${BON_REDDIT_FETCH_LIMIT}&raw_json=1`
+      `https://www.reddit.com/user/${encodedUsername}/comments.json`,
+      BON_REDDIT_FETCH_LIMIT
     ),
     measureFetch<RedditModeratedList>(
       "moderated",
@@ -282,83 +286,32 @@ export async function bonFetchRedditProfile(
 
   const fetches: RedditFetchMetric[] = [
     about.metric,
-    submitted.metric,
-    comments.metric,
+    ...submitted.metrics,
+    ...comments.metrics,
     moderated.metric,
   ];
 
   // about/submitted/comments are load-bearing — if any failed the summary
   // would be hollow and Claude would waste an API call analyzing nothing.
   // moderated is best-effort (used to be `.catch(() => null)`).
-  const critical = [about, submitted, comments].find(
-    (result) => result.metric.status === "error"
-  );
-
-  if (critical) {
+  if (about.metric.status === "error") {
     throw new RedditFetchError(
-      `Reddit ${critical.metric.endpoint} fetch failed${
-        critical.metric.httpStatus ? ` (${critical.metric.httpStatus})` : ""
+      `Reddit about fetch failed${
+        about.metric.httpStatus ? ` (${about.metric.httpStatus})` : ""
       }`,
       { fetches, totalDurationMs: 0 }
     );
   }
 
-  return {
-    profile: {
-      about: about.data ?? {},
-      submitted: submitted.data ?? {},
-      comments: comments.data ?? {},
-      moderated: moderated.data,
-    },
-    fetches,
-  };
-}
-
-export interface RedditActivityResult {
-  activity: RedditActivityFetch;
-  fetches: RedditFetchMetric[];
-}
-
-// Lighter fetch used by the "load activity" button on the reports page —
-// skips the about endpoint since we only need posts + comments + mod list
-// to feed the activity heatmap and region inference. Paginates submitted
-// and comments up to BON_REDDIT_DEEP_FETCH_LIMIT for richer timelines.
-export async function bonFetchRedditActivity(
-  username: string
-): Promise<RedditActivityResult> {
-  const encodedUsername = encodeURIComponent(username);
-  const [submitted, comments, moderated] = await Promise.all([
-    measureFetchListingPaginated(
-      "submitted",
-      `https://www.reddit.com/user/${encodedUsername}/submitted.json`,
-      BON_REDDIT_DEEP_FETCH_LIMIT
-    ),
-    measureFetchListingPaginated(
-      "comments",
-      `https://www.reddit.com/user/${encodedUsername}/comments.json`,
-      BON_REDDIT_DEEP_FETCH_LIMIT
-    ),
-    measureFetch<RedditModeratedList>(
-      "moderated",
-      `https://www.reddit.com/user/${encodedUsername}/moderated_subreddits.json?raw_json=1`
-    ),
-  ]);
-
-  const fetches: RedditFetchMetric[] = [
-    ...submitted.metrics,
-    ...comments.metrics,
-    moderated.metric,
-  ];
-
-  const critical = (
+  const criticalListing = (
     [
       ["submitted", submitted],
       ["comments", comments],
     ] as const
   ).find(([, result]) => result.data === null);
 
-  if (critical) {
-    const [name, result] = critical;
+  if (criticalListing) {
+    const [name, result] = criticalListing;
     const lastMetric = result.metrics[result.metrics.length - 1];
     throw new RedditFetchError(
       `Reddit ${name} fetch failed${
@@ -369,7 +322,8 @@ export async function bonFetchRedditActivity(
   }
 
   return {
-    activity: {
+    profile: {
+      about: about.data ?? {},
       submitted: submitted.data ?? {},
       comments: comments.data ?? {},
       moderated: moderated.data,

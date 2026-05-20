@@ -10,7 +10,7 @@ export type Verdict =
   | "likely-human"
   | "human";
 
-export type InvestigationStatus = "running" | "done" | "error";
+export type InvestigationStatus = "queued" | "running" | "done" | "error";
 
 export type ArchetypeKey =
   | "stan"
@@ -107,20 +107,28 @@ export interface RunSnapshot {
   error: string | null;
 }
 
-// Investigation is stored as one struct that mutates through "running" →
-// "done"/"error". bonNormalizeReport canonicalizes from unknown JSON and
-// fills in defaults so every key is always present. Consumers gate on
-// `status` to know which result fields are populated:
+// Investigation is stored as one struct that mutates through
+// "queued" → "running" → "done"/"error". bonNormalizeReport canonicalizes
+// from unknown JSON and fills in defaults so every key is always present.
+// Consumers gate on `status` to know which result fields are populated:
+//   queued  → waiting behind concurrency cap; queuedAt is set
 //   running → verdict/factors/etc. are null/empty; startedAt is set
 //   done    → all result fields populated
 //   error   → `error` is set; result fields may be null/empty
 // Result fields use `null` (not omission) for "not yet known."
 export interface Investigation {
   status: InvestigationStatus;
+  queuedAt: number | null;
   startedAt: number | null;
   runAt: number | null;
   durationMs: number | null;
   error: string | null;
+
+  // Count of runs we've started for this investigation (1 = first try in
+  // progress, etc.). Bumped when the run transitions to "running". Caps
+  // out at BON_INVESTIGATION_MAX_ATTEMPTS — failures past that stay as
+  // "error" instead of getting re-queued.
+  attempts: number;
   verdict: Verdict | null;
   confidence: number | null;
   botProbability: number | null;
@@ -160,7 +168,7 @@ export interface ActivityData {
 
   // Parallel to postTimestamps / commentTimestamps — lowercase subreddit name
   // each item appeared in, or "" if Reddit didn't surface one. Drives the
-  // per-subreddit sparkline view. Older stored snapshots predate this field
+  // per-subreddit overlaid chart. Older stored snapshots predate this field
   // and will be missing it; renderers must tolerate undefined.
   postSubreddits?: string[];
   commentSubreddits?: string[];
@@ -178,6 +186,60 @@ export interface ActivityData {
   fetchedAt: number;
 }
 
+// User's own take on this account, recorded independently of the AI's
+// investigation. `rating` is a hand-picked persona label (or null = "no
+// call yet"); `note` is a free-form scratchpad. One record per username —
+// editing overwrites, no history. `updatedAt` is unix ms; 0 means never
+// edited but exists because storage migration created a placeholder.
+export interface UserNotes {
+  rating: PersonaLabel | null;
+  note: string;
+  updatedAt: number;
+}
+
+// User-initiated Google SERP harvest for a username. Captured client-side by
+// the google-harvest content script (which runs on any Google search of the
+// form "<name> site:reddit.com", including page 2/3/… of the same search),
+// then merged into the matching Report record. The investigation pipeline
+// reads it and hands it to Claude as additional context — useful when a user
+// has hidden their Reddit profile but Google still indexes their posts.
+//
+// Merge semantics: posts are unioned by canonical URL. Each post carries
+// firstSeenAt (immutable, set on first capture) and lastSeenAt (refreshed
+// every time Google surfaces that URL again). A post that stops appearing
+// keeps its old lastSeenAt — falling out of Google is itself a signal.
+export type GoogleHarvestPostKind =
+  | "profile-root"
+  | "profile-post"
+  | "sub-post"
+  | "comment"
+  | "subreddit"
+  | "other";
+
+export interface GoogleHarvestPost {
+  url: string;
+  kind: GoogleHarvestPostKind;
+  subreddit: string | null;
+  postId: string | null;
+  slug: string | null;
+  title: string;
+  ageHint: string | null;
+  commentCountHint: number | null;
+  snippetText: string;
+  firstSeenAt: number;
+  lastSeenAt: number;
+}
+
+export interface GoogleHarvest {
+  firstCapturedAt: number;
+  lastCapturedAt: number;
+  captureCount: number;
+  query: string;
+  posts: GoogleHarvestPost[];
+  subredditDistribution: Record<string, number>;
+  kinds: Record<GoogleHarvestPostKind, number>;
+}
+
 // Canonical Report shape produced by bonNormalizeReport. Every field is always
 // present; `null` (or 0 for timestamps) means "no signal." No two-way optionality.
 export interface Report {
@@ -193,6 +255,8 @@ export interface Report {
   investigation: Investigation | null;
   activityData: ActivityData | null;
   ringId: string | null;
+  userNotes: UserNotes | null;
+  googleHarvest: GoogleHarvest | null;
 }
 
 // Profile summary handed to Claude as JSON. The prompt does the actual schema
@@ -303,6 +367,12 @@ export interface ProfileSummary {
   recent_posts: SummaryPost[];
   recent_comments: SummaryComment[];
   web_search_results?: WebSearchResult[];
+
+  // Posts surfaced by a user-initiated Google site:reddit.com search for
+  // this username. Present only when the user has clicked "Search Google"
+  // at least once. The shape mirrors the GoogleHarvest stored on Report,
+  // minus the capturedAt timestamp.
+  google_harvest?: GoogleHarvest;
 }
 
 // Raw Reddit JSON envelopes we look into. Field set is intentionally

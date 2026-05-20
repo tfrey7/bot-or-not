@@ -8,31 +8,49 @@ import {
   bonReportsFormatRunningCellText,
   bonReportsFormatRunningTitle,
 } from "./logic.ts";
-import { bonReportsOpenConfirmModal } from "./modals.ts";
+import { bonReportsOpenConfirmModal } from "./confirm_modal.ts";
 
 export interface InvestigateButtonOpts {
   expectedDurationMs: number | null;
+  queueAhead: number;
   onNoApiKey?: () => void;
 }
 
 function idleLabel(verdict: string | null | undefined): string {
-  return verdict ? "Re-run AI investigation" : "Run AI investigation";
+  return verdict ? "Re-Investigate" : "Investigate";
+}
+
+function queuedLabel(ahead: number): string {
+  if (ahead === 0) {
+    return "Queued · next up";
+  }
+
+  return `Queued · ${ahead} ahead`;
 }
 
 export function bonReportsRenderInvestigateButton(
   username: string,
   investigation: Investigation | null | undefined,
-  { expectedDurationMs, onNoApiKey }: InvestigateButtonOpts
+  { expectedDurationMs, queueAhead, onNoApiKey }: InvestigateButtonOpts
 ): HTMLButtonElement {
   const button = document.createElement("button");
   button.type = "button";
   button.className = "bon-btn";
 
+  const queued = investigation?.status === "queued";
   const running = investigation?.status === "running";
   const stale = running && bonIsInvestigationStale(investigation);
   const verdict = investigation?.verdict;
 
-  if (running && !stale && investigation) {
+  if (queued) {
+    button.disabled = true;
+    button.dataset.bonQueuedBtn = username;
+    button.textContent = queuedLabel(queueAhead);
+    button.title =
+      queueAhead === 0
+        ? "Up next — will start when a slot frees"
+        : `Waiting behind ${queueAhead} other investigation${queueAhead === 1 ? "" : "s"}`;
+  } else if (running && !stale && investigation) {
     button.disabled = true;
     button.dataset.bonRunningBtn = username;
 
@@ -83,7 +101,8 @@ export function bonReportsRenderDeleteButton(
   const button = document.createElement("button");
   button.type = "button";
   button.className = "bon-btn bon-btn--danger";
-  button.textContent = `Delete report for u/${username}`;
+  button.textContent = "Delete";
+  button.title = `Delete report for u/${username}`;
 
   button.addEventListener("click", () => {
     bonReportsOpenConfirmModal({

@@ -123,26 +123,17 @@ function buildAiBadge(region: AiRegionInference): HTMLSpanElement {
   return badge;
 }
 
-export function bonReportsRegionBadge(report: ReportRow): HTMLSpanElement {
+export function bonReportsRegionBadge(
+  report: ReportRow
+): HTMLSpanElement | null {
   const region = bonReportsComputeRegionForReport(report);
 
   if (!region) {
-    const dash = document.createElement("span");
-    dash.className = "bon-bb-empty";
-    dash.textContent = "—";
-
-    if (!report.activityData) {
-      dash.title =
-        "Activity not loaded yet — expand the row or run an investigation to populate.";
-    } else if (!report.activityData.subredditCounts) {
-      dash.title =
-        "Activity data was fetched before subreddit-region tracking was added. Click ↻ refresh in the heatmap to re-fetch and populate this column.";
-    } else {
-      dash.title =
-        "No region-specific subreddits in this account's recent activity, and no clear daily sleep cycle for timezone inference.";
-    }
-
-    return dash;
+    // No region inferred — leave the slot empty rather than rendering a
+    // lone dash. The detail pane's Region section still surfaces the
+    // "why" (activity not loaded, snapshot too old, no signals) when the
+    // row is selected.
+    return null;
   }
 
   if (region.kind === "ai") {

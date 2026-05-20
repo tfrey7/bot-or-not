@@ -8,6 +8,10 @@ import {
   bonInlineTagsMark,
   bonInlineTagsResetNav,
 } from "./features/inline-tags";
+import {
+  bonProfileInjectionInit,
+  bonProfileInjectionTick,
+} from "./features/profile-injection";
 import { bonReportingInit, bonReportingResetNav } from "./features/reporting";
 import {
   bonStatusDetectionInit,
@@ -19,6 +23,7 @@ const { version } = browser.runtime.getManifest();
 console.log(`[Bot or Not] v${version} loaded`);
 
 bonInlineTagsInit();
+bonProfileInjectionInit();
 bonReportingInit();
 bonStatusDetectionInit();
 
@@ -38,6 +43,7 @@ function scheduleScan(): void {
   requestAnimationFrame(() => {
     scanScheduled = false;
     bonInlineTagsMark();
+    bonProfileInjectionTick();
     bonStatusDetectionScan();
   });
 }

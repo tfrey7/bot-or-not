@@ -1,11 +1,9 @@
-// Investigation pipeline orchestrator. Three public entry points:
+// Investigation pipeline orchestrator. Two public entry points:
 //   bonInvestigateUser — full Reddit fetch → Claude → structured verdict
 //   bonGatherProfile   — just the fetch + summarize step (shared by the
 //                        background's two-step "set running, then call AI"
 //                        flow that needs the inputs object to persist
 //                        botBouncerStatus + activityData independently)
-//   bonFetchUserActivity — lighter fetch for the reports page's "Load
-//                          activity" button (no Claude call)
 //
 // `prompt.md` is the system prompt — Vite inlines it as a string at
 // build time so there's no runtime fetch.
@@ -16,6 +14,7 @@ import type {
   BotBouncerStatus,
   ClaudeUsage,
   Factor,
+  GoogleHarvest,
   Persona,
   ProfileSummary,
   RedditFetchMetric,
@@ -34,8 +33,7 @@ import { bonWebSearchRedditUser } from "../web-search/index.ts";
 import { bonCallClaude } from "./api.ts";
 import {
   bonFetchBotBouncerStatus,
-  BON_REDDIT_DEEP_FETCH_LIMIT,
-  bonFetchRedditActivity,
+  BON_REDDIT_FETCH_LIMIT,
   bonFetchRedditProfile,
   RedditFetchError,
 } from "./fetch.ts";
@@ -47,6 +45,7 @@ import { bonExtractSnoovatarUrl, bonSummarizeProfile } from "./summarize.ts";
 export interface GatherProfileExtra {
   botBouncerStatus?: Exclude<BotBouncerStatus, null>;
   botBouncerCheckedAt?: number;
+  googleHarvest?: GoogleHarvest;
 }
 
 export interface GatheredProfile {
@@ -75,13 +74,6 @@ export interface OneDAnalysisResult {
   usage: ClaudeUsage | null;
   webSearchCount: number;
   costUsd: number | null;
-}
-
-export async function bonFetchUserActivity(
-  username: string
-): Promise<ActivityData> {
-  const { activity } = await bonFetchRedditActivity(username);
-  return bonExtractActivityData(activity, BON_REDDIT_DEEP_FETCH_LIMIT);
 }
 
 // Fetch + summarize the account once so the analyzer works from a
@@ -158,8 +150,9 @@ export async function bonGatherProfile(
     ...(botBouncerStatus ? { botBouncerStatus } : {}),
     ...(botBouncerCheckedAt != null ? { botBouncerCheckedAt } : {}),
     webSearchResults,
+    ...(extra.googleHarvest ? { googleHarvest: extra.googleHarvest } : {}),
   });
-  const activityData = bonExtractActivityData(profile);
+  const activityData = bonExtractActivityData(profile, BON_REDDIT_FETCH_LIMIT);
 
   return {
     summary,

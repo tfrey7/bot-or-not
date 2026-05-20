@@ -24,9 +24,9 @@ import type { Factor, Investigation, Verdict } from "./types.ts";
 
 // An investigation whose status is still "running" past this threshold is
 // assumed orphaned (background script restarted, network hang, etc.) and
-// the UI re-enables the retry button. Tracks BON_CLAUDE_TIMEOUT_MS in
-// bot_analysis.js — needs to outlast a legit slow Claude call so healthy
-// runs on heavy accounts don't flip to "stalled" while still in flight.
+// the UI re-enables the retry button. Needs to outlast a legit slow Claude
+// call so healthy runs on heavy accounts don't flip to "stalled" while still
+// in flight.
 export const BON_STALE_INVESTIGATION_MS = 5 * 60 * 1000;
 
 export function bonIsInvestigationStale(

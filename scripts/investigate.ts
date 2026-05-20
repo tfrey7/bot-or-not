@@ -41,9 +41,8 @@ import { DOMParser as LinkedomDOMParser } from "linkedom";
 
 import {
   bonFetchBotBouncerStatus,
-  bonFetchRedditActivity,
   bonFetchRedditProfile,
-  BON_REDDIT_DEEP_FETCH_LIMIT,
+  BON_REDDIT_FETCH_LIMIT,
   RedditFetchError,
 } from "../src/features/investigation/fetch.ts";
 import {
@@ -145,18 +144,16 @@ function formatRegion(
 async function main(): Promise<void> {
   log(`[investigate] fetching reddit data for u/${username}...`);
 
-  // Four parallel fetches:
-  //   profile (shallow, 100 items) — feeds bonSummarizeProfile so Claude sees
-  //     exactly what the auto-investigation would send.
-  //   activity (deep, 300 items) — feeds region inference so we match the
-  //     post-"Load activity" reports-page state.
+  // Three parallel fetches:
+  //   profile (300 items, paginated) — feeds bonSummarizeProfile so Claude
+  //     sees exactly what the auto-investigation would send, and feeds
+  //     region inference (same depth as the reports-page activity view).
   //   botbouncer — separate active query, same as bonGatherProfile.
   //   web search (DDG) — surfaces cached posts/comments for hidden-profile
   //     rescue. Skipped when --no-web-search.
-  const [profileSettled, activitySettled, botBouncerSettled, webSearchSettled] =
+  const [profileSettled, botBouncerSettled, webSearchSettled] =
     await Promise.allSettled([
       bonFetchRedditProfile(username),
-      bonFetchRedditActivity(username),
       bonFetchBotBouncerStatus(username),
       webSearchEnabled
         ? bonWebSearchRedditUser(username)
@@ -184,19 +181,6 @@ async function main(): Promise<void> {
   log(
     `[investigate] fetched posts=${postCount} comments=${commentCount} botbouncer=${botBouncerStatus ?? "none"}`
   );
-  if (activitySettled.status === "fulfilled") {
-    const deepPosts =
-      activitySettled.value.activity.submitted.data?.children?.length ?? 0;
-    const deepComments =
-      activitySettled.value.activity.comments.data?.children?.length ?? 0;
-    log(
-      `[investigate] deep activity for region: posts=${deepPosts} comments=${deepComments}`
-    );
-  } else {
-    log(
-      `[investigate] deep activity fetch failed; region falls back to shallow data`
-    );
-  }
 
   const webSearchResult =
     webSearchSettled.status === "fulfilled" ? webSearchSettled.value : null;
@@ -247,18 +231,10 @@ async function main(): Promise<void> {
     typeof payload.summary === "string" ? payload.summary : "";
   const verdict = bonComputeVerdict(factors);
 
-  // Prefer the deep activity fetch for region inference (matches the UI's
-  // post-"Load activity" state). Fall back to the shallow profile if it
-  // failed — same data the auto-investigation would have shown.
-  const activityData =
-    activitySettled.status === "fulfilled"
-      ? bonExtractActivityData(
-          activitySettled.value.activity,
-          BON_REDDIT_DEEP_FETCH_LIMIT
-        )
-      : bonExtractActivityData(profile);
-  const activitySource =
-    activitySettled.status === "fulfilled" ? "deep" : "shallow-fallback";
+  const activityData = bonExtractActivityData(
+    profile,
+    BON_REDDIT_FETCH_LIMIT
+  );
 
   const timestamps = [
     ...(activityData.postTimestamps || []),
@@ -306,9 +282,7 @@ async function main(): Promise<void> {
   if (botBouncerStatus) {
     console.log(`BotBouncer: ${botBouncerStatus}`);
   }
-  console.log(
-    `Region: ${formatRegion(region, timezone)}  (source: ${activitySource})`
-  );
+  console.log(`Region: ${formatRegion(region, timezone)}`);
 
   console.log("");
   console.log("Summary:");

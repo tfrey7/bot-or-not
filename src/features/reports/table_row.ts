@@ -4,16 +4,15 @@
 // pane.
 
 import { bonRingChip } from "../../utils/ring_chip.ts";
-import { bonIsInvestigationStale } from "../../verdict.ts";
 import { bonReportsFactorDots } from "./cell_factor_dots.ts";
-import { bonReportsPopulateInvestigatedCell } from "./cell_investigated.ts";
+import { bonReportsPersonaTag } from "./cell_persona.ts";
 import { bonReportsRegionBadge } from "./cell_region.ts";
 import { bonReportsVerdictBadge } from "./cell_verdict.ts";
 import type { ReportRow } from "./logic.ts";
 
 export interface RowOptions {
   selectedUsername: string | null;
-  expectedDurationMs: number | null;
+  queueAhead: number;
   onSelect: (username: string) => void;
 }
 
@@ -21,7 +20,7 @@ export function bonReportsRow(
   report: ReportRow,
   opts: RowOptions
 ): HTMLTableRowElement {
-  const { selectedUsername, expectedDurationMs, onSelect } = opts;
+  const { selectedUsername, queueAhead, onSelect } = opts;
   const { username, investigation, ringId } = report;
 
   const summary = document.createElement("tr");
@@ -66,44 +65,48 @@ export function bonReportsRow(
   }
 
   nameWrap.appendChild(linkRow);
-  nameWrap.appendChild(bonReportsFactorDots(investigation));
   userCell.appendChild(nameWrap);
   summary.appendChild(userCell);
 
-  const regionCell = document.createElement("td");
-  regionCell.className = "bon-region-cell";
-  regionCell.appendChild(bonReportsRegionBadge(report));
-  summary.appendChild(regionCell);
+  const tagsCell = document.createElement("td");
+  tagsCell.className = "bon-tags-cell";
 
-  const verdictCell = document.createElement("td");
-  const verdictBadge = bonReportsVerdictBadge(investigation, !!ringId);
-  if (verdictBadge) {
-    verdictCell.appendChild(verdictBadge);
-  } else {
-    const dash = document.createElement("span");
-    dash.className = "bon-bb-empty";
-    dash.textContent = "—";
-    verdictCell.appendChild(dash);
+  // Layout/flex lives on this inner wrapper, not the <td>. Flexing the cell
+  // itself breaks vertical-align: middle and confuses border-collapse, which
+  // showed up as the jagged row rules and off-center badges.
+  const tagsInner = document.createElement("div");
+  tagsInner.className = "bon-tags-cell-inner";
+
+  // Tag row reserves height even when empty so the factor-dot strip below
+  // stays vertically aligned across rows whether or not tags exist.
+  const tagsRow = document.createElement("div");
+  tagsRow.className = "bon-tags-row";
+
+  const regionBadge = bonReportsRegionBadge(report);
+  if (regionBadge) {
+    tagsRow.appendChild(regionBadge);
   }
 
-  summary.appendChild(verdictCell);
-
-  const investigatedCell = document.createElement("td");
-  investigatedCell.className = "bon-investigated-cell";
-  bonReportsPopulateInvestigatedCell(
-    investigatedCell,
+  const verdictBadge = bonReportsVerdictBadge(
     investigation,
-    expectedDurationMs
+    !!ringId,
+    queueAhead
   );
 
-  if (
-    investigation?.status === "running" &&
-    !bonIsInvestigationStale(investigation)
-  ) {
-    investigatedCell.dataset.bonRunningCell = username;
+  if (verdictBadge) {
+    tagsRow.appendChild(verdictBadge);
   }
 
-  summary.appendChild(investigatedCell);
+  const personaTag = bonReportsPersonaTag(investigation?.persona);
+  if (personaTag) {
+    tagsRow.appendChild(personaTag);
+  }
+
+  tagsInner.appendChild(tagsRow);
+  tagsInner.appendChild(bonReportsFactorDots(investigation));
+
+  tagsCell.appendChild(tagsInner);
+  summary.appendChild(tagsCell);
 
   return summary;
 }

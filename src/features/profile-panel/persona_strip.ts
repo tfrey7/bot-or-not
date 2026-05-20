@@ -1,10 +1,13 @@
-// The persona "card" rendered to the right of the preview summary —
-// shared radar widget + dominant label + reasoning blurb. Same shape
-// as the reports detail pane's persona block.
+// The persona "card" rendered in the preview row — shared radar widget,
+// dominant label, and a single summary paragraph below the chart. Prefers
+// the investigation's top-level summary; falls back to `persona.reasoning`
+// for legacy records. Mirrors features/reports/persona_block.ts so the
+// profile-page card and the reports detail pane render the same shape.
 
 import type { Persona } from "../../types.ts";
 import { bonLinkifyReddit } from "../../utils/linkify_reddit.ts";
 import { bonPersonaHue } from "../../utils/persona_color.ts";
+import { bonPersonaIcon } from "../../utils/persona_icon.ts";
 import {
   bonHidePersonaLabel,
   bonRevealPersonaLabel,
@@ -12,7 +15,14 @@ import {
 import { bonPersonaRadar } from "../../utils/persona_radar.ts";
 import { bonPersonaTitle } from "../../utils/persona_title.ts";
 
-export function bonPanelBuildPersonaStrip(persona: Persona): HTMLElement {
+export interface BonPanelPersonaStripOpts {
+  summary?: string | null;
+}
+
+export function bonPanelBuildPersonaStrip(
+  persona: Persona,
+  options: BonPanelPersonaStripOpts = {}
+): HTMLElement {
   const wrap = document.createElement("aside");
   wrap.className = `bon-panel-persona bon-panel-persona--${persona.label}`;
 
@@ -29,6 +39,7 @@ export function bonPanelBuildPersonaStrip(persona: Persona): HTMLElement {
     bonHidePersonaLabel(label);
     const radar = bonPersonaRadar(persona.archetypes, {
       onLock: () => bonRevealPersonaLabel(label),
+      iconUrl: bonPersonaIcon(persona),
     });
 
     if (radar) {
@@ -41,11 +52,12 @@ export function bonPanelBuildPersonaStrip(persona: Persona): HTMLElement {
     wrap.appendChild(label);
   }
 
-  if (persona.reasoning) {
-    const blurb = document.createElement("p");
-    blurb.className = "bon-panel-persona__blurb";
-    blurb.appendChild(bonLinkifyReddit(persona.reasoning));
-    wrap.appendChild(blurb);
+  const summaryText = options.summary ?? persona.reasoning;
+  if (summaryText) {
+    const summary = document.createElement("p");
+    summary.className = "bon-panel-persona__summary";
+    summary.appendChild(bonLinkifyReddit(summaryText));
+    wrap.appendChild(summary);
   }
 
   return wrap;

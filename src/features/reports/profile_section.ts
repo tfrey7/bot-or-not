@@ -6,6 +6,7 @@
 import type { ReportRow } from "./logic.ts";
 import { bonFetchAndStoreProfileStats } from "../../utils/fetch_profile_stats.ts";
 import { bonFormatDate } from "../../utils/format_time.ts";
+import { bonReportsVerdictBadge } from "./cell_verdict.ts";
 
 function formatKarma(total: number): string {
   if (total >= 1_000_000) {
@@ -74,8 +75,11 @@ function appendMetaItem(meta: HTMLElement, content: Node | string): void {
   meta.appendChild(item);
 }
 
-export function bonReportsProfileSection(report: ReportRow): HTMLDivElement {
-  const { username, createdAt, totalKarma } = report;
+export function bonReportsProfileSection(
+  report: ReportRow,
+  actions: HTMLElement[] = []
+): HTMLDivElement {
+  const { username, createdAt, totalKarma, ringId, investigation } = report;
 
   if (createdAt === null || totalKarma === null) {
     void bonFetchAndStoreProfileStats(username);
@@ -87,13 +91,26 @@ export function bonReportsProfileSection(report: ReportRow): HTMLDivElement {
   const header = document.createElement("div");
   header.className = "bon-profile-info__header";
 
+  const identity = document.createElement("div");
+  identity.className = "bon-profile-info__identity";
+
+  const titleRow = document.createElement("div");
+  titleRow.className = "bon-profile-info__title-row";
+
   const link = document.createElement("a");
   link.className = "bon-profile-info__username";
   link.href = `https://www.reddit.com/user/${encodeURIComponent(username)}`;
   link.target = "_blank";
   link.rel = "noopener noreferrer";
   link.textContent = `u/${username}`;
-  header.appendChild(link);
+  titleRow.appendChild(link);
+
+  const verdictBadge = bonReportsVerdictBadge(investigation, !!ringId);
+  if (verdictBadge) {
+    titleRow.appendChild(verdictBadge);
+  }
+
+  identity.appendChild(titleRow);
 
   const meta = document.createElement("div");
   meta.className = "bon-profile-info__meta";
@@ -128,7 +145,6 @@ export function bonReportsProfileSection(report: ReportRow): HTMLDivElement {
     appendMetaItem(meta, karma);
   }
 
-  const investigation = report.investigation;
   if (investigation && investigation.status === "done") {
     const posts = investigation.postsFetched || 0;
     const comments = investigation.commentsFetched || 0;
@@ -148,7 +164,20 @@ export function bonReportsProfileSection(report: ReportRow): HTMLDivElement {
     : `${reportsCount} ${noun}`;
   appendMetaItem(meta, reportsText);
 
-  header.appendChild(meta);
+  identity.appendChild(meta);
+  header.appendChild(identity);
+
+  if (actions.length > 0) {
+    const actionsRow = document.createElement("div");
+    actionsRow.className = "bon-profile-info__actions";
+
+    for (const action of actions) {
+      actionsRow.appendChild(action);
+    }
+
+    header.appendChild(actionsRow);
+  }
+
   wrap.appendChild(header);
 
   return wrap;

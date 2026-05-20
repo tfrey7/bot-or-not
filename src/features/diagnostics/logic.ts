@@ -13,10 +13,14 @@ export interface DiagnosticsSummary {
   newestReportedAt: number | null;
 
   investigated: number;
+  investigationQueued: number;
   investigationRunning: number;
   investigationDone: number;
   investigationError: number;
   totalRuns: number;
+
+  queueRunning: QueueEntry[];
+  queueQueued: QueueEntry[];
 
   botBouncerBanned: number;
   botBouncerPending: number;
@@ -43,6 +47,13 @@ export interface ErrorRow {
   runAt: number | null;
 }
 
+// `since` is investigation.startedAt for running entries, queuedAt for queued
+// ones. Caller sorts/labels accordingly.
+export interface QueueEntry {
+  username: string;
+  since: number | null;
+}
+
 export function bonDiagnosticsSummarize(
   reports: Record<string, Report>,
   apiKeySet: boolean
@@ -54,10 +65,13 @@ export function bonDiagnosticsSummarize(
     oldestReportedAt: null,
     newestReportedAt: null,
     investigated: 0,
+    investigationQueued: 0,
     investigationRunning: 0,
     investigationDone: 0,
     investigationError: 0,
     totalRuns: 0,
+    queueRunning: [],
+    queueQueued: [],
     botBouncerBanned: 0,
     botBouncerPending: 0,
     botBouncerOrganic: 0,
@@ -104,8 +118,18 @@ export function bonDiagnosticsSummarize(
     const investigation = report.investigation;
     if (investigation) {
       summary.investigated += 1;
-      if (investigation.status === "running") {
+      if (investigation.status === "queued") {
+        summary.investigationQueued += 1;
+        summary.queueQueued.push({
+          username,
+          since: investigation.queuedAt,
+        });
+      } else if (investigation.status === "running") {
         summary.investigationRunning += 1;
+        summary.queueRunning.push({
+          username,
+          since: investigation.startedAt,
+        });
       } else if (investigation.status === "done") {
         summary.investigationDone += 1;
         if (investigation.verdict) {
@@ -159,6 +183,9 @@ export function bonDiagnosticsSummarize(
 
   errors.sort((a, b) => (b.runAt ?? 0) - (a.runAt ?? 0));
   summary.recentErrors = errors.slice(0, 10);
+
+  summary.queueRunning.sort((a, b) => (a.since ?? 0) - (b.since ?? 0));
+  summary.queueQueued.sort((a, b) => (a.since ?? 0) - (b.since ?? 0));
 
   return summary;
 }

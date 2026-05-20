@@ -6,6 +6,7 @@
 import type { Report } from "../../types.ts";
 import { bonDiagnosticsErrorList } from "./error_list.ts";
 import { bonDiagnosticsSummarize } from "./logic.ts";
+import { bonDiagnosticsQueueState } from "./queue_state.ts";
 import {
   bonDiagnosticsRecordInspector,
   type InspectorState,
@@ -38,6 +39,7 @@ export function bonRenderDiagnostics(
 
   const summary = bonDiagnosticsSummarize(reports, options.apiKeySet);
   section.appendChild(bonDiagnosticsStorageOverview(summary));
+  section.appendChild(bonDiagnosticsQueueState(summary));
   section.appendChild(bonDiagnosticsStateBreakdown(summary));
 
   const errors = bonDiagnosticsErrorList(summary.recentErrors);

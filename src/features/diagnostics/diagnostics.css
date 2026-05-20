@@ -67,6 +67,86 @@
   font-size: 0.82em;
 }
 
+/* ---------- Investigation queue ---------- */
+
+.bon-diag-queue {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85em;
+}
+
+.bon-diag-queue-slots {
+  display: flex;
+  align-items: center;
+  gap: 0.4em;
+}
+
+.bon-diag-queue-slot {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  border-radius: 50%;
+  border: 1px solid var(--bon-border);
+  background: var(--bon-surface-soft);
+}
+
+.bon-diag-queue-slot-active {
+  background: var(--bon-link);
+  border-color: var(--bon-link);
+  box-shadow: 0 0 0.4em color-mix(in srgb, var(--bon-link) 60%, transparent);
+}
+
+.bon-diag-queue-slot-label {
+  margin-left: 0.4em;
+  font-family: var(--bon-font-mono);
+  font-size: 0.78rem;
+  color: var(--bon-text-soft);
+  font-variant-numeric: tabular-nums;
+}
+
+.bon-diag-queue-list-title {
+  margin: 0 0 0.4em;
+  font-family: var(--bon-font-mono);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--bon-muted);
+}
+
+.bon-diag-queue-items {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3em;
+  font-family: var(--bon-font-mono);
+  font-size: 0.82rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.bon-diag-queue-items li {
+  display: flex;
+  justify-content: space-between;
+  gap: 1em;
+  padding: 0.3em 0;
+  border-bottom: 1px solid var(--bon-border);
+}
+
+.bon-diag-queue-items li:last-child {
+  border-bottom: none;
+}
+
+.bon-diag-queue-user {
+  color: var(--bon-link);
+  font-weight: 600;
+}
+
+.bon-diag-queue-meta {
+  color: var(--bon-muted);
+}
+
 /* ---------- Error list ---------- */
 
 .bon-diag-error-table {
