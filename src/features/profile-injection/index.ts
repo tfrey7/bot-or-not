@@ -223,6 +223,46 @@ export function bonProfileInjectionInit(): void {
       return;
     }
 
+    // Skip the re-render when this user's googleHarvest didn't change.
+    // Attribution backfill + passive harvest keep writing `reports` for
+    // unrelated reasons; rebuilding the dossier container on each of those
+    // churns the DOM (and resets scroll position) for no visible benefit.
+    if (!harvestChangedForUser(changes.reports, username)) {
+      return;
+    }
+
     void refresh(username);
   });
+}
+
+function harvestChangedForUser(
+  change: { oldValue?: unknown; newValue?: unknown },
+  username: string
+): boolean {
+  const before = findGoogleHarvest(change.oldValue, username);
+  const after = findGoogleHarvest(change.newValue, username);
+  return JSON.stringify(before) !== JSON.stringify(after);
+}
+
+function findGoogleHarvest(reports: unknown, username: string): unknown {
+  if (!reports || typeof reports !== "object") {
+    return null;
+  }
+
+  const target = username.toLowerCase();
+
+  for (const [key, value] of Object.entries(
+    reports as Record<string, unknown>
+  )) {
+    if (key.toLowerCase() !== target) {
+      continue;
+    }
+
+    const harvest = (value as { googleHarvest?: unknown } | null)
+      ?.googleHarvest;
+
+    return harvest ?? null;
+  }
+
+  return null;
 }

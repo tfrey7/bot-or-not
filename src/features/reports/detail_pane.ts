@@ -75,7 +75,6 @@ export function bonReportsDetailPane(
       onInvestigate,
     }),
     bonReportsRenderGoogleSearchButton(username),
-    bonReportsRenderDeleteButton(username),
   ];
 
   fragment.appendChild(bonReportsProfileSection(report, actions));
@@ -118,6 +117,14 @@ export function bonReportsDetailPane(
     fragment.appendChild(bonReportsRegionSection(report));
     fragment.appendChild(bonReportsActivitySection(report));
   }
+
+  // Delete lives at the very bottom — out of the prominent top-right action
+  // strip because deletion is rare and the operator should have to scroll
+  // past the dossier before they can reach the button.
+  const deleteFooter = document.createElement("div");
+  deleteFooter.className = "bon-detail-wrap bon-detail-footer";
+  deleteFooter.appendChild(bonReportsRenderDeleteButton(username));
+  fragment.appendChild(deleteFooter);
 
   return fragment;
 }

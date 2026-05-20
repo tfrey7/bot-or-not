@@ -1,7 +1,8 @@
 {
   "name": "bot-or-not",
-  "version": "6.2.0",
+  "version": "6.3.0",
   "description": "",
+  "license": "GPL-3.0-or-later",
   "scripts": {
     "dev": "vite dev",
     "build": "vite build",

@@ -12,7 +12,20 @@
 | `npm run sign`      | Sign and publish to AMO (self-distribution, unlisted). Reads `AMO_API_KEY`/`AMO_API_SECRET` from `.env` |
 | `npm run investigate -- <username> [--no-web-search] [--json]` | Run the bot/human investigation pipeline against a Reddit username outside the extension. Lets you iterate on the investigation prompt without rebuilding. Reads `CLAUDE_API_KEY` from `.env` (gitignored). |
 
-### Release
+### Ship a feature (parallel agents)
+
+Parallel agent work on this project uses one git worktree per feature so edits to shared files (`src/types.ts`, `src/background.ts`, `src/migrations/index.ts`, etc.) don't co-mingle in a single tree. The general worktree workflow and sign-off contract are documented in `~/.claude/general/workflow.md`; the project-specific bits:
+
+- Worktrees live at `../bot-or-not-worktrees/<slug>/`. Branches are `agent/<slug>`.
+- Each worktree symlinks `node_modules` from the main checkout — one `npm install`, all worktrees reuse it.
+- **Only one worktree can be live in Firefox at a time** — Firefox can load exactly one copy of the extension, so `npm run dev` is mutually exclusive across worktrees. To switch which feature you're evaluating: `Ctrl-C` the current `npm run dev`, `cd` into the other worktree, run `npm run dev` there. Other worktrees keep editing without touching the live extension or knocking out the open reports tab.
+- "Ship this feature" follows the sign-off contract from the global workflow doc: commit → rebase onto current `main` → fast-forward into `main` from the main checkout → delete worktree + branch.
+
+A session enters feature-mode when the user declares "I'm working on feature `<slug>`" inside the matching worktree, and exits when the user says "ship it". While in-feature, the session refuses to start a second feature in the same conversation. The state-machine details are in `~/.claude/general/workflow.md`.
+
+### Publish a new version
+
+Operates on `main` once all desired features have been shipped. Commit message convention is `Publish X.Y.Z: <one-line summary>` (historically these said `Ship X.Y.Z:` — old vocabulary).
 
 1. Bump the version in **both** `manifest.json` and `package.json` (keep them in sync).
 2. Run `npm run sign`.

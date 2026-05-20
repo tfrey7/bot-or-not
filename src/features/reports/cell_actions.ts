@@ -30,7 +30,7 @@ function idleLabel(
   verdict: string | null | undefined,
   freshHarvestCount: number
 ): string {
-  const base = verdict ? "Re-Investigate" : "Investigate";
+  const base = verdict ? "Re-run" : "Investigate";
   if (freshHarvestCount > 0) {
     return `${base} · ${freshHarvestCount} new`;
   }
@@ -92,7 +92,7 @@ export function bonReportsRenderInvestigateButton(
     );
     button.title = bonReportsFormatRunningTitle(elapsedSec, expectedDurationMs);
   } else if (stale) {
-    button.textContent = "Retry stalled investigation";
+    button.textContent = "Retry stalled";
     button.title = "Retry stalled investigation";
   } else {
     button.textContent = idleLabel(verdict, freshHarvestCount);

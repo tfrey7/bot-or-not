@@ -10,7 +10,7 @@ export function bonReportsRenderGoogleSearchButton(
   const button = document.createElement("button");
   button.type = "button";
   button.className = "bon-btn";
-  button.textContent = "Search Google";
+  button.textContent = "Google";
   button.title = `Open Google search for u/${username} (site:reddit.com)`;
 
   button.addEventListener("click", () => {

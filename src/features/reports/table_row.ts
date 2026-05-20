@@ -16,6 +16,23 @@ export interface RowOptions {
   onSelect: (username: string) => void;
 }
 
+type MissingSlot = "region" | "verdict" | "persona";
+
+const MISSING_SLOT_TITLES: Record<MissingSlot, string> = {
+  region: "No region inferred",
+  verdict: "No AI verdict yet",
+  persona: "No persona",
+};
+
+function bonReportsMissingSlot(kind: MissingSlot): HTMLSpanElement {
+  const span = document.createElement("span");
+  span.className = `bon-tag-missing bon-tag-missing--${kind}`;
+  span.textContent = "—";
+  span.title = MISSING_SLOT_TITLES[kind];
+  span.setAttribute("aria-label", MISSING_SLOT_TITLES[kind]);
+  return span;
+}
+
 export function bonReportsRow(
   report: ReportRow,
   opts: RowOptions
@@ -77,30 +94,25 @@ export function bonReportsRow(
   const tagsInner = document.createElement("div");
   tagsInner.className = "bon-tags-cell-inner";
 
-  // Tag row reserves height even when empty so the factor-dot strip below
-  // stays vertically aligned across rows whether or not tags exist.
+  // Always render three slots — region / verdict / persona — so every row
+  // has the same scan rhythm and the space-between layout reads cleanly.
+  // Missing slots get a muted placeholder.
   const tagsRow = document.createElement("div");
   tagsRow.className = "bon-tags-row";
 
-  const regionBadge = bonReportsRegionBadge(report);
-  if (regionBadge) {
-    tagsRow.appendChild(regionBadge);
-  }
-
-  const verdictBadge = bonReportsVerdictBadge(
-    investigation,
-    !!ringId,
-    queueAhead
+  tagsRow.appendChild(
+    bonReportsRegionBadge(report) ?? bonReportsMissingSlot("region")
   );
 
-  if (verdictBadge) {
-    tagsRow.appendChild(verdictBadge);
-  }
+  tagsRow.appendChild(
+    bonReportsVerdictBadge(investigation, !!ringId, queueAhead) ??
+      bonReportsMissingSlot("verdict")
+  );
 
-  const personaTag = bonReportsPersonaTag(investigation?.persona);
-  if (personaTag) {
-    tagsRow.appendChild(personaTag);
-  }
+  tagsRow.appendChild(
+    bonReportsPersonaTag(investigation?.persona) ??
+      bonReportsMissingSlot("persona")
+  );
 
   tagsInner.appendChild(tagsRow);
   tagsInner.appendChild(bonReportsFactorDots(investigation));

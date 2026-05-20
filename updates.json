@@ -29,6 +29,10 @@
         {
           "version": "6.2.0",
           "update_link": "https://github.com/tfrey7/bot-or-not/releases/download/v6.2.0/fe5aa4514b5d4cb3aa94-6.2.0.xpi"
+        },
+        {
+          "version": "6.3.0",
+          "update_link": "https://github.com/tfrey7/bot-or-not/releases/download/v6.3.0/fe5aa4514b5d4cb3aa94-6.3.0.xpi"
         }
       ]
     }

@@ -236,25 +236,7 @@ table.bon-table {
   /* Hint the auto layout that this column should absorb leftover width
      rather than collapsing to badge-width when the row is selected. */
   width: 100%;
-}
-.bon-table thead th {
-  text-align: left;
-  font-family: var(--bon-font-mono);
-  font-size: 0.66rem;
-  text-transform: uppercase;
-  letter-spacing: 0.14em;
-  color: var(--bon-muted);
-  font-weight: 700;
-  padding: 0.95em 1em;
-  background: var(--bon-surface-soft);
-  border-bottom: 1.5px solid var(--bon-rule);
-  white-space: nowrap;
-}
-.bon-table thead th:first-child {
-  border-top-left-radius: 0.5em;
-}
-.bon-table thead th:last-child {
-  border-top-right-radius: 0.5em;
+  /* Push the inline-flex inner wrapper to the right edge of the cell. */
   text-align: right;
 }
 .bon-table tbody td {
@@ -441,12 +423,15 @@ table.bon-table {
    <td> stays a normal table cell (preserving border-collapse alignment and
    vertical-align: middle). */
 .bon-tags-cell-inner {
-  display: flex;
+  /* inline-flex shrinks to the widest child (the factor-dot strip), so the
+     tag row above can stretch to exactly that width via align-self below. */
+  display: inline-flex;
   flex-direction: column;
   align-items: flex-end;
   gap: 0.45em;
   font-size: 0.82rem;
   line-height: 1.3;
+  text-align: left;
 }
 /* Tag row reserves height even when empty so the factor strip below sits
    at a consistent y across investigated and un-investigated rows. */
@@ -454,6 +439,8 @@ table.bon-table {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
+  justify-content: space-between;
+  align-self: stretch;
   gap: 0.3em 0.4em;
   min-height: 1.55em;
 }
@@ -549,6 +536,27 @@ table.bon-table {
 }
 .bon-region-reason--against::before {
   background: var(--bon-stamp-red);
+}
+
+/* Placeholder badge for an empty region/verdict/persona slot in the
+   reports list — keeps the row's three-tag rhythm steady when one of
+   the slots has no data. Matches badge dimensions so the layout doesn't
+   shift between real and missing tags. */
+.bon-tag-missing {
+  display: inline-block;
+  font-family: var(--bon-font-mono);
+  font-size: 0.62rem;
+  font-weight: 700;
+  padding: 0.3em 0.65em 0.28em;
+  border-radius: 0.25em;
+  border: 1.5px dashed var(--bon-rule);
+  line-height: 1.2;
+  letter-spacing: 0.14em;
+  color: var(--bon-muted);
+  opacity: 0.55;
+  white-space: nowrap;
+  min-width: 2.5em;
+  text-align: center;
 }
 
 /* ============================================================
@@ -1778,14 +1786,28 @@ table.bon-table {
 .bon-split-detail > .bon-profile-info {
   padding-bottom: 1.25em;
   border-bottom: 1px solid var(--bon-border);
+  /* Pin the identity strip to the top of the viewport (just below the
+     sticky header/tabs shell) so the username + verdict + action buttons
+     stay visible while scrolling through the long dossier below. */
+  position: sticky;
+  top: var(--bon-sticky-shell-height, 0px);
+  z-index: 5;
+  background: var(--bon-surface);
+  /* Match the parent card's rounded top so the sticky background doesn't
+     paint over the corners when the page is at rest (parent has a 1px
+     border, so trim the radius by 1px). */
+  border-top-left-radius: calc(0.5em - 1px);
+  border-top-right-radius: calc(0.5em - 1px);
 }
 
 .bon-profile-info__header {
   display: flex;
-  align-items: center;
-  flex-wrap: nowrap;
-  gap: 1em;
+  flex-direction: row;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.85em;
   min-width: 0;
+  flex-wrap: wrap;
 }
 
 .bon-profile-info__identity {
@@ -1798,7 +1820,7 @@ table.bon-table {
 
 .bon-profile-info__title-row {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 0.7em;
   min-width: 0;
   flex-wrap: wrap;
@@ -1812,11 +1834,17 @@ table.bon-table {
 }
 
 .bon-profile-info__actions {
-  align-self: center;
+  align-self: flex-start;
   display: inline-flex;
   align-items: center;
-  gap: 0.5em;
+  gap: 0.4em;
   flex-shrink: 0;
+}
+.bon-profile-info__actions .bon-btn {
+  /* Top-right strip — tighter than the standard .bon-btn so the buttons
+     don't dwarf the username/verdict on the same row. */
+  font-size: 0.7rem;
+  padding: 0.4em 0.8em;
 }
 
 .bon-profile-info__username {
@@ -1835,7 +1863,7 @@ table.bon-table {
   flex: 1 1 auto;
   min-width: 0;
   color: var(--bon-muted);
-  font-size: 0.85rem;
+  font-size: 0.74rem;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
   overflow: hidden;
@@ -1875,6 +1903,17 @@ table.bon-table {
 .bon-profile-info__pending {
   color: var(--bon-muted-soft);
   font-style: italic;
+}
+
+/* Tail-end Delete button — far below the dossier, separator above so it
+   reads as a danger-zone footer rather than a primary action. Overrides
+   the default .bon-detail-wrap padding (2em 2.25em 2.25em) so the gap
+   above the button isn't bigger than it needs to be. */
+.bon-split-detail .bon-detail-footer {
+  padding: 1.25em 2.25em 1.5em;
+  border-top: 1px solid var(--bon-border);
+  display: flex;
+  justify-content: flex-end;
 }
 
 /* ============================================================

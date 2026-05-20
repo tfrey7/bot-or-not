@@ -404,6 +404,23 @@ function render(): void {
     updateUrlForSelection();
   }
 
+  // URL deep-links from the inline-tag flyout's "open dossier" button pass
+  // the lowercased tag key as ?user=, but storage preserves whatever case
+  // Reddit handed back when the record was created. Resolve to the stored
+  // case once data is loaded so the strict-equality checks below
+  // (filter membership, active-row detection, detail lookup) all succeed.
+  if (selectedUsername) {
+    const canonical = allReports.find(
+      (report) =>
+        report.username.toLowerCase() === selectedUsername!.toLowerCase()
+    );
+
+    if (canonical && canonical.username !== selectedUsername) {
+      selectedUsername = canonical.username;
+      updateUrlForSelection();
+    }
+  }
+
   // Skip filtering when the input looks like a pending AI command — typing
   // "link alice and bob" shouldn't collapse the table to no-matches while
   // the operator is mid-sentence. The agent fires on Enter regardless.
@@ -511,10 +528,12 @@ function render(): void {
 
   tableWrap.hidden = doneRows.length === 0;
 
-  if (pendingScrollToSelected && selectedUsername) {
+  const shouldScrollToSelection = pendingScrollToSelected && !!selectedUsername;
+
+  if (shouldScrollToSelection) {
     const scope = selectedIsActive ? activeTbody : tbody;
     const row = scope.querySelector<HTMLTableRowElement>(
-      `.bon-row-summary[data-bon-username="${CSS.escape(selectedUsername)}"]`
+      `.bon-row-summary[data-bon-username="${CSS.escape(selectedUsername!)}"]`
     );
     row?.scrollIntoView({ block: "nearest" });
   }
@@ -537,6 +556,16 @@ function render(): void {
   }
 
   renderDetail();
+
+  // Deep-link arrivals (URL ?user=, AI-command navigate, empty-state
+  // investigate) want the dossier in view, not just the row. With the
+  // sticky shell holding the page header, the row scroll alone leaves the
+  // detail pane below the fold on narrow screens. Detail pane's
+  // scroll-margin-top already accounts for the sticky shell height.
+  if (shouldScrollToSelection) {
+    detailPane.scrollIntoView({ block: "start" });
+  }
+
   ensurePolling();
 }
 

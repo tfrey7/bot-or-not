@@ -31,14 +31,58 @@ async function loadUserTags(): Promise<void> {
     type: "get-user-tags",
   })) as { tags?: Record<string, UserTagInfo> };
 
-  userTags = new Map();
+  const nextTags = new Map<string, UserTagInfo>();
 
   for (const [username, info] of Object.entries(tags)) {
-    userTags.set(username.toLowerCase(), { ...info, username });
+    nextTags.set(username.toLowerCase(), { ...info, username });
   }
 
-  tagsLoaded = true;
-  resetAndMarkAll();
+  // First load: nothing on the page is tagged yet, so mark everything.
+  if (!tagsLoaded) {
+    userTags = nextTags;
+    tagsLoaded = true;
+    resetAndMarkAll();
+    return;
+  }
+
+  // Subsequent loads (storage.onChanged): only refresh tags whose
+  // tag-affecting fields actually changed. Reports get written constantly
+  // for reasons that don't touch how a tag looks (Google attribution
+  // backfill, passive harvest captures, etc) — nuke-and-rebuild on every
+  // write tears down whatever pill the operator is hovering or clicking.
+  const previousTags = userTags;
+  userTags = nextTags;
+
+  const changedKeys = new Set<string>();
+
+  for (const [key, info] of nextTags) {
+    const before = previousTags.get(key);
+    if (!before || !sameTagInfo(before, info)) {
+      changedKeys.add(key);
+    }
+  }
+
+  for (const key of previousTags.keys()) {
+    if (!nextTags.has(key)) {
+      changedKeys.add(key);
+    }
+  }
+
+  for (const key of changedKeys) {
+    refreshUserTag(key);
+  }
+}
+
+function sameTagInfo(a: UserTagInfo, b: UserTagInfo): boolean {
+  return (
+    a.count === b.count &&
+    (a.verdict ?? null) === (b.verdict ?? null) &&
+    (a.confidence ?? null) === (b.confidence ?? null) &&
+    (a.investigationStatus ?? null) === (b.investigationStatus ?? null) &&
+    (a.botBouncerStatus ?? null) === (b.botBouncerStatus ?? null) &&
+    (a.userStatus ?? null) === (b.userStatus ?? null) &&
+    (a.ringId ?? null) === (b.ringId ?? null)
+  );
 }
 
 function buildUserTag(info: UserTagInfo): HTMLSpanElement {
