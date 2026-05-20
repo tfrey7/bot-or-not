@@ -40,31 +40,41 @@ function buildExportBlock(): HTMLElement {
   const desc = document.createElement("p");
   desc.className = "bon-sync-block-desc";
   desc.textContent =
-    "Downloads a JSON file containing every reported user and investigation. The Claude API key is never included.";
+    "Download a JSON file or copy the same payload to the clipboard. Every reported user and investigation is included; the Claude API key is not.";
   block.appendChild(desc);
 
   const actions = document.createElement("div");
   actions.className = "bon-sync-actions";
 
-  const exportButton = document.createElement("button");
-  exportButton.type = "button";
-  exportButton.className = "bon-btn";
-  exportButton.textContent = "Download backup";
+  const downloadButton = document.createElement("button");
+  downloadButton.type = "button";
+  downloadButton.className = "bon-btn";
+  downloadButton.textContent = "Download backup";
+
+  const copyButton = document.createElement("button");
+  copyButton.type = "button";
+  copyButton.className = "bon-btn";
+  copyButton.textContent = "Copy to clipboard";
 
   const status = document.createElement("p");
   status.className = "bon-sync-status";
 
-  exportButton.addEventListener("click", async () => {
-    exportButton.disabled = true;
+  async function fetchBackup(): Promise<SyncBackupPayload> {
+    const response = (await browser.runtime.sendMessage({
+      type: "sync-export",
+    })) as { payload: SyncBackupPayload };
+
+    return response.payload;
+  }
+
+  downloadButton.addEventListener("click", async () => {
+    downloadButton.disabled = true;
     status.textContent = "Building backup…";
     status.className = "bon-sync-status";
 
     try {
-      const response = (await browser.runtime.sendMessage({
-        type: "sync-export",
-      })) as { payload: SyncBackupPayload };
-
-      const blob = new Blob([JSON.stringify(response.payload, null, 2)], {
+      const payload = await fetchBackup();
+      const blob = new Blob([JSON.stringify(payload, null, 2)], {
         type: "application/json",
       });
       const url = URL.createObjectURL(blob);
@@ -77,7 +87,7 @@ function buildExportBlock(): HTMLElement {
       link.remove();
       URL.revokeObjectURL(url);
 
-      const userCount = Object.keys(response.payload.reports).length;
+      const userCount = Object.keys(payload.reports).length;
       const sizeKb = (blob.size / 1024).toFixed(1);
       status.textContent = `Downloaded backup: ${userCount} user${userCount === 1 ? "" : "s"} · ${sizeKb} KB`;
       status.className = "bon-sync-status bon-sync-status--ok";
@@ -86,11 +96,35 @@ function buildExportBlock(): HTMLElement {
       status.textContent = `Export failed: ${(error as Error).message}`;
       status.className = "bon-sync-status bon-sync-status--error";
     } finally {
-      exportButton.disabled = false;
+      downloadButton.disabled = false;
     }
   });
 
-  actions.appendChild(exportButton);
+  copyButton.addEventListener("click", async () => {
+    copyButton.disabled = true;
+    status.textContent = "Building backup…";
+    status.className = "bon-sync-status";
+
+    try {
+      const payload = await fetchBackup();
+      const text = JSON.stringify(payload, null, 2);
+      await navigator.clipboard.writeText(text);
+
+      const userCount = Object.keys(payload.reports).length;
+      const sizeKb = (new Blob([text]).size / 1024).toFixed(1);
+      status.textContent = `Copied backup: ${userCount} user${userCount === 1 ? "" : "s"} · ${sizeKb} KB`;
+      status.className = "bon-sync-status bon-sync-status--ok";
+    } catch (error) {
+      console.error("[Bot or Not] copy to clipboard failed", error);
+      status.textContent = `Copy failed: ${(error as Error).message}`;
+      status.className = "bon-sync-status bon-sync-status--error";
+    } finally {
+      copyButton.disabled = false;
+    }
+  });
+
+  actions.appendChild(downloadButton);
+  actions.appendChild(copyButton);
   block.appendChild(actions);
   block.appendChild(status);
 
@@ -108,7 +142,7 @@ function buildImportBlock(): HTMLElement {
 
   const desc = document.createElement("p");
   desc.className = "bon-sync-block-desc";
-  desc.textContent = `Backup format v${BON_SYNC_BACKUP_VERSION}. Per-user merge: histories combine and the newer investigation wins.`;
+  desc.textContent = `Backup format v${BON_SYNC_BACKUP_VERSION}. Pick a file or paste a backup payload directly. Per-user merge: histories combine and the newer investigation wins.`;
   block.appendChild(desc);
 
   const fileInput = document.createElement("input");
@@ -122,6 +156,19 @@ function buildImportBlock(): HTMLElement {
   fileLabel.className = "bon-btn";
   fileLabel.textContent = "Choose file…";
 
+  const pasteButton = document.createElement("button");
+  pasteButton.type = "button";
+  pasteButton.className = "bon-btn";
+  pasteButton.textContent = "Paste from clipboard";
+
+  const textarea = document.createElement("textarea");
+  textarea.className = "bon-sync-paste";
+  textarea.placeholder =
+    "…or paste a backup JSON payload here. Parses as you type.";
+  textarea.spellcheck = false;
+  textarea.autocapitalize = "off";
+  textarea.autocomplete = "off";
+
   const status = document.createElement("p");
   status.className = "bon-sync-status";
 
@@ -133,27 +180,43 @@ function buildImportBlock(): HTMLElement {
   actions.className = "bon-sync-actions";
   actions.appendChild(fileLabel);
   actions.appendChild(fileInput);
+  actions.appendChild(pasteButton);
 
   block.appendChild(actions);
+  block.appendChild(textarea);
   block.appendChild(preview);
   block.appendChild(status);
 
   let parsedPayload: SyncBackupPayload | null = null;
 
-  fileInput.addEventListener("change", async () => {
-    const file = fileInput.files?.[0];
-    if (!file) {
-      return;
-    }
-
+  function clearImportState(): void {
     parsedPayload = null;
     preview.hidden = true;
     preview.replaceChildren();
-    status.textContent = `Reading ${file.name}…`;
-    status.className = "bon-sync-status";
+  }
 
-    const text = await file.text();
-    const result: ParseResult = bonSyncParseBackup(text);
+  function showParsed(payload: SyncBackupPayload, sourceLabel: string): void {
+    parsedPayload = payload;
+    renderImportPreview(preview, sourceLabel, payload, async () => {
+      await runImport(parsedPayload, status, preview, fileInput, textarea);
+      parsedPayload = null;
+    });
+    preview.hidden = false;
+    status.textContent = "";
+    status.className = "bon-sync-status";
+  }
+
+  function tryParseText(text: string, sourceLabel: string): void {
+    const trimmed = text.trim();
+    if (!trimmed) {
+      clearImportState();
+      status.textContent = "";
+      status.className = "bon-sync-status";
+      return;
+    }
+
+    clearImportState();
+    const result: ParseResult = bonSyncParseBackup(trimmed);
 
     if (!result.ok) {
       status.textContent = result.error;
@@ -161,13 +224,46 @@ function buildImportBlock(): HTMLElement {
       return;
     }
 
-    parsedPayload = result.payload;
-    renderImportPreview(preview, file.name, result.payload, async () => {
-      await runImport(parsedPayload, status, preview, fileInput);
-      parsedPayload = null;
-    });
-    preview.hidden = false;
-    status.textContent = "";
+    showParsed(result.payload, sourceLabel);
+  }
+
+  fileInput.addEventListener("change", async () => {
+    const file = fileInput.files?.[0];
+    if (!file) {
+      return;
+    }
+
+    textarea.value = "";
+    clearImportState();
+    status.textContent = `Reading ${file.name}…`;
+    status.className = "bon-sync-status";
+
+    const text = await file.text();
+    tryParseText(text, file.name);
+  });
+
+  textarea.addEventListener("input", () => {
+    if (textarea.value.length > 0) {
+      fileInput.value = "";
+    }
+
+    tryParseText(textarea.value, "Pasted text");
+  });
+
+  pasteButton.addEventListener("click", async () => {
+    pasteButton.disabled = true;
+    try {
+      const text = await navigator.clipboard.readText();
+      textarea.value = text;
+      fileInput.value = "";
+      tryParseText(text, "Clipboard");
+    } catch (error) {
+      console.error("[Bot or Not] paste from clipboard failed", error);
+      status.textContent = `Paste failed: ${(error as Error).message}. Paste into the textarea manually.`;
+      status.className = "bon-sync-status bon-sync-status--error";
+    } finally {
+      pasteButton.disabled = false;
+    }
   });
 
   return block;
@@ -243,7 +339,8 @@ async function runImport(
   payload: SyncBackupPayload | null,
   status: HTMLElement,
   preview: HTMLElement,
-  fileInput: HTMLInputElement
+  fileInput: HTMLInputElement,
+  textarea: HTMLTextAreaElement
 ): Promise<void> {
   if (!payload) {
     return;
@@ -264,6 +361,7 @@ async function runImport(
     preview.hidden = true;
     preview.replaceChildren();
     fileInput.value = "";
+    textarea.value = "";
   } catch (error) {
     console.error("[Bot or Not] import failed", error);
     status.textContent = `Import failed: ${(error as Error).message}`;

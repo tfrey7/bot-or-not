@@ -52,6 +52,33 @@
   white-space: nowrap;
 }
 
+.bon-sync-paste {
+  width: 100%;
+  box-sizing: border-box;
+  font-family: var(--bon-font-mono);
+  font-size: 0.78rem;
+  line-height: 1.5;
+  color: var(--bon-text);
+  background: var(--bon-surface-soft);
+  border: 1px solid var(--bon-border);
+  border-radius: 0.4em;
+  padding: 0.65em 0.8em;
+  resize: vertical;
+  min-height: 4em;
+  max-height: 14em;
+}
+
+.bon-sync-paste:focus {
+  outline: none;
+  border-color: var(--bon-accent, var(--bon-text-soft));
+  box-shadow: 0 0 0 2px var(--bon-accent-soft, transparent);
+}
+
+.bon-sync-paste::placeholder {
+  color: var(--bon-muted);
+  font-style: italic;
+}
+
 .bon-sync-status {
   margin: 0;
   font-family: var(--bon-font-mono);

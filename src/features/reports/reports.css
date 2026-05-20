@@ -125,9 +125,6 @@
 }
 .bon-split-list {
   min-width: 0;
-  position: sticky;
-  top: 1em;
-  align-self: start;
 }
 .bon-split-detail {
   /* Detail pane is the editorial-dossier surface — JetBrains Mono throughout.
@@ -138,9 +135,6 @@
   border-radius: 0.5em;
   box-shadow: var(--bon-shadow-md);
   min-width: 0;
-  position: sticky;
-  top: 1em;
-  align-self: start;
   /* Establish a container so inner widgets (summary-row, persona) can
      respond to the pane's actual inline size rather than the viewport.
      Without this, the nested two-column summary/persona layout keeps its
@@ -205,10 +199,6 @@
   .bon-split {
     grid-template-columns: minmax(0, 1fr);
   }
-  .bon-split-list,
-  .bon-split-detail {
-    position: static;
-  }
 }
 
 /* ============================================================
@@ -258,19 +248,6 @@ table.bon-table {
 .bon-table thead th:last-child {
   border-top-right-radius: 0.5em;
   text-align: right;
-}
-.bon-table thead th.bon-sortable {
-  cursor: pointer;
-  user-select: none;
-  transition: color 0.15s;
-}
-.bon-table thead th.bon-sortable:hover {
-  color: var(--bon-text);
-}
-.bon-sort-indicator {
-  display: inline-block;
-  margin-left: 0.25em;
-  color: var(--bon-muted-soft);
 }
 .bon-table tbody td {
   padding: 0.8em 1em;

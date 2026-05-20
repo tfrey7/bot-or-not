@@ -469,14 +469,6 @@ export type SortKey =
 
 export type SortDir = "asc" | "desc";
 
-export function bonReportsDefaultDirFor(key: SortKey): SortDir {
-  if (key === "username" || key === "verdict") {
-    return "asc";
-  }
-
-  return "desc";
-}
-
 type SortValue = string | number | null;
 
 export function bonReportsSortValue(
@@ -503,10 +495,19 @@ export function bonReportsSortValue(
       return 0;
     }
 
-    // While running, runAt isn't written yet — fall back to startedAt so a
-    // freshly-kicked-off investigation sorts to the top instead of the
-    // bottom.
-    return investigation.runAt ?? investigation.startedAt ?? 0;
+    // For an in-flight re-investigation, runAt is still the *previous*
+    // completion's timestamp — prefer the active phase's timestamp so a
+    // freshly-kicked row floats to the top instead of staying anchored to
+    // its prior runAt.
+    if (investigation.status === "running") {
+      return investigation.startedAt ?? investigation.runAt ?? 0;
+    }
+
+    if (investigation.status === "queued") {
+      return investigation.queuedAt ?? investigation.runAt ?? 0;
+    }
+
+    return investigation.runAt ?? 0;
   }
 
   if (key === "region") {

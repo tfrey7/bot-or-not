@@ -14,6 +14,7 @@ export interface InvestigateButtonOpts {
   expectedDurationMs: number | null;
   queueAhead: number;
   onNoApiKey?: () => void;
+  onInvestigate?: () => void;
 }
 
 function idleLabel(verdict: string | null | undefined): string {
@@ -31,7 +32,12 @@ function queuedLabel(ahead: number): string {
 export function bonReportsRenderInvestigateButton(
   username: string,
   investigation: Investigation | null | undefined,
-  { expectedDurationMs, queueAhead, onNoApiKey }: InvestigateButtonOpts
+  {
+    expectedDurationMs,
+    queueAhead,
+    onNoApiKey,
+    onInvestigate,
+  }: InvestigateButtonOpts
 ): HTMLButtonElement {
   const button = document.createElement("button");
   button.type = "button";
@@ -76,6 +82,7 @@ export function bonReportsRenderInvestigateButton(
   button.addEventListener("click", async () => {
     button.disabled = true;
     button.textContent = "Starting…";
+    onInvestigate?.();
     try {
       const response = (await browser.runtime.sendMessage({
         type: "investigate-user",

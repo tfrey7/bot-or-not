@@ -21,6 +21,7 @@ export interface DetailPaneOptions {
   expectedDurationMs: number | null;
   queueAhead: number;
   onNoApiKey: () => void;
+  onInvestigate: () => void;
 }
 
 export function bonReportsDetailEmpty(message: string): HTMLDivElement {
@@ -44,7 +45,7 @@ export function bonReportsDetailPane(
   report: ReportRow,
   opts: DetailPaneOptions
 ): DocumentFragment {
-  const { expectedDurationMs, queueAhead, onNoApiKey } = opts;
+  const { expectedDurationMs, queueAhead, onNoApiKey, onInvestigate } = opts;
   const { username, investigation, ringId } = report;
 
   const fragment = document.createDocumentFragment();
@@ -54,6 +55,7 @@ export function bonReportsDetailPane(
       expectedDurationMs,
       queueAhead,
       onNoApiKey,
+      onInvestigate,
     }),
     bonReportsRenderGoogleSearchButton(username),
     bonReportsRenderDeleteButton(username),

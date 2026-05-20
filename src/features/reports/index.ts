@@ -1,7 +1,8 @@
 // Reports-page orchestrator. Owns the load / render / poll loop, the
-// search input, the sort header click handlers, the analytics container,
-// and the confirm modal. Each row + cell renderer lives in its own file
-// in this directory; this file just wires them together.
+// search input, the analytics container, and the confirm modal. Each row
+// + cell renderer lives in its own file in this directory; this file
+// just wires them together. Sort order is fixed (most-recently-
+// investigated first) so a fresh investigation always floats to the top.
 
 import {
   bonAiCommandFormatSummary,
@@ -29,7 +30,6 @@ import { bonReportsRow } from "./table_row.ts";
 import {
   bonReportsCompareBy,
   bonReportsCountQueuedAhead,
-  bonReportsDefaultDirFor,
   bonReportsDiagnoseLoadError,
   bonReportsFormatRunningCellText,
   bonReportsFormatRunningTitle,
@@ -37,8 +37,6 @@ import {
   bonReportsInputIsCommand,
   bonReportsSanitizeUsernameQuery,
   type ReportRow,
-  type SortDir,
-  type SortKey,
 } from "./logic.ts";
 
 const tbody = document.getElementById("bon-tbody") as HTMLTableSectionElement;
@@ -66,8 +64,18 @@ const syncContainer = document.getElementById(
   "bon-sync-container"
 ) as HTMLElement | null;
 
-const BON_REPORTS_PAGE_SIZE = 50;
+const BON_REPORTS_PAGE_SIZE = 20;
 const BON_REPORTS_URL_USER_PARAM = "user";
+const BON_REPORTS_URL_TAB_PARAM = "tab";
+const BON_REPORTS_DEFAULT_TAB = "reports";
+const BON_REPORTS_TABS = [
+  "reports",
+  "metrics",
+  "diagnostics",
+  "self-improvement",
+  "settings",
+] as const;
+type BonReportsTab = (typeof BON_REPORTS_TABS)[number];
 
 // Vite inlines import.meta.env.DEV at build time, so the suffix only ships
 // in `vite dev` builds — published AMO builds (vite build) get a clean
@@ -89,8 +97,6 @@ let hasApiKey = false;
 // "~Xs left" countdown on in-flight investigations. Recomputed before
 // render and before each poll tick. Null until we have ≥3 completed runs.
 let expectedDurationMs: number | null = null;
-let sortKey: SortKey = "investigatedAt";
-let sortDir: SortDir = "desc";
 let currentPage = 1;
 let selectedUsername: string | null = readSelectedUsernameFromUrl();
 
@@ -246,29 +252,6 @@ document.addEventListener("keydown", (event) => {
 initTabs();
 
 bonRenderSync(syncContainer);
-
-document
-  .querySelectorAll<HTMLTableCellElement>("th.bon-sortable")
-  .forEach((header) => {
-    header.addEventListener("click", () => {
-      const key = header.dataset.sort as SortKey | undefined;
-      if (!key) {
-        return;
-      }
-
-      if (sortKey === key) {
-        sortDir = sortDir === "asc" ? "desc" : "asc";
-      } else {
-        sortKey = key;
-        sortDir =
-          (header.dataset.defaultDir as SortDir) ||
-          bonReportsDefaultDirFor(key);
-      }
-
-      currentPage = 1;
-      render();
-    });
-  });
 
 await load();
 
@@ -440,9 +423,7 @@ function render(): void {
     return haystack.includes(query);
   });
 
-  filtered.sort(bonReportsCompareBy(sortKey, sortDir, REGION_LABELS));
-
-  updateSortIndicators();
+  filtered.sort(bonReportsCompareBy("investigatedAt", "desc", REGION_LABELS));
 
   tbody.replaceChildren();
   paginationContainer.replaceChildren();
@@ -626,6 +607,13 @@ function renderDetail(): void {
       expectedDurationMs,
       queueAhead: bonReportsCountQueuedAhead(allReports, report),
       onNoApiKey: bonReportsOpenSettings,
+
+      // Bounce back to page 1 — the fixed investigatedAt-desc sort will
+      // float the freshly-kicked row to the top once the storage write
+      // and re-render cycle lands.
+      onInvestigate: () => {
+        currentPage = 1;
+      },
     })
   );
 
@@ -712,10 +700,7 @@ function renderEmptyState(query: string): void {
     // the search is still active at that point, the table collapses to just
     // the new row instead of showing the full list.
     searchInput.value = "";
-    sortKey = "investigatedAt";
-    sortDir = "desc";
     pendingSelectionUsername = username;
-    updateSortIndicators();
     render();
 
     try {
@@ -839,47 +824,79 @@ function initTabs(): void {
   const tabs = document.querySelectorAll<HTMLButtonElement>(".bon-tab");
   const panels = document.querySelectorAll<HTMLElement>(".bon-tab-panel");
 
+  const activate = (target: BonReportsTab): void => {
+    for (const other of tabs) {
+      const isActive = other.dataset.tab === target;
+      other.classList.toggle("bon-tab--active", isActive);
+      other.setAttribute("aria-selected", isActive ? "true" : "false");
+    }
+
+    for (const panel of panels) {
+      panel.hidden = panel.id !== `bon-panel-${target}`;
+    }
+
+    // Note edits don't trigger a structural re-render, so refresh on
+    // activation to pick up changes made since this tab was last opened.
+    if (target === "self-improvement") {
+      renderSelfImprovement();
+    }
+  };
+
   for (const tab of tabs) {
     tab.addEventListener("click", () => {
       const target = tab.dataset.tab;
-      if (!target) {
+      if (!target || !isBonReportsTab(target)) {
         return;
       }
 
-      for (const other of tabs) {
-        const isActive = other === tab;
-        other.classList.toggle("bon-tab--active", isActive);
-        other.setAttribute("aria-selected", isActive ? "true" : "false");
-      }
-
-      for (const panel of panels) {
-        panel.hidden = panel.id !== `bon-panel-${target}`;
-      }
-
-      // Note edits don't trigger a structural re-render, so refresh on
-      // activation to pick up changes made since this tab was last opened.
-      if (target === "self-improvement") {
-        renderSelfImprovement();
-      }
+      activate(target);
+      updateUrlForTab(target);
     });
+  }
+
+  const initialTab = readTabFromUrl();
+  if (initialTab !== BON_REPORTS_DEFAULT_TAB) {
+    activate(initialTab);
   }
 }
 
-function updateSortIndicators(): void {
-  document
-    .querySelectorAll<HTMLTableCellElement>("th.bon-sortable")
-    .forEach((header) => {
-      const indicator = header.querySelector(".bon-sort-indicator");
-      if (!indicator) {
-        return;
-      }
+function isBonReportsTab(value: string): value is BonReportsTab {
+  return (BON_REPORTS_TABS as readonly string[]).includes(value);
+}
 
-      if (header.dataset.sort === sortKey) {
-        indicator.textContent = sortDir === "asc" ? "▲" : "▼";
-      } else {
-        indicator.textContent = "";
-      }
-    });
+function readTabFromUrl(): BonReportsTab {
+  const raw = new URLSearchParams(window.location.search).get(
+    BON_REPORTS_URL_TAB_PARAM
+  );
+  const trimmed = raw?.trim();
+  return trimmed && isBonReportsTab(trimmed)
+    ? trimmed
+    : BON_REPORTS_DEFAULT_TAB;
+}
+
+function updateUrlForTab(tab: BonReportsTab): void {
+  const params = new URLSearchParams(window.location.search);
+  const current = params.get(BON_REPORTS_URL_TAB_PARAM);
+
+  if (tab === BON_REPORTS_DEFAULT_TAB) {
+    if (current === null) {
+      return;
+    }
+
+    params.delete(BON_REPORTS_URL_TAB_PARAM);
+  } else {
+    if (current === tab) {
+      return;
+    }
+
+    params.set(BON_REPORTS_URL_TAB_PARAM, tab);
+  }
+
+  const query = params.toString();
+  const newUrl = query
+    ? `${window.location.pathname}?${query}`
+    : window.location.pathname;
+  window.history.replaceState({}, "", newUrl);
 }
 
 let commandInflight = false;

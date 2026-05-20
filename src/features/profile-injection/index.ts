@@ -58,6 +58,7 @@ function findContentColumn(h1: HTMLHeadingElement): HTMLElement | null {
   const main = h1.closest(
     'main, [role="main"], shreddit-app'
   ) as HTMLElement | null;
+
   if (main) {
     return (main.firstElementChild as HTMLElement | null) ?? main;
   }
@@ -82,7 +83,9 @@ function buildGoogleButton(username: string): HTMLButtonElement {
   button.title = `Open Google search for u/${username} (site:reddit.com)`;
 
   button.addEventListener("click", () => {
-    const query = encodeURIComponent(`${username} site:reddit.com`);
+    // Quote the username so Google treats it as an exact phrase — without it,
+    // word-like handles ("candy", "willy") drown in unrelated reddit.com hits.
+    const query = encodeURIComponent(`"${username}" site:reddit.com`);
     window.open(
       `https://www.google.com/search?q=${query}`,
       "_blank",
