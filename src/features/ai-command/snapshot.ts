@@ -3,9 +3,30 @@ import type { Factor, Report } from "../../types.ts";
 export interface AiCommandSnapshotEntry {
   username: string;
   ringId: string | null;
-  verdict: string | null;
-  userStatus: string | null;
   reportCount: number;
+  userStatus: string | null;
+
+  // Investigation lifecycle. `null` = no investigation has ever been started.
+  // Result fields below (verdict, persona, scores, …) are only populated when
+  // status === "done".
+  investigationStatus: string | null;
+  verdict: string | null;
+  botProbability: number | null;
+  confidence: number | null;
+
+  // AI's persona label — one of the archetype keys ("doomer", "stan", …) or
+  // "bot" / "normal". For "show users with the Doomer tag" check this field.
+  persona: string | null;
+
+  // Per-archetype strength (0..1) from the persona radar. Use when the
+  // operator wants to filter on a flavor that didn't necessarily land as the
+  // top label — e.g. "everyone with high doomer score".
+  archetypes: Record<string, number> | null;
+
+  // Per-factor bot↔human score (-1 = strong human, +1 = strong bot) keyed
+  // by factor key from src/factors.ts. Use to answer "show accounts with
+  // high LLM content style" or "everyone with a positive karma_farming_subs".
+  factorScores: Record<string, number> | null;
 
   // Deterministic country code ("US", "GB", "IN" …) when region inference was
   // confident enough to nominate one; null when ambiguous or insufficient
@@ -13,24 +34,103 @@ export interface AiCommandSnapshotEntry {
   // helpers live alongside the reports feature — we keep this module
   // feature-isolated by accepting the precomputed map.
   region: string | null;
+
+  // Operator's own persona ratings from the notes pane — independent of the
+  // AI's persona call. Empty array if the operator hasn't rated this user.
+  ratings: string[];
+
+  // Account-shape signals available pre-investigation. Useful for
+  // "show accounts younger than 30 days" or "everyone Bot Bouncer flagged".
+  totalKarma: number | null;
+  accountAgeDays: number | null;
+  botBouncerStatus: string | null;
+  profileHidden: boolean;
 }
 
 // Slim view of the reports store handed to the agent as context. Strips
 // investigation details, history, and activity — Claude only needs the
 // identifier columns to resolve "alice and bob" or "everyone in ring abc-123"
-// into concrete usernames, plus a few filterable attributes.
+// into concrete usernames, plus the filterable attributes.
 export function bonAiCommandBuildSnapshot(
   reports: Record<string, Report>,
   regions: Record<string, string | null> = {}
 ): AiCommandSnapshotEntry[] {
-  return Object.entries(reports).map(([username, report]) => ({
-    username,
-    ringId: report.ringId ?? null,
-    verdict: report.investigation?.verdict ?? null,
-    userStatus: report.userStatus ?? null,
-    reportCount: report.count,
-    region: regions[username] ?? null,
-  }));
+  return Object.entries(reports).map(([username, report]) => {
+    const investigation = report.investigation;
+    const factorScores = investigation
+      ? bonSnapshotFactorScores(investigation.factors)
+      : null;
+
+    const archetypes = investigation?.persona?.archetypes
+      ? bonSnapshotArchetypeScores(investigation.persona.archetypes)
+      : null;
+
+    return {
+      username,
+      ringId: report.ringId ?? null,
+      reportCount: report.count,
+      userStatus: report.userStatus ?? null,
+
+      investigationStatus: investigation?.status ?? null,
+      verdict: investigation?.verdict ?? null,
+      botProbability: bonRound2(investigation?.botProbability ?? null),
+      confidence: bonRound2(investigation?.confidence ?? null),
+      persona: investigation?.persona?.label ?? null,
+      archetypes,
+      factorScores,
+
+      region: regions[username] ?? null,
+
+      ratings: report.userNotes?.ratings ? [...report.userNotes.ratings] : [],
+
+      totalKarma: report.totalKarma,
+      accountAgeDays: investigation?.accountAgeDays ?? null,
+      botBouncerStatus: report.botBouncerStatus,
+      profileHidden: report.profileHidden,
+    };
+  });
+}
+
+function bonSnapshotFactorScores(
+  factors: readonly Factor[]
+): Record<string, number> | null {
+  if (factors.length === 0) {
+    return null;
+  }
+
+  const out: Record<string, number> = {};
+
+  for (const factor of factors) {
+    const rounded = bonRound2(factor.score);
+    if (rounded !== null) {
+      out[factor.key] = rounded;
+    }
+  }
+
+  return Object.keys(out).length > 0 ? out : null;
+}
+
+function bonSnapshotArchetypeScores(
+  archetypes: Record<string, number>
+): Record<string, number> | null {
+  const out: Record<string, number> = {};
+
+  for (const [key, value] of Object.entries(archetypes)) {
+    const rounded = bonRound2(value);
+    if (rounded !== null) {
+      out[key] = rounded;
+    }
+  }
+
+  return Object.keys(out).length > 0 ? out : null;
+}
+
+function bonRound2(value: number | null | undefined): number | null {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return null;
+  }
+
+  return Math.round(value * 100) / 100;
 }
 
 // Full dossier shape returned by the `read_user_details` tool. The slim

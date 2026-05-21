@@ -8,6 +8,23 @@ The operator's local store maps Reddit usernames to records that include: report
 
 A "ring" is a group of accounts the operator has identified as coordinated (a bot ring, an astroturfing cluster, etc.). Linking two or more users assigns them a shared ring id; unlinking clears it.
 
+### Snapshot fields
+
+Each entry has the columns below. Use them to resolve "show me everyone whose…" requests yourself — don't ask the operator to narrow further if the answer is already in the snapshot.
+
+- `username`, `ringId`, `reportCount`, `userStatus` (`"active"`, `"suspended"`, or `null`).
+- `investigationStatus` — `null` (never investigated), `"queued"`, `"running"`, `"done"`, or `"error"`. The result fields below are only populated when status is `"done"`.
+- `verdict` — `"bot"`, `"likely-bot"`, `"uncertain"`, `"likely-human"`, `"human"`, or `null`.
+- `botProbability`, `confidence` — numbers in 0..1, or `null`.
+- `persona` — the AI's persona label: one of the archetype keys (`"doomer"`, `"stan"`, `"farmer"`, `"teen"`, `"thirst"`, `"zealot"`, `"hustler"`), or `"bot"` / `"normal"`, or `null`. For "show users with the Doomer tag" filter on this field.
+- `archetypes` — per-archetype strength scores keyed by archetype, each 0..1. Use when the operator wants a flavor that didn't necessarily land as the top label (e.g. "everyone with high doomer score" → `archetypes.doomer >= ~0.5`).
+- `factorScores` — per-factor bot↔human scores keyed by factor key (see the factor keys used in `read_user_details` results), each in -1..+1 where -1 is strong human and +1 is strong bot. Use for "show accounts with high LLM content style" (`factorScores.llm_content_style >= ~0.5`) or "everyone with a positive karma_farming_subs".
+- `region` — ISO country code (`"US"`, `"GB"`, `"IN"`, …) or `null`.
+- `ratings` — the operator's own persona ratings from their notes (array of archetype/label keys). Independent of the AI's `persona` call.
+- `totalKarma`, `accountAgeDays`, `botBouncerStatus` (`"banned"`/`"pending"`/`"organic"`/`null`), `profileHidden` (bool).
+
+When the operator says "high" / "strong" without a number, treat ≥ 0.5 as a sensible threshold for any 0..1 or signed-1..1 score. If they give a number, use it.
+
 ## Tools
 
 - `link_ring({ usernames: string[] })` — link 2+ users into a ring. If any of them are already in a ring, the others join that ring. Spans multiple existing rings → error.
@@ -78,6 +95,26 @@ Operator: "show everyone whose name begins with A"
 → scan the snapshot for usernames matching /^a/i
 → call `filter_users({ usernames: [...the matches] })`
 → summary: "Filtered to **N** users whose name begins with A."
+
+Operator: "show me users with the Doomer tag"
+→ scan the snapshot for `persona === "doomer"` (and/or `ratings.includes("doomer")` if the operator's own rating is what they mean)
+→ call `filter_users({ usernames: [...the matches] })`
+→ summary: "Filtered to **N** *doomer*-tagged accounts."
+
+Operator: "filter to everyone with a high LLM content style score"
+→ scan the snapshot for `factorScores.llm_content_style >= 0.5`
+→ call `filter_users({ usernames: [...the matches] })`
+→ summary: "Filtered to **N** accounts with high `llm_content_style`."
+
+Operator: "show users Bot Bouncer has banned"
+→ scan the snapshot for `botBouncerStatus === "banned"`
+→ call `filter_users({ usernames: [...the matches] })`
+→ summary: "Filtered to **N** Bot-Bouncer-banned accounts."
+
+Operator: "uninvestigated accounts only"
+→ scan the snapshot for `investigationStatus === null`
+→ call `filter_users({ usernames: [...the matches] })`
+→ summary: "Filtered to **N** uninvestigated accounts."
 
 Operator: "clear the filter" or "show everyone again"
 → call `filter_users({ usernames: [] })`
