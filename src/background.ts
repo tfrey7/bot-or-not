@@ -31,30 +31,20 @@ import {
   bonReportsUpdateProfileStats,
 } from "./features/reports/handlers.ts";
 import { bonSyncExport, bonSyncImport } from "./features/sync/handlers.ts";
-import { BON_DEV_REFERENCE_ACCOUNTS } from "./dev_reference_accounts.ts";
 import { bonRunMigrations } from "./migrations";
 import type { Report } from "./types.ts";
 import type { BonScrapedPost } from "./features/google-harvest/parse.ts";
 import {
   bonClearApiKey,
   bonReadApiKey,
-  bonReadReports,
   bonWriteApiKey,
-  bonWriteReports,
 } from "./storage.ts";
-import { bonFindReportKey, bonNormalizeReport } from "./utils/history.ts";
 
 console.log("[Bot or Not] background loaded");
 
 void bootstrapDevClaudeApiKey();
 
 void bootstrapDevReportsTab();
-
-// Re-seed the reports list with a curated set of known accounts on every
-// dev startup so UI iteration (sorting, table layout, etc.) always has
-// data to work against after a Firefox profile wipe or web-ext reload.
-// Tree-shakes out of production via the import.meta.env.DEV guard.
-void bootstrapDevReferenceAccounts();
 
 void bonInvestigationSweepOrphans();
 
@@ -111,45 +101,6 @@ async function bootstrapDevClaudeApiKey(): Promise<void> {
   } catch (error) {
     console.error(
       "[Bot or Not] dev: bootstrap of Claude API key failed",
-      error
-    );
-  }
-}
-
-async function bootstrapDevReferenceAccounts(): Promise<void> {
-  if (!import.meta.env.DEV) {
-    return;
-  }
-
-  try {
-    const reports = await bonReadReports();
-    const seededAt = Date.now();
-    const added: string[] = [];
-
-    for (const { username, note } of BON_DEV_REFERENCE_ACCOUNTS) {
-      if (bonFindReportKey(reports, username)) {
-        continue;
-      }
-
-      const base = bonNormalizeReport(undefined);
-      reports[username] = {
-        ...base,
-        count: 1,
-        lastReportedAt: seededAt,
-        history: [{ at: seededAt, kind: "dev-seed", note }],
-      };
-      added.push(username);
-    }
-
-    if (added.length > 0) {
-      await bonWriteReports(reports);
-      console.log(
-        `[Bot or Not] dev: seeded ${added.length} reference account(s): ${added.join(", ")}`
-      );
-    }
-  } catch (error) {
-    console.error(
-      "[Bot or Not] dev: bootstrap of reference accounts failed",
       error
     );
   }
