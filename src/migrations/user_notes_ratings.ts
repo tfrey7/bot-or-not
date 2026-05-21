@@ -1,4 +1,4 @@
-import { bonReadReports, bonWriteReports } from "../utils/history.ts";
+import { bonReadReports, bonWriteReports } from "../storage.ts";
 
 // Rewrite legacy `userNotes.rating` (single label) into `userNotes.ratings`
 // (array) so the multi-pick picker has a consistent shape to read from.

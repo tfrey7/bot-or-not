@@ -1,13 +1,10 @@
-// Storage I/O + canonical-shape helpers for Report records.
-//
-// bonReadReports / bonWriteReports are the only sanctioned entry points
-// for `browser.storage.local.{get,set}("reports")`. They centralize the
-// `unknown → Record<string, Report>` cast in one place, where it can run
-// through bonNormalizeReport to actually produce the canonical shape.
+// Canonical-shape helpers for Report records.
 //
 // bonNormalizeReport is the source of trust: every Report field always
 // present, Investigation canonicalized so consumers can drop defensive
-// `Array.isArray` / `typeof === "number"` / `?? null` checks.
+// `Array.isArray` / `typeof === "number"` / `?? null` checks. The storage
+// adapter (`src/storage.ts`) runs every read through it; sync's import
+// parser does the same on incoming backups.
 
 import { BON_PERSONA_LABELS } from "../factors.ts";
 import type {
@@ -404,27 +401,6 @@ function canonicalizeRunSnapshot(value: unknown): RunSnapshot {
     redditMetrics: canonicalizeRedditMetrics(record.redditMetrics),
     error: typeof record.error === "string" ? record.error : null,
   };
-}
-
-// Sanctioned storage entry points. Reads run through bonNormalizeReport so
-// every callsite gets the canonical shape — no `as Report` lies elsewhere.
-export async function bonReadReports(): Promise<Record<string, Report>> {
-  const raw = (await browser.storage.local.get("reports")) as {
-    reports?: Record<string, unknown>;
-  };
-  const out: Record<string, Report> = {};
-
-  for (const [username, value] of Object.entries(raw.reports ?? {})) {
-    out[username] = bonNormalizeReport(value);
-  }
-
-  return out;
-}
-
-export async function bonWriteReports(
-  reports: Record<string, Report>
-): Promise<void> {
-  await browser.storage.local.set({ reports });
 }
 
 // Case-insensitive username lookup — Reddit's routing is case-insensitive but

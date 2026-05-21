@@ -6,6 +6,7 @@
 // (most-recently-investigated first) so a fresh investigation always
 // floats to the top.
 
+import { bonClientSend, bonClientSubscribe } from "../../client.ts";
 import { bonRenderAnalytics } from "../analytics";
 import { bonRenderDiagnostics } from "../diagnostics";
 import { bonRenderFunFacts } from "../fun-facts";
@@ -125,12 +126,8 @@ let lastAnimatedSelection: string | null | undefined = undefined;
 // user-driven paging isn't yanked back.
 let pendingScrollToSelected = !!selectedUsername;
 
-browser.storage.onChanged.addListener((changes, area) => {
-  if (area !== "local") {
-    return;
-  }
-
-  if (changes.reports) {
+bonClientSubscribe((event) => {
+  if (event.type === "reports-changed") {
     // Route through the poll path so non-structural writes (notes, lazy
     // profile-stat fills) don't tear down whichever widget the operator
     // is currently typing into. polling.pollNow does a full re-render
@@ -138,7 +135,7 @@ browser.storage.onChanged.addListener((changes, area) => {
     void polling.pollNow();
   }
 
-  if (changes.claudeApiKey) {
+  if (event.type === "api-key-changed") {
     void refreshApiKeyState();
   }
 });
@@ -199,10 +196,12 @@ await load();
 
 async function load(): Promise<void> {
   try {
-    const [{ reports = {} }, { hasKey }] = (await Promise.all([
-      browser.runtime.sendMessage({ type: "get-all-reports" }),
-      browser.runtime.sendMessage({ type: "get-claude-api-key" }),
-    ])) as [{ reports?: Record<string, Report> }, { hasKey: boolean }];
+    const [{ reports = {} }, { hasKey }] = await Promise.all([
+      bonClientSend<{ reports?: Record<string, Report> }>({
+        type: "get-all-reports",
+      }),
+      bonClientSend<{ hasKey: boolean }>({ type: "get-claude-api-key" }),
+    ]);
 
     allReports = Object.entries(reports).map(([username, data]) => ({
       username,
@@ -228,9 +227,9 @@ async function refreshApiKeyState(): Promise<void> {
   void bonReportsRefreshApiKeyStatus();
 
   try {
-    const { hasKey } = (await browser.runtime.sendMessage({
+    const { hasKey } = await bonClientSend<{ hasKey: boolean }>({
       type: "get-claude-api-key",
-    })) as { hasKey: boolean };
+    });
     const next = !!hasKey;
     if (next === hasApiKey) {
       return;

@@ -2,6 +2,7 @@
 // regular tab panel rather than a modal; activating the tab uses the
 // shared tab handler, so this module only owns the inputs and buttons.
 
+import { bonClientSend } from "../../client.ts";
 import { bonReportsOpenConfirmModal } from "./confirm_modal.ts";
 
 const settingsTab = document.getElementById(
@@ -36,9 +37,9 @@ function renderApiKeyStatus(hasKey: boolean): void {
 
 export async function bonReportsRefreshApiKeyStatus(): Promise<void> {
   try {
-    const { hasKey } = (await browser.runtime.sendMessage({
+    const { hasKey } = await bonClientSend<{ hasKey: boolean }>({
       type: "get-claude-api-key",
-    })) as { hasKey: boolean };
+    });
     renderApiKeyStatus(hasKey);
   } catch {
     apiKeyStatus.textContent = "Failed to read key status.";
@@ -61,10 +62,10 @@ async function saveApiKey(): Promise<void> {
   settingsSave.disabled = true;
 
   try {
-    const { hasKey } = (await browser.runtime.sendMessage({
+    const { hasKey } = await bonClientSend<{ hasKey: boolean }>({
       type: "set-claude-api-key",
       apiKey: value,
-    })) as { hasKey: boolean };
+    });
     renderApiKeyStatus(hasKey);
     apiKeyInput.value = "";
   } catch {
@@ -93,7 +94,7 @@ export function bonReportsInitSettings(): void {
     bonReportsOpenConfirmModal({
       text: "Clear all reported users? This can't be undone.",
       confirmLabel: "Clear all",
-      action: () => browser.runtime.sendMessage({ type: "clear-all-reports" }),
+      action: () => bonClientSend({ type: "clear-all-reports" }),
     });
   });
 }

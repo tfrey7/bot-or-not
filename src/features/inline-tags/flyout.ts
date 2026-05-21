@@ -4,6 +4,7 @@
 // storage changes while open so the panel re-renders mid-investigation,
 // dismisses on Escape / click-outside / location change.
 
+import { bonClientSend, bonClientSubscribe } from "../../client.ts";
 import type { Report } from "../../types.ts";
 import {
   bonIsInvestigationStale,
@@ -15,7 +16,7 @@ interface FlyoutState {
   username: string;
   container: HTMLDivElement;
   anchor: HTMLElement;
-  storageListener: Parameters<typeof browser.storage.onChanged.addListener>[0];
+  unsubscribe: () => void;
   cleanup: () => void;
 }
 
@@ -79,10 +80,13 @@ interface LoadedReport {
 
 async function loadReport(username: string): Promise<LoadedReport> {
   try {
-    const response = (await browser.runtime.sendMessage({
+    const response = await bonClientSend<{
+      report?: Report | null;
+      expectedDurationMs?: number | null;
+    }>({
       type: "get-user-report",
       username,
-    })) as { report?: Report | null; expectedDurationMs?: number | null };
+    });
 
     return {
       report: response?.report ?? null,
@@ -101,7 +105,7 @@ export function bonInlineTagsCloseFlyout(): void {
 
   active.cleanup();
   active.container.remove();
-  browser.storage.onChanged.removeListener(active.storageListener);
+  active.unsubscribe();
   active = null;
 }
 
@@ -130,10 +134,8 @@ export function bonInlineTagsOpenFlyout(
   container.appendChild(loading);
   document.body.appendChild(container);
 
-  const storageListener: Parameters<
-    typeof browser.storage.onChanged.addListener
-  >[0] = (changes, area) => {
-    if (area !== "local" || !changes.reports || !active) {
+  const unsubscribe = bonClientSubscribe((event) => {
+    if (event.type !== "reports-changed" || !active) {
       return;
     }
 
@@ -144,7 +146,7 @@ export function bonInlineTagsOpenFlyout(
 
       renderInto(active.container, active.username, report, expectedDurationMs);
     });
-  };
+  });
 
   const onDocClick = (event: MouseEvent): void => {
     const target = event.target as Element | null;
@@ -192,9 +194,7 @@ export function bonInlineTagsOpenFlyout(
     window.removeEventListener("resize", onResize);
   };
 
-  browser.storage.onChanged.addListener(storageListener);
-
-  active = { username, container, anchor, storageListener, cleanup };
+  active = { username, container, anchor, unsubscribe, cleanup };
 
   positionFlyout(container, anchor);
 

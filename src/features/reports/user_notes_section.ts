@@ -7,6 +7,7 @@
 // (debounced) and on `blur` (immediate). The status pill reflects state:
 // "Unsaved" → "Saving…" → "Saved <relative>".
 
+import { bonClientSend } from "../../client.ts";
 import type { PersonaLabel, UserNotes } from "../../types.ts";
 import { bonFormatDate } from "../../utils/format_time.ts";
 import type { ReportRow } from "./logic.ts";
@@ -132,12 +133,15 @@ export function bonReportsUserNotesSection(report: ReportRow): HTMLDivElement {
     renderStatus(userNotes ?? null);
 
     try {
-      const response = (await browser.runtime.sendMessage({
+      const response = await bonClientSend<{
+        ok?: boolean;
+        userNotes?: UserNotes | null;
+      }>({
         type: "set-user-notes",
         username,
         ratings: currentRatings,
         note: textarea.value,
-      })) as { ok?: boolean; userNotes?: UserNotes | null };
+      });
 
       if (response?.ok) {
         lastSavedNote = textarea.value.trim() === "" ? "" : textarea.value;

@@ -5,6 +5,7 @@
 // every MutationObserver tick to tag freshly-rendered links and to keep the
 // profile-header chip in sync.
 
+import { bonClientSend, bonClientSubscribe } from "../../client.ts";
 import { bonCssEscape } from "../../utils/format_text.ts";
 import { bonRingChip } from "../../utils/ring_chip.ts";
 import { bonInlineTagsCloseFlyout, bonInlineTagsOpenFlyout } from "./flyout.ts";
@@ -27,9 +28,11 @@ let tagsLoaded = false;
 let lastProfileAutoInvestigate: string | null = null;
 
 async function loadUserTags(): Promise<void> {
-  const { tags = {} } = (await browser.runtime.sendMessage({
+  const { tags = {} } = await bonClientSend<{
+    tags?: Record<string, UserTagInfo>;
+  }>({
     type: "get-user-tags",
-  })) as { tags?: Record<string, UserTagInfo> };
+  });
 
   const nextTags = new Map<string, UserTagInfo>();
 
@@ -199,7 +202,7 @@ function markProfileHeader(): void {
 
   if (lastProfileAutoInvestigate !== key) {
     lastProfileAutoInvestigate = key;
-    browser.runtime.sendMessage({
+    void bonClientSend({
       type: "auto-investigate-on-view",
       username,
     });
@@ -403,11 +406,9 @@ export function bonInlineTagsInit(): void {
     true
   );
 
-  browser.storage.onChanged.addListener((changes, area) => {
-    if (area !== "local" || !changes.reports) {
-      return;
+  bonClientSubscribe((event) => {
+    if (event.type === "reports-changed") {
+      void loadUserTags();
     }
-
-    void loadUserTags();
   });
 }

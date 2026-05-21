@@ -7,11 +7,12 @@
 // frame only triggers one storage write, not 50.
 //
 // Two things keep this cheap on big threads:
-// 1. The hidden-username set is loaded once and refreshed via
-//    storage.onChanged. Per-tick lookup is O(1).
+// 1. The hidden-username set is loaded once and refreshed via the client
+//    subscription. Per-tick lookup is O(1).
 // 2. Every shreddit-post / shreddit-comment / .thing we scan is marked
 //    with data-bon-harvested so subsequent ticks skip it — see scrape.ts.
 
+import { bonClientSend, bonClientSubscribe } from "../../client.ts";
 import type { BonPassiveHarvestFinding } from "./scrape.ts";
 import { bonPassiveHarvestScrape } from "./scrape.ts";
 
@@ -29,9 +30,9 @@ const pending: BufferedFinding[] = [];
 let flushTimer: ReturnType<typeof setTimeout> | null = null;
 
 async function loadHiddenUsernames(): Promise<void> {
-  const response = (await browser.runtime.sendMessage({
+  const response = await bonClientSend<{ usernames?: string[] }>({
     type: "get-hidden-usernames",
-  })) as { usernames?: string[] };
+  });
 
   hiddenUsernames = new Set(
     (response?.usernames ?? []).map((name) => name.toLowerCase())
@@ -70,7 +71,7 @@ async function flush(): Promise<void> {
   }
 
   for (const [username, items] of byUser) {
-    void browser.runtime.sendMessage({
+    void bonClientSend({
       type: "passive-harvest",
       username,
       items,
@@ -98,12 +99,10 @@ export function bonPassiveHarvestTick(): void {
 export function bonPassiveHarvestInit(): void {
   void loadHiddenUsernames();
 
-  browser.storage.onChanged.addListener((changes, area) => {
-    if (area !== "local" || !changes.reports) {
-      return;
+  bonClientSubscribe((event) => {
+    if (event.type === "reports-changed") {
+      void loadHiddenUsernames();
     }
-
-    void loadHiddenUsernames();
   });
 
   // Don't lose buffered finds when the tab is closed or backgrounded.

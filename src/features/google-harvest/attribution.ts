@@ -14,11 +14,8 @@
 // the staleness check), the prompt gets the freshly attributed data.
 
 import type { GoogleHarvest, GoogleHarvestPost, Report } from "../../types.ts";
-import {
-  bonFindReportKey,
-  bonReadReports,
-  bonWriteReports,
-} from "../../utils/history.ts";
+import { bonReadReports, bonWriteReports } from "../../storage.ts";
+import { bonFindReportKey } from "../../utils/history.ts";
 
 const BON_ATTRIBUTION_CONCURRENCY = 3;
 const BON_ATTRIBUTION_MAX_ATTEMPTS = 3;

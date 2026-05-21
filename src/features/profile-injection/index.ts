@@ -12,6 +12,7 @@
 // tabs/welcome message. Re-runs on every MutationObserver tick to survive
 // SPA reparenting.
 
+import { bonClientSend, bonClientSubscribe } from "../../client.ts";
 import type { Report } from "../../types.ts";
 
 // Cross-feature import: the Google dossier renderer is a shared
@@ -21,6 +22,13 @@ import { bonReportsGoogleDossierSection } from "../reports/google_dossier_sectio
 import type { ReportRow } from "../reports/logic.ts";
 
 const reportCache = new Map<string, Report | null>();
+
+// Last-rendered harvest signature per user — used to skip the re-render
+// when a `reports-changed` event arrives but this user's googleHarvest
+// hasn't actually changed. Attribution backfill + passive harvest keep
+// writing `reports` for unrelated reasons; rebuilding the dossier on each
+// of those churns the DOM (and resets scroll position) for no benefit.
+const harvestSignatureCache = new Map<string, string>();
 
 const CONTAINER_ID = "bon-profile-injection";
 
@@ -153,28 +161,56 @@ function render(username: string, report: Report | null): void {
   column.appendChild(fresh);
 }
 
-async function refresh(username: string): Promise<void> {
-  if (currentProfileUsername() !== username) {
-    return;
-  }
-
-  let report: Report | null = null;
-
+async function fetchReport(username: string): Promise<Report | null> {
   try {
-    const response = (await browser.runtime.sendMessage({
+    const response = await bonClientSend<{ report?: Report | null }>({
       type: "get-user-report",
       username,
-    })) as { report?: Report | null };
+    });
 
-    report = response?.report ?? null;
-    reportCache.set(username, report);
+    return response?.report ?? null;
   } catch (error) {
     console.error(
       "[Bot or Not] profile-injection: failed to fetch report",
       error
     );
+
+    return null;
+  }
+}
+
+async function refresh(username: string): Promise<void> {
+  if (currentProfileUsername() !== username) {
+    return;
   }
 
+  const report = await fetchReport(username);
+  reportCache.set(username, report);
+  harvestSignatureCache.set(
+    username,
+    harvestRenderSignature(report?.googleHarvest ?? null)
+  );
+  render(username, report);
+}
+
+// Fetch, but only re-render when this user's harvest render signature
+// actually changed. The signature cache replaces the old `oldValue` /
+// `newValue` diff from `browser.storage.onChanged` — same optimization,
+// driven by an in-memory cache that's portable to a server transport.
+async function refreshIfHarvestChanged(username: string): Promise<void> {
+  if (currentProfileUsername() !== username) {
+    return;
+  }
+
+  const report = await fetchReport(username);
+  reportCache.set(username, report);
+
+  const signature = harvestRenderSignature(report?.googleHarvest ?? null);
+  if (signature === harvestSignatureCache.get(username)) {
+    return;
+  }
+
+  harvestSignatureCache.set(username, signature);
   render(username, report);
 }
 
@@ -213,8 +249,8 @@ export function bonProfileInjectionTick(): void {
 export function bonProfileInjectionInit(): void {
   bonProfileInjectionTick();
 
-  browser.storage.onChanged.addListener((changes, area) => {
-    if (area !== "local" || !changes.reports) {
+  bonClientSubscribe((event) => {
+    if (event.type !== "reports-changed") {
       return;
     }
 
@@ -223,25 +259,8 @@ export function bonProfileInjectionInit(): void {
       return;
     }
 
-    // Skip the re-render when this user's googleHarvest didn't change.
-    // Attribution backfill + passive harvest keep writing `reports` for
-    // unrelated reasons; rebuilding the dossier container on each of those
-    // churns the DOM (and resets scroll position) for no visible benefit.
-    if (!harvestChangedForUser(changes.reports, username)) {
-      return;
-    }
-
-    void refresh(username);
+    void refreshIfHarvestChanged(username);
   });
-}
-
-function harvestChangedForUser(
-  change: { oldValue?: unknown; newValue?: unknown },
-  username: string
-): boolean {
-  const before = findGoogleHarvest(change.oldValue, username);
-  const after = findGoogleHarvest(change.newValue, username);
-  return harvestRenderSignature(before) !== harvestRenderSignature(after);
 }
 
 // JSON of just the fields the dossier renders — URL set, attribution,
@@ -281,27 +300,4 @@ function harvestRenderSignature(harvest: unknown): string {
     posts,
     subredditDistribution: h.subredditDistribution ?? {},
   });
-}
-
-function findGoogleHarvest(reports: unknown, username: string): unknown {
-  if (!reports || typeof reports !== "object") {
-    return null;
-  }
-
-  const target = username.toLowerCase();
-
-  for (const [key, value] of Object.entries(
-    reports as Record<string, unknown>
-  )) {
-    if (key.toLowerCase() !== target) {
-      continue;
-    }
-
-    const harvest = (value as { googleHarvest?: unknown } | null)
-      ?.googleHarvest;
-
-    return harvest ?? null;
-  }
-
-  return null;
 }

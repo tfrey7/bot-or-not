@@ -36,11 +36,13 @@ import { bonRunMigrations } from "./migrations";
 import type { Report } from "./types.ts";
 import type { BonScrapedPost } from "./features/google-harvest/parse.ts";
 import {
-  bonFindReportKey,
-  bonNormalizeReport,
+  bonClearApiKey,
+  bonReadApiKey,
   bonReadReports,
+  bonWriteApiKey,
   bonWriteReports,
-} from "./utils/history.ts";
+} from "./storage.ts";
+import { bonFindReportKey, bonNormalizeReport } from "./utils/history.ts";
 
 console.log("[Bot or Not] background loaded");
 
@@ -98,17 +100,13 @@ async function bootstrapDevClaudeApiKey(): Promise<void> {
   }
 
   try {
-    const { claudeApiKey = "" } = (await browser.storage.local.get(
-      "claudeApiKey"
-    )) as { claudeApiKey?: string };
+    const claudeApiKey = await bonReadApiKey();
 
     if (claudeApiKey) {
       return;
     }
 
-    await browser.storage.local.set({
-      claudeApiKey: __BON_DEV_CLAUDE_API_KEY__,
-    });
+    await bonWriteApiKey(__BON_DEV_CLAUDE_API_KEY__);
     console.log("[Bot or Not] dev: seeded Claude API key from .env");
   } catch (error) {
     console.error(
@@ -434,10 +432,7 @@ async function openReportsTab(username?: string): Promise<void> {
 }
 
 async function handleGetClaudeApiKey(): Promise<{ hasKey: boolean }> {
-  const { claudeApiKey = "" } = (await browser.storage.local.get(
-    "claudeApiKey"
-  )) as { claudeApiKey?: string };
-
+  const claudeApiKey = await bonReadApiKey();
   return { hasKey: !!claudeApiKey };
 }
 
@@ -446,10 +441,10 @@ async function handleSetClaudeApiKey(
 ): Promise<{ ok: boolean; hasKey: boolean }> {
   const key = (apiKey || "").trim();
   if (!key) {
-    await browser.storage.local.remove("claudeApiKey");
+    await bonClearApiKey();
     return { ok: true, hasKey: false };
   }
 
-  await browser.storage.local.set({ claudeApiKey: key });
+  await bonWriteApiKey(key);
   return { ok: true, hasKey: true };
 }

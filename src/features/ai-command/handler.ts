@@ -11,7 +11,8 @@ import {
   bonReportsUnlinkRing,
 } from "../reports/handlers.ts";
 import type { Report } from "../../types.ts";
-import { bonFindReportKey, bonReadReports } from "../../utils/history.ts";
+import { bonReadApiKey, bonReadReports } from "../../storage.ts";
+import { bonFindReportKey } from "../../utils/history.ts";
 import {
   bonAiCommandBuildSnapshot,
   bonAiCommandBuildUserDetails,
@@ -46,9 +47,7 @@ export async function bonAiCommandHandle(
     return { ok: false, error: "empty-input" };
   }
 
-  const { claudeApiKey = "" } = (await browser.storage.local.get(
-    "claudeApiKey"
-  )) as { claudeApiKey?: string };
+  const claudeApiKey = await bonReadApiKey();
 
   if (!claudeApiKey) {
     return { ok: false, error: "no-api-key" };

@@ -3,7 +3,7 @@
 // excluded from backups and never round-tripped through this code path.
 
 import type { Report } from "../../types.ts";
-import { bonReadReports, bonWriteReports } from "../../utils/history.ts";
+import { bonReadReports, bonWriteReports } from "../../storage.ts";
 import {
   bonSyncBuildBackup,
   bonSyncMergeReports,

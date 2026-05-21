@@ -12,11 +12,14 @@ import type {
   RunSnapshot,
 } from "../../types.ts";
 import {
+  bonReadApiKey,
+  bonReadReports,
+  bonWriteReports,
+} from "../../storage.ts";
+import {
   bonFindReportKey,
   bonNormalizeReport,
-  bonReadReports,
   bonSnapshotRun,
-  bonWriteReports,
 } from "../../utils/history.ts";
 import { bonIsProfileHidden } from "../../utils/profile_hidden.ts";
 import { bonIsInvestigationStale } from "../../verdict.ts";
@@ -127,9 +130,7 @@ export async function bonInvestigationStart(
     return { ok: false, error: "missing username" };
   }
 
-  const { claudeApiKey = "" } = (await browser.storage.local.get(
-    "claudeApiKey"
-  )) as { claudeApiKey?: string };
+  const claudeApiKey = await bonReadApiKey();
 
   if (!claudeApiKey) {
     return { ok: false, error: "no-api-key" };
@@ -315,9 +316,7 @@ async function drainQueue(): Promise<void> {
   }
 
   try {
-    const { claudeApiKey = "" } = (await browser.storage.local.get(
-      "claudeApiKey"
-    )) as { claudeApiKey?: string };
+    const claudeApiKey = await bonReadApiKey();
 
     if (!claudeApiKey) {
       return;
@@ -369,9 +368,7 @@ export async function bonInvestigationAutoOnView(
   }
 
   try {
-    const { claudeApiKey = "" } = (await browser.storage.local.get(
-      "claudeApiKey"
-    )) as { claudeApiKey?: string };
+    const claudeApiKey = await bonReadApiKey();
 
     if (!claudeApiKey) {
       return { ok: true, started: false };
@@ -408,9 +405,7 @@ export async function bonInvestigationMaybeAuto(
   username: string
 ): Promise<void> {
   try {
-    const { claudeApiKey = "" } = (await browser.storage.local.get(
-      "claudeApiKey"
-    )) as { claudeApiKey?: string };
+    const claudeApiKey = await bonReadApiKey();
 
     if (!claudeApiKey) {
       return;

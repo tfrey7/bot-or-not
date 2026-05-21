@@ -4,11 +4,8 @@
 // background.ts is the only other touchpoint.
 
 import type { Report } from "../../types.ts";
-import {
-  bonFindReportKey,
-  bonReadReports,
-  bonWriteReports,
-} from "../../utils/history.ts";
+import { bonReadReports, bonWriteReports } from "../../storage.ts";
+import { bonFindReportKey } from "../../utils/history.ts";
 import { bonPassiveHarvestMerge } from "./merge.ts";
 import type { BonPassiveHarvestFinding } from "./scrape.ts";
 

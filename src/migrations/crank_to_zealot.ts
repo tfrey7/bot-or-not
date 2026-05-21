@@ -1,4 +1,4 @@
-import { bonReadReports, bonWriteReports } from "../utils/history.ts";
+import { bonReadReports, bonWriteReports } from "../storage.ts";
 
 export async function bonMigrateCrankToZealot(): Promise<void> {
   try {

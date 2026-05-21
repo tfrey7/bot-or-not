@@ -2,6 +2,7 @@
 // investigate button's running state participates in the poll-tick's
 // in-place text updates via data-bon-running-btn.
 
+import { bonClientSend } from "../../client.ts";
 import type { Investigation } from "../../types.ts";
 import { bonInvestigationResults } from "../../utils/history.ts";
 import { bonIsInvestigationStale } from "../../verdict.ts";
@@ -110,10 +111,10 @@ export function bonReportsRenderInvestigateButton(
     button.textContent = "Starting…";
     onInvestigate?.();
     try {
-      const response = (await browser.runtime.sendMessage({
+      const response = await bonClientSend<{ ok?: boolean; error?: string }>({
         type: "investigate-user",
         username,
-      })) as { ok?: boolean; error?: string };
+      });
 
       if (response?.ok === false && response.error === "no-api-key") {
         onNoApiKey?.();
@@ -141,8 +142,7 @@ export function bonReportsRenderDeleteButton(
     bonReportsOpenConfirmModal({
       text: `Delete the report for u/${username}? This can't be undone.`,
       confirmLabel: "Delete",
-      action: () =>
-        browser.runtime.sendMessage({ type: "delete-report", username }),
+      action: () => bonClientSend({ type: "delete-report", username }),
     });
   });
 

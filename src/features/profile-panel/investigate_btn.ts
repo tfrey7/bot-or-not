@@ -3,6 +3,7 @@
 // storage.onChanged drive the re-render; only handles its own transient
 // disabled state and the no-api-key alert.
 
+import { bonClientSend } from "../../client.ts";
 import type { Investigation } from "../../types.ts";
 import { bonInvestigationResults } from "../../utils/history.ts";
 import { bonIsInvestigationStale } from "../../verdict.ts";
@@ -65,10 +66,10 @@ export function bonPanelBuildInvestigateBtn(
     setState("investigating");
 
     try {
-      const response = (await browser.runtime.sendMessage({
+      const response = await bonClientSend<{ ok?: boolean; error?: string }>({
         type: "investigate-user",
         username,
-      })) as { ok?: boolean; error?: string };
+      });
 
       if (response?.ok === false && response.error === "no-api-key") {
         alert(

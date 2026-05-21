@@ -9,13 +9,12 @@ import type { PersonaLabel, Report, UserNotes } from "../../types.ts";
 import { bonGoogleHarvestMerge } from "../google-harvest/merge.ts";
 import type { BonScrapedPost } from "../google-harvest/parse.ts";
 import { bonExpectedDurationMs } from "../../utils/expected_duration.ts";
+import { bonReadReports, bonWriteReports } from "../../storage.ts";
 import {
   bonDedupeHistory,
   bonFindReportKey,
   bonInvestigationResults,
   bonNormalizeReport,
-  bonReadReports,
-  bonWriteReports,
 } from "../../utils/history.ts";
 import { bonGenerateRingId } from "../../utils/ring_id.ts";
 import { bonNormalizeInvestigation } from "../../verdict.ts";

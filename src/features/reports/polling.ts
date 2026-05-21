@@ -4,6 +4,7 @@
 // storage.onChanged should cover transitions but doesn't always fire
 // reliably across extension pages, so polling is the source of truth.
 
+import { bonClientSend } from "../../client.ts";
 import type { Report } from "../../types.ts";
 import { bonExpectedDurationMs } from "../../utils/expected_duration.ts";
 import { bonIsInvestigationStale } from "../../verdict.ts";
@@ -55,9 +56,11 @@ export function bonReportsInitPolling(
 
   const pollNow = async (): Promise<void> => {
     try {
-      const { reports = {} } = (await browser.runtime.sendMessage({
+      const { reports = {} } = await bonClientSend<{
+        reports?: Record<string, Report>;
+      }>({
         type: "get-all-reports",
-      })) as { reports?: Record<string, Report> };
+      });
 
       const fresh: ReportRow[] = Object.entries(reports).map(
         ([username, data]) => ({

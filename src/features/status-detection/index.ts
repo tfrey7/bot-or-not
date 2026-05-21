@@ -5,6 +5,8 @@
 // update message to the background — dedup state below keeps us from
 // re-sending the same observation per page load.
 
+import { bonClientSend } from "../../client.ts";
+
 let lastUserStatusReported: string | null = null;
 const reportedPostPermalinks = new Set<string>();
 const reportedBotBouncerKeys = new Set<string>();
@@ -56,7 +58,7 @@ function detectUserStatus(): void {
   }
 
   lastUserStatusReported = key;
-  browser.runtime.sendMessage({
+  void bonClientSend({
     type: "update-user-status",
     username,
     status,
@@ -76,7 +78,7 @@ function reportPostStatus(
   }
 
   reportedPostPermalinks.add(permalink);
-  browser.runtime.sendMessage({
+  void bonClientSend({
     type: "update-post-status",
     permalink,
     status,
@@ -196,7 +198,7 @@ function detectBotBouncerStatuses(): void {
 
     reportedBotBouncerKeys.add(key);
 
-    browser.runtime.sendMessage({
+    void bonClientSend({
       type: "update-botbouncer-status",
       username,
       status,

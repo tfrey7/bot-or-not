@@ -3,6 +3,8 @@
 // on the result for first render. Karma is refreshed on each call; cake day
 // is immutable so the background keeps whatever it already has.
 
+import { bonClientSend } from "../client.ts";
+
 export async function bonFetchAndStoreProfileStats(
   username: string
 ): Promise<void> {
@@ -26,7 +28,7 @@ export async function bonFetchAndStoreProfileStats(
       return;
     }
 
-    browser.runtime.sendMessage({
+    void bonClientSend({
       type: "update-user-profile-stats",
       username,
       createdAt:

@@ -16,7 +16,7 @@ import type {
   GoogleHarvestPost,
   GoogleHarvestPostKind,
 } from "../types.ts";
-import { bonReadReports, bonWriteReports } from "../utils/history.ts";
+import { bonReadReports, bonWriteReports } from "../storage.ts";
 
 interface MaybeLegacyPost {
   kind: GoogleHarvestPostKind;

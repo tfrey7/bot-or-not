@@ -4,6 +4,7 @@
 // Reports + an optional Claude API key serialize to a JSON file the user can
 // carry between machines; import merges the file back in per-username.
 
+import { bonClientSend } from "../../client.ts";
 import {
   BON_SYNC_BACKUP_VERSION,
   bonSyncBackupFilename,
@@ -60,9 +61,9 @@ function buildExportBlock(): HTMLElement {
   status.className = "bon-sync-status";
 
   async function fetchBackup(): Promise<SyncBackupPayload> {
-    const response = (await browser.runtime.sendMessage({
+    const response = await bonClientSend<{ payload: SyncBackupPayload }>({
       type: "sync-export",
-    })) as { payload: SyncBackupPayload };
+    });
 
     return response.payload;
   }
@@ -350,10 +351,10 @@ async function runImport(
   status.className = "bon-sync-status";
 
   try {
-    const response = (await browser.runtime.sendMessage({
+    const response = await bonClientSend<{ ok: true; stats: MergeStats }>({
       type: "sync-import",
       reports: payload.reports,
-    })) as { ok: true; stats: MergeStats };
+    });
 
     const { added, merged, unchanged } = response.stats;
     status.textContent = formatImportResult(added, merged, unchanged);

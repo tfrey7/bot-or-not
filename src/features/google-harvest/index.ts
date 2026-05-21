@@ -5,6 +5,7 @@
 // in that format. Sends scraped posts to the background; the merge layer
 // there unions them into the user's existing harvest.
 
+import { bonClientSend } from "../../client.ts";
 import type { BonScrapedPost } from "./parse.ts";
 import { bonGoogleHarvestParse } from "./parse.ts";
 import { bonGoogleHarvestScrape } from "./scrape.ts";
@@ -52,7 +53,7 @@ function harvest(username: string): void {
     { raw: scraped, parsed }
   );
 
-  void browser.runtime.sendMessage(payload);
+  void bonClientSend(payload);
 }
 
 const username = readUsernameFromQuery();

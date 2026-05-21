@@ -5,6 +5,7 @@
 // chance to grab them. The actual Submit click then dispatches the stored
 // context to the background.
 
+import { bonClientSend } from "../../client.ts";
 import { bonInlineTagsBumpReport } from "../inline-tags";
 
 interface ReportContext {
@@ -87,7 +88,7 @@ export function bonReportingInit(): void {
 
       if (reportSpan && pendingReport) {
         const { username, context } = pendingReport;
-        await browser.runtime.sendMessage({
+        await bonClientSend({
           type: "report-user",
           username,
           context,
