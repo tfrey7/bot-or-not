@@ -7,7 +7,7 @@
           "hooks": [
             {
               "type": "command",
-              "command": "npm run typecheck >&2 && npm run lint >&2 && npm run format >&2 || exit 2",
+              "command": "npm run typecheck >&2 && npm run lint >&2 && npx prettier --check \"src/**/*.{ts,js}\" >&2 || exit 2",
               "if": "Bash(git commit*)",
               "timeout": 180,
               "statusMessage": "typecheck / lint / format before commit"
