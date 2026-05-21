@@ -6,6 +6,7 @@
 import type { ReportRow } from "./logic.ts";
 import { bonFetchAndStoreProfileStats } from "../../utils/fetch_profile_stats.ts";
 import { bonFormatDate } from "../../utils/format_time.ts";
+import { bonReportsRegionBadge } from "./cell_region.ts";
 import { bonReportsVerdictBadge } from "./cell_verdict.ts";
 
 function formatKarma(total: number): string {
@@ -104,6 +105,11 @@ export function bonReportsProfileSection(
   link.rel = "noopener noreferrer";
   link.textContent = `u/${username}`;
   titleRow.appendChild(link);
+
+  const regionBadge = bonReportsRegionBadge(report);
+  if (regionBadge) {
+    titleRow.appendChild(regionBadge);
+  }
 
   const verdictBadge = bonReportsVerdictBadge(investigation, !!ringId);
   if (verdictBadge) {

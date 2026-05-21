@@ -1,8 +1,8 @@
 // Day-of-week × hour-of-day heatmap rendered below the calendar, plus the
 // observational notes about the posting cycle itself (flat-across-24h
-// warning, insufficient-data note, viewer-timezone advisory). Region
-// inference lives in region_section.ts — this file is only about *when*
-// the account posts, not *where*.
+// warning, insufficient-data note, viewer-timezone advisory). This file is
+// only about *when* the account posts, not *where* — region inference is
+// surfaced in the profile header as the flag badge next to the verdict.
 
 import { bonBucketLevel } from "../../utils/scoring.ts";
 import { BON_REPORTS_DAY_NAMES } from "./data.ts";

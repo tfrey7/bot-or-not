@@ -23,7 +23,6 @@ import {
   bonReportsPassiveHarvestSection,
 } from "./passive_harvest_section.ts";
 import { bonReportsProfileSection } from "./profile_section.ts";
-import { bonReportsRegionSection } from "./region_section.ts";
 import { bonReportsUserNotesSection } from "./user_notes_section.ts";
 
 export interface DetailPaneOptions {
@@ -123,13 +122,12 @@ export function bonReportsDetailPane(
     }
 
     // While a re-investigation is queued/running, the prior activity data
-    // and region inference are stale — hide both so the pane reads as
-    // "working on it" instead of mixing old derived state with new status.
+    // is stale — hide it so the pane reads as "working on it" instead of
+    // mixing old derived state with new status.
     const inFlight =
       investigation?.status === "queued" || investigation?.status === "running";
 
     if (!inFlight) {
-      fragment.appendChild(bonReportsRegionSection(report));
       fragment.appendChild(bonReportsActivitySection(report));
     }
   }

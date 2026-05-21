@@ -476,61 +476,6 @@ table.bon-table {
   font-style: italic;
 }
 
-/* "Region" detail-pane section: prominent flag + label headline,
-   followed by a bulleted list of supporting reasons. */
-.bon-region-headline {
-  display: flex;
-  align-items: center;
-  gap: 0.7em;
-  margin: 0.2em 0 0.6em;
-}
-.bon-region-headline-flag {
-  font-size: 2.4rem;
-  line-height: 1;
-}
-.bon-region-headline-text {
-  display: flex;
-  flex-direction: column;
-  gap: 0.1em;
-}
-.bon-region-headline-label {
-  font-size: 1.1rem;
-  font-weight: 600;
-  color: var(--bon-text);
-}
-.bon-region-headline-sub {
-  font-size: 0.78rem;
-  color: var(--bon-muted);
-}
-.bon-region-reasons {
-  margin: 0.3em 0 0.4em;
-  padding-left: 0;
-  list-style: none;
-  font-size: 0.82rem;
-  color: var(--bon-text);
-  line-height: 1.45;
-}
-.bon-region-reason {
-  position: relative;
-  margin: 0 0 0.25em;
-  padding-left: 1.2em;
-}
-.bon-region-reason::before {
-  content: "";
-  position: absolute;
-  left: 0.25em;
-  top: 0.55em;
-  width: 0.45em;
-  height: 0.45em;
-  border-radius: 50%;
-}
-.bon-region-reason--supporting::before {
-  background: var(--bon-stamp-forest);
-}
-.bon-region-reason--against::before {
-  background: var(--bon-stamp-red);
-}
-
 /* ============================================================
    Classification stamps (verdict + factor signals)
 
@@ -1633,7 +1578,8 @@ table.bon-table {
   flex-wrap: wrap;
 }
 
-.bon-profile-info__title-row .bon-verdict-badge {
+.bon-profile-info__title-row .bon-verdict-badge,
+.bon-profile-info__title-row .bon-region-badge {
   font-size: 0.65rem;
   padding: 0.35em 0.75em 0.32em;
   letter-spacing: 0.16em;
