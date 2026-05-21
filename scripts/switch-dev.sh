@@ -4,6 +4,7 @@ set -euo pipefail
 # Switch which feature worktree is live in Firefox.
 #
 #   ./scripts/switch-dev.sh <slug>     Make <slug>'s worktree active
+#   ./scripts/switch-dev.sh main       Make the main checkout itself active
 #   ./scripts/switch-dev.sh --stop     Stop the dev server with no replacement
 #   ./scripts/switch-dev.sh --status   Show what is currently active
 #   npm run dev-switch -- <slug>       Same, via npm alias
@@ -78,14 +79,18 @@ if [ -z "$slug" ]; then
   exit 1
 fi
 
-project_name=$(basename "$main_worktree")
-worktrees_root="$(cd "$main_worktree/.." && pwd)/${project_name}-worktrees"
-worktree_path="$worktrees_root/$slug"
+if [ "$slug" = "main" ]; then
+  worktree_path="$main_worktree"
+else
+  project_name=$(basename "$main_worktree")
+  worktrees_root="$(cd "$main_worktree/.." && pwd)/${project_name}-worktrees"
+  worktree_path="$worktrees_root/$slug"
 
-if [ ! -d "$worktree_path" ]; then
-  echo "Error: worktree $worktree_path does not exist" >&2
-  echo "       run 'npm run new-feature -- $slug' first" >&2
-  exit 1
+  if [ ! -d "$worktree_path" ]; then
+    echo "Error: worktree $worktree_path does not exist" >&2
+    echo "       run 'npm run new-agent -- $slug' first" >&2
+    exit 1
+  fi
 fi
 
 stop_running

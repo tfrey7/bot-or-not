@@ -8,7 +8,7 @@
 | `npm run new-agent [-- <slug>]` | Spawn a long-lived agent worktree at `../bot-or-not-worktrees/<slug>/` (branch `agent/<slug>`, with `node_modules` and `.env` symlinked from main). Slug names an agent identity, not a feature. With no slug, auto-picks the next unused alphabetical name (alice, bob, carol, …, zane). |
 | `npm run ship [-- <slug>]` | Ship the agent's pending commits to main: rebase onto main → fast-forward. **Worktree and branch stay alive** — the agent can keep working. Infers slug from current branch when run inside an `agent/<slug>` worktree. |
 | `npm run retire-agent -- <slug> [-- --force]` | Tear down an agent: remove its worktree and delete its branch. Refuses if the agent has uncommitted changes or unshipped commits unless `--force` is passed. |
-| `npm run dev-switch -- <slug>` | Make `<slug>`'s worktree the active dev target: kill the current `npm run dev`, start a new one in that worktree. Pair with `-- --stop` or `-- --status`. Run from the main checkout (orchestrator). |
+| `npm run dev-switch -- <slug>` | Make `<slug>`'s worktree the active dev target: kill the current `npm run dev`, start a new one in that worktree. Pass `main` as the slug to make the main checkout itself active. Pair with `-- --stop` or `-- --status`. Run from the main checkout (orchestrator). |
 | `npm run lint`      | Lint all `src/**/*.{ts,js}` with typescript-eslint                                                      |
 | `npm run format`    | Format all `src/**/*.{ts,js}` with Prettier                                                             |
 | `npm run typecheck` | Run `tsc --noEmit` against `src/**/*.ts`                                                                |
