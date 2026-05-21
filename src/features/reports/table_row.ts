@@ -3,10 +3,7 @@
 // orchestrator handles by rendering the user's full detail into the side
 // pane.
 
-import { bonInvestigationResults } from "../../utils/history.ts";
 import { bonRingChip } from "../../utils/ring_chip.ts";
-import { bonReportsPersonaTag } from "./cell_persona.ts";
-import { bonReportsRegionBadge } from "./cell_region.ts";
 import { bonReportsVerdictBadge } from "./cell_verdict.ts";
 import type { ReportRow } from "./logic.ts";
 
@@ -74,22 +71,9 @@ export function bonReportsRow(
   const tagsRow = document.createElement("div");
   tagsRow.className = "bon-tags-row";
 
-  const region = bonReportsRegionBadge(report);
-  if (region) {
-    tagsRow.appendChild(region);
-  }
-
   const verdict = bonReportsVerdictBadge(investigation, !!ringId, queueAhead);
   if (verdict) {
     tagsRow.appendChild(verdict);
-  }
-
-  const persona = bonReportsPersonaTag(
-    bonInvestigationResults(investigation)?.persona ?? null
-  );
-
-  if (persona) {
-    tagsRow.appendChild(persona);
   }
 
   tagsCell.appendChild(tagsRow);
