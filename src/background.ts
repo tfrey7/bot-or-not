@@ -46,6 +46,8 @@ console.log("[Bot or Not] background loaded");
 
 void bootstrapDevClaudeApiKey();
 
+void bootstrapDevReportsTab();
+
 // Re-seed the reports list with a curated set of known accounts on every
 // dev startup so UI iteration (sorting, table layout, etc.) always has
 // data to work against after a Firefox profile wipe or web-ext reload.
@@ -60,6 +62,35 @@ void bonRunMigrations().then(() => {
   // comment URLs start trickling toward resolution.
   bonGoogleAttributionDrain();
 });
+
+// In dev builds spawned for a specific agent (new-agent.sh worktree), Firefox
+// is the human-facing test surface — and the reports page is almost always
+// what we want in front of us. Have the background open (or refocus) that
+// tab on each launch so we don't have to navigate to the moz-extension://
+// URL by hand. Production builds (__BON_AGENT__ is null) tree-shake out.
+async function bootstrapDevReportsTab(): Promise<void> {
+  if (!__BON_AGENT__) {
+    return;
+  }
+
+  try {
+    const reportsUrl = browser.runtime.getURL("src/reports.html");
+    const existing = await browser.tabs.query({ url: reportsUrl });
+
+    if (existing.length > 0) {
+      const tab = existing[0];
+      if (tab.id !== undefined) {
+        await browser.tabs.update(tab.id, { active: true });
+      }
+
+      return;
+    }
+
+    await browser.tabs.create({ url: reportsUrl, active: true });
+  } catch (error) {
+    console.error("[Bot or Not] dev: failed to open reports tab", error);
+  }
+}
 
 async function bootstrapDevClaudeApiKey(): Promise<void> {
   if (!__BON_DEV_CLAUDE_API_KEY__) {
