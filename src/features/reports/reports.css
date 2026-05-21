@@ -418,31 +418,17 @@ table.bon-table {
   border-radius: 2px;
 }
 
-/* Combined region + verdict + persona strip in the table's "Tags" column,
-   stacked above the factor-dot row. Flex lives on the inner wrapper so the
-   <td> stays a normal table cell (preserving border-collapse alignment and
-   vertical-align: middle). */
-.bon-tags-cell-inner {
-  /* inline-flex shrinks to the widest child (the factor-dot strip), so the
-     tag row above can stretch to exactly that width via align-self below. */
-  display: inline-flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 0.45em;
-  font-size: 0.82rem;
-  line-height: 1.3;
-  text-align: left;
-}
-/* Tag row reserves height even when empty so the factor strip below sits
-   at a consistent y across investigated and un-investigated rows. */
+/* Region + verdict + persona strip in the table's "Tags" column. inline-flex
+   so the cell's text-align: right pushes the strip to the right edge while
+   the strip itself sizes to its tags. */
 .bon-tags-row {
-  display: flex;
+  display: inline-flex;
   flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
-  align-self: stretch;
+  justify-content: flex-end;
   gap: 0.3em 0.4em;
-  min-height: 1.55em;
+  font-size: 0.82rem;
+  line-height: 1.3;
 }
 .bon-region-badge {
   display: inline-flex;
@@ -538,27 +524,6 @@ table.bon-table {
   background: var(--bon-stamp-red);
 }
 
-/* Placeholder badge for an empty region/verdict/persona slot in the
-   reports list — keeps the row's three-tag rhythm steady when one of
-   the slots has no data. Matches badge dimensions so the layout doesn't
-   shift between real and missing tags. */
-.bon-tag-missing {
-  display: inline-block;
-  font-family: var(--bon-font-mono);
-  font-size: 0.62rem;
-  font-weight: 700;
-  padding: 0.3em 0.65em 0.28em;
-  border-radius: 0.25em;
-  border: 1.5px dashed var(--bon-rule);
-  line-height: 1.2;
-  letter-spacing: 0.14em;
-  color: var(--bon-muted);
-  opacity: 0.55;
-  white-space: nowrap;
-  min-width: 2.5em;
-  text-align: center;
-}
-
 /* ============================================================
    Classification stamps (verdict + factor signals)
 
@@ -604,214 +569,6 @@ table.bon-table {
 .bon-verdict-badge--queued {
   color: var(--bon-stamp-charcoal);
   opacity: 0.75;
-}
-
-/* ============================================================
-   Factor strip — compact dots in the always-visible row, each
-   with a card-style hover popover (the popover lives inside the
-   dot so a single :hover/:focus-within reveals it).
-   ============================================================ */
-
-.bon-factors-cell {
-  display: inline-flex;
-  flex-wrap: nowrap;
-  align-items: center;
-  gap: 0.25em;
-}
-
-.bon-factor-dot {
-  position: relative;
-  width: 0.85em;
-  height: 0.85em;
-  border-radius: 0.2em;
-  background: var(--bon-border);
-  display: inline-block;
-  cursor: default;
-  outline: none;
-  transition: transform 0.15s;
-  /* Colored border var picked up by .bon-factor-card border-top — keeps the
-     popover's accent in sync with the dot's leaning without duplicating the
-     per-leaning rule for the card. */
-  --bon-factor-accent: var(--bon-border-strong);
-  color: var(--bon-border-strong);
-}
-.bon-factor-dot:hover,
-.bon-factor-dot:focus-visible {
-  transform: scale(1.18);
-  z-index: 4;
-}
-
-.bon-factor-dot--bot {
-  background: var(--bon-stamp-red);
-  --bon-factor-accent: var(--bon-stamp-red);
-  color: var(--bon-stamp-red);
-}
-.bon-factor-dot--likely-bot {
-  background: var(--bon-stamp-rust);
-  --bon-factor-accent: var(--bon-stamp-rust);
-  color: var(--bon-stamp-rust);
-}
-.bon-factor-dot--neutral {
-  background: var(--bon-border-strong);
-  --bon-factor-accent: var(--bon-stamp-charcoal);
-  color: var(--bon-stamp-charcoal);
-}
-.bon-factor-dot--likely-human {
-  background: var(--bon-stamp-moss);
-  --bon-factor-accent: var(--bon-stamp-moss);
-  color: var(--bon-stamp-moss);
-}
-.bon-factor-dot--human {
-  background: var(--bon-stamp-forest);
-  --bon-factor-accent: var(--bon-stamp-forest);
-  color: var(--bon-stamp-forest);
-}
-.bon-factor-dot--missing {
-  background: transparent;
-  border: 1px dashed var(--bon-border-strong);
-  --bon-factor-accent: var(--bon-border-strong);
-  color: var(--bon-muted);
-}
-.bon-factor-dot--new {
-  background: repeating-linear-gradient(
-    135deg,
-    var(--bon-warning-stripe-a) 0 3px,
-    var(--bon-warning-stripe-b) 3px 6px
-  );
-  border: 1px solid var(--bon-warning-accent);
-  --bon-factor-accent: var(--bon-warning-accent);
-  color: var(--bon-warning-accent-soft);
-}
-
-/* ----- Hover card popover -------------------------------------------------
-   Anchored above the dot; CSS-only reveal. Mirrors the editorial-dossier
-   look of the expanded factor cards: cream surface, stamp-accent border-top,
-   mono header + signal pill. */
-.bon-factor-card {
-  /* position: fixed + JS-computed left/top (attachFactorCardPositioning in
-     reports.js) so the card escapes the table and flips below the dot when
-     the row is too close to the top of the viewport. */
-  position: fixed;
-  left: 0;
-  top: 0;
-  transform: scale(0.92);
-  transform-origin: center bottom;
-  width: 22em;
-  max-width: 80vw;
-  padding: 0.85em 1em 0.9em;
-  background: var(--bon-surface);
-  border: 1px solid var(--bon-border);
-  border-top: 3px solid var(--bon-factor-accent);
-  border-radius: 0.5em;
-  box-shadow: var(--bon-shadow-lg);
-  color: var(--bon-text);
-  font-family: var(--bon-font-sans);
-  font-size: 0.78rem;
-  font-weight: 400;
-  line-height: 1.5;
-  letter-spacing: 0;
-  text-transform: none;
-  white-space: normal;
-  opacity: 0;
-  visibility: hidden;
-  pointer-events: none;
-  z-index: 2147483647;
-  transition:
-    opacity 0.12s ease-out,
-    transform 0.12s ease-out,
-    visibility 0s linear 0.12s;
-  display: flex;
-  flex-direction: column;
-  gap: 0.55em;
-  text-align: left;
-}
-.bon-factor-card--visible {
-  opacity: 1;
-  visibility: visible;
-  transform: scale(1);
-  transition-delay: 0s;
-}
-
-/* Hoisted to <body> for positioning, so the card no longer inherits
-   --bon-factor-accent from the dot. Re-declare per leaning here. */
-.bon-factor-card--bot {
-  --bon-factor-accent: var(--bon-stamp-red);
-}
-.bon-factor-card--likely-bot {
-  --bon-factor-accent: var(--bon-stamp-rust);
-}
-.bon-factor-card--neutral {
-  --bon-factor-accent: var(--bon-stamp-charcoal);
-}
-.bon-factor-card--likely-human {
-  --bon-factor-accent: var(--bon-stamp-moss);
-}
-.bon-factor-card--human {
-  --bon-factor-accent: var(--bon-stamp-forest);
-}
-.bon-factor-card--missing {
-  --bon-factor-accent: var(--bon-border-strong);
-}
-.bon-factor-card--new {
-  --bon-factor-accent: var(--bon-warning-accent);
-}
-
-.bon-factor-card-header {
-  display: flex;
-  align-items: center;
-  gap: 0.6em;
-}
-.bon-factor-card-name {
-  font-family: var(--bon-font-mono);
-  font-size: 0.78rem;
-  font-weight: 700;
-  letter-spacing: 0;
-  color: var(--bon-text);
-}
-.bon-factor-card-header .bon-factor-signal {
-  margin-left: auto;
-}
-.bon-factor-card-confidence {
-  font-family: var(--bon-font-mono);
-  font-size: 0.66rem;
-  color: var(--bon-muted);
-  letter-spacing: 0.04em;
-}
-.bon-factor-card-reasoning {
-  color: var(--bon-text-soft);
-  font-size: 0.8rem;
-  line-height: 1.55;
-}
-.bon-factor-card-reasoning--muted {
-  color: var(--bon-muted);
-  font-style: italic;
-}
-.bon-factor-card-evidence {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.3em;
-  font-family: var(--bon-font-mono);
-  font-size: 0.72rem;
-  color: var(--bon-text-soft);
-  line-height: 1.5;
-}
-.bon-factor-card-evidence li {
-  position: relative;
-  padding-left: 0.95em;
-}
-.bon-factor-card-evidence li::before {
-  content: "›";
-  position: absolute;
-  left: 0;
-  top: 0;
-  color: var(--bon-muted-soft);
-  font-weight: 700;
-}
-.bon-factor-card .bon-factor-bar {
-  margin: 0;
 }
 
 /* ============================================================

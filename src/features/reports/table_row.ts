@@ -4,7 +4,6 @@
 // pane.
 
 import { bonRingChip } from "../../utils/ring_chip.ts";
-import { bonReportsFactorDots } from "./cell_factor_dots.ts";
 import { bonReportsPersonaTag } from "./cell_persona.ts";
 import { bonReportsRegionBadge } from "./cell_region.ts";
 import { bonReportsVerdictBadge } from "./cell_verdict.ts";
@@ -14,23 +13,6 @@ export interface RowOptions {
   selectedUsername: string | null;
   queueAhead: number;
   onSelect: (username: string) => void;
-}
-
-type MissingSlot = "region" | "verdict" | "persona";
-
-const MISSING_SLOT_TITLES: Record<MissingSlot, string> = {
-  region: "No region inferred",
-  verdict: "No AI verdict yet",
-  persona: "No persona",
-};
-
-function bonReportsMissingSlot(kind: MissingSlot): HTMLSpanElement {
-  const span = document.createElement("span");
-  span.className = `bon-tag-missing bon-tag-missing--${kind}`;
-  span.textContent = "—";
-  span.title = MISSING_SLOT_TITLES[kind];
-  span.setAttribute("aria-label", MISSING_SLOT_TITLES[kind]);
-  return span;
 }
 
 export function bonReportsRow(
@@ -88,36 +70,25 @@ export function bonReportsRow(
   const tagsCell = document.createElement("td");
   tagsCell.className = "bon-tags-cell";
 
-  // Layout/flex lives on this inner wrapper, not the <td>. Flexing the cell
-  // itself breaks vertical-align: middle and confuses border-collapse, which
-  // showed up as the jagged row rules and off-center badges.
-  const tagsInner = document.createElement("div");
-  tagsInner.className = "bon-tags-cell-inner";
-
-  // Always render three slots — region / verdict / persona — so every row
-  // has the same scan rhythm and the space-between layout reads cleanly.
-  // Missing slots get a muted placeholder.
   const tagsRow = document.createElement("div");
   tagsRow.className = "bon-tags-row";
 
-  tagsRow.appendChild(
-    bonReportsRegionBadge(report) ?? bonReportsMissingSlot("region")
-  );
+  const region = bonReportsRegionBadge(report);
+  if (region) {
+    tagsRow.appendChild(region);
+  }
 
-  tagsRow.appendChild(
-    bonReportsVerdictBadge(investigation, !!ringId, queueAhead) ??
-      bonReportsMissingSlot("verdict")
-  );
+  const verdict = bonReportsVerdictBadge(investigation, !!ringId, queueAhead);
+  if (verdict) {
+    tagsRow.appendChild(verdict);
+  }
 
-  tagsRow.appendChild(
-    bonReportsPersonaTag(investigation?.persona) ??
-      bonReportsMissingSlot("persona")
-  );
+  const persona = bonReportsPersonaTag(investigation?.persona);
+  if (persona) {
+    tagsRow.appendChild(persona);
+  }
 
-  tagsInner.appendChild(tagsRow);
-  tagsInner.appendChild(bonReportsFactorDots(investigation));
-
-  tagsCell.appendChild(tagsInner);
+  tagsCell.appendChild(tagsRow);
   summary.appendChild(tagsCell);
 
   return summary;
