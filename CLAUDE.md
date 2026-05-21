@@ -5,8 +5,9 @@
 | Command             | Purpose                                                                                                 |
 | ------------------- | ------------------------------------------------------------------------------------------------------- |
 | `npm run dev`       | Launch extension in Firefox (hot-reloads via web-ext)                                                   |
-| `npm run new-feature -- <slug>` | Spawn an agent worktree for a new feature at `../bot-or-not-worktrees/<slug>/` (branch `agent/<slug>`, with `node_modules` and `.env` symlinked from main) |
-| `npm run ship [-- <slug>]` | Ship the current feature to main: rebase onto main → fast-forward → remove worktree + branch. Infers slug from current branch when run inside an `agent/<slug>` worktree. |
+| `npm run new-agent -- <slug>` | Spawn a long-lived agent worktree at `../bot-or-not-worktrees/<slug>/` (branch `agent/<slug>`, with `node_modules` and `.env` symlinked from main). Slug names an agent identity, not a feature. |
+| `npm run ship [-- <slug>]` | Ship the agent's pending commits to main: rebase onto main → fast-forward. **Worktree and branch stay alive** — the agent can keep working. Infers slug from current branch when run inside an `agent/<slug>` worktree. |
+| `npm run retire-agent -- <slug> [-- --force]` | Tear down an agent: remove its worktree and delete its branch. Refuses if the agent has uncommitted changes or unshipped commits unless `--force` is passed. |
 | `npm run dev-switch -- <slug>` | Make `<slug>`'s worktree the active dev target: kill the current `npm run dev`, start a new one in that worktree. Pair with `-- --stop` or `-- --status`. Run from the main checkout (orchestrator). |
 | `npm run lint`      | Lint all `src/**/*.{ts,js}` with typescript-eslint                                                      |
 | `npm run format`    | Format all `src/**/*.{ts,js}` with Prettier                                                             |
@@ -15,23 +16,23 @@
 | `npm run sign`      | Sign and publish to AMO (self-distribution, unlisted). Reads `AMO_API_KEY`/`AMO_API_SECRET` from `.env` |
 | `npm run investigate -- <username> [--no-web-search] [--json]` | Run the bot/human investigation pipeline against a Reddit username outside the extension. Lets you iterate on the investigation prompt without rebuilding. Reads `CLAUDE_API_KEY` from `.env` (gitignored). |
 
-### Ship a feature (parallel agents)
+### Parallel agent worktrees
 
-Parallel agent work on this project uses one git worktree per feature so edits to shared files (`src/types.ts`, `src/background.ts`, `src/migrations/index.ts`, etc.) don't co-mingle in a single tree. The general worktree workflow and sign-off contract are documented in `~/.claude/general/workflow.md`; the project-specific bits:
+Parallel agent work on this project uses long-lived git worktrees so edits to shared files (`src/types.ts`, `src/background.ts`, `src/migrations/index.ts`, etc.) don't co-mingle in a single tree. The general worktree workflow is documented in `~/.claude/general/workflow.md`; project-specific bits:
 
-- Worktrees live at `../bot-or-not-worktrees/<slug>/`. Branches are `agent/<slug>`.
+- Worktrees live at `../bot-or-not-worktrees/<slug>/`. Branches are `agent/<slug>`. The slug names an *agent identity*, not a feature — each agent ships many features over its lifetime.
 - Each worktree symlinks `node_modules` and `.env` from the main checkout — one `npm install`, all worktrees reuse it.
 - **Only one worktree can be live in Firefox at a time** (Firefox can load exactly one copy of the extension). The active worktree is the one whose `npm run dev` is currently running. The Firefox profile (`~/.bot-or-not-dev-profile/`) is persistent across restarts — configured in `vite.config.js` — so swapping which worktree is active doesn't lose extension storage, the open reports tab, or other state.
 
-**Spawn a worktree** from the main checkout: `npm run new-feature -- <slug>`. Then `cd` into it and start a Claude session.
+**Spawn a new agent** from the main checkout: `npm run new-agent -- <slug>`. Then open a new terminal tab, `cd` into the worktree, and start a Claude session there — that session IS agent `<slug>` and stays the agent for its entire lifetime.
 
-**Make a worktree the active dev target** by asking the master orchestrator session (the one in the main checkout). Use whatever phrasing — "switch dev to X", "make X active", "X is the active feature now" — the orchestrator runs `npm run dev-switch -- <slug>` (kills the running dev server, starts a new one in `<slug>`'s worktree). To stop without replacing: ask for "stop the dev server" or run `npm run dev-switch -- --stop`. To check current state: `npm run dev-switch -- --status`.
+**Make a worktree the active dev target** by asking the master orchestrator session. Use whatever phrasing — "switch dev to alice", "make alice active" — the orchestrator runs `npm run dev-switch -- alice` (kills the running dev server, starts a new one in alice's worktree). `-- --stop` and `-- --status` are also available.
 
-**Ship a feature** from inside the worktree's Claude session: `npm run ship`. This implements the sign-off contract from the global workflow doc — commit → rebase onto current `main` → fast-forward into `main` → delete worktree + branch. Rebase conflicts stop the script; resolve in the worktree, `git rebase --continue`, then re-run.
+**Ship an agent's work** from inside the agent's Claude session: `npm run ship`. This commits any pending diff, rebases `agent/<slug>` onto current `main`, fast-forwards `main`. The worktree and branch stay alive so the agent can immediately start the next feature. Rebase conflicts stop the script; resolve in the worktree, `git rebase --continue`, then re-run.
 
-A session enters feature-mode when the user declares "I'm working on feature `<slug>`" inside the matching worktree, and exits when the user says "ship it". While in-feature, the session refuses to start a second feature in the same conversation. The state-machine details are in `~/.claude/general/workflow.md`.
+**Retire an agent** when you're truly done with it: `npm run retire-agent -- <slug>` from the main checkout. Removes the worktree and deletes the branch. Refuses if the agent has unshipped commits or uncommitted changes unless `-- --force` is passed.
 
-The master orchestrator session (running in the main checkout) does not enter feature-mode; it stays in orchestrator-mode for the long haul and is responsible for spawning new worktrees, switching the active dev target, and (eventually) publishing a new version. Feature sessions never touch the dev server — only the orchestrator does.
+The master orchestrator session (running in the main checkout) is itself long-lived. It spawns agents, switches the active dev target, retires agents, and publishes new versions. Agent sessions never touch the dev server (only the orchestrator does) and never publish.
 
 ### Publish a new version
 

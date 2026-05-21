@@ -5,8 +5,9 @@
   "license": "GPL-3.0-or-later",
   "scripts": {
     "dev": "vite dev",
-    "new-feature": "./scripts/new-feature.sh",
+    "new-agent": "./scripts/new-agent.sh",
     "ship": "./scripts/ship.sh",
+    "retire-agent": "./scripts/retire-agent.sh",
     "dev-switch": "./scripts/switch-dev.sh",
     "build": "vite build",
     "sign": "source .env && npm run build && web-ext sign --api-key=$AMO_API_KEY --api-secret=$AMO_API_SECRET --channel unlisted --source-dir dist",

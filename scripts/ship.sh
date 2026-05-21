@@ -1,20 +1,22 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Ship a feature worktree back to main.
+# Ship an agent's pending commits to main.
 #
 #   ./scripts/ship.sh [slug]
 #   npm run ship [-- <slug>]
 #
 # Without an argument, infers the slug from the current branch (only works
-# when run from inside an agent/<slug> worktree). With an argument, ships the
-# named feature from wherever the script is invoked.
+# when run from inside an agent/<slug> worktree). With an argument, ships
+# from wherever the script is invoked.
 #
 # Steps:
-#   1. Verify feature worktree is clean.
+#   1. Verify the agent's worktree is clean.
 #   2. Rebase agent/<slug> onto current main (inside the worktree).
 #   3. Fast-forward main to the rebased branch (from main checkout).
-#   4. Remove the worktree and delete the branch.
+#
+# The worktree and branch stay alive — the agent can immediately start the
+# next feature. To tear down the agent itself, use scripts/retire-agent.sh.
 #
 # If the rebase has conflicts, the script stops; resolve them inside the
 # worktree (`git rebase --continue` once clean) and re-run.
@@ -70,15 +72,15 @@ if ! git -C "$worktree_path" rebase main; then
   exit 1
 fi
 
-echo "→ Fast-forwarding main"
+ahead=$(git -C "$main_worktree" rev-list --count "main..$branch")
+if [ "$ahead" -eq 0 ]; then
+  echo "✓ Nothing to ship: $branch is at main (no commits to land)"
+  exit 0
+fi
+
+echo "→ Fast-forwarding main ($ahead commit(s) from $branch)"
 git -C "$main_worktree" merge --ff-only "$branch"
 
-echo "→ Removing worktree $worktree_path"
-git -C "$main_worktree" worktree remove "$worktree_path"
-
-echo "→ Deleting branch $branch"
-git -C "$main_worktree" branch -d "$branch"
-
 echo
-echo "✓ Shipped $slug to main"
-echo "  (worktree is gone — cd elsewhere before running more commands)"
+echo "✓ Shipped $ahead commit(s) from agent $slug to main"
+echo "  Worktree $worktree_path stays alive — agent can continue with the next feature."

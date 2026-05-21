@@ -1,18 +1,20 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Spawn a new agent worktree for a feature.
+# Spawn a new agent worktree.
 #
-#   ./scripts/new-feature.sh <slug>
-#   npm run new-feature -- <slug>
+#   ./scripts/new-agent.sh <slug>
+#   npm run new-agent -- <slug>
 #
 # Creates branch `agent/<slug>` from main, checks it out as a worktree at
 # ../<project>-worktrees/<slug>/, and symlinks node_modules and .env from the
-# main checkout so the worktree can run npm scripts immediately.
+# main checkout so the worktree can run npm scripts immediately. The slug
+# names an agent identity (alice, frontend-work, etc.), not a feature — the
+# agent ships many features over its lifetime.
 
 if [ $# -lt 1 ]; then
   echo "Usage: $0 <slug>" >&2
-  echo "  e.g. $0 passive-harvest" >&2
+  echo "  e.g. $0 alice" >&2
   exit 1
 fi
 
@@ -72,4 +74,4 @@ echo "✓ Worktree ready: $worktree_path"
 echo
 echo "Next:"
 echo "  cd $worktree_path && claude"
-echo "  Then declare: \"I'm working on feature $slug\""
+echo "  That session is agent $slug. Start working — it can ship multiple features over its lifetime."
