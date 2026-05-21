@@ -93,12 +93,24 @@ export function bonPersonasCollect(reports: PersonasRow[]): PersonaPoint[] {
       }
     }
 
-    const magnitude = Math.sqrt(sumX * sumX + sumY * sumY);
+    // Raw barycentric sum can overshoot the unit disk when two adjacent
+    // archetypes both score high (Stan 1.0 + Farmer 1.0 reinforces in their
+    // shared direction). Pin overshoots to the rim — direction stays
+    // meaningful, magnitude saturates at "max possible pull."
+    const rawMagnitude = Math.sqrt(sumX * sumX + sumY * sumY);
+    let x = sumX;
+    let y = sumY;
+    let magnitude = rawMagnitude;
+    if (magnitude > 1) {
+      x /= magnitude;
+      y /= magnitude;
+      magnitude = 1;
+    }
 
     points.push({
       username: report.username,
-      x: sumX,
-      y: sumY,
+      x,
+      y,
       magnitude,
       topArchetype: topKey,
       topScore,
