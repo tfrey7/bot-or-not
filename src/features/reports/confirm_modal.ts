@@ -53,9 +53,11 @@ export function bonReportsOpenConfirmModal({
   cancelBtn.focus();
 }
 
-function closeConfirmModal({ cancelled }: { cancelled: boolean } = {
-  cancelled: true,
-}): void {
+function closeConfirmModal(
+  { cancelled }: { cancelled: boolean } = {
+    cancelled: true,
+  }
+): void {
   modal.hidden = true;
   const cancelFn = pendingCancelAction;
   pendingConfirmAction = null;
