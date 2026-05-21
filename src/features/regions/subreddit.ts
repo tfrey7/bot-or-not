@@ -3,7 +3,11 @@
 // from that country. Strong signal; multiple country subs only nudge the
 // score, not multiply it.
 
-import { BON_REGION_SUB_PATTERNS, BON_REGION_SUBS } from "./data.ts";
+import {
+  BON_REGION_INFO,
+  BON_REGION_SUB_PATTERNS,
+  BON_REGION_SUBS,
+} from "./data.ts";
 
 export function bonNormalizeSubName(name: string | null | undefined): string {
   return String(name || "")
@@ -52,6 +56,12 @@ export interface SubregionInference {
 // Returns null if no flagged subs touched, otherwise:
 //   { region, count, totalFlagged, share, hits, runnerUp }
 // where hits is the per-sub breakdown for the top region, sorted.
+//
+// Diaspora-attracting regions (US, Israel — see RegionInfo.diasporaAttracting)
+// are excluded from ranking: heavy posting in r/USA or r/Israel doesn't imply
+// residency the way r/india does, and the operator's mental model of "country
+// sub → resident" should not be applied to them. Their hits are dropped from
+// the result entirely so the tooltip doesn't mention them.
 export function bonInferRegionFromSubreddits(
   subredditCounts: Record<string, number> | null | undefined
 ): SubregionInference | null {
@@ -70,6 +80,10 @@ export function bonInferRegionFromSubreddits(
 
     const region = bonRegionsLookupSub(bonNormalizeSubName(sub));
     if (!region) {
+      continue;
+    }
+
+    if (BON_REGION_INFO[region]?.diasporaAttracting) {
       continue;
     }
 

@@ -10,6 +10,14 @@ export interface RegionInfo {
   flag: string;
   label: string;
   utcOffsets: number[];
+
+  // Country attracts large diaspora/sympathizer participation in its own
+  // subs — heavy posting in r/USA or r/Israel does NOT imply residency the
+  // way heavy posting in r/india or r/brasil does. Subreddit hits for these
+  // regions are dropped from the residency pipeline; residency must come
+  // from another signal (script, language, moderation, timezone agreement
+  // with the rest of the picture).
+  diasporaAttracting?: boolean;
 }
 
 export const BON_REGION_INFO: Record<string, RegionInfo> = {
@@ -45,13 +53,23 @@ export const BON_REGION_INFO: Record<string, RegionInfo> = {
   GB: { flag: "🇬🇧", label: "UK", utcOffsets: [0, 1] },
   IE: { flag: "🇮🇪", label: "Ireland", utcOffsets: [0, 1] },
   CA: { flag: "🇨🇦", label: "Canada", utcOffsets: [-5, -6, -7, -8] },
-  US: { flag: "🇺🇸", label: "USA", utcOffsets: [-5, -6, -7, -8] },
+  US: {
+    flag: "🇺🇸",
+    label: "USA",
+    utcOffsets: [-5, -6, -7, -8],
+    diasporaAttracting: true,
+  },
   AU: { flag: "🇦🇺", label: "Australia", utcOffsets: [8, 9, 10, 11] },
   NZ: { flag: "🇳🇿", label: "New Zealand", utcOffsets: [12, 13] },
   TR: { flag: "🇹🇷", label: "Turkey", utcOffsets: [3] },
   IR: { flag: "🇮🇷", label: "Iran", utcOffsets: [3, 4] },
   SA: { flag: "🇸🇦", label: "Saudi Arabia", utcOffsets: [3] },
-  IL: { flag: "🇮🇱", label: "Israel", utcOffsets: [2, 3] },
+  IL: {
+    flag: "🇮🇱",
+    label: "Israel",
+    utcOffsets: [2, 3],
+    diasporaAttracting: true,
+  },
   EG: { flag: "🇪🇬", label: "Egypt", utcOffsets: [2] },
   NG: { flag: "🇳🇬", label: "Nigeria", utcOffsets: [1] },
   KE: { flag: "🇰🇪", label: "Kenya", utcOffsets: [3] },

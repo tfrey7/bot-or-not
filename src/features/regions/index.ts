@@ -139,6 +139,8 @@ export function bonInferRegion(
   //    primary signals; multiple agreeing sources push score sharply higher.
   //  - Timezone is a tie-breaker, never a primary signal — it only bonuses
   //    regions already nominated by something else.
+  //  - Diaspora-attracting regions (US, Israel) are filtered out of the
+  //    subreddit pipeline upstream — see bonInferRegionFromSubreddits.
   const scores: Record<string, number> = {};
   function addScore(region: string, points: number): void {
     scores[region] = (scores[region] || 0) + points;
