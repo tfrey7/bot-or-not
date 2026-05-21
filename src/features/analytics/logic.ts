@@ -125,7 +125,7 @@ export function bonAnalyticsCollect(
     // historical run so re-investigations don't collapse into a single row.
     if (investigation.runs.length > 0) {
       for (const run of investigation.runs) {
-        entries.push(buildAnalyticsEntry(report.username, run, null));
+        entries.push(buildAnalyticsEntry(report.username, run, null, null));
       }
 
       // If a run is currently in flight, runs[] doesn't include it yet —
@@ -135,13 +135,15 @@ export function bonAnalyticsCollect(
 
     // Legacy record (no runs[] history yet). If the current investigation
     // has produced a result, materialize it as a one-off snapshot so it
-    // still shows up in analytics.
+    // still shows up in analytics. RunSnapshot doesn't carry persona/summary,
+    // so pass them alongside.
     if (investigation.status === "done") {
       entries.push(
         buildAnalyticsEntry(
           report.username,
           bonSnapshotRun(investigation, "done"),
-          investigation.results.summary
+          investigation.results.summary,
+          investigation.results.persona?.label ?? null
         )
       );
     }
@@ -153,7 +155,8 @@ export function bonAnalyticsCollect(
 function buildAnalyticsEntry(
   username: string,
   run: RunSnapshot,
-  summary: string | null
+  summary: string | null,
+  persona: string | null
 ): AnalyticsEntry {
   const calls: AnalyticsCall[] = [];
 
@@ -177,10 +180,10 @@ function buildAnalyticsEntry(
     status: run.status as AnalyticsEntry["status"],
     runAt: run.runAt || null,
     durationMs: run.durationMs,
-    verdict: run.verdict as Verdict | null,
+    verdict: run.verdict,
     confidence: run.confidence,
     botProbability: run.botProbability,
-    persona: null,
+    persona,
     summary: summary ?? "",
     postsFetched: run.postsFetched,
     commentsFetched: run.commentsFetched,

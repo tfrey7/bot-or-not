@@ -8,6 +8,7 @@
 
 import type { Investigation, Report } from "../../types.ts";
 import { bonExpectedDurationSec } from "../../utils/expected_duration.ts";
+import { bonInvestigationResults } from "../../utils/history.ts";
 import { bonIsInvestigationStale } from "../../verdict.ts";
 import { BON_REPORTS_VERDICT_RANK } from "./data.ts";
 import { bonReportsComputeRegionForReport } from "./region.ts";
@@ -162,13 +163,9 @@ export function bonReportsHasStructuralChange(
     }
 
     const prevVerdict =
-      prevReport.investigation?.status === "done"
-        ? prevReport.investigation.results.verdict
-        : null;
+      bonInvestigationResults(prevReport.investigation)?.verdict ?? null;
     const nextVerdict =
-      report.investigation?.status === "done"
-        ? report.investigation.results.verdict
-        : null;
+      bonInvestigationResults(report.investigation)?.verdict ?? null;
 
     if (prevVerdict !== nextVerdict) {
       return true;
@@ -222,9 +219,7 @@ export function bonReportsSortValue(
 
   if (key === "verdict") {
     const verdict =
-      report.investigation?.status === "done"
-        ? report.investigation.results.verdict
-        : null;
+      bonInvestigationResults(report.investigation)?.verdict ?? null;
 
     return verdict ? (BON_REPORTS_VERDICT_RANK[verdict] ?? 5) : 5;
   }

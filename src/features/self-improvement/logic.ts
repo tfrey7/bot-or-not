@@ -1,4 +1,5 @@
 import type { Report, UserNotes } from "../../types.ts";
+import { bonInvestigationResults } from "../../utils/history.ts";
 
 export interface AnnotatedReport {
   username: string;
@@ -40,11 +41,9 @@ export function bonSelfImprovementAgreement(
   annotated: AnnotatedReport
 ): AgreementState {
   const yourPicks = annotated.userNotes.ratings;
-  const investigation = annotated.report.investigation;
   const aiPick =
-    investigation?.status === "done"
-      ? (investigation.results.persona?.label ?? null)
-      : null;
+    bonInvestigationResults(annotated.report.investigation)?.persona?.label ??
+    null;
 
   if (yourPicks.length === 0) {
     return "no-rating";

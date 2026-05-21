@@ -3,6 +3,7 @@
 // orchestrator handles by rendering the user's full detail into the side
 // pane.
 
+import { bonInvestigationResults } from "../../utils/history.ts";
 import { bonRingChip } from "../../utils/ring_chip.ts";
 import { bonReportsPersonaTag } from "./cell_persona.ts";
 import { bonReportsRegionBadge } from "./cell_region.ts";
@@ -84,7 +85,7 @@ export function bonReportsRow(
   }
 
   const persona = bonReportsPersonaTag(
-    investigation?.status === "done" ? investigation.results.persona : null
+    bonInvestigationResults(investigation)?.persona ?? null
   );
 
   if (persona) {

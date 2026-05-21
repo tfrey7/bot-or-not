@@ -4,6 +4,7 @@
 // selected, renders a quiet placeholder so the pane doesn't appear
 // broken.
 
+import { bonInvestigationResults } from "../../utils/history.ts";
 import { bonReportsActivitySection } from "./activity_section.ts";
 import {
   bonReportsRenderDeleteButton,
@@ -71,8 +72,7 @@ export function bonReportsDetailPane(
   // (Google SERP + passive DOM scrape). The button surfaces a single
   // number — operator-facing language stays source-agnostic since the
   // re-investigation incorporates every new item regardless of origin.
-  const lastRunAt =
-    investigation?.status === "done" ? investigation.results.runAt : 0;
+  const lastRunAt = bonInvestigationResults(investigation)?.runAt ?? 0;
   const freshHarvestCount =
     bonReportsGoogleDossierCountFresh(report.googleHarvest, lastRunAt) +
     bonReportsPassiveHarvestCountFresh(report.passiveHarvest, lastRunAt);

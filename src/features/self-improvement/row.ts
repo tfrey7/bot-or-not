@@ -2,6 +2,7 @@ import { BON_ARCHETYPES } from "../../factors.ts";
 import type { ArchetypeKey, PersonaLabel } from "../../types.ts";
 import { bonFormatDate } from "../../utils/format_time.ts";
 import { bonFormatVerdict } from "../../utils/format_text.ts";
+import { bonInvestigationResults } from "../../utils/history.ts";
 import {
   bonSelfImprovementAgreement,
   type AgreementState,
@@ -28,9 +29,7 @@ export function bonSelfImprovementRow(
   annotated: AnnotatedReport
 ): HTMLDivElement {
   const { username, report, userNotes } = annotated;
-  const investigation = report.investigation;
-  const results =
-    investigation?.status === "done" ? investigation.results : null;
+  const results = bonInvestigationResults(report.investigation);
   const persona = results?.persona ?? null;
   const agreement = bonSelfImprovementAgreement(annotated);
 

@@ -12,6 +12,7 @@ import { bonExpectedDurationMs } from "../../utils/expected_duration.ts";
 import {
   bonDedupeHistory,
   bonFindReportKey,
+  bonInvestigationResults,
   bonNormalizeReport,
   bonReadReports,
   bonWriteReports,
@@ -100,8 +101,7 @@ function summarizeUserTag(username: string, report: Report): UserTag | null {
     report.investigation,
     !!report.ringId
   );
-  const results =
-    investigation?.status === "done" ? investigation.results : null;
+  const results = bonInvestigationResults(investigation);
   const verdict = results?.verdict ?? null;
   const investigationStatus = investigation?.status ?? null;
 

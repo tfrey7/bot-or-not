@@ -1,4 +1,5 @@
 import type { Factor, Report } from "../../types.ts";
+import { bonInvestigationResults } from "../../utils/history.ts";
 
 export interface AiCommandSnapshotEntry {
   username: string;
@@ -57,8 +58,7 @@ export function bonAiCommandBuildSnapshot(
 ): AiCommandSnapshotEntry[] {
   return Object.entries(reports).map(([username, report]) => {
     const investigation = report.investigation;
-    const results =
-      investigation?.status === "done" ? investigation.results : null;
+    const results = bonInvestigationResults(investigation);
     const factorScores = results
       ? bonSnapshotFactorScores(results.factors)
       : null;
@@ -191,8 +191,7 @@ export function bonAiCommandBuildUserDetails(
   }
 
   const investigation = report.investigation;
-  const results =
-    investigation?.status === "done" ? investigation.results : null;
+  const results = bonInvestigationResults(investigation);
 
   return {
     username,

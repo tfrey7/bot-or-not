@@ -4,6 +4,7 @@
 // disabled state and the no-api-key alert.
 
 import type { Investigation } from "../../types.ts";
+import { bonInvestigationResults } from "../../utils/history.ts";
 import { bonIsInvestigationStale } from "../../verdict.ts";
 
 export function bonPanelBuildInvestigateBtn(
@@ -17,8 +18,7 @@ export function bonPanelBuildInvestigateBtn(
   const queued = investigation?.status === "queued";
   const running = investigation?.status === "running";
   const stale = running && bonIsInvestigationStale(investigation);
-  const verdict =
-    investigation?.status === "done" ? investigation.results.verdict : null;
+  const verdict = bonInvestigationResults(investigation)?.verdict ?? null;
 
   const setState = (
     kind: "queued" | "investigating" | "retry" | "reinvestigate" | "investigate"

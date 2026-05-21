@@ -13,6 +13,7 @@ import {
   bonFmtTimestamp,
   bonFormatDate,
 } from "../../utils/format_time.ts";
+import { bonInvestigationResults } from "../../utils/history.ts";
 
 export interface InspectorState {
   selectedUsername: string | null;
@@ -151,6 +152,7 @@ function buildInvestigationBlock(report: Report): HTMLElement {
     return keyValueBlock("Investigation", [["Status", "never run"]]);
   }
 
+  const r = bonInvestigationResults(investigation);
   const rows: Array<[string, string]> = [["Status", investigation.status]];
 
   if (investigation.status === "running") {
@@ -158,12 +160,12 @@ function buildInvestigationBlock(report: Report): HTMLElement {
       "Started",
       investigation.startedAt ? bonFmtTimestamp(investigation.startedAt) : "—",
     ]);
-  } else if (investigation.status === "done") {
-    rows.push(["Last ran", bonFmtTimestamp(investigation.results.runAt)]);
-    rows.push(["Duration", bonFmtDuration(investigation.results.durationMs)]);
+  } else if (r) {
+    rows.push(["Last ran", bonFmtTimestamp(r.runAt)]);
+    rows.push(["Duration", bonFmtDuration(r.durationMs)]);
   } else {
-    // queued / error — no results, fall back to lifecycle durationMs (set on
-    // the most recent attempt) if available.
+    // queued / error — no results; lifecycle durationMs is the most recent
+    // attempt's duration if a fetch ran.
     rows.push(["Last ran", "—"]);
     rows.push(["Duration", bonFmtDuration(investigation.durationMs)]);
   }
@@ -172,8 +174,7 @@ function buildInvestigationBlock(report: Report): HTMLElement {
     rows.push(["Error", investigation.error ?? "—"]);
   }
 
-  if (investigation.status === "done") {
-    const r = investigation.results;
+  if (r) {
     rows.push(["Verdict", r.verdict]);
     rows.push(["Bot probability", `${(r.botProbability * 100).toFixed(1)}%`]);
     rows.push(["Confidence", `${(r.confidence * 100).toFixed(1)}%`]);
@@ -198,30 +199,24 @@ function buildInvestigationBlock(report: Report): HTMLElement {
 
   const block = keyValueBlock("Investigation", rows);
 
-  if (investigation.status === "done") {
-    if (investigation.results.summary) {
-      const note = document.createElement("p");
-      note.className = "bon-diag-note";
-      note.textContent = investigation.results.summary;
-      block.appendChild(note);
-    }
+  if (r?.summary) {
+    const note = document.createElement("p");
+    note.className = "bon-diag-note";
+    note.textContent = r.summary;
+    block.appendChild(note);
+  }
 
-    if (investigation.results.persona?.reasoning) {
-      const note = document.createElement("p");
-      note.className = "bon-diag-note";
-      note.textContent = `Persona reasoning: ${investigation.results.persona.reasoning}`;
-      block.appendChild(note);
-    }
+  if (r?.persona?.reasoning) {
+    const note = document.createElement("p");
+    note.className = "bon-diag-note";
+    note.textContent = `Persona reasoning: ${r.persona.reasoning}`;
+    block.appendChild(note);
   }
 
   return block;
 }
 
-function formatUsageBrief(usage: NonNullable<ClaudeUsage>) {
-  if (!usage) {
-    return "—";
-  }
-
+function formatUsageBrief(usage: ClaudeUsage): string {
   const inputTokens = usage.input_tokens ?? 0;
   const outputTokens = usage.output_tokens ?? 0;
   const cached = usage.cache_read_input_tokens ?? 0;
@@ -229,9 +224,7 @@ function formatUsageBrief(usage: NonNullable<ClaudeUsage>) {
 }
 
 function buildFactorsBlock(report: Report): HTMLElement {
-  const investigation = report.investigation;
-  const factors =
-    investigation?.status === "done" ? investigation.results.factors : [];
+  const factors = bonInvestigationResults(report.investigation)?.factors ?? [];
   const block = document.createElement("section");
   block.className = "bon-diag-block";
 

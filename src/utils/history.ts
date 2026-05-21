@@ -313,8 +313,13 @@ function canonicalizeInvestigation(value: unknown): Investigation | null {
 
 // Older stored records may have Factor entries missing `reasoning` / `evidence`
 // from when those were optional. Default to empty so consumers can rely on
-// them being present.
+// them being present. Cheap shape probe first — every read of every report
+// runs this per-factor, so the steady-state path stays an O(1) cast.
 function canonicalizeFactor(value: unknown): Factor {
+  if (isCanonicalFactor(value)) {
+    return value;
+  }
+
   const record = (value && typeof value === "object" ? value : {}) as Record<
     string,
     unknown
@@ -330,6 +335,21 @@ function canonicalizeFactor(value: unknown): Factor {
         ? (record.evidence as string | string[])
         : "",
   };
+}
+
+function isCanonicalFactor(value: unknown): value is Factor {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+
+  const f = value as Record<string, unknown>;
+  return (
+    typeof f.key === "string" &&
+    typeof f.score === "number" &&
+    typeof f.confidence === "number" &&
+    typeof f.reasoning === "string" &&
+    (typeof f.evidence === "string" || Array.isArray(f.evidence))
+  );
 }
 
 function canonicalizeRedditMetrics(value: unknown): RedditMetrics | null {
@@ -426,6 +446,22 @@ export function bonFindReportKey(
   }
 
   return null;
+}
+
+// Narrowing helpers for the discriminated Investigation union. Replaces
+// the inline `inv?.status === "done" ? inv.results : null` repeated at
+// every consumer site.
+
+export function bonIsInvestigationDone(
+  investigation: Investigation | null | undefined
+): investigation is Extract<Investigation, { status: "done" }> {
+  return investigation?.status === "done";
+}
+
+export function bonInvestigationResults(
+  investigation: Investigation | null | undefined
+): InvestigationResults | null {
+  return bonIsInvestigationDone(investigation) ? investigation.results : null;
 }
 
 // Extracts a runs[] snapshot from a terminated investigation so historical

@@ -14,6 +14,7 @@
 
 import type { GoogleHarvest, GoogleHarvestPost } from "../../types.ts";
 import { bonFormatDate } from "../../utils/format_time.ts";
+import { bonInvestigationResults } from "../../utils/history.ts";
 import type { ReportRow } from "./logic.ts";
 
 const POST_LIMIT = 30;
@@ -26,10 +27,7 @@ export function bonReportsGoogleDossierSection(
     return null;
   }
 
-  const lastRunAt =
-    report.investigation?.status === "done"
-      ? report.investigation.results.runAt
-      : 0;
+  const lastRunAt = bonInvestigationResults(report.investigation)?.runAt ?? 0;
   const freshPosts = bonReportsGoogleDossierCountFresh(harvest, lastRunAt);
 
   const wrap = document.createElement("div");

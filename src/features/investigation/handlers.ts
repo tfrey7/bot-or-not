@@ -9,6 +9,7 @@ import type {
   InvestigationResults,
   RedditMetrics,
   Report,
+  RunSnapshot,
 } from "../../types.ts";
 import {
   bonFindReportKey,
@@ -486,8 +487,18 @@ async function setInvestigationState(
   const prevInvestigation = existing.investigation;
 
   const prevAttempts = prevInvestigation?.attempts ?? 0;
-  const prevRuns = prevInvestigation?.runs ?? [];
   const prevRedditMetrics = prevInvestigation?.redditMetrics ?? null;
+
+  // Older records have only the single most-recent investigation stored —
+  // seed runs[] from those fields the first time we touch one so historical
+  // timing/cost data survives the next re-run. Must happen before the
+  // transition writes a null `results`, otherwise the legacy data is lost.
+  const seedFromLegacy =
+    prevInvestigation?.status === "done" &&
+    (prevInvestigation.runs?.length ?? 0) === 0;
+  const prevRuns: RunSnapshot[] = seedFromLegacy
+    ? [bonSnapshotRun(prevInvestigation, "done")]
+    : (prevInvestigation?.runs ?? []);
 
   let nextInvestigation: Investigation;
   switch (transition.status) {
@@ -545,21 +556,13 @@ async function setInvestigationState(
       break;
   }
 
-  // Append a snapshot to runs[] whenever a run terminates. Older records have
-  // only the single most-recent investigation stored — seed runs[] from those
-  // fields on the first re-run so historical timing/cost data survives.
-  const completing =
+  // Append a snapshot to runs[] whenever a run terminates.
+  if (
     prevInvestigation?.status === "running" &&
-    (transition.status === "done" || transition.status === "error");
-
-  if (completing && prevInvestigation) {
-    const seeded =
-      prevRuns.length === 0 && prevInvestigation.results !== null
-        ? [bonSnapshotRun(prevInvestigation, "done")]
-        : prevRuns;
-
+    (transition.status === "done" || transition.status === "error")
+  ) {
     nextInvestigation.runs = [
-      ...seeded,
+      ...prevRuns,
       bonSnapshotRun(nextInvestigation, transition.status),
     ];
   }

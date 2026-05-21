@@ -9,6 +9,7 @@
 
 import type { PassiveHarvest, PassiveHarvestItem } from "../../types.ts";
 import { bonFormatDate } from "../../utils/format_time.ts";
+import { bonInvestigationResults } from "../../utils/history.ts";
 import type { ReportRow } from "./logic.ts";
 
 const ITEM_LIMIT = 30;
@@ -22,10 +23,7 @@ export function bonReportsPassiveHarvestSection(
     return null;
   }
 
-  const lastRunAt =
-    report.investigation?.status === "done"
-      ? report.investigation.results.runAt
-      : 0;
+  const lastRunAt = bonInvestigationResults(report.investigation)?.runAt ?? 0;
   const freshItems = bonReportsPassiveHarvestCountFresh(harvest, lastRunAt);
 
   const wrap = document.createElement("div");

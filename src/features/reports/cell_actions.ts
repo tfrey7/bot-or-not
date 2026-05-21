@@ -3,6 +3,7 @@
 // in-place text updates via data-bon-running-btn.
 
 import type { Investigation } from "../../types.ts";
+import { bonInvestigationResults } from "../../utils/history.ts";
 import { bonIsInvestigationStale } from "../../verdict.ts";
 import {
   bonReportsFormatRunningCellText,
@@ -64,8 +65,7 @@ export function bonReportsRenderInvestigateButton(
   const queued = investigation?.status === "queued";
   const running = investigation?.status === "running";
   const stale = running && bonIsInvestigationStale(investigation);
-  const verdict =
-    investigation?.status === "done" ? investigation.results.verdict : null;
+  const verdict = bonInvestigationResults(investigation)?.verdict ?? null;
 
   if (freshHarvestCount > 0 && !queued && !running) {
     button.classList.add("bon-btn--fresh-harvest");

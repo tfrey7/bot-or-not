@@ -4,6 +4,7 @@
 // feeds both the deterministic pipeline and the hour heatmap.
 
 import { bonInferRegion, type RegionInferenceResult } from "../regions";
+import { bonInvestigationResults } from "../../utils/history.ts";
 import type { ReportRow } from "./logic.ts";
 
 export type TimezoneInference =
@@ -100,9 +101,7 @@ export function bonReportsComputeRegionForReport(
   const deterministic = bonInferRegion(activityData, timezone);
 
   const aiRegion =
-    report.investigation?.status === "done"
-      ? report.investigation.results.region
-      : null;
+    bonInvestigationResults(report.investigation)?.region ?? null;
 
   if (aiRegion?.code) {
     return {
