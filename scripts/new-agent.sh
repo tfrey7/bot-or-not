@@ -3,27 +3,20 @@ set -euo pipefail
 
 # Spawn a new agent worktree.
 #
-#   ./scripts/new-agent.sh <slug>
-#   npm run new-agent -- <slug>
+#   ./scripts/new-agent.sh [slug]
+#   npm run new-agent [-- <slug>]
 #
 # Creates branch `agent/<slug>` from main, checks it out as a worktree at
 # ../<project>-worktrees/<slug>/, and symlinks node_modules and .env from the
 # main checkout so the worktree can run npm scripts immediately. The slug
 # names an agent identity (alice, frontend-work, etc.), not a feature — the
 # agent ships many features over its lifetime.
+#
+# With no slug, auto-picks the first unused name from a 26-name alphabetical
+# pool (alice, bob, carol, ..., zane). Provide a slug explicitly to override.
 
-if [ $# -lt 1 ]; then
-  echo "Usage: $0 <slug>" >&2
-  echo "  e.g. $0 alice" >&2
-  exit 1
-fi
-
-slug="$1"
-
-if [[ ! "$slug" =~ ^[a-z0-9][a-z0-9-]*$ ]]; then
-  echo "Error: slug must be kebab-case (lowercase letters, digits, hyphens; cannot start with hyphen)" >&2
-  exit 1
-fi
+# Auto-name pool — alphabetical first names, picked in order.
+AGENT_NAMES="alice bob carol dave eve frank grace henry iris jack kate leo maya noah olive pat quinn riley sam tess uri vera will xena yara zane"
 
 main_worktree=$(git worktree list --porcelain | awk '
   /^worktree / { wt = substr($0, 10) }
@@ -33,6 +26,28 @@ main_worktree=$(git worktree list --porcelain | awk '
 if [ -z "$main_worktree" ]; then
   echo "Error: could not find a worktree on the 'main' branch" >&2
   exit 1
+fi
+
+if [ $# -lt 1 ]; then
+  slug=""
+  for candidate in $AGENT_NAMES; do
+    if ! git -C "$main_worktree" show-ref --verify --quiet "refs/heads/agent/$candidate"; then
+      slug="$candidate"
+      break
+    fi
+  done
+  if [ -z "$slug" ]; then
+    echo "Error: all 26 default agent names are in use; pass an explicit slug" >&2
+    echo "Usage: $0 [slug]" >&2
+    exit 1
+  fi
+  echo "→ Auto-picked agent name: $slug"
+else
+  slug="$1"
+  if [[ ! "$slug" =~ ^[a-z0-9][a-z0-9-]*$ ]]; then
+    echo "Error: slug must be kebab-case (lowercase letters, digits, hyphens; cannot start with hyphen)" >&2
+    exit 1
+  fi
 fi
 
 project_name=$(basename "$main_worktree")
