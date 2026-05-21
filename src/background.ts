@@ -34,11 +34,7 @@ import { bonSyncExport, bonSyncImport } from "./features/sync/handlers.ts";
 import { bonRunMigrations } from "./migrations";
 import type { Report } from "./types.ts";
 import type { BonScrapedPost } from "./features/google-harvest/parse.ts";
-import {
-  bonClearApiKey,
-  bonReadApiKey,
-  bonWriteApiKey,
-} from "./storage.ts";
+import { bonClearApiKey, bonReadApiKey, bonWriteApiKey } from "./storage.ts";
 
 console.log("[Bot or Not] background loaded");
 
