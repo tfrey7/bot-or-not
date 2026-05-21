@@ -8,6 +8,7 @@
 
 import { bonRenderAnalytics } from "../analytics";
 import { bonRenderDiagnostics } from "../diagnostics";
+import { bonRenderPersonas } from "../personas";
 import { bonRenderSelfImprovement } from "../self-improvement";
 import { bonRenderSync } from "../sync";
 import { BON_REGION_INFO } from "../regions/data.ts";
@@ -70,6 +71,9 @@ const paginationContainer = document.getElementById(
 ) as HTMLElement;
 const analyticsContainer = document.getElementById(
   "bon-analytics-container"
+) as HTMLElement | null;
+const personasContainer = document.getElementById(
+  "bon-personas-container"
 ) as HTMLElement | null;
 const diagnosticsContainer = document.getElementById(
   "bon-diagnostics-container"
@@ -165,7 +169,9 @@ const commandBar: BonReportsCommandBarHandle = bonReportsInitCommandBar({
   },
 });
 
-bonReportsInitTabs({ onActivateSelfImprovement: renderSelfImprovement });
+const tabs = bonReportsInitTabs({
+  onActivateSelfImprovement: renderSelfImprovement,
+});
 
 const polling = bonReportsInitPolling({
   getReports: () => allReports,
@@ -175,6 +181,7 @@ const polling = bonReportsInitPolling({
   onStructuralChange: () => {
     render();
     renderAnalytics();
+    renderPersonas();
     renderDiagnostics();
     renderSelfImprovement();
   },
@@ -204,6 +211,7 @@ async function load(): Promise<void> {
 
     render();
     renderAnalytics();
+    renderPersonas();
     renderDiagnostics();
     renderSelfImprovement();
   } catch (error) {
@@ -280,6 +288,24 @@ function renderAnalytics(): void {
   }
 
   bonRenderAnalytics(allReports, analyticsContainer);
+}
+
+function renderPersonas(): void {
+  if (!personasContainer) {
+    return;
+  }
+
+  bonRenderPersonas(allReports, personasContainer, {
+    onSelectUser: navigateToUser,
+  });
+}
+
+function navigateToUser(username: string): void {
+  tabs.activate("reports");
+  selectedUsername = username;
+  updateUrlForSelection();
+  pendingScrollToSelected = true;
+  render();
 }
 
 function renderDiagnostics(): void {

@@ -7,6 +7,7 @@
 const BON_REPORTS_TABS = [
   "reports",
   "metrics",
+  "personas",
   "diagnostics",
   "self-improvement",
   "settings",
@@ -19,7 +20,13 @@ export interface BonReportsTabsDeps {
   onActivateSelfImprovement(): void;
 }
 
-export function bonReportsInitTabs(deps: BonReportsTabsDeps): void {
+export interface BonReportsTabsHandle {
+  activate(target: BonReportsTab): void;
+}
+
+export function bonReportsInitTabs(
+  deps: BonReportsTabsDeps
+): BonReportsTabsHandle {
   const tabs = document.querySelectorAll<HTMLButtonElement>(".bon-tab");
   const panels = document.querySelectorAll<HTMLElement>(".bon-tab-panel");
 
@@ -55,6 +62,13 @@ export function bonReportsInitTabs(deps: BonReportsTabsDeps): void {
   if (initialTab !== BON_REPORTS_DEFAULT_TAB) {
     activate(initialTab);
   }
+
+  return {
+    activate: (target) => {
+      activate(target);
+      writeTabToUrl(target);
+    },
+  };
 }
 
 function isBonReportsTab(value: string): value is BonReportsTab {
