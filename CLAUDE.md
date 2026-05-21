@@ -6,6 +6,8 @@
 | ------------------- | ------------------------------------------------------------------------------------------------------- |
 | `npm run dev`       | Launch extension in Firefox (hot-reloads via web-ext)                                                   |
 | `npm run new-agent [-- <slug>]` | Spawn a long-lived agent worktree at `../bot-or-not-worktrees/<slug>/` (branch `agent/<slug>`, with `node_modules` and `.env` symlinked from main). Slug names an agent identity, not a feature. With no slug, auto-picks the next unused alphabetical name (alice, bob, carol, …, zane). |
+| `npm run agents` | Print a status table of all live agent worktrees: unshipped commit count, working-tree state (clean / N modified / N untracked), and last commit subject. Run from the orchestrator. |
+| `npm run be-agent -- <slug>` | Assume the identity of an existing agent: `cd` into its worktree and `exec claude` there. Run in a **new terminal tab** — that tab becomes agent `<slug>`'s session for its lifetime. |
 | `npm run ship [-- <slug>]` | Ship the agent's pending commits to main: rebase onto main → fast-forward. **Worktree and branch stay alive** — the agent can keep working. Infers slug from current branch when run inside an `agent/<slug>` worktree. |
 | `npm run retire-agent -- <slug> [-- --force]` | Tear down an agent: remove its worktree and delete its branch. Refuses if the agent has uncommitted changes or unshipped commits unless `--force` is passed. |
 | `npm run dev-switch -- <slug>` | Make `<slug>`'s worktree the active dev target: kill the current `npm run dev`, start a new one in that worktree. Pass `main` as the slug to make the main checkout itself active. Pair with `-- --stop` or `-- --status`. Run from the main checkout (orchestrator). |
@@ -24,7 +26,9 @@ Parallel agent work on this project uses long-lived git worktrees so edits to sh
 - Each worktree symlinks `node_modules` and `.env` from the main checkout — one `npm install`, all worktrees reuse it.
 - **Only one worktree can be live in Firefox at a time** (Firefox can load exactly one copy of the extension). The active worktree is the one whose `npm run dev` is currently running. The Firefox profile (`~/.bot-or-not-dev-profile/`) is persistent across restarts — configured in `vite.config.js` — so swapping which worktree is active doesn't lose extension storage, the open reports tab, or other state.
 
-**Spawn a new agent** from the main checkout: `npm run new-agent -- <slug>`. Then open a new terminal tab, `cd` into the worktree, and start a Claude session there — that session IS agent `<slug>` and stays the agent for its entire lifetime.
+**Spawn a new agent** from the main checkout: `npm run new-agent -- <slug>`. Then open a new terminal tab and run `npm run be-agent -- <slug>` — that tab becomes agent `<slug>`'s session and stays that agent for its entire lifetime. (Under the hood: `cd` into the worktree and `exec claude` there.)
+
+**Check on live agents** from the orchestrator: `npm run agents` prints a one-row-per-agent table with unshipped commit count, working-tree state, and last commit subject.
 
 **Make a worktree the active dev target** by asking the master orchestrator session. Use whatever phrasing — "switch dev to alice", "make alice active" — the orchestrator runs `npm run dev-switch -- alice` (kills the running dev server, starts a new one in alice's worktree). `-- --stop` and `-- --status` are also available.
 
