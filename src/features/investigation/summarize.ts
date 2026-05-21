@@ -32,10 +32,6 @@ interface RawPost {
   score?: number;
   num_comments?: number;
   created_utc?: number;
-  url_overridden_by_dest?: string;
-  permalink?: string;
-  is_self?: boolean;
-  over_18?: boolean;
   removed_by_category?: string | null;
 }
 
@@ -45,7 +41,6 @@ interface RawComment {
   body?: string;
   score?: number;
   created_utc?: number;
-  permalink?: string;
   link_title?: string;
   removed_by_category?: string | null;
 }
@@ -192,10 +187,6 @@ function trimPost(post: RawPost): SummaryPost {
       typeof post.created_utc === "number"
         ? new Date(post.created_utc * 1000).toISOString()
         : null,
-    url: post.url_overridden_by_dest ?? null,
-    permalink: post.permalink ?? null,
-    is_self: post.is_self === true,
-    over_18: post.over_18 === true,
     removed_by_category: post.removed_by_category ?? null,
   };
 }
@@ -209,7 +200,6 @@ function trimComment(comment: RawComment): SummaryComment {
       typeof comment.created_utc === "number"
         ? new Date(comment.created_utc * 1000).toISOString()
         : null,
-    permalink: comment.permalink ?? null,
     link_title: comment.link_title ?? null,
     removed_by_category: comment.removed_by_category ?? null,
   };

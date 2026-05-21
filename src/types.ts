@@ -403,10 +403,6 @@ export interface SummaryPost {
   score: number | null;
   num_comments: number | null;
   created_at: string | null;
-  url: string | null;
-  permalink: string | null;
-  is_self: boolean;
-  over_18: boolean;
   removed_by_category: string | null;
 }
 
@@ -415,7 +411,6 @@ export interface SummaryComment {
   body_excerpt: string;
   score: number | null;
   created_at: string | null;
-  permalink: string | null;
   link_title: string | null;
   removed_by_category: string | null;
 }

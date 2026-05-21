@@ -37,8 +37,11 @@ interface ClaudeResponse {
 // `avatarUrl` is the customized Snoovatar PNG URL. When set, the call
 // attaches it as an image content block in front of the JSON text so the
 // prompt's `avatar_style` factor can score it.
+// `model` overrides the default model id for experimentation (see
+// scripts/investigate.ts --model flag).
 export interface ClaudeCallOptions {
   avatarUrl?: string | null;
+  model?: string;
 }
 
 export async function bonCallClaude(
@@ -63,12 +66,12 @@ export async function bonCallClaude(
     type: "text",
     text:
       "Analyze the following Reddit account and return ONLY the JSON verdict object as specified in your instructions.\n\n```json\n" +
-      JSON.stringify(profileSummary, null, 2) +
+      JSON.stringify(profileSummary) +
       "\n```",
   });
 
   const body: Record<string, unknown> = {
-    model: BON_CLAUDE_MODEL,
+    model: options.model ?? BON_CLAUDE_MODEL,
     max_tokens: 4096,
     system: [
       {
@@ -138,7 +141,7 @@ export async function bonCallClaude(
   const elapsedMs = Math.round(performance.now() - startedAt);
   const inputTokens = payload.usage?.input_tokens ?? "?";
   const outputTokens = payload.usage?.output_tokens ?? "?";
-  const model = payload.model ?? BON_CLAUDE_MODEL;
+  const model = payload.model ?? options.model ?? BON_CLAUDE_MODEL;
   const costUsd = bonEstimateCostUsd(payload.usage, model);
   const costString = costUsd !== null ? ` $${costUsd.toFixed(4)}` : "";
 

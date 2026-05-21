@@ -63,16 +63,34 @@ const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const PROMPT_PATH = resolve(REPO_ROOT, "src/features/investigation/prompt.md");
 
 const args = process.argv.slice(2);
-const flags = new Set(args.filter((arg) => arg.startsWith("--")));
-const positional = args.filter((arg) => !arg.startsWith("--"));
+const flagValues = new Map<string, string>();
+const booleanFlags = new Set<string>();
+const positional: string[] = [];
+for (let i = 0; i < args.length; i++) {
+  const arg = args[i];
+  if (arg.startsWith("--")) {
+    const eqIdx = arg.indexOf("=");
+    if (eqIdx > -1) {
+      flagValues.set(arg.slice(2, eqIdx), arg.slice(eqIdx + 1));
+    } else if (arg === "--model" && i + 1 < args.length) {
+      flagValues.set("model", args[++i]);
+    } else {
+      booleanFlags.add(arg);
+    }
+  } else {
+    positional.push(arg);
+  }
+}
 const username = positional[0];
 
 if (!username) {
   console.error(
-    "Usage: npm run investigate -- <username> [--no-web-search] [--json]"
+    "Usage: npm run investigate -- <username> [--no-web-search] [--json] [--model <id>]"
   );
   process.exit(1);
 }
+
+const modelOverride = flagValues.get("model");
 
 const apiKey = process.env.CLAUDE_API_KEY;
 if (!apiKey) {
@@ -80,8 +98,8 @@ if (!apiKey) {
   process.exit(1);
 }
 
-const jsonOnly = flags.has("--json");
-const webSearchEnabled = !flags.has("--no-web-search");
+const jsonOnly = booleanFlags.has("--json");
+const webSearchEnabled = !booleanFlags.has("--no-web-search");
 
 // Reddit's unauthenticated JSON endpoints rate-limit aggressively against
 // generic UAs. The extension piggybacks on the user's browser UA; here we
@@ -208,7 +226,7 @@ async function main(): Promise<void> {
     PROMPT,
     summary,
     "claude 1D",
-    { avatarUrl }
+    { avatarUrl, ...(modelOverride ? { model: modelOverride } : {}) }
   );
 
   const extracted = bonExtractJson(claudeResult.rawText);
