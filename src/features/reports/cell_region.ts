@@ -173,20 +173,8 @@ export function bonReportsRegionBadge(
     return badge;
   }
 
-  const span = document.createElement("span");
-  span.className = "bon-region-tz-only";
-
-  const offset = region.offsetHours;
-  const sign = offset >= 0 ? "+" : "";
-  span.textContent = `UTC${sign}${offset}`;
-
-  const candidates = region.possibleRegions
-    .map((code) => BON_REGION_INFO[code]?.label)
-    .filter((label): label is string => Boolean(label));
-
-  span.title = candidates.length
-    ? `Timezone-only inference. Posting hours cluster around UTC${sign}${offset} — possible regions: ${candidates.join(", ")}. No country-coded subreddits in activity.`
-    : `Timezone-only inference. Posting hours cluster around UTC${sign}${offset}. No country-coded subreddits in activity.`;
-
-  return span;
+  // Timezone-only inference: a UTC offset alone doesn't tell the operator
+  // anything actionable about region (every offset spans many countries).
+  // Skip the badge rather than fill the slot with noise.
+  return null;
 }
