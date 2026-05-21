@@ -248,7 +248,13 @@ async function runInvestigation(
     const redditMetricsPatch =
       error instanceof RedditFetchError ? { redditMetrics: error.metrics } : {};
 
-    if (attempts < BON_INVESTIGATION_MAX_ATTEMPTS) {
+    // 404 on the about endpoint = the username doesn't exist. Retrying
+    // won't conjure them, so short-circuit to a terminal error instead
+    // of burning attempts.
+    const isUserNotFound =
+      error instanceof RedditFetchError && error.httpStatus === 404;
+
+    if (!isUserNotFound && attempts < BON_INVESTIGATION_MAX_ATTEMPTS) {
       console.warn(
         `[Bot or Not] investigation ${username} failed (attempt ${attempts}/${BON_INVESTIGATION_MAX_ATTEMPTS}); re-queueing: ${message}`
       );

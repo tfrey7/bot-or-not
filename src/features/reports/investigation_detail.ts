@@ -11,15 +11,20 @@ import { bonLinkifyReddit } from "../../utils/linkify_reddit.ts";
 import { bonTopReasonsList } from "../../utils/top_reasons_list.ts";
 import { bonInvestigationLoading } from "../../utils/investigation_loading.ts";
 import { bonReportsPersonaBlock } from "./persona_block.ts";
+import {
+  bonReportsIsUserNotFoundError,
+  bonReportsUserNotFoundPanel,
+} from "./investigation_user_not_found.ts";
 
 export interface InvestigationDetailOpts {
   expectedDurationMs?: number | null;
+  username?: string;
 }
 
 export function bonReportsInvestigationDetail(
   rawInvestigation: Investigation | null | undefined,
   inRing = false,
-  { expectedDurationMs = null }: InvestigationDetailOpts = {}
+  { expectedDurationMs = null, username }: InvestigationDetailOpts = {}
 ): HTMLDivElement {
   const wrap = document.createElement("div");
   wrap.className = "bon-detail-wrap";
@@ -64,6 +69,11 @@ export function bonReportsInvestigationDetail(
   }
 
   if (investigation.status === "error") {
+    if (username && bonReportsIsUserNotFoundError(investigation.error)) {
+      wrap.appendChild(bonReportsUserNotFoundPanel(username));
+      return wrap;
+    }
+
     const errorBlock = document.createElement("div");
     errorBlock.className = "bon-verdict-error";
     errorBlock.textContent = `Investigation failed: ${investigation.error ?? "unknown error"}`;

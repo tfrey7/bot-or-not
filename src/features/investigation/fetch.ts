@@ -38,10 +38,16 @@ export const BON_REDDIT_FETCH_LIMIT = 1000;
 
 export class RedditFetchError extends Error {
   metrics: RedditMetrics;
-  constructor(message: string, metrics: RedditMetrics) {
+  httpStatus: number | null;
+  constructor(
+    message: string,
+    metrics: RedditMetrics,
+    httpStatus: number | null = null
+  ) {
     super(message);
     this.name = "RedditFetchError";
     this.metrics = metrics;
+    this.httpStatus = httpStatus;
   }
 }
 
@@ -299,11 +305,16 @@ export async function bonFetchRedditProfile(
   // would be hollow and Claude would waste an API call analyzing nothing.
   // moderated is best-effort (used to be `.catch(() => null)`).
   if (about.metric.status === "error") {
+    const status = about.metric.httpStatus ?? null;
+    const message =
+      status === 404
+        ? "User not found on Reddit (404)"
+        : `Reddit about fetch failed${status ? ` (${status})` : ""}`;
+
     throw new RedditFetchError(
-      `Reddit about fetch failed${
-        about.metric.httpStatus ? ` (${about.metric.httpStatus})` : ""
-      }`,
-      { fetches, totalDurationMs: 0 }
+      message,
+      { fetches, totalDurationMs: 0 },
+      status
     );
   }
 
@@ -317,11 +328,11 @@ export async function bonFetchRedditProfile(
   if (criticalListing) {
     const [name, result] = criticalListing;
     const lastMetric = result.metrics[result.metrics.length - 1];
+    const status = lastMetric?.httpStatus ?? null;
     throw new RedditFetchError(
-      `Reddit ${name} fetch failed${
-        lastMetric?.httpStatus ? ` (${lastMetric.httpStatus})` : ""
-      }`,
-      { fetches, totalDurationMs: 0 }
+      `Reddit ${name} fetch failed${status ? ` (${status})` : ""}`,
+      { fetches, totalDurationMs: 0 },
+      status
     );
   }
 

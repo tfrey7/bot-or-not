@@ -117,7 +117,8 @@ export async function bonGatherProfile(
 
     throw new RedditFetchError(
       reason instanceof Error ? reason.message : String(reason),
-      combined
+      combined,
+      reason instanceof RedditFetchError ? reason.httpStatus : null
     );
   }
 

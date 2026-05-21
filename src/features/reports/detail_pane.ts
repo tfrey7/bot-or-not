@@ -15,6 +15,7 @@ import {
   bonReportsGoogleDossierSection,
 } from "./google_dossier_section.ts";
 import { bonReportsInvestigationDetail } from "./investigation_detail.ts";
+import { bonReportsIsUserNotFoundError } from "./investigation_user_not_found.ts";
 import type { ReportRow } from "./logic.ts";
 import {
   bonReportsPassiveHarvestCountFresh,
@@ -57,6 +58,15 @@ export function bonReportsDetailPane(
 
   const fragment = document.createDocumentFragment();
 
+  // When Reddit said the user doesn't exist, re-running the investigation
+  // will just hit 404 again — hide the Investigate button, the notes form,
+  // and the activity/region placeholders that imply a future run will fill
+  // them in. Google search stays useful (the operator might want to verify
+  // the username they typed, or hunt for a deleted account elsewhere).
+  const userNotFound =
+    investigation?.status === "error" &&
+    bonReportsIsUserNotFoundError(investigation.error);
+
   // Combined "new since last analysis" tally across both dossier sources
   // (Google SERP + passive DOM scrape). The button surfaces a single
   // number — operator-facing language stays source-agnostic since the
@@ -66,56 +76,61 @@ export function bonReportsDetailPane(
     bonReportsGoogleDossierCountFresh(report.googleHarvest, lastRunAt) +
     bonReportsPassiveHarvestCountFresh(report.passiveHarvest, lastRunAt);
 
-  const actions = [
-    bonReportsRenderInvestigateButton(username, investigation, {
-      expectedDurationMs,
-      queueAhead,
-      freshHarvestCount,
-      onNoApiKey,
-      onInvestigate,
-    }),
-    bonReportsRenderGoogleSearchButton(username),
-  ];
+  const actions = userNotFound
+    ? [bonReportsRenderGoogleSearchButton(username)]
+    : [
+        bonReportsRenderInvestigateButton(username, investigation, {
+          expectedDurationMs,
+          queueAhead,
+          freshHarvestCount,
+          onNoApiKey,
+          onInvestigate,
+        }),
+        bonReportsRenderGoogleSearchButton(username),
+      ];
 
   fragment.appendChild(bonReportsProfileSection(report, actions));
 
   fragment.appendChild(
     bonReportsInvestigationDetail(investigation, !!ringId, {
       expectedDurationMs,
+      username,
     })
   );
 
-  // Notes are independent of the AI run — show them regardless of
-  // investigation state so the operator can record their take even
-  // while a (re-)investigation is queued.
-  fragment.appendChild(bonReportsUserNotesSection(report));
+  if (!userNotFound) {
+    // Notes are independent of the AI run — show them regardless of
+    // investigation state so the operator can record their take even
+    // while a (re-)investigation is queued.
+    fragment.appendChild(bonReportsUserNotesSection(report));
 
-  // Google dossier sits next to notes because both are operator-curated
-  // context (not AI-derived). Returns null when no Google search has been
-  // run for this user yet — skips the section entirely.
-  const dossier = bonReportsGoogleDossierSection(report);
-  if (dossier) {
-    fragment.appendChild(dossier);
-  }
+    // Google dossier sits next to notes because both are operator-curated
+    // context (not AI-derived). Returns null when no Google search has been
+    // run for this user yet — skips the section entirely.
+    const dossier = bonReportsGoogleDossierSection(report);
+    if (dossier) {
+      fragment.appendChild(dossier);
+    }
 
-  // Passive harvest: posts/comments the extension caught in feeds for
-  // this hidden-profile user. Returns null when the report has no
-  // harvested items yet (the common case until the operator browses
-  // somewhere this user has posted).
-  const passive = bonReportsPassiveHarvestSection(report);
-  if (passive) {
-    fragment.appendChild(passive);
-  }
+    // Passive harvest: posts/comments the extension caught in feeds for
+    // this hidden-profile user. Returns null when the report has no
+    // harvested items yet (the common case until the operator browses
+    // somewhere this user has posted).
+    const passive = bonReportsPassiveHarvestSection(report);
+    if (passive) {
+      fragment.appendChild(passive);
+    }
 
-  // While a re-investigation is queued/running, the prior activity data
-  // and region inference are stale — hide both so the pane reads as
-  // "working on it" instead of mixing old derived state with new status.
-  const inFlight =
-    investigation?.status === "queued" || investigation?.status === "running";
+    // While a re-investigation is queued/running, the prior activity data
+    // and region inference are stale — hide both so the pane reads as
+    // "working on it" instead of mixing old derived state with new status.
+    const inFlight =
+      investigation?.status === "queued" || investigation?.status === "running";
 
-  if (!inFlight) {
-    fragment.appendChild(bonReportsRegionSection(report));
-    fragment.appendChild(bonReportsActivitySection(report));
+    if (!inFlight) {
+      fragment.appendChild(bonReportsRegionSection(report));
+      fragment.appendChild(bonReportsActivitySection(report));
+    }
   }
 
   // Delete lives at the very bottom — out of the prominent top-right action

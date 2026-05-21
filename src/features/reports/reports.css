@@ -1081,6 +1081,45 @@ table.bon-table {
   color: var(--bon-danger);
   font-size: 0.85rem;
 }
+.bon-user-not-found {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 1em 1em 1.5em;
+  gap: 1em;
+}
+.bon-user-not-found__art {
+  display: block;
+  width: 100%;
+  max-width: 24em;
+  height: auto;
+  border-radius: 0.35em;
+  box-shadow:
+    0 8px 22px rgba(0, 0, 0, 0.4),
+    0 1px 3px rgba(0, 0, 0, 0.25);
+}
+.bon-user-not-found__headline {
+  margin: 0;
+  font-size: 1.05rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--bon-text);
+}
+.bon-user-not-found__body {
+  margin: 0;
+  max-width: 32em;
+  color: var(--bon-text-soft);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+.bon-user-not-found__name {
+  font-family: var(--bon-font-mono);
+  color: var(--bon-text);
+  background: var(--bon-stamp-bg);
+  padding: 0 0.3em;
+  border-radius: 0.2em;
+}
 .bon-factor-signal {
   margin-left: auto;
   font-family: var(--bon-font-mono);
