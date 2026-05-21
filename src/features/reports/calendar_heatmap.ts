@@ -6,13 +6,37 @@
 import type { ActivityData } from "../../types.ts";
 import { bonBucketLevel } from "../../utils/scoring.ts";
 import { BON_REPORTS_DAY_NAMES, BON_REPORTS_MONTH_NAMES } from "./data.ts";
-import { bonReportsComputeEarliestFullyVisible } from "./logic.ts";
+
+// Latest timestamp such that everything from this point forward is reliably
+// visible — anything older than the more-recent of the two API-cutoff
+// timestamps (when posts or comments are limited) is in the "unknown" zone.
+function computeEarliestFullyVisible(
+  activityData: ActivityData
+): number | null {
+  const { postsLimited, commentsLimited, earliestPostAt, earliestCommentAt } =
+    activityData;
+
+  const bounds: number[] = [];
+  if (postsLimited && earliestPostAt) {
+    bounds.push(earliestPostAt);
+  }
+
+  if (commentsLimited && earliestCommentAt) {
+    bounds.push(earliestCommentAt);
+  }
+
+  if (bounds.length === 0) {
+    return null;
+  }
+
+  return Math.max(...bounds);
+}
 
 export function bonReportsCalendarHeatmap(
   timestamps: number[],
   activityData: ActivityData
 ): HTMLDivElement {
-  const earliestVisible = bonReportsComputeEarliestFullyVisible(activityData);
+  const earliestVisible = computeEarliestFullyVisible(activityData);
 
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());

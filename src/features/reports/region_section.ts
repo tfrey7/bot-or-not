@@ -16,12 +16,12 @@ import {
   type SubregionInference,
 } from "../regions";
 import { bonPad2 } from "../../utils/format_time.ts";
+import type { ReportRow } from "./logic.ts";
 import {
   bonReportsComputeRegionForReport,
   bonReportsInferTimezoneFromTimestamps,
-  type ReportRow,
   type TimezoneInference,
-} from "./logic.ts";
+} from "./region.ts";
 
 type ReasonTone = "supporting" | "against";
 

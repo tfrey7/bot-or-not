@@ -4,8 +4,8 @@ import "uplot/dist/uPlot.min.css";
 import {
   bonReportsBuildSubredditChartSeries,
   bonReportsBuildSubredditTimelines,
-} from "./logic.ts";
-import type { SubredditChartSeries } from "./logic.ts";
+  type SubredditChartSeries,
+} from "./subreddit_chart_data.ts";
 import type { ActivityData } from "../../types.ts";
 
 const BUCKET_COUNT = 96;

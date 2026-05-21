@@ -10,7 +10,8 @@ import type {
   AiRegionInference,
   DeterministicRegionInference,
 } from "../regions";
-import { bonReportsComputeRegionForReport, type ReportRow } from "./logic.ts";
+import type { ReportRow } from "./logic.ts";
+import { bonReportsComputeRegionForReport } from "./region.ts";
 
 function formatRegionTooltip(
   region: DeterministicRegionInference,

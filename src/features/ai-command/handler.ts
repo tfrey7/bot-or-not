@@ -3,7 +3,7 @@
 // tool calls into the matching reports / investigation handlers.
 
 import { bonInvestigationStart } from "../investigation/handlers.ts";
-import { bonReportsComputeRegionForReport } from "../reports/logic.ts";
+import { bonReportsComputeRegionForReport } from "../reports/region.ts";
 import {
   bonReportsDelete,
   bonReportsLinkRing,

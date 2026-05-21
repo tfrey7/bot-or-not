@@ -9,7 +9,7 @@ import { BON_REPORTS_DAY_NAMES } from "./data.ts";
 import {
   bonReportsInferTimezoneFromTimestamps,
   type TimezoneInference,
-} from "./logic.ts";
+} from "./region.ts";
 
 function renderCycleNote(inferred: TimezoneInference): HTMLSpanElement | null {
   if (inferred.kind === "insufficient") {
