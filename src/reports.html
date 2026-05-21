@@ -15,6 +15,7 @@
     <link rel="stylesheet" href="features/analytics/analytics.css" />
     <link rel="stylesheet" href="features/personas/personas.css" />
     <link rel="stylesheet" href="features/diagnostics/diagnostics.css" />
+    <link rel="stylesheet" href="features/fun-facts/fun-facts.css" />
     <link
       rel="stylesheet"
       href="features/self-improvement/self-improvement.css"
@@ -118,6 +119,17 @@
             data-tab="diagnostics"
           >
             Diagnostics
+          </button>
+          <button
+            type="button"
+            class="bon-tab"
+            role="tab"
+            aria-selected="false"
+            aria-controls="bon-panel-fun-facts"
+            id="bon-tab-fun-facts"
+            data-tab="fun-facts"
+          >
+            Fun facts
           </button>
           <button
             type="button"
@@ -228,6 +240,16 @@
         hidden
       >
         <div id="bon-diagnostics-container"></div>
+      </section>
+
+      <section
+        class="bon-tab-panel"
+        role="tabpanel"
+        id="bon-panel-fun-facts"
+        aria-labelledby="bon-tab-fun-facts"
+        hidden
+      >
+        <div id="bon-fun-facts-container"></div>
       </section>
 
       <section

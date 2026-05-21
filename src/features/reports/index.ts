@@ -8,6 +8,7 @@
 
 import { bonRenderAnalytics } from "../analytics";
 import { bonRenderDiagnostics } from "../diagnostics";
+import { bonRenderFunFacts } from "../fun-facts";
 import { bonRenderPersonas } from "../personas";
 import { bonRenderSelfImprovement } from "../self-improvement";
 import { bonRenderSync } from "../sync";
@@ -80,6 +81,9 @@ const diagnosticsContainer = document.getElementById(
 ) as HTMLElement | null;
 const selfImprovementContainer = document.getElementById(
   "bon-self-improvement-container"
+) as HTMLElement | null;
+const funFactsContainer = document.getElementById(
+  "bon-fun-facts-container"
 ) as HTMLElement | null;
 const syncContainer = document.getElementById(
   "bon-sync-container"
@@ -184,6 +188,7 @@ const polling = bonReportsInitPolling({
     renderPersonas();
     renderDiagnostics();
     renderSelfImprovement();
+    renderFunFacts();
   },
   setExpectedDurationMs: (value) => {
     expectedDurationMs = value;
@@ -214,6 +219,7 @@ async function load(): Promise<void> {
     renderPersonas();
     renderDiagnostics();
     renderSelfImprovement();
+    renderFunFacts();
   } catch (error) {
     console.error("[Bot or Not] failed to load reports", error);
     tableWrap.hidden = true;
@@ -336,6 +342,16 @@ function renderSelfImprovement(): void {
   }
 
   bonRenderSelfImprovement(reportsMap, selfImprovementContainer);
+}
+
+function renderFunFacts(): void {
+  if (!funFactsContainer) {
+    return;
+  }
+
+  bonRenderFunFacts(allReports, funFactsContainer, {
+    onSelectUser: navigateToUser,
+  });
 }
 
 function render(): void {
