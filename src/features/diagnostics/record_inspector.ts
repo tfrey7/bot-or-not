@@ -6,7 +6,7 @@
 // that storage.onChanged → render() doesn't yank the user out of whatever
 // record they were looking at.
 
-import type { Report } from "../../types.ts";
+import type { ClaudeUsage, Report } from "../../types.ts";
 import { bonFmtUsd } from "../../utils/format_number.ts";
 import {
   bonFmtDuration,
@@ -158,11 +158,13 @@ function buildInvestigationBlock(report: Report): HTMLElement {
       "Started",
       investigation.startedAt ? bonFmtTimestamp(investigation.startedAt) : "—",
     ]);
+  } else if (investigation.status === "done") {
+    rows.push(["Last ran", bonFmtTimestamp(investigation.results.runAt)]);
+    rows.push(["Duration", bonFmtDuration(investigation.results.durationMs)]);
   } else {
-    rows.push([
-      "Last ran",
-      investigation.runAt ? bonFmtTimestamp(investigation.runAt) : "—",
-    ]);
+    // queued / error — no results, fall back to lifecycle durationMs (set on
+    // the most recent attempt) if available.
+    rows.push(["Last ran", "—"]);
     rows.push(["Duration", bonFmtDuration(investigation.durationMs)]);
   }
 
@@ -171,28 +173,16 @@ function buildInvestigationBlock(report: Report): HTMLElement {
   }
 
   if (investigation.status === "done") {
-    rows.push(["Verdict", investigation.verdict ?? "—"]);
-    rows.push([
-      "Bot probability",
-      investigation.botProbability != null
-        ? `${(investigation.botProbability * 100).toFixed(1)}%`
-        : "—",
-    ]);
-    rows.push([
-      "Confidence",
-      investigation.confidence != null
-        ? `${(investigation.confidence * 100).toFixed(1)}%`
-        : "—",
-    ]);
-    rows.push(["Model", investigation.model ?? "—"]);
-    rows.push(["Cost", bonFmtUsd(investigation.costUsd)]);
-    rows.push([
-      "Tokens",
-      investigation.usage ? formatUsageBrief(investigation.usage) : "—",
-    ]);
+    const r = investigation.results;
+    rows.push(["Verdict", r.verdict]);
+    rows.push(["Bot probability", `${(r.botProbability * 100).toFixed(1)}%`]);
+    rows.push(["Confidence", `${(r.confidence * 100).toFixed(1)}%`]);
+    rows.push(["Model", r.model || "—"]);
+    rows.push(["Cost", bonFmtUsd(r.costUsd)]);
+    rows.push(["Tokens", r.usage ? formatUsageBrief(r.usage) : "—"]);
     rows.push([
       "Posts / comments fetched",
-      `${investigation.postsFetched} / ${investigation.commentsFetched}`,
+      `${r.postsFetched} / ${r.commentsFetched}`,
     ]);
     rows.push([
       "Reddit fetch total",
@@ -201,33 +191,33 @@ function buildInvestigationBlock(report: Report): HTMLElement {
         : "—",
     ]);
 
-    if (investigation.persona) {
-      rows.push(["Persona", investigation.persona.label]);
+    if (r.persona) {
+      rows.push(["Persona", r.persona.label]);
     }
   }
 
   const block = keyValueBlock("Investigation", rows);
 
-  if (investigation.status === "done" && investigation.summary) {
-    const note = document.createElement("p");
-    note.className = "bon-diag-note";
-    note.textContent = investigation.summary;
-    block.appendChild(note);
-  }
+  if (investigation.status === "done") {
+    if (investigation.results.summary) {
+      const note = document.createElement("p");
+      note.className = "bon-diag-note";
+      note.textContent = investigation.results.summary;
+      block.appendChild(note);
+    }
 
-  if (investigation.status === "done" && investigation.persona?.reasoning) {
-    const note = document.createElement("p");
-    note.className = "bon-diag-note";
-    note.textContent = `Persona reasoning: ${investigation.persona.reasoning}`;
-    block.appendChild(note);
+    if (investigation.results.persona?.reasoning) {
+      const note = document.createElement("p");
+      note.className = "bon-diag-note";
+      note.textContent = `Persona reasoning: ${investigation.results.persona.reasoning}`;
+      block.appendChild(note);
+    }
   }
 
   return block;
 }
 
-function formatUsageBrief(
-  usage: NonNullable<Report["investigation"]>["usage"]
-) {
+function formatUsageBrief(usage: NonNullable<ClaudeUsage>) {
   if (!usage) {
     return "—";
   }
@@ -239,7 +229,9 @@ function formatUsageBrief(
 }
 
 function buildFactorsBlock(report: Report): HTMLElement {
-  const factors = report.investigation?.factors ?? [];
+  const investigation = report.investigation;
+  const factors =
+    investigation?.status === "done" ? investigation.results.factors : [];
   const block = document.createElement("section");
   block.className = "bon-diag-block";
 
@@ -293,7 +285,7 @@ function buildFactorsBlock(report: Report): HTMLElement {
 
     const reasonCell = document.createElement("td");
     reasonCell.className = "bon-diag-factor-reason";
-    reasonCell.textContent = factor.reasoning ?? "";
+    reasonCell.textContent = factor.reasoning;
     tr.appendChild(reasonCell);
 
     body.appendChild(tr);

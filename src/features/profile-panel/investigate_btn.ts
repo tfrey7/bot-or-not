@@ -17,7 +17,8 @@ export function bonPanelBuildInvestigateBtn(
   const queued = investigation?.status === "queued";
   const running = investigation?.status === "running";
   const stale = running && bonIsInvestigationStale(investigation);
-  const verdict = investigation?.verdict;
+  const verdict =
+    investigation?.status === "done" ? investigation.results.verdict : null;
 
   const setState = (
     kind: "queued" | "investigating" | "retry" | "reinvestigate" | "investigate"

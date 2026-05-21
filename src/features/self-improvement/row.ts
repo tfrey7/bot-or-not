@@ -29,7 +29,9 @@ export function bonSelfImprovementRow(
 ): HTMLDivElement {
   const { username, report, userNotes } = annotated;
   const investigation = report.investigation;
-  const persona = investigation?.persona ?? null;
+  const results =
+    investigation?.status === "done" ? investigation.results : null;
+  const persona = results?.persona ?? null;
   const agreement = bonSelfImprovementAgreement(annotated);
 
   const card = document.createElement("article");
@@ -46,8 +48,8 @@ export function bonSelfImprovementRow(
       persona?.label ?? null,
       persona?.reasoning ?? "",
       persona?.archetypes ?? null,
-      investigation?.verdict ?? null,
-      investigation?.summary ?? ""
+      results?.verdict ?? null,
+      results?.summary ?? ""
     )
   );
   card.appendChild(grid);

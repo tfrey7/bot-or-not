@@ -54,14 +54,15 @@ export function bonReportsVerdictBadge(
 
   const investigation = bonNormalizeInvestigation(rawInvestigation, inRing);
 
-  if (!investigation.verdict) {
+  if (investigation.status !== "done") {
     return null;
   }
 
+  const { verdict, summary } = investigation.results;
   const span = document.createElement("span");
-  span.className = `bon-verdict-badge bon-verdict-badge--${investigation.verdict}`;
-  span.textContent = bonFormatVerdict(investigation.verdict);
-  span.title = investigation.summary || investigation.verdict;
+  span.className = `bon-verdict-badge bon-verdict-badge--${verdict}`;
+  span.textContent = bonFormatVerdict(verdict);
+  span.title = summary || verdict;
 
   return span;
 }

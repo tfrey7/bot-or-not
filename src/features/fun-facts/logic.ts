@@ -37,7 +37,7 @@ export interface BonFunFact {
 
 interface BonFunFactsDoneEntry {
   username: string;
-  investigation: Investigation;
+  investigation: Extract<Investigation, { status: "done" }>;
   report: BonFunFactsReportRow;
 }
 
@@ -126,7 +126,7 @@ function bonFunFactsPickRarestCountry(
   const byRegion = new Map<string, BonFunFactsDoneEntry[]>();
 
   for (const entry of done) {
-    const code = entry.investigation.region?.code;
+    const code = entry.investigation.results.region?.code;
     if (!code) {
       continue;
     }
@@ -195,7 +195,7 @@ function bonFunFactsPickRarestPersona(
   const byLabel = new Map<string, BonFunFactsDoneEntry[]>();
 
   for (const entry of done) {
-    const label = entry.investigation.persona?.label;
+    const label = entry.investigation.results.persona?.label;
     if (!label) {
       continue;
     }
@@ -236,7 +236,7 @@ function bonFunFactsPickRarestPersona(
 
   const entries = byLabel.get(bestLabel)!;
   const subject = bonFunFactsMostRecent(entries);
-  const persona = subject.investigation.persona!;
+  const persona = subject.investigation.results.persona!;
   const title = bonPersonaTitle(persona);
 
   return {
@@ -259,7 +259,7 @@ function bonFunFactsPickRareCombo(
   const byCombo = new Map<string, BonFunFactsDoneEntry[]>();
 
   for (const entry of done) {
-    const persona = entry.investigation.persona;
+    const persona = entry.investigation.results.persona;
     if (!persona) {
       continue;
     }
@@ -305,7 +305,7 @@ function bonFunFactsPickRareCombo(
 
   const entries = byCombo.get(bestCombo)!;
   const subject = bonFunFactsMostRecent(entries);
-  const title = bonPersonaTitle(subject.investigation.persona!);
+  const title = bonPersonaTitle(subject.investigation.results.persona!);
 
   return {
     kind: "rare-combo",
@@ -317,7 +317,7 @@ function bonFunFactsPickRareCombo(
         ? `The only ${title} blend you've seen — both archetypes balanced at the threshold.`
         : `One of ${bestCount} ${title} blends in your corpus.`,
     badge: bestCount === 1 ? "only blend" : `1 of ${bestCount}`,
-    hue: bonPersonaHue(subject.investigation.persona!),
+    hue: bonPersonaHue(subject.investigation.results.persona!),
   };
 }
 
@@ -328,7 +328,7 @@ function bonFunFactsPickOldestAccount(
   let bestAge = -Infinity;
 
   for (const entry of done) {
-    const age = entry.investigation.accountAgeDays;
+    const age = entry.investigation.results.accountAgeDays;
     if (age == null) {
       continue;
     }
@@ -344,7 +344,7 @@ function bonFunFactsPickOldestAccount(
   }
 
   const years = bestAge / 365.25;
-  const created = best.investigation.accountCreatedAt;
+  const created = best.investigation.results.accountCreatedAt;
   const createdLabel = bonFunFactsFormatIsoDate(created);
 
   return {
@@ -401,7 +401,7 @@ function bonFunFactsPickMostDecisive(
   let bestProb = side === "bot" ? -Infinity : Infinity;
 
   for (const entry of done) {
-    const prob = entry.investigation.botProbability;
+    const prob = entry.investigation.results.botProbability;
     if (prob == null) {
       continue;
     }
@@ -416,7 +416,7 @@ function bonFunFactsPickMostDecisive(
     return null;
   }
 
-  const verdict = best.investigation.verdict;
+  const verdict = best.investigation.results.verdict;
   const verdictLabel = verdict ? bonFunFactsVerdictLabel(verdict) : null;
   const pct = Math.round(bestProb * 100);
 
@@ -455,7 +455,7 @@ function bonFunFactsPickStrongestArchetype(
   let bestScore = -Infinity;
 
   for (const entry of done) {
-    const archetypes = entry.investigation.persona?.archetypes;
+    const archetypes = entry.investigation.results.persona?.archetypes;
     if (!archetypes) {
       continue;
     }
@@ -495,7 +495,7 @@ function bonFunFactsMaxRunAt(entries: BonFunFactsDoneEntry[]): number {
   let max = -Infinity;
 
   for (const entry of entries) {
-    const runAt = entry.investigation.runAt ?? 0;
+    const runAt = entry.investigation.results.runAt;
     if (runAt > max) {
       max = runAt;
     }
@@ -508,10 +508,10 @@ function bonFunFactsMostRecent(
   entries: BonFunFactsDoneEntry[]
 ): BonFunFactsDoneEntry {
   let best = entries[0]!;
-  let bestRun = best.investigation.runAt ?? 0;
+  let bestRun = best.investigation.results.runAt;
 
   for (const entry of entries) {
-    const run = entry.investigation.runAt ?? 0;
+    const run = entry.investigation.results.runAt;
     if (run > bestRun) {
       best = entry;
       bestRun = run;

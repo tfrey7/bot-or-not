@@ -15,7 +15,7 @@ import type {
   GoogleHarvest,
   HistoryEntry,
   Investigation,
-  InvestigationStatus,
+  InvestigationResults,
   PassiveHarvest,
   Persona,
   PersonaLabel,
@@ -23,6 +23,7 @@ import type {
   Report,
   RunSnapshot,
   UserNotes,
+  Verdict,
 } from "../types.ts";
 import { bonNormalizeRegionInference } from "./region_inference.ts";
 
@@ -190,8 +191,11 @@ function canonicalizeUserNotes(value: unknown): UserNotes | null {
 }
 
 // Internal: turn whatever was on disk into the canonical Investigation shape
-// (or null). Every field always set after this; consumers gate on `status`
-// to know which result fields hold real data vs. null/empty defaults.
+// (or null). Discriminates on `status` — the "done" variant gets a populated
+// `results`; other variants get `results: null`. Legacy stored shape had
+// result fields at the top level; we lift them into `results` when status
+// is "done" and discard them otherwise (the carryover into queued/running
+// was never read by consumers).
 function canonicalizeInvestigation(value: unknown): Investigation | null {
   if (!value || typeof value !== "object") {
     return null;
@@ -208,8 +212,7 @@ function canonicalizeInvestigation(value: unknown): Investigation | null {
     return null;
   }
 
-  return {
-    status,
+  const lifecycle = {
     queuedAt:
       typeof investigation.queuedAt === "number"
         ? investigation.queuedAt
@@ -218,58 +221,114 @@ function canonicalizeInvestigation(value: unknown): Investigation | null {
       typeof investigation.startedAt === "number"
         ? investigation.startedAt
         : null,
-    runAt: typeof investigation.runAt === "number" ? investigation.runAt : null,
     durationMs:
       typeof investigation.durationMs === "number"
         ? investigation.durationMs
         : null,
     error: typeof investigation.error === "string" ? investigation.error : null,
-    verdict: (investigation.verdict as Investigation["verdict"]) ?? null,
-    confidence:
-      typeof investigation.confidence === "number"
-        ? investigation.confidence
-        : null,
-    botProbability:
-      typeof investigation.botProbability === "number"
-        ? investigation.botProbability
-        : null,
-    factors: Array.isArray(investigation.factors)
-      ? (investigation.factors as Factor[])
-      : [],
-    persona: (investigation.persona as Persona | null) ?? null,
-    region: bonNormalizeRegionInference(investigation.region),
-    summary:
-      typeof investigation.summary === "string" ? investigation.summary : "",
-    model: typeof investigation.model === "string" ? investigation.model : null,
-    usage: (investigation.usage as Investigation["usage"]) ?? null,
-    webSearchCount:
-      typeof investigation.webSearchCount === "number"
-        ? investigation.webSearchCount
-        : 0,
-    costUsd:
-      typeof investigation.costUsd === "number" ? investigation.costUsd : null,
-    postsFetched:
-      typeof investigation.postsFetched === "number"
-        ? investigation.postsFetched
-        : 0,
-    commentsFetched:
-      typeof investigation.commentsFetched === "number"
-        ? investigation.commentsFetched
-        : 0,
-    accountCreatedAt:
-      typeof investigation.accountCreatedAt === "string"
-        ? investigation.accountCreatedAt
-        : null,
-    accountAgeDays:
-      typeof investigation.accountAgeDays === "number"
-        ? investigation.accountAgeDays
-        : null,
-    redditMetrics: canonicalizeRedditMetrics(investigation.redditMetrics),
     runs: Array.isArray(investigation.runs)
       ? (investigation.runs as RunSnapshot[]).map(canonicalizeRunSnapshot)
       : [],
     attempts:
       typeof investigation.attempts === "number" ? investigation.attempts : 0,
+    redditMetrics: canonicalizeRedditMetrics(investigation.redditMetrics),
+  };
+
+  if (status !== "done") {
+    return { status, ...lifecycle, results: null };
+  }
+
+  // "done" status — lift result fields off the legacy top level (or read
+  // from `results` if already migrated to the discriminated shape).
+  const resultsSource =
+    investigation.results && typeof investigation.results === "object"
+      ? (investigation.results as Record<string, unknown>)
+      : investigation;
+
+  const results: InvestigationResults = {
+    runAt:
+      typeof resultsSource.runAt === "number"
+        ? resultsSource.runAt
+        : Date.now(),
+    durationMs:
+      typeof resultsSource.durationMs === "number"
+        ? resultsSource.durationMs
+        : (lifecycle.durationMs ?? 0),
+    verdict: (resultsSource.verdict as Verdict | undefined) ?? "uncertain",
+    confidence:
+      typeof resultsSource.confidence === "number"
+        ? resultsSource.confidence
+        : 0,
+    botProbability:
+      typeof resultsSource.botProbability === "number"
+        ? resultsSource.botProbability
+        : 0.5,
+    factors: Array.isArray(resultsSource.factors)
+      ? (resultsSource.factors as unknown[]).map(canonicalizeFactor)
+      : [],
+    persona: (resultsSource.persona as Persona | null) ?? null,
+    region: bonNormalizeRegionInference(resultsSource.region),
+    summary:
+      typeof resultsSource.summary === "string" ? resultsSource.summary : "",
+    model: typeof resultsSource.model === "string" ? resultsSource.model : "",
+    usage:
+      (resultsSource.usage as InvestigationResults["usage"] | undefined) ??
+      null,
+    costUsd:
+      typeof resultsSource.costUsd === "number" ? resultsSource.costUsd : null,
+    webSearchCount:
+      typeof resultsSource.webSearchCount === "number"
+        ? resultsSource.webSearchCount
+        : 0,
+    postsFetched:
+      typeof resultsSource.postsFetched === "number"
+        ? resultsSource.postsFetched
+        : 0,
+    commentsFetched:
+      typeof resultsSource.commentsFetched === "number"
+        ? resultsSource.commentsFetched
+        : 0,
+    accountCreatedAt:
+      typeof resultsSource.accountCreatedAt === "string"
+        ? resultsSource.accountCreatedAt
+        : null,
+    accountAgeDays:
+      typeof resultsSource.accountAgeDays === "number"
+        ? resultsSource.accountAgeDays
+        : null,
+  };
+
+  // Pull redditMetrics off the top-level if the lifecycle field didn't pick
+  // it up from a legacy record (some old records stashed it next to the
+  // result fields).
+  const mergedLifecycle = {
+    ...lifecycle,
+    redditMetrics:
+      lifecycle.redditMetrics ??
+      canonicalizeRedditMetrics(resultsSource.redditMetrics),
+  };
+
+  return { status: "done", ...mergedLifecycle, results };
+}
+
+// Older stored records may have Factor entries missing `reasoning` / `evidence`
+// from when those were optional. Default to empty so consumers can rely on
+// them being present.
+function canonicalizeFactor(value: unknown): Factor {
+  const record = (value && typeof value === "object" ? value : {}) as Record<
+    string,
+    unknown
+  >;
+
+  return {
+    key: typeof record.key === "string" ? record.key : "",
+    score: typeof record.score === "number" ? record.score : 0,
+    confidence: typeof record.confidence === "number" ? record.confidence : 0,
+    reasoning: typeof record.reasoning === "string" ? record.reasoning : "",
+    evidence:
+      typeof record.evidence === "string" || Array.isArray(record.evidence)
+        ? (record.evidence as string | string[])
+        : "",
   };
 }
 
@@ -327,39 +386,6 @@ function canonicalizeRunSnapshot(value: unknown): RunSnapshot {
   };
 }
 
-// Build a fresh Investigation with all fields at default. Callers (only
-// setInvestigationState should be one) layer prev + patch on top.
-export function bonFreshInvestigation(
-  status: InvestigationStatus
-): Investigation {
-  return {
-    status,
-    queuedAt: null,
-    startedAt: null,
-    runAt: null,
-    durationMs: null,
-    error: null,
-    verdict: null,
-    confidence: null,
-    botProbability: null,
-    factors: [],
-    persona: null,
-    region: null,
-    summary: "",
-    model: null,
-    usage: null,
-    webSearchCount: 0,
-    costUsd: null,
-    postsFetched: 0,
-    commentsFetched: 0,
-    accountCreatedAt: null,
-    accountAgeDays: null,
-    redditMetrics: null,
-    runs: [],
-    attempts: 0,
-  };
-}
-
 // Sanctioned storage entry points. Reads run through bonNormalizeReport so
 // every callsite gets the canonical shape — no `as Report` lies elsewhere.
 export async function bonReadReports(): Promise<Record<string, Report>> {
@@ -403,24 +429,45 @@ export function bonFindReportKey(
 }
 
 // Extracts a runs[] snapshot from a terminated investigation so historical
-// timing/cost data survives across re-runs.
+// timing/cost data survives across re-runs. Reads result fields when the
+// investigation is "done"; for "error" snapshots the result fields stay
+// null since the run never produced them.
 export function bonSnapshotRun(
   investigation: Investigation,
   status: RunSnapshot["status"]
 ): RunSnapshot {
+  if (investigation.status === "done") {
+    return {
+      runAt: investigation.results.runAt,
+      durationMs: investigation.results.durationMs,
+      status,
+      verdict: investigation.results.verdict,
+      confidence: investigation.results.confidence,
+      botProbability: investigation.results.botProbability,
+      model: investigation.results.model,
+      usage: investigation.results.usage,
+      costUsd: investigation.results.costUsd,
+      webSearchCount: investigation.results.webSearchCount,
+      postsFetched: investigation.results.postsFetched,
+      commentsFetched: investigation.results.commentsFetched,
+      redditMetrics: investigation.redditMetrics,
+      error: status === "error" ? investigation.error : null,
+    };
+  }
+
   return {
-    runAt: investigation.runAt ?? Date.now(),
+    runAt: Date.now(),
     durationMs: investigation.durationMs,
     status,
-    verdict: investigation.verdict,
-    confidence: investigation.confidence,
-    botProbability: investigation.botProbability,
-    model: investigation.model,
-    usage: investigation.usage,
-    costUsd: investigation.costUsd,
-    webSearchCount: investigation.webSearchCount,
-    postsFetched: investigation.postsFetched,
-    commentsFetched: investigation.commentsFetched,
+    verdict: null,
+    confidence: null,
+    botProbability: null,
+    model: null,
+    usage: null,
+    costUsd: null,
+    webSearchCount: 0,
+    postsFetched: 0,
+    commentsFetched: 0,
     redditMetrics: investigation.redditMetrics,
     error: status === "error" ? investigation.error : null,
   };

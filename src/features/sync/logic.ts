@@ -180,8 +180,14 @@ function mergeOneReport(local: Report, incoming: Report): Required<Report> {
   const incomingBouncerAt = incoming.botBouncerCheckedAt;
   const useIncomingBouncer = incomingBouncerAt > localBouncerAt;
 
-  const localRunAt = local.investigation?.runAt ?? 0;
-  const incomingRunAt = incoming.investigation?.runAt ?? 0;
+  const localRunAt =
+    local.investigation?.status === "done"
+      ? local.investigation.results.runAt
+      : 0;
+  const incomingRunAt =
+    incoming.investigation?.status === "done"
+      ? incoming.investigation.results.runAt
+      : 0;
   const useIncomingInvestigation = incomingRunAt > localRunAt;
 
   const localNotesAt = local.userNotes?.updatedAt ?? 0;

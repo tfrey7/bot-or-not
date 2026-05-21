@@ -81,14 +81,10 @@ export function bonReportsInvestigationDetail(
     return wrap;
   }
 
-  const reasonsList =
-    investigation.factors.length > 0
-      ? bonTopReasonsList(investigation.factors, 4)
-      : null;
+  const { factors, persona, summary } = investigation.results;
+  const reasonsList = factors.length > 0 ? bonTopReasonsList(factors, 4) : null;
 
-  const personaBlock = bonReportsPersonaBlock(investigation.persona, {
-    summary: investigation.summary,
-  });
+  const personaBlock = bonReportsPersonaBlock(persona, { summary });
 
   if (personaBlock && reasonsList) {
     const row = document.createElement("div");
@@ -110,11 +106,11 @@ export function bonReportsInvestigationDetail(
     return wrap;
   }
 
-  if (investigation.summary) {
-    const summary = document.createElement("p");
-    summary.className = "bon-verdict-summary";
-    summary.appendChild(bonLinkifyReddit(investigation.summary));
-    wrap.appendChild(summary);
+  if (summary) {
+    const summaryEl = document.createElement("p");
+    summaryEl.className = "bon-verdict-summary";
+    summaryEl.appendChild(bonLinkifyReddit(summary));
+    wrap.appendChild(summaryEl);
   }
 
   if (reasonsList) {

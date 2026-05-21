@@ -64,7 +64,8 @@ export function bonReportsRenderInvestigateButton(
   const queued = investigation?.status === "queued";
   const running = investigation?.status === "running";
   const stale = running && bonIsInvestigationStale(investigation);
-  const verdict = investigation?.verdict;
+  const verdict =
+    investigation?.status === "done" ? investigation.results.verdict : null;
 
   if (freshHarvestCount > 0 && !queued && !running) {
     button.classList.add("bon-btn--fresh-harvest");

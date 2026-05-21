@@ -38,8 +38,8 @@ export interface Factor {
   key: string;
   score: number;
   confidence: number;
-  reasoning?: string;
-  evidence?: string | string[];
+  reasoning: string;
+  evidence: string | string[];
 }
 
 export interface Persona {
@@ -107,20 +107,34 @@ export interface RunSnapshot {
   error: string | null;
 }
 
-// Investigation is stored as one struct that mutates through
-// "queued" → "running" → "done"/"error". bonNormalizeReport canonicalizes
-// from unknown JSON and fills in defaults so every key is always present.
-// Consumers gate on `status` to know which result fields are populated:
-//   queued  → waiting behind concurrency cap; queuedAt is set
-//   running → verdict/factors/etc. are null/empty; startedAt is set
-//   done    → all result fields populated
-//   error   → `error` is set; result fields may be null/empty
-// Result fields use `null` (not omission) for "not yet known."
-export interface Investigation {
-  status: InvestigationStatus;
+// Results of a completed investigation run. Populated only when status is
+// "done" — discriminating Investigation on `status` lets TS narrow to the
+// done variant and access `results` without per-field null checks.
+export interface InvestigationResults {
+  runAt: number;
+  durationMs: number;
+  verdict: Verdict;
+  confidence: number;
+  botProbability: number;
+  factors: Factor[];
+  persona: Persona | null;
+  region: RegionInferenceAi | null;
+  summary: string;
+  model: string;
+  usage: ClaudeUsage | null;
+  costUsd: number | null;
+  webSearchCount: number;
+  postsFetched: number;
+  commentsFetched: number;
+  accountCreatedAt: string | null;
+  accountAgeDays: number | null;
+}
+
+// Lifecycle fields shared across every Investigation variant. Track the
+// *current* attempt's queue/run timing — historical runs live in `runs[]`.
+interface InvestigationLifecycle {
   queuedAt: number | null;
   startedAt: number | null;
-  runAt: number | null;
   durationMs: number | null;
   error: string | null;
 
@@ -129,24 +143,27 @@ export interface Investigation {
   // out at BON_INVESTIGATION_MAX_ATTEMPTS — failures past that stay as
   // "error" instead of getting re-queued.
   attempts: number;
-  verdict: Verdict | null;
-  confidence: number | null;
-  botProbability: number | null;
-  factors: Factor[];
-  persona: Persona | null;
-  region: RegionInferenceAi | null;
-  summary: string;
-  model: string | null;
-  usage: ClaudeUsage | null;
-  webSearchCount: number;
-  costUsd: number | null;
-  postsFetched: number;
-  commentsFetched: number;
-  accountCreatedAt: string | null;
-  accountAgeDays: number | null;
-  redditMetrics: RedditMetrics | null;
   runs: RunSnapshot[];
+
+  // Fetch metrics from the most recent Reddit attempt (or null if no
+  // fetch was attempted). Lives at the lifecycle level because it can be
+  // populated even on "error" transitions when the Reddit fetch failed.
+  redditMetrics: RedditMetrics | null;
 }
+
+// Investigation is stored as one struct that mutates through
+// "queued" → "running" → "done"/"error". bonNormalizeReport canonicalizes
+// from unknown JSON and fills in defaults so every key is always present.
+// `status` discriminates the union — narrowing on it gives TypeScript
+// access to the populated `results` for "done", and forces consumers to
+// gate on status before touching result fields. Result fields are cleared
+// to null when transitioning out of "done"; historical results live in
+// `runs[]`.
+export type Investigation =
+  | (InvestigationLifecycle & { status: "queued"; results: null })
+  | (InvestigationLifecycle & { status: "running"; results: null })
+  | (InvestigationLifecycle & { status: "done"; results: InvestigationResults })
+  | (InvestigationLifecycle & { status: "error"; results: null });
 
 // History entry from a single report click. `at` is the unix-ms timestamp.
 // Other fields come from whatever the reporting feature scraped at click

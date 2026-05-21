@@ -70,7 +70,7 @@ export function bonPersonasCollect(reports: PersonasRow[]): PersonaPoint[] {
       continue;
     }
 
-    const persona = investigation.persona;
+    const persona = investigation.results.persona;
     if (!persona?.archetypes) {
       continue;
     }
@@ -117,7 +117,7 @@ export function bonPersonasCollect(reports: PersonasRow[]): PersonaPoint[] {
       hue: bonPersonaHue(persona),
       isUserRated: (report.userNotes?.ratings.length ?? 0) > 0,
       persona,
-      investigatedAt: investigation.runAt ?? 0,
+      investigatedAt: investigation.results.runAt,
     });
   }
 

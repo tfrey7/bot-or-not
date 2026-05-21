@@ -223,7 +223,7 @@ function maybeAutoInvestigate(username: string, report: Report | null): void {
     return;
   }
 
-  if (investigation?.verdict) {
+  if (investigation?.status === "done") {
     return;
   }
 

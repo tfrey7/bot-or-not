@@ -7,7 +7,12 @@ export async function bonMigrateCrankToZealot(): Promise<void> {
     let changed = false;
 
     for (const [username, report] of Object.entries(reports)) {
-      const persona = report.investigation?.persona;
+      const investigation = report.investigation;
+      if (investigation?.status !== "done") {
+        continue;
+      }
+
+      const persona = investigation.results.persona;
       if (!persona) {
         continue;
       }
@@ -30,11 +35,14 @@ export async function bonMigrateCrankToZealot(): Promise<void> {
       reports[username] = {
         ...report,
         investigation: {
-          ...report.investigation!,
-          persona: {
-            ...persona,
-            label: hasCrankLabel ? "zealot" : persona.label,
-            archetypes: nextArchetypes as typeof persona.archetypes,
+          ...investigation,
+          results: {
+            ...investigation.results,
+            persona: {
+              ...persona,
+              label: hasCrankLabel ? "zealot" : persona.label,
+              archetypes: nextArchetypes as typeof persona.archetypes,
+            },
           },
         },
       };

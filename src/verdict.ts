@@ -112,28 +112,28 @@ export function bonComputeVerdict(
 }
 
 // Returns a shallow copy of `investigation` with verdict/confidence overridden
-// from the factor math. Leaves status: "running" / "error" untouched.
+// from the factor math. Only "done" investigations get re-derived — other
+// statuses don't have a `results` to recompute.
 export function bonNormalizeInvestigation<
   T extends Investigation | null | undefined,
 >(investigation: T, inRing = false): T {
-  if (!investigation) {
+  if (!investigation || investigation.status !== "done") {
     return investigation;
   }
 
-  if (investigation.status === "running" || investigation.status === "error") {
+  if (investigation.results.factors.length === 0) {
     return investigation;
   }
 
-  if (investigation.factors.length === 0) {
-    return investigation;
-  }
-
-  const derived = bonComputeVerdict(investigation.factors, inRing);
+  const derived = bonComputeVerdict(investigation.results.factors, inRing);
   return {
     ...investigation,
-    verdict: derived.verdict,
-    confidence: derived.confidence,
-    botProbability: derived.botProbability,
+    results: {
+      ...investigation.results,
+      verdict: derived.verdict,
+      confidence: derived.confidence,
+      botProbability: derived.botProbability,
+    },
   };
 }
 

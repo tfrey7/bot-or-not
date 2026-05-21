@@ -26,7 +26,10 @@ export function bonReportsGoogleDossierSection(
     return null;
   }
 
-  const lastRunAt = report.investigation?.runAt ?? 0;
+  const lastRunAt =
+    report.investigation?.status === "done"
+      ? report.investigation.results.runAt
+      : 0;
   const freshPosts = bonReportsGoogleDossierCountFresh(harvest, lastRunAt);
 
   const wrap = document.createElement("div");

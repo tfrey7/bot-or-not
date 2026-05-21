@@ -3,10 +3,15 @@
 // file wraps it with the storage I/O that persists per-run state into the
 // matching Report record.
 
-import type { ActivityData, Investigation, Report } from "../../types.ts";
+import type {
+  ActivityData,
+  Investigation,
+  InvestigationResults,
+  RedditMetrics,
+  Report,
+} from "../../types.ts";
 import {
   bonFindReportKey,
-  bonFreshInvestigation,
   bonNormalizeReport,
   bonReadReports,
   bonSnapshotRun,
@@ -66,12 +71,15 @@ export async function bonInvestigationSweepOrphans(): Promise<void> {
           reports[username] = {
             ...report,
             investigation: {
-              ...investigation,
               status: "queued",
               queuedAt: now,
               startedAt: null,
-              error: null,
               durationMs,
+              error: null,
+              attempts: investigation.attempts,
+              runs: investigation.runs,
+              redditMetrics: investigation.redditMetrics,
+              results: null,
             },
           };
           hasQueued = true;
@@ -79,11 +87,15 @@ export async function bonInvestigationSweepOrphans(): Promise<void> {
           reports[username] = {
             ...report,
             investigation: {
-              ...investigation,
               status: "error",
+              queuedAt: investigation.queuedAt,
               startedAt: null,
-              error: "interrupted before completion",
               durationMs,
+              error: "interrupted before completion",
+              attempts: investigation.attempts,
+              runs: investigation.runs,
+              redditMetrics: investigation.redditMetrics,
+              results: null,
             },
           };
         }
@@ -140,8 +152,6 @@ export async function bonInvestigationStart(
     await setInvestigationState(username, {
       status: "queued",
       queuedAt: Date.now(),
-      startedAt: null,
-      error: null,
       attempts: 0,
     });
 
@@ -172,9 +182,7 @@ async function runInvestigation(
 
   await setInvestigationState(username, {
     status: "running",
-    queuedAt: null,
     startedAt,
-    error: null,
     attempts,
   });
 
@@ -209,21 +217,34 @@ async function runInvestigation(
       `[Bot or Not] timing: investigation ${username} ${durationMs}ms`
     );
 
-    const sharedFields = {
-      postsFetched: inputs.raw.submitted.data?.children?.length ?? 0,
-      commentsFetched: inputs.raw.comments.data?.children?.length ?? 0,
+    const postsFetched = inputs.raw.submitted.data?.children?.length ?? 0;
+    const commentsFetched = inputs.raw.comments.data?.children?.length ?? 0;
+
+    const results: InvestigationResults = {
+      runAt: analysis.runAt,
+      durationMs,
+      verdict: analysis.verdict,
+      confidence: analysis.confidence,
+      botProbability: analysis.botProbability,
+      factors: analysis.factors,
+      persona: analysis.persona,
+      region: analysis.region,
+      summary: analysis.summary,
+      model: analysis.model,
+      usage: analysis.usage,
+      costUsd: analysis.costUsd,
+      webSearchCount: analysis.webSearchCount,
+      postsFetched,
+      commentsFetched,
       accountCreatedAt: inputs.summary.account.created_at,
       accountAgeDays: inputs.summary.account.age_days,
-      redditMetrics: inputs.redditMetrics,
     };
 
     await setInvestigationState(username, {
       status: "done",
-      startedAt: null,
-      error: null,
       durationMs,
-      ...analysis,
-      ...sharedFields,
+      results,
+      redditMetrics: inputs.redditMetrics,
     });
 
     if (inputs.activityData) {
@@ -237,8 +258,8 @@ async function runInvestigation(
     await setProfileHidden(
       username,
       bonIsProfileHidden({
-        postsFetched: sharedFields.postsFetched,
-        commentsFetched: sharedFields.commentsFetched,
+        postsFetched,
+        commentsFetched,
         totalKarma: inputs.summary.account.total_karma,
       })
     );
@@ -262,8 +283,6 @@ async function runInvestigation(
       await setInvestigationState(username, {
         status: "queued",
         queuedAt: Date.now(),
-        startedAt: null,
-        error: null,
         durationMs,
         ...redditMetricsPatch,
       });
@@ -275,7 +294,6 @@ async function runInvestigation(
 
       await setInvestigationState(username, {
         status: "error",
-        startedAt: null,
         error: message,
         durationMs,
         ...redditMetricsPatch,
@@ -413,8 +431,9 @@ export async function bonInvestigationMaybeAuto(
     }
 
     if (
-      investigation?.runAt &&
-      Date.now() - investigation.runAt < BON_AUTO_INVESTIGATE_FRESHNESS_MS
+      investigation?.status === "done" &&
+      Date.now() - investigation.results.runAt <
+        BON_AUTO_INVESTIGATE_FRESHNESS_MS
     ) {
       return;
     }
@@ -425,9 +444,38 @@ export async function bonInvestigationMaybeAuto(
   }
 }
 
+// Transition descriptors for setInvestigationState. Each variant lists the
+// fields the caller is responsible for; the helper layers them onto the
+// prev investigation's lifecycle fields (attempts/runs etc).
+type InvestigationTransition =
+  | {
+      status: "queued";
+      queuedAt: number;
+      durationMs?: number | null;
+      attempts?: number;
+      redditMetrics?: RedditMetrics | null;
+    }
+  | {
+      status: "running";
+      startedAt: number;
+      attempts: number;
+    }
+  | {
+      status: "done";
+      durationMs: number;
+      results: InvestigationResults;
+      redditMetrics: RedditMetrics | null;
+    }
+  | {
+      status: "error";
+      error: string;
+      durationMs: number | null;
+      redditMetrics?: RedditMetrics | null;
+    };
+
 async function setInvestigationState(
   username: string,
-  patch: Partial<Investigation> & { status: Investigation["status"] }
+  transition: InvestigationTransition
 ): Promise<void> {
   const reports = await bonReadReports();
 
@@ -436,30 +484,83 @@ async function setInvestigationState(
   const key = bonFindReportKey(reports, username) ?? username;
   const existing = reports[key] ?? bonNormalizeReport(undefined);
   const prevInvestigation = existing.investigation;
-  const nextInvestigation: Investigation = {
-    ...bonFreshInvestigation(patch.status),
-    ...(prevInvestigation ?? {}),
-    ...patch,
-  };
+
+  const prevAttempts = prevInvestigation?.attempts ?? 0;
+  const prevRuns = prevInvestigation?.runs ?? [];
+  const prevRedditMetrics = prevInvestigation?.redditMetrics ?? null;
+
+  let nextInvestigation: Investigation;
+  switch (transition.status) {
+    case "queued":
+      nextInvestigation = {
+        status: "queued",
+        queuedAt: transition.queuedAt,
+        startedAt: null,
+        durationMs: transition.durationMs ?? null,
+        error: null,
+        attempts: transition.attempts ?? prevAttempts,
+        runs: prevRuns,
+        redditMetrics: transition.redditMetrics ?? prevRedditMetrics,
+        results: null,
+      };
+      break;
+    case "running":
+      nextInvestigation = {
+        status: "running",
+        queuedAt: null,
+        startedAt: transition.startedAt,
+        durationMs: prevInvestigation?.durationMs ?? null,
+        error: null,
+        attempts: transition.attempts,
+        runs: prevRuns,
+        redditMetrics: prevRedditMetrics,
+        results: null,
+      };
+      break;
+    case "done":
+      nextInvestigation = {
+        status: "done",
+        queuedAt: prevInvestigation?.queuedAt ?? null,
+        startedAt: null,
+        durationMs: transition.durationMs,
+        error: null,
+        attempts: prevAttempts,
+        runs: prevRuns,
+        redditMetrics: transition.redditMetrics,
+        results: transition.results,
+      };
+      break;
+    case "error":
+      nextInvestigation = {
+        status: "error",
+        queuedAt: prevInvestigation?.queuedAt ?? null,
+        startedAt: null,
+        durationMs: transition.durationMs,
+        error: transition.error,
+        attempts: prevAttempts,
+        runs: prevRuns,
+        redditMetrics: transition.redditMetrics ?? prevRedditMetrics,
+        results: null,
+      };
+      break;
+  }
 
   // Append a snapshot to runs[] whenever a run terminates. Older records have
   // only the single most-recent investigation stored — seed runs[] from those
   // fields on the first re-run so historical timing/cost data survives.
   const completing =
     prevInvestigation?.status === "running" &&
-    (patch.status === "done" || patch.status === "error");
+    (transition.status === "done" || transition.status === "error");
 
   if (completing && prevInvestigation) {
     const seeded =
-      prevInvestigation.runs.length === 0 &&
-      prevInvestigation.runAt !== null &&
-      prevInvestigation.durationMs !== null
+      prevRuns.length === 0 && prevInvestigation.results !== null
         ? [bonSnapshotRun(prevInvestigation, "done")]
-        : prevInvestigation.runs;
+        : prevRuns;
 
     nextInvestigation.runs = [
       ...seeded,
-      bonSnapshotRun(nextInvestigation, patch.status),
+      bonSnapshotRun(nextInvestigation, transition.status),
     ];
   }
 

@@ -60,9 +60,11 @@ function buildCard(
     !!report?.ringId
   );
 
-  if (!investigation) {
+  if (investigation?.status !== "done") {
     return null;
   }
+
+  const { persona, summary, factors } = investigation.results;
 
   const card = document.createElement("div");
   card.className = "bon-personas-hover-card";
@@ -72,20 +74,15 @@ function buildCard(
   header.textContent = `u/${username}`;
   card.appendChild(header);
 
-  const personaBlock = investigation.persona?.label
-    ? bonReportsPersonaBlock(investigation.persona, {
-        summary: investigation.summary,
-      })
+  const personaBlock = persona?.label
+    ? bonReportsPersonaBlock(persona, { summary })
     : null;
 
   if (personaBlock) {
     card.appendChild(personaBlock);
   }
 
-  const reasonsList =
-    investigation.factors.length > 0
-      ? bonTopReasonsList(investigation.factors, 2)
-      : null;
+  const reasonsList = factors.length > 0 ? bonTopReasonsList(factors, 2) : null;
 
   if (reasonsList) {
     card.appendChild(reasonsList);

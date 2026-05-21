@@ -83,7 +83,10 @@ export function bonReportsRow(
     tagsRow.appendChild(verdict);
   }
 
-  const persona = bonReportsPersonaTag(investigation?.persona);
+  const persona = bonReportsPersonaTag(
+    investigation?.status === "done" ? investigation.results.persona : null
+  );
+
   if (persona) {
     tagsRow.appendChild(persona);
   }

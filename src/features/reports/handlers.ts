@@ -100,8 +100,9 @@ function summarizeUserTag(username: string, report: Report): UserTag | null {
     report.investigation,
     !!report.ringId
   );
-  const verdict =
-    investigation?.status === "done" ? investigation.verdict : null;
+  const results =
+    investigation?.status === "done" ? investigation.results : null;
+  const verdict = results?.verdict ?? null;
   const investigationStatus = investigation?.status ?? null;
 
   const hasSignal =
@@ -120,7 +121,7 @@ function summarizeUserTag(username: string, report: Report): UserTag | null {
     username,
     count: report.count,
     verdict,
-    confidence: investigation?.confidence ?? null,
+    confidence: results?.confidence ?? null,
     investigationStatus,
     investigationStartedAt: investigation?.startedAt ?? null,
     botBouncerStatus: report.botBouncerStatus,

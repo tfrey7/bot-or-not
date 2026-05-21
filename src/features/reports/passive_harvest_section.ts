@@ -22,7 +22,10 @@ export function bonReportsPassiveHarvestSection(
     return null;
   }
 
-  const lastRunAt = report.investigation?.runAt ?? 0;
+  const lastRunAt =
+    report.investigation?.status === "done"
+      ? report.investigation.results.runAt
+      : 0;
   const freshItems = bonReportsPassiveHarvestCountFresh(harvest, lastRunAt);
 
   const wrap = document.createElement("div");

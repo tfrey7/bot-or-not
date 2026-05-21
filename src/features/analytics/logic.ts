@@ -5,7 +5,6 @@
 
 import type {
   ClaudeUsage,
-  Investigation,
   RedditEndpoint,
   RedditFetchMetric,
   RedditMetrics,
@@ -13,6 +12,7 @@ import type {
   RunSnapshot,
   Verdict,
 } from "../../types.ts";
+import { bonSnapshotRun } from "../../utils/history.ts";
 import {
   bonEstimateCostUsd,
   bonLookupPricing,
@@ -109,9 +109,6 @@ export interface AnalyticsRedditSummary {
   endpoints: AnalyticsEndpointTotals[];
 }
 
-// Anything with the per-run fields buildAnalyticsEntry looks at.
-type RunLike = RunSnapshot | Investigation;
-
 export function bonAnalyticsCollect(
   reports: Array<Report & { username: string }> | null | undefined
 ): AnalyticsEntry[] {
@@ -126,9 +123,9 @@ export function bonAnalyticsCollect(
 
     // Newer records keep a runs[] history; emit one analytics entry per
     // historical run so re-investigations don't collapse into a single row.
-    if (Array.isArray(investigation.runs) && investigation.runs.length > 0) {
+    if (investigation.runs.length > 0) {
       for (const run of investigation.runs) {
-        entries.push(buildAnalyticsEntry(report.username, run));
+        entries.push(buildAnalyticsEntry(report.username, run, null));
       }
 
       // If a run is currently in flight, runs[] doesn't include it yet —
@@ -136,15 +133,28 @@ export function bonAnalyticsCollect(
       continue;
     }
 
-    // Legacy record (single most-recent run only). Treat the root fields as
-    // one run.
-    entries.push(buildAnalyticsEntry(report.username, investigation));
+    // Legacy record (no runs[] history yet). If the current investigation
+    // has produced a result, materialize it as a one-off snapshot so it
+    // still shows up in analytics.
+    if (investigation.status === "done") {
+      entries.push(
+        buildAnalyticsEntry(
+          report.username,
+          bonSnapshotRun(investigation, "done"),
+          investigation.results.summary
+        )
+      );
+    }
   }
 
   return entries;
 }
 
-function buildAnalyticsEntry(username: string, run: RunLike): AnalyticsEntry {
+function buildAnalyticsEntry(
+  username: string,
+  run: RunSnapshot,
+  summary: string | null
+): AnalyticsEntry {
   const calls: AnalyticsCall[] = [];
 
   if (run.usage) {
@@ -161,29 +171,22 @@ function buildAnalyticsEntry(username: string, run: RunLike): AnalyticsEntry {
   }
 
   const totalCost = calls.reduce((sum, call) => sum + (call.costUsd || 0), 0);
-  const personaLabel =
-    "persona" in run && run.persona && typeof run.persona === "object"
-      ? (run.persona as { label?: string }).label || null
-      : null;
 
   return {
     username,
-    status: (run.status || "done") as AnalyticsEntry["status"],
+    status: run.status as AnalyticsEntry["status"],
     runAt: run.runAt || null,
-    durationMs: typeof run.durationMs === "number" ? run.durationMs : null,
-    verdict: (run.verdict as Verdict | undefined) || null,
-    confidence: typeof run.confidence === "number" ? run.confidence : null,
-    botProbability:
-      typeof run.botProbability === "number" ? run.botProbability : null,
-    persona: personaLabel,
-    summary:
-      "summary" in run && typeof run.summary === "string" ? run.summary : "",
-    postsFetched: run.postsFetched || 0,
-    commentsFetched: run.commentsFetched || 0,
+    durationMs: run.durationMs,
+    verdict: run.verdict as Verdict | null,
+    confidence: run.confidence,
+    botProbability: run.botProbability,
+    persona: null,
+    summary: summary ?? "",
+    postsFetched: run.postsFetched,
+    commentsFetched: run.commentsFetched,
     calls,
     totalCost,
-    redditMetrics:
-      "redditMetrics" in run && run.redditMetrics ? run.redditMetrics : null,
+    redditMetrics: run.redditMetrics,
   };
 }
 

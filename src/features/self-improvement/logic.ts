@@ -40,7 +40,11 @@ export function bonSelfImprovementAgreement(
   annotated: AnnotatedReport
 ): AgreementState {
   const yourPicks = annotated.userNotes.ratings;
-  const aiPick = annotated.report.investigation?.persona?.label ?? null;
+  const investigation = annotated.report.investigation;
+  const aiPick =
+    investigation?.status === "done"
+      ? (investigation.results.persona?.label ?? null)
+      : null;
 
   if (yourPicks.length === 0) {
     return "no-rating";

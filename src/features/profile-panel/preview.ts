@@ -27,7 +27,6 @@ export function bonPanelBuildPreview(
     report?.investigation,
     !!report?.ringId
   );
-  const hasFactors = (investigation?.factors.length ?? 0) > 0;
 
   if (investigation?.status === "queued") {
     const preview = document.createElement("div");
@@ -55,23 +54,25 @@ export function bonPanelBuildPreview(
     return preview;
   }
 
-  if (!investigation?.summary && !hasFactors) {
+  if (investigation?.status !== "done") {
+    return null;
+  }
+
+  const { summary, persona, factors } = investigation.results;
+  const hasFactors = factors.length > 0;
+
+  if (!summary && !hasFactors) {
     return null;
   }
 
   const preview = document.createElement("div");
   preview.className = "bon-profile-panel__preview";
 
-  const personaBlock = investigation?.persona?.label
-    ? bonPanelBuildPersonaStrip(investigation.persona, {
-        summary: investigation.summary,
-      })
+  const personaBlock = persona?.label
+    ? bonPanelBuildPersonaStrip(persona, { summary })
     : null;
 
-  const reasonsList =
-    investigation && hasFactors
-      ? bonTopReasonsList(investigation.factors)
-      : null;
+  const reasonsList = hasFactors ? bonTopReasonsList(factors) : null;
 
   if (personaBlock && reasonsList) {
     const row = document.createElement("div");
@@ -87,11 +88,11 @@ export function bonPanelBuildPreview(
     return preview;
   }
 
-  if (investigation?.summary) {
-    const summary = document.createElement("p");
-    summary.className = "bon-profile-panel__summary";
-    summary.appendChild(bonLinkifyReddit(investigation.summary));
-    preview.appendChild(summary);
+  if (summary) {
+    const summaryEl = document.createElement("p");
+    summaryEl.className = "bon-profile-panel__summary";
+    summaryEl.appendChild(bonLinkifyReddit(summary));
+    preview.appendChild(summaryEl);
   }
 
   if (reasonsList) {

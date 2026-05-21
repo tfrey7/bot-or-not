@@ -132,15 +132,13 @@ export function bonDiagnosticsSummarize(
         });
       } else if (investigation.status === "done") {
         summary.investigationDone += 1;
-        if (investigation.verdict) {
-          summary.verdictCounts[investigation.verdict] += 1;
-        }
+        summary.verdictCounts[investigation.results.verdict] += 1;
       } else if (investigation.status === "error") {
         summary.investigationError += 1;
         errors.push({
           username,
           message: investigation.error || "unknown error",
-          runAt: investigation.runAt,
+          runAt: null,
         });
       }
 

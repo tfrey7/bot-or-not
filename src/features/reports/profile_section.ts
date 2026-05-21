@@ -146,8 +146,8 @@ export function bonReportsProfileSection(
   }
 
   if (investigation && investigation.status === "done") {
-    const posts = investigation.postsFetched || 0;
-    const comments = investigation.commentsFetched || 0;
+    const posts = investigation.results.postsFetched;
+    const comments = investigation.results.commentsFetched;
     const contributions = posts + comments;
     if (contributions > 0) {
       const item = document.createElement("span");

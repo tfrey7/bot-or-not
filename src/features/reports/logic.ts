@@ -35,8 +35,8 @@ export function bonReportsCompareActive(a: ReportRow, b: ReportRow): number {
   }
 
   if (aStatus === "running") {
-    const aTime = a.investigation?.startedAt ?? a.investigation?.runAt ?? 0;
-    const bTime = b.investigation?.startedAt ?? b.investigation?.runAt ?? 0;
+    const aTime = a.investigation?.startedAt ?? 0;
+    const bTime = b.investigation?.startedAt ?? 0;
     return bTime - aTime;
   }
 
@@ -157,7 +157,16 @@ export function bonReportsHasStructuralChange(
       return true;
     }
 
-    if (prevReport.investigation?.verdict !== report.investigation?.verdict) {
+    const prevVerdict =
+      prevReport.investigation?.status === "done"
+        ? prevReport.investigation.results.verdict
+        : null;
+    const nextVerdict =
+      report.investigation?.status === "done"
+        ? report.investigation.results.verdict
+        : null;
+
+    if (prevVerdict !== nextVerdict) {
       return true;
     }
 
@@ -276,7 +285,11 @@ export function bonReportsComputeRegionForReport(
   const timezone = bonReportsInferTimezoneFromTimestamps(timestamps);
   const deterministic = bonInferRegion(activityData, timezone);
 
-  const aiRegion = report.investigation?.region;
+  const aiRegion =
+    report.investigation?.status === "done"
+      ? report.investigation.results.region
+      : null;
+
   if (aiRegion?.code) {
     return {
       kind: "ai",
@@ -494,7 +507,11 @@ export function bonReportsSortValue(
   }
 
   if (key === "verdict") {
-    const verdict = report.investigation?.verdict;
+    const verdict =
+      report.investigation?.status === "done"
+        ? report.investigation.results.verdict
+        : null;
+
     return verdict ? (BON_REPORTS_VERDICT_RANK[verdict] ?? 5) : 5;
   }
 
@@ -504,19 +521,22 @@ export function bonReportsSortValue(
       return 0;
     }
 
-    // For an in-flight re-investigation, runAt is still the *previous*
-    // completion's timestamp — prefer the active phase's timestamp so a
-    // freshly-kicked row floats to the top instead of staying anchored to
-    // its prior runAt.
+    // For an in-flight re-investigation, prefer the active phase's
+    // timestamp so a freshly-kicked row floats to the top instead of
+    // staying anchored to its prior runAt.
     if (investigation.status === "running") {
-      return investigation.startedAt ?? investigation.runAt ?? 0;
+      return investigation.startedAt ?? 0;
     }
 
     if (investigation.status === "queued") {
-      return investigation.queuedAt ?? investigation.runAt ?? 0;
+      return investigation.queuedAt ?? 0;
     }
 
-    return investigation.runAt ?? 0;
+    if (investigation.status === "done") {
+      return investigation.results.runAt;
+    }
+
+    return 0;
   }
 
   if (key === "region") {

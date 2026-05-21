@@ -57,12 +57,14 @@ export function bonAiCommandBuildSnapshot(
 ): AiCommandSnapshotEntry[] {
   return Object.entries(reports).map(([username, report]) => {
     const investigation = report.investigation;
-    const factorScores = investigation
-      ? bonSnapshotFactorScores(investigation.factors)
+    const results =
+      investigation?.status === "done" ? investigation.results : null;
+    const factorScores = results
+      ? bonSnapshotFactorScores(results.factors)
       : null;
 
-    const archetypes = investigation?.persona?.archetypes
-      ? bonSnapshotArchetypeScores(investigation.persona.archetypes)
+    const archetypes = results?.persona?.archetypes
+      ? bonSnapshotArchetypeScores(results.persona.archetypes)
       : null;
 
     return {
@@ -72,10 +74,10 @@ export function bonAiCommandBuildSnapshot(
       userStatus: report.userStatus ?? null,
 
       investigationStatus: investigation?.status ?? null,
-      verdict: investigation?.verdict ?? null,
-      botProbability: bonRound2(investigation?.botProbability ?? null),
-      confidence: bonRound2(investigation?.confidence ?? null),
-      persona: investigation?.persona?.label ?? null,
+      verdict: results?.verdict ?? null,
+      botProbability: bonRound2(results?.botProbability ?? null),
+      confidence: bonRound2(results?.confidence ?? null),
+      persona: results?.persona?.label ?? null,
       archetypes,
       factorScores,
 
@@ -84,7 +86,7 @@ export function bonAiCommandBuildSnapshot(
       ratings: report.userNotes?.ratings ? [...report.userNotes.ratings] : [],
 
       totalKarma: report.totalKarma,
-      accountAgeDays: investigation?.accountAgeDays ?? null,
+      accountAgeDays: results?.accountAgeDays ?? null,
       botBouncerStatus: report.botBouncerStatus,
       profileHidden: report.profileHidden,
     };
@@ -189,6 +191,8 @@ export function bonAiCommandBuildUserDetails(
   }
 
   const investigation = report.investigation;
+  const results =
+    investigation?.status === "done" ? investigation.results : null;
 
   return {
     username,
@@ -202,27 +206,27 @@ export function bonAiCommandBuildUserDetails(
     investigation: investigation
       ? {
           status: investigation.status,
-          verdict: investigation.verdict ?? null,
-          botProbability: investigation.botProbability ?? null,
-          confidence: investigation.confidence ?? null,
-          summary: investigation.summary ?? "",
-          persona: investigation.persona
+          verdict: results?.verdict ?? null,
+          botProbability: results?.botProbability ?? null,
+          confidence: results?.confidence ?? null,
+          summary: results?.summary ?? "",
+          persona: results?.persona
             ? {
-                label: investigation.persona.label,
-                reasoning: investigation.persona.reasoning ?? "",
+                label: results.persona.label,
+                reasoning: results.persona.reasoning ?? "",
               }
             : null,
-          region: investigation.region
+          region: results?.region
             ? {
-                code: investigation.region.code ?? null,
-                reasoning: investigation.region.reasoning ?? "",
+                code: results.region.code ?? null,
+                reasoning: results.region.reasoning ?? "",
               }
             : null,
-          factors: investigation.factors.map((factor) => ({
+          factors: (results?.factors ?? []).map((factor) => ({
             key: factor.key,
             score: factor.score,
             confidence: factor.confidence,
-            reasoning: factor.reasoning ?? "",
+            reasoning: factor.reasoning,
             evidence: bonNormalizeEvidence(factor),
           })),
         }

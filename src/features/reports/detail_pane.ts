@@ -71,7 +71,8 @@ export function bonReportsDetailPane(
   // (Google SERP + passive DOM scrape). The button surfaces a single
   // number — operator-facing language stays source-agnostic since the
   // re-investigation incorporates every new item regardless of origin.
-  const lastRunAt = investigation?.runAt ?? 0;
+  const lastRunAt =
+    investigation?.status === "done" ? investigation.results.runAt : 0;
   const freshHarvestCount =
     bonReportsGoogleDossierCountFresh(report.googleHarvest, lastRunAt) +
     bonReportsPassiveHarvestCountFresh(report.passiveHarvest, lastRunAt);
