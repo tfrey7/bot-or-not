@@ -7,6 +7,7 @@
 
 import type { ClaudeUsage, ProfileSummary } from "../../types.ts";
 import { bonEstimateCostUsd } from "../../utils/cost.ts";
+import { bonSerializeProfileForClaude } from "./summarize.ts";
 
 const BON_CLAUDE_MODEL = "claude-sonnet-4-6";
 const BON_CLAUDE_API_URL = "https://api.anthropic.com/v1/messages";
@@ -39,9 +40,14 @@ interface ClaudeResponse {
 // prompt's `avatar_style` factor can score it.
 // `model` overrides the default model id for experimentation (see
 // scripts/investigate.ts --model flag).
+// `serialize` overrides the user-message serializer — by default we emit
+// the compact columnar shape via bonSerializeProfileForClaude; the
+// cost-experiment harness passes its own verbose serializer to A/B the
+// two formats against the same summary.
 export interface ClaudeCallOptions {
   avatarUrl?: string | null;
   model?: string;
+  serialize?: (summary: ProfileSummary) => string;
 }
 
 export async function bonCallClaude(
@@ -62,11 +68,12 @@ export async function bonCallClaude(
     });
   }
 
+  const serialize = options.serialize ?? bonSerializeProfileForClaude;
   userContent.push({
     type: "text",
     text:
       "Analyze the following Reddit account and return ONLY the JSON verdict object as specified in your instructions.\n\n```json\n" +
-      JSON.stringify(profileSummary) +
+      serialize(profileSummary) +
       "\n```",
   });
 

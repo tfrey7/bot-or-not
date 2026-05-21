@@ -1,19 +1,25 @@
 // One-off A/B harness: run multiple variants of the investigation
 // pipeline against ONE user, fetch Reddit data once, then call Claude N
-// times across {model, item-count, timestamp-format} variants. Prints a
-// comparison table of verdict + factor scores + tokens + cost.
+// times across {model, item-count, timestamp-format, serializer} variants.
+// Prints a comparison table of verdict + factor scores + tokens + cost.
 //
 // Usage: npm exec tsx scripts/cost-experiment.ts -- [username]
 //
 // Reads CLAUDE_API_KEY from env (source .env beforehand).
 //
 // Variants:
-//   baseline    sonnet-4-6, 1000 items, ISO timestamps
-//   exp1        sonnet-4-6,  300 items, ISO timestamps
-//   exp3-haiku  haiku-4-5,  1000 items, ISO   (cascade triage step)
-//   exp3-cascade  if haiku's botProb is in [0.3, 0.7], also call sonnet
-//   exp4        sonnet-4-6, 1000 items, epoch-seconds timestamps
-//   combo       cascade + 300 + epoch
+//   baseline       sonnet-4-6, 1000 items, ISO timestamps, verbose JSON
+//   exp1           sonnet-4-6,  300 items, ISO timestamps, verbose JSON
+//   exp3-haiku     haiku-4-5,  1000 items, ISO,            verbose JSON  (cascade triage step)
+//   exp3-cascade   if haiku's botProb is in [0.3, 0.7], also call sonnet
+//   exp4           sonnet-4-6, 1000 items, epoch-seconds,  verbose JSON
+//   combo          cascade + 300 + epoch + verbose
+//   exp5-compact   sonnet-4-6,  300 items, columnar JSON (epoch-minutes, sub-dedup, drop-nulls)
+//   combo-compact  cascade + 300 + columnar JSON
+//
+// "Verbose JSON" = the original per-item-object shape used pre-compaction.
+// "Columnar JSON" = the new compact shape with subs[]/posts.{cols,rows}/
+//   comments.{cols,rows}, trailing-null-dropped rows, epoch-minutes timestamps.
 //
 // Sequential runs (not parallel) so prompt-cache hits land predictably.
 // The system prompt is `cache_control: ephemeral` in api.ts, so a second
@@ -37,6 +43,7 @@ import {
 } from "../src/features/investigation/fetch.ts";
 import {
   bonExtractSnoovatarUrl,
+  bonSerializeProfileForClaude,
   bonSummarizeProfile,
 } from "../src/features/investigation/summarize.ts";
 import { bonCallClaude } from "../src/features/investigation/api.ts";
@@ -91,6 +98,16 @@ function withLimit(summary: ProfileSummary, n: number): ProfileSummary {
   return out;
 }
 
+// Serializer that emits the legacy per-item-object JSON shape (pre-compact).
+// This is what production used to send before the columnar refactor. We
+// pass it explicitly via ClaudeCallOptions for the baseline / exp1-4 / combo
+// variants so they remain apples-to-apples comparisons against the original
+// production state. Variants tagged "compact" omit this and let
+// bonCallClaude default to bonSerializeProfileForClaude.
+function verboseSerialize(summary: ProfileSummary): string {
+  return JSON.stringify(summary);
+}
+
 // Rewrite all ISO created_at / checked_at values to epoch-second numbers,
 // in place on a deep copy. Walks recursively; touches only matching keys.
 function epochify(summary: ProfileSummary): ProfileSummary {
@@ -134,16 +151,21 @@ async function runOnce(
   name: string,
   summary: ProfileSummary,
   model: string,
-  avatarUrl: string | null
+  avatarUrl: string | null,
+  serialize: (s: ProfileSummary) => string = bonSerializeProfileForClaude
 ): Promise<VariantResult> {
   const t0 = Date.now();
   const claude = await bonCallClaude(apiKey!, PROMPT, summary, `exp:${name}`, {
     avatarUrl,
     model,
+    serialize,
   });
   const durationMs = Date.now() - t0;
 
-  const extracted = bonExtractJson(claude.rawText) as Record<string, unknown> | null;
+  const extracted = bonExtractJson(claude.rawText) as Record<
+    string,
+    unknown
+  > | null;
   const factors = Array.isArray(extracted?.factors)
     ? (extracted!.factors as Factor[])
     : [];
@@ -181,7 +203,8 @@ async function runCascade(
   name: string,
   summary: ProfileSummary,
   avatarUrl: string | null,
-  haikuPrior: VariantResult | null
+  haikuPrior: VariantResult | null,
+  serialize: (s: ProfileSummary) => string = bonSerializeProfileForClaude
 ): Promise<VariantResult> {
   const haiku =
     haikuPrior ??
@@ -189,7 +212,8 @@ async function runCascade(
       `${name}:haiku`,
       summary,
       "claude-haiku-4-5",
-      avatarUrl
+      avatarUrl,
+      serialize
     ));
   if (haiku.botProb < CASCADE_LOW || haiku.botProb > CASCADE_HIGH) {
     return { ...haiku, name: `${name} (haiku-only)` };
@@ -198,7 +222,8 @@ async function runCascade(
     `${name}:sonnet`,
     summary,
     "claude-sonnet-4-6",
-    avatarUrl
+    avatarUrl,
+    serialize
   );
   return {
     ...sonnet,
@@ -270,7 +295,10 @@ function printFactorDeltas(results: VariantResult[]): void {
   console.log("=== Factor-score deltas vs baseline (≥0.10 highlighted) ===");
   console.log("");
   const factorKeys = base.factors.map((f) => f.key);
-  const head = [pad("factor", 28), ...results.map((r) => lpad(r.name.slice(0, 11), 12))].join(" ");
+  const head = [
+    pad("factor", 28),
+    ...results.map((r) => lpad(r.name.slice(0, 11), 12)),
+  ].join(" ");
   console.log(head);
   console.log("-".repeat(head.length));
   for (const key of factorKeys) {
@@ -326,60 +354,96 @@ async function main(): Promise<void> {
 
   const results: VariantResult[] = [];
 
-  // 1. baseline
-  console.log(">>> running: baseline (sonnet, 1000, ISO)");
+  // 1. baseline — verbose JSON, what production used to send
+  console.log(">>> running: baseline (sonnet, 1000, ISO, verbose)");
   results.push(
     await runOnce(
-      "baseline (sonnet, 1000, ISO)",
+      "baseline (sonnet, 1000, ISO, verbose)",
       baseSummary,
       "claude-sonnet-4-6",
-      avatarUrl
+      avatarUrl,
+      verboseSerialize
     )
   );
 
   // 2. exp1 — limit 300
-  console.log(">>> running: exp1 (sonnet, 300, ISO)");
+  console.log(">>> running: exp1 (sonnet, 300, ISO, verbose)");
   results.push(
     await runOnce(
-      "exp1 (sonnet, 300, ISO)",
+      "exp1 (sonnet, 300, ISO, verbose)",
+      sum300,
+      "claude-sonnet-4-6",
+      avatarUrl,
+      verboseSerialize
+    )
+  );
+
+  // 3. exp3 — cascade with full payload. Run haiku once, then maybe sonnet.
+  console.log(
+    ">>> running: exp3 (cascade, 1000, ISO, verbose) — haiku triage first"
+  );
+  const haikuFull = await runOnce(
+    "exp3-triage (haiku, 1000, verbose)",
+    baseSummary,
+    "claude-haiku-4-5",
+    avatarUrl,
+    verboseSerialize
+  );
+  results.push(haikuFull);
+  const cascadeFull = await runCascade(
+    "exp3-cascade (verbose)",
+    baseSummary,
+    avatarUrl,
+    haikuFull,
+    verboseSerialize
+  );
+  results.push(cascadeFull);
+
+  // 4. exp4 — epoch timestamps
+  console.log(">>> running: exp4 (sonnet, 1000, epoch, verbose)");
+  results.push(
+    await runOnce(
+      "exp4 (sonnet, 1000, epoch, verbose)",
+      sumEpoch,
+      "claude-sonnet-4-6",
+      avatarUrl,
+      verboseSerialize
+    )
+  );
+
+  // 5. combo — cascade + 300 + epoch
+  console.log(">>> running: combo (cascade, 300, epoch, verbose)");
+  const comboCascade = await runCascade(
+    "combo (cascade, 300, epoch, verbose)",
+    sumCombo,
+    avatarUrl,
+    null,
+    verboseSerialize
+  );
+  results.push(comboCascade);
+
+  // 6. exp5-compact — sonnet + 300 + columnar JSON (sub-dedup, drop-nulls,
+  //    epoch-minutes). No need to pre-epochify the summary because the
+  //    compact serializer handles its own timestamp conversion.
+  console.log(">>> running: exp5-compact (sonnet, 300, columnar)");
+  results.push(
+    await runOnce(
+      "exp5-compact (sonnet, 300, columnar)",
       sum300,
       "claude-sonnet-4-6",
       avatarUrl
     )
   );
 
-  // 3. exp3 — cascade with full payload. Run haiku once, then maybe sonnet.
-  console.log(">>> running: exp3 (cascade, 1000, ISO) — haiku triage first");
-  const haikuFull = await runOnce(
-    "exp3-triage (haiku, 1000)",
-    baseSummary,
-    "claude-haiku-4-5",
-    avatarUrl
-  );
-  results.push(haikuFull);
-  const cascadeFull = await runCascade(
-    "exp3-cascade",
-    baseSummary,
+  // 7. combo-compact — cascade + 300 + columnar JSON
+  console.log(">>> running: combo-compact (cascade, 300, columnar)");
+  const comboCompact = await runCascade(
+    "combo-compact (cascade, 300, columnar)",
+    sum300,
     avatarUrl,
-    haikuFull
+    null
   );
-  results.push(cascadeFull);
-
-  // 4. exp4 — epoch timestamps
-  console.log(">>> running: exp4 (sonnet, 1000, epoch)");
-  results.push(
-    await runOnce(
-      "exp4 (sonnet, 1000, epoch)",
-      sumEpoch,
-      "claude-sonnet-4-6",
-      avatarUrl
-    )
-  );
-
-  // 5. combo — cascade + 300 + epoch
-  console.log(">>> running: combo (cascade, 300, epoch)");
-  const comboCascade = await runCascade("combo", sumCombo, avatarUrl, null);
-  results.push(comboCascade);
+  results.push(comboCompact);
 
   printSummary(results);
   printFactorDeltas(results);

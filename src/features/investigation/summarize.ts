@@ -139,6 +139,101 @@ export function bonSummarizeProfile(
   };
 }
 
+// Serializer for the Claude user message. Takes the canonical ProfileSummary
+// and emits a compact columnar JSON string — what Claude actually reads.
+// Three compressions vs the verbose shape:
+//   1. Subreddit dedup: distinct labels collected into `subs[]`; each item
+//      references its sub by integer index instead of repeating the string.
+//   2. Columnar rows: per-item objects collapsed into positional arrays
+//      driven by `posts.cols` and `comments.cols` headers. Saves ~70 chars
+//      of key overhead per item.
+//   3. Trailing nulls dropped: a row that ends with one or more null
+//      tail-fields just gets shorter. `rm` (removed_by_category) is null
+//      on ~90% of items, so this is the bulk of the win.
+// Per-item timestamps are also down-resolved to epoch *minutes* — hour /
+// minute / timezone-band signal is preserved; sub-minute burst detection
+// is the only loss, and the prompt's burst rule still fires at minute
+// granularity (multiple items inside the same minute).
+export function bonSerializeProfileForClaude(summary: ProfileSummary): string {
+  const subs: string[] = [];
+  const subIndex = new Map<string, number>();
+  const indexOf = (sub: string): number => {
+    const cached = subIndex.get(sub);
+    if (cached !== undefined) {
+      return cached;
+    }
+
+    const idx = subs.length;
+    subs.push(sub);
+    subIndex.set(sub, idx);
+    return idx;
+  };
+
+  const toEpochMinutes = (epochSeconds: number | null): number | null =>
+    epochSeconds === null ? null : Math.floor(epochSeconds / 60);
+
+  const postRows = summary.recent_posts.map((p) =>
+    trimTrailingNulls([
+      indexOf(p.subreddit),
+      p.title,
+      p.selftext_excerpt,
+      p.score,
+      p.num_comments,
+      toEpochMinutes(p.created_at),
+      p.removed_by_category,
+    ])
+  );
+
+  const commentRows = summary.recent_comments.map((c) =>
+    trimTrailingNulls([
+      indexOf(c.subreddit),
+      c.body_excerpt,
+      c.score,
+      toEpochMinutes(c.created_at),
+      c.link_title,
+      c.removed_by_category,
+    ])
+  );
+
+  const payload = {
+    username: summary.username,
+    account: summary.account,
+    avatar: summary.avatar,
+    activity: summary.activity,
+    external_signals: summary.external_signals,
+    subs,
+    posts: {
+      cols: ["s", "title", "body", "score", "nc", "t_min", "rm"],
+      rows: postRows,
+    },
+    comments: {
+      cols: ["s", "body", "score", "t_min", "link", "rm"],
+      rows: commentRows,
+    },
+    ...(summary.web_search_results
+      ? { web_search_results: summary.web_search_results }
+      : {}),
+    ...(summary.google_harvest
+      ? { google_harvest: summary.google_harvest }
+      : {}),
+    ...(summary.passive_harvest
+      ? { passive_harvest: summary.passive_harvest }
+      : {}),
+  };
+
+  return JSON.stringify(payload);
+}
+
+function trimTrailingNulls(row: unknown[]): unknown[] {
+  let end = row.length;
+
+  while (end > 0 && row[end - 1] === null) {
+    end--;
+  }
+
+  return end === row.length ? row : row.slice(0, end);
+}
+
 // `snoovatar_img` is an empty string for default snoos and a non-empty
 // PNG URL when the user customized via Reddit's avatar editor. That's
 // the only check we need — Reddit doesn't surface a "default-snoo" URL
