@@ -67,7 +67,7 @@ export const BON_AI_COMMAND_TOOLS: ClaudeToolSpec[] = [
   {
     name: "filter_users",
     description:
-      "Restrict the reports table to a specific set of usernames. Use when the operator asks to 'show only…', 'display everyone whose…', 'filter to…', etc. Pass `usernames: []` (or omit) to clear any active filter and show everyone. Resolve the operator's criteria against the snapshot yourself — name patterns, ring membership, region, verdict, persona, archetype scores, per-factor scores, bot probability, confidence, status (suspended/active), Bot Bouncer status, profile-hidden flag, account age, total karma, and the operator's own ratings are all visible there.",
+      "Restrict the reports table to a specific set of usernames. Use when the operator asks to 'show only…', 'display everyone whose…', 'filter to…', etc. Pass `usernames: []` to clear any active filter and show everyone. Resolve the operator's criteria against the snapshot yourself — name patterns, ring membership, region, verdict, persona, archetype scores, per-factor scores, bot probability, confidence, status (suspended/active), Bot Bouncer status, profile-hidden flag, account age, total karma, and the operator's own ratings are all visible there.",
     input_schema: {
       type: "object",
       properties: {
@@ -76,6 +76,11 @@ export const BON_AI_COMMAND_TOOLS: ClaudeToolSpec[] = [
           items: { type: "string" },
           description:
             "Canonical usernames from the snapshot. Empty array clears the filter.",
+        },
+        label: {
+          type: "string",
+          description:
+            "Short phrase (≤ 8 words) describing the filter criteria — e.g. 'Doomer persona', 'not Stan', 'high LLM content style', 'Bot Bouncer banned'. Shown in the persistent filter badge under the tabs so the operator can see at a glance what they're looking at. Omit when clearing.",
         },
       },
       required: ["usernames"],

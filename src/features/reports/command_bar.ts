@@ -41,6 +41,7 @@ export function bonReportsInitCommandBar(
   } = deps;
 
   let agentFilter: Set<string> | null = null;
+  let agentFilterLabel = "";
   let commandInflight = false;
 
   // Each fresh load of the reports page starts a new AI conversation. The
@@ -79,8 +80,11 @@ export function bonReportsInitCommandBar(
     }
 
     const total = deps.getReports().length;
+    const countText = `${agentFilter.size} of ${total} users`;
     agentFilterEl.hidden = false;
-    agentFilterLabelEl.textContent = `AI filter · showing ${agentFilter.size} of ${total} users`;
+    agentFilterLabelEl.textContent = agentFilterLabel
+      ? `AI filter · ${agentFilterLabel} · ${countText}`
+      : `AI filter · showing ${countText}`;
   };
 
   const clearAgentFilter = (): void => {
@@ -89,6 +93,7 @@ export function bonReportsInitCommandBar(
     }
 
     agentFilter = null;
+    agentFilterLabel = "";
     renderAgentFilterBanner();
     deps.onAgentFilterChange();
   };
@@ -126,7 +131,12 @@ export function bonReportsInitCommandBar(
       }
 
       if (action.tool === "filter_users") {
-        const usernames = (action.input as { usernames?: unknown }).usernames;
+        const input = action.input as {
+          usernames?: unknown;
+          label?: unknown;
+        };
+
+        const usernames = input.usernames;
         const list = Array.isArray(usernames) ? (usernames as string[]) : [];
         if (list.length === 0) {
           clearAgentFilter();
@@ -147,6 +157,9 @@ export function bonReportsInitCommandBar(
           }
 
           agentFilter = resolved;
+          agentFilterLabel =
+            typeof input.label === "string" ? input.label.trim() : "";
+
           renderAgentFilterBanner();
           deps.onAgentFilterChange();
         }
