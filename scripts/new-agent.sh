@@ -56,11 +56,6 @@ worktrees_root="$(cd "$main_worktree/.." && pwd)/${project_name}-worktrees"
 branch="agent/$slug"
 worktree_path="$worktrees_root/$slug"
 
-if [ -n "$(git -C "$main_worktree" status --porcelain)" ]; then
-  echo "Error: main worktree has uncommitted changes; commit or stash first" >&2
-  exit 1
-fi
-
 if git -C "$main_worktree" show-ref --verify --quiet "refs/heads/$branch"; then
   echo "Error: branch '$branch' already exists" >&2
   exit 1
