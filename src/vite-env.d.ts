@@ -6,3 +6,4 @@ declare module "*.md?raw" {
 }
 
 declare const __BON_DEV_CLAUDE_API_KEY__: string | null;
+declare const __BON_AGENT__: string | null;

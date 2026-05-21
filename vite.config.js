@@ -1,5 +1,5 @@
 import { cpSync } from "node:fs";
-import { resolve } from "node:path";
+import { basename, dirname, resolve } from "node:path";
 import { defineConfig, loadEnv } from "vite";
 import webExtension from "vite-plugin-web-extension";
 
@@ -22,6 +22,17 @@ export default defineConfig(({ mode }) => {
   const env = mode === "development" ? loadEnv(mode, process.cwd(), "") : {};
   const devClaudeApiKey =
     mode === "development" && env.CLAUDE_API_KEY ? env.CLAUDE_API_KEY : null;
+
+  // Dev-only agent identity: when this build runs from inside a
+  // ../<repo>-worktrees/<slug>/ checkout (i.e. spawned by new-agent.sh), the
+  // slug becomes __BON_AGENT__ so the reports page can label which agent's
+  // code is loaded. Null in production and when running from the main
+  // checkout — the consuming code tree-shakes out.
+  const parentDir = basename(dirname(process.cwd()));
+  const inferredAgent = parentDir.endsWith("-worktrees")
+    ? basename(process.cwd())
+    : null;
+  const devAgent = mode === "development" ? inferredAgent : null;
 
   return {
     plugins: [
@@ -64,6 +75,7 @@ export default defineConfig(({ mode }) => {
     ],
     define: {
       __BON_DEV_CLAUDE_API_KEY__: JSON.stringify(devClaudeApiKey),
+      __BON_AGENT__: JSON.stringify(devAgent),
     },
     build: {
       outDir: "dist",
