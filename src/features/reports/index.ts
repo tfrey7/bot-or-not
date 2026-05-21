@@ -25,7 +25,6 @@ import { bonReportsInitTabs } from "./tabs.ts";
 import { bonReportsInitPolling } from "./polling.ts";
 import { bonReportsDetailEmpty, bonReportsDetailPane } from "./detail_pane.ts";
 import { bonReportsInitConfirmModal } from "./confirm_modal.ts";
-import { bonReportsInitJazzLogo } from "./jazz_logo.ts";
 import {
   bonReportsInitSettings,
   bonReportsOpenSettings,
@@ -142,7 +141,6 @@ bonClientSubscribe((event) => {
 
 bonReportsInitConfirmModal({ onConfirm: load });
 bonReportsInitSettings();
-bonReportsInitJazzLogo();
 
 const commandBar: BonReportsCommandBarHandle = bonReportsInitCommandBar({
   searchInput,
