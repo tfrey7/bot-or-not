@@ -35,9 +35,7 @@ import {
   bonReportsFormatRunningCellText,
   bonReportsFormatRunningTitle,
   bonReportsHasStructuralChange,
-  bonReportsInputIsCommand,
   bonReportsIsActiveRow,
-  bonReportsSanitizeUsernameQuery,
   type ReportRow,
 } from "./logic.ts";
 
@@ -55,7 +53,6 @@ const activeTitleEl = document.getElementById(
 const emptyEl = document.getElementById("bon-empty") as HTMLElement;
 const detailPane = document.getElementById("bon-detail-pane") as HTMLElement;
 const searchInput = document.getElementById("bon-search") as HTMLInputElement;
-const commandBarEl = document.getElementById("bon-command-bar") as HTMLElement;
 const commandStatusEl = document.getElementById(
   "bon-command-status"
 ) as HTMLElement;
@@ -228,46 +225,19 @@ browser.storage.onChanged.addListener((changes, area) => {
   }
 });
 
-const BON_SEARCH_PLACEHOLDER = "Search or ask Sherlock Chromes…";
-const BON_COMMAND_PLACEHOLDER = "Press ↵ to ask Sherlock Chromes…";
-
-searchInput.addEventListener("input", () => {
-  currentPage = 1;
-  updateSearchPlaceholder();
-
-  // Typing a fresh search-shaped query supersedes any active agent filter —
-  // two competing visibility gates feels confusing. Command-shaped input
-  // (multi-word, punctuation) leaves the filter intact so commands like
-  // "now narrow to bots" can stack on the previous filter.
-  if (agentFilter && !bonReportsInputIsCommand(searchInput.value)) {
-    agentFilter = null;
-    renderAgentFilterBanner();
-  }
-
-  render();
-});
-
 searchInput.addEventListener("keydown", (event) => {
   if (event.key !== "Enter") {
     return;
   }
 
   const raw = searchInput.value.trim();
-  if (!raw || !bonReportsInputIsCommand(raw)) {
+  if (!raw) {
     return;
   }
 
   event.preventDefault();
   void runAiCommand(raw);
 });
-
-function updateSearchPlaceholder(): void {
-  const isCommand = bonReportsInputIsCommand(searchInput.value);
-  searchInput.placeholder = isCommand
-    ? BON_COMMAND_PLACEHOLDER
-    : BON_SEARCH_PLACEHOLDER;
-  commandBarEl.classList.toggle("bon-command-bar--ready", isCommand);
-}
 
 bonReportsInitConfirmModal({ onConfirm: load });
 bonReportsInitSettings();
@@ -470,34 +440,12 @@ function render(): void {
     }
   }
 
-  // Skip filtering when the input looks like a pending AI command — typing
-  // "link alice and bob" shouldn't collapse the table to no-matches while
-  // the operator is mid-sentence. The agent fires on Enter regardless.
-  const rawQuery = searchInput.value;
-  const isCommand = bonReportsInputIsCommand(rawQuery);
-  const query = isCommand ? "" : rawQuery.trim().toLowerCase();
-
   const filtered = allReports.filter((report) => {
     if (agentFilter && !agentFilter.has(report.username)) {
       return false;
     }
 
-    if (!query) {
-      return true;
-    }
-
-    const haystack = [
-      report.username,
-      ...(report.history || []).flatMap((entry) => [
-        entry.subreddit,
-        entry.postTitle as string | undefined,
-      ]),
-    ]
-      .filter(Boolean)
-      .join(" ")
-      .toLowerCase();
-
-    return haystack.includes(query);
+    return true;
   });
 
   const activeRows = filtered.filter(bonReportsIsActiveRow);
@@ -518,7 +466,7 @@ function render(): void {
     selectedUsername = null;
     updateUrlForSelection();
     pendingScrollToSelected = false;
-    renderEmptyState(query);
+    renderEmptyState();
     renderDetail();
     ensurePolling();
     return;
@@ -773,79 +721,16 @@ function maybeAnimateDetailSwap(): void {
   );
 }
 
-function renderEmptyState(query: string): void {
+function renderEmptyState(): void {
   emptyEl.replaceChildren();
 
   const text = document.createElement("p");
   text.className = "bon-empty-text";
-  if (allReports.length === 0 && !query) {
-    text.textContent =
-      "No reports yet. Flag a Reddit user from their profile page to start tracking.";
-  } else {
-    text.textContent = "No reports match the search.";
-  }
+  text.textContent = agentFilter
+    ? "No reports match the active filter."
+    : "No reports yet. Flag a Reddit user from their profile page to start tracking.";
 
   emptyEl.appendChild(text);
-
-  if (!query) {
-    return;
-  }
-
-  const username = bonReportsSanitizeUsernameQuery(query);
-  if (!username) {
-    return;
-  }
-
-  if (!hasApiKey) {
-    const hint = document.createElement("p");
-    hint.className = "bon-empty-text bon-empty-hint";
-    hint.textContent = `Add a Claude API key in Settings to investigate u/${username}.`;
-    emptyEl.appendChild(hint);
-
-    const settingsButton = document.createElement("button");
-    settingsButton.type = "button";
-    settingsButton.className = "bon-btn bon-empty-action";
-    settingsButton.textContent = "Open Settings";
-    settingsButton.addEventListener("click", () => {
-      void bonReportsOpenSettings();
-    });
-    emptyEl.appendChild(settingsButton);
-    return;
-  }
-
-  const investigateButton = document.createElement("button");
-  investigateButton.type = "button";
-  investigateButton.className = "bon-btn bon-empty-action";
-  investigateButton.textContent = `Investigate u/${username}`;
-
-  investigateButton.addEventListener("click", async () => {
-    investigateButton.disabled = true;
-    investigateButton.textContent = "Starting…";
-
-    // Clear the search before awaiting — the background writes a "running"
-    // record immediately, which fires storage.onChanged and re-renders. If
-    // the search is still active at that point, the table collapses to just
-    // the new row instead of showing the full list.
-    searchInput.value = "";
-    pendingSelectionUsername = username;
-    render();
-
-    try {
-      const response = (await browser.runtime.sendMessage({
-        type: "investigate-user",
-        username,
-      })) as { ok?: boolean; error?: string };
-
-      if (response?.ok === false && response.error === "no-api-key") {
-        hasApiKey = false;
-        render();
-      }
-    } catch (error) {
-      console.error("[Bot or Not] manual investigate failed", error);
-    }
-  });
-
-  emptyEl.appendChild(investigateButton);
 }
 
 function ensurePolling(): void {
@@ -1080,7 +965,6 @@ async function runAiCommand(input: string): Promise<void> {
     const summary = bonAiCommandFormatSummary(result.summary);
     setCommandStatus("ok", summary, { html: true });
     searchInput.value = "";
-    updateSearchPlaceholder();
     currentPage = 1;
     await load();
     applyClientActions(result.actions);

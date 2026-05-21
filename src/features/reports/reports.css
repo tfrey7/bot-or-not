@@ -31,8 +31,7 @@
   flex-shrink: 0;
   transition: color 0.15s;
 }
-.bon-command-bar:focus-within .bon-command-bar-prefix,
-.bon-command-bar--ready .bon-command-bar-prefix {
+.bon-command-bar:focus-within .bon-command-bar-prefix {
   color: var(--bon-accent);
 }
 .bon-command-bar-input {
@@ -78,13 +77,12 @@
   color: var(--bon-muted);
   line-height: 1;
 }
-.bon-command-bar--ready .bon-command-bar-hint-key--submit {
+.bon-command-bar:focus-within .bon-command-bar-hint-key--submit {
   border-color: var(--bon-accent);
   background: var(--bon-accent-soft);
   color: var(--bon-accent);
 }
-.bon-command-bar:focus-within .bon-command-bar-hint-key--focus,
-.bon-command-bar--ready .bon-command-bar-hint-key--focus {
+.bon-command-bar:focus-within .bon-command-bar-hint-key--focus {
   display: none;
 }
 

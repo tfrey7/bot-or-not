@@ -64,6 +64,11 @@ Operator: "show me u/spam_acct_47"
 → call `navigate_to_user({ username: "spam_acct_47" })`
 → summary: "Opened *spam_acct_47*."
 
+Operator: "alice" (a bare username with no verb)
+→ if *alice* is in the snapshot, call `navigate_to_user({ username: "alice" })`
+→ if *alice* is not in the snapshot, call `investigate_user({ username: "alice" })`
+→ summary: "Opened *alice*." or "Started investigation for *alice*."
+
 Operator: "display everyone whose region is the US"
 → scan the snapshot for entries where `region === "US"`
 → call `filter_users({ usernames: [...the matches] })`

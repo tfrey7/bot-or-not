@@ -104,32 +104,6 @@ export function bonReportsFormatRunningTitle(
   return `Running ${elapsedSec}s · ~${remaining}s left (typical ${expSec}s)`;
 }
 
-// Decide whether the input box is being used to search or to compose an
-// AI command. Anything that's pure username/path characters (or empty) is
-// search-shaped; the moment a space or punctuation creeps in, treat it as
-// a pending command so the table doesn't flicker to "no results" while
-// the operator is mid-sentence.
-export function bonReportsInputIsCommand(raw: string): boolean {
-  const value = raw.trim();
-  if (!value) {
-    return false;
-  }
-
-  return !/^[A-Za-z0-9_/\\-]+$/.test(value);
-}
-
-export function bonReportsSanitizeUsernameQuery(
-  raw: string | null | undefined
-): string | null {
-  const trimmed = (raw || "").trim().replace(/^\/?u\//i, "");
-
-  if (!/^[A-Za-z0-9_-]{3,20}$/.test(trimmed)) {
-    return null;
-  }
-
-  return trimmed;
-}
-
 export function bonReportsDiagnoseLoadError(
   message: string | null | undefined
 ): string {
