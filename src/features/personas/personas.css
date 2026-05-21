@@ -1,0 +1,226 @@
+/* Personas tab — 2D archetype-space scatter. Inherits --bon-* tokens from app.css. */
+
+.bon-personas {
+  margin-top: 0;
+}
+
+.bon-personas-header {
+  margin-bottom: 1.25em;
+}
+
+.bon-personas-header h2 {
+  font-size: 1.6rem;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  margin: 0 0 0.15em;
+  color: var(--bon-text);
+  line-height: 1.15;
+}
+
+.bon-personas-subtitle {
+  margin: 0.3em 0 0;
+  font-family: var(--bon-font-mono);
+  font-size: 0.7rem;
+  color: var(--bon-muted);
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.bon-personas-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4em;
+  margin: 0 0 1em;
+  font-family: var(--bon-font-mono);
+  font-size: 0.78rem;
+  color: var(--bon-muted);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+}
+
+.bon-personas-legend-swatch {
+  display: inline-block;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: var(--bon-muted);
+  vertical-align: -1px;
+}
+
+.bon-personas-legend-swatch--rated {
+  background: var(--bon-stamp-amber);
+  box-shadow: 0 0 0 2px var(--bon-stamp-bg);
+}
+
+.bon-personas-empty {
+  background: var(--bon-surface);
+  border: 1px dashed var(--bon-border-strong);
+  border-radius: 0.5em;
+  padding: 2.75em 1em;
+  text-align: center;
+  color: var(--bon-muted);
+  font-family: var(--bon-font-mono);
+  font-size: 0.82rem;
+  letter-spacing: 0.02em;
+}
+
+.bon-personas-chart {
+  background: var(--bon-surface);
+  border: 1px solid var(--bon-border);
+  border-radius: 0.5em;
+  padding: 1em;
+  box-shadow: var(--bon-shadow-sm);
+  display: flex;
+  justify-content: center;
+}
+
+.bon-personas-scatter {
+  width: 100%;
+  max-width: 640px;
+  height: auto;
+  aspect-ratio: 1 / 1;
+  display: block;
+}
+
+/* SVG element styles */
+
+.bon-personas-ring {
+  fill: none;
+  stroke: var(--bon-border);
+  stroke-width: 1;
+  stroke-dasharray: 3 4;
+}
+
+.bon-personas-ring--outer {
+  stroke: var(--bon-border-strong);
+  stroke-dasharray: none;
+}
+
+.bon-personas-axis {
+  stroke: var(--bon-border);
+  stroke-width: 1;
+  opacity: 0.6;
+}
+
+.bon-personas-peg {
+  stroke: var(--bon-surface);
+  stroke-width: 2;
+}
+
+.bon-personas-anchor-label {
+  font-family: var(--bon-font-mono);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.bon-personas-dot {
+  cursor: pointer;
+  outline: none;
+}
+
+.bon-personas-dot-fill {
+  stroke: var(--bon-surface);
+  stroke-width: 1.5;
+  transition: transform 120ms ease-out, filter 120ms ease-out;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.bon-personas-dot-halo {
+  fill: none;
+  stroke: var(--bon-stamp-amber);
+  stroke-width: 1.5;
+  stroke-dasharray: 2 2;
+  opacity: 0.85;
+}
+
+.bon-personas-dot:hover .bon-personas-dot-fill,
+.bon-personas-dot:focus-visible .bon-personas-dot-fill {
+  transform: scale(1.4);
+  filter: brightness(1.1);
+}
+
+.bon-personas-dot:focus-visible .bon-personas-dot-fill {
+  stroke: var(--bon-text);
+  stroke-width: 2;
+}
+
+.bon-personas-footnote {
+  margin: 1em 0 0;
+  font-size: 0.78rem;
+  color: var(--bon-muted-soft);
+  text-align: center;
+  font-style: italic;
+}
+
+/* ---------- Hover card ----------
+   Floats above the chart on dot mouseenter. Body content (.bon-persona,
+   .bon-top-reasons) is the same DOM the reports detail pane builds, so
+   its visual matches the dossier exactly. Pointer events off so the card
+   never steals the mouseleave that closes it. */
+.bon-personas-hover-card {
+  position: fixed;
+  z-index: 9999;
+  width: 360px;
+  max-width: calc(100vw - 24px);
+  max-height: calc(100vh - 24px);
+  overflow-y: auto;
+  background: var(--bon-surface);
+  border: 1px solid var(--bon-border-strong);
+  border-radius: 0.55em;
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.22),
+    0 22px 48px -14px rgba(0, 0, 0, 0.55);
+  padding: 0.95em 1.1em 1.05em;
+  pointer-events: none;
+  animation: bon-personas-hover-in 140ms ease-out;
+}
+
+.bon-personas-hover-card__username {
+  margin: 0 0 0.7em;
+  font-family: var(--bon-font-mono);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: lowercase;
+  color: var(--bon-text);
+}
+
+.bon-personas-hover-card .bon-persona {
+  margin: 0 0 0.85em;
+  padding: 0;
+}
+
+.bon-personas-hover-card .bon-persona-radar {
+  max-width: 10em;
+}
+
+.bon-personas-hover-card .bon-persona-summary {
+  font-size: 0.78rem;
+  line-height: 1.5;
+}
+
+.bon-personas-hover-card .bon-top-reasons {
+  margin-top: 0.6em;
+}
+
+@keyframes bon-personas-hover-in {
+  from {
+    opacity: 0;
+    transform: translateY(-3px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bon-personas-hover-card {
+    animation: none;
+  }
+}

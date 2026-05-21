@@ -13,6 +13,7 @@
     <link rel="stylesheet" href="app.css" />
     <link rel="stylesheet" href="features/reports/reports.css" />
     <link rel="stylesheet" href="features/analytics/analytics.css" />
+    <link rel="stylesheet" href="features/personas/personas.css" />
     <link rel="stylesheet" href="features/diagnostics/diagnostics.css" />
     <link
       rel="stylesheet"
@@ -95,6 +96,17 @@
             data-tab="metrics"
           >
             Metrics
+          </button>
+          <button
+            type="button"
+            class="bon-tab"
+            role="tab"
+            aria-selected="false"
+            aria-controls="bon-panel-personas"
+            id="bon-tab-personas"
+            data-tab="personas"
+          >
+            Personas
           </button>
           <button
             type="button"
@@ -196,6 +208,16 @@
         hidden
       >
         <div id="bon-analytics-container"></div>
+      </section>
+
+      <section
+        class="bon-tab-panel"
+        role="tabpanel"
+        id="bon-panel-personas"
+        aria-labelledby="bon-tab-personas"
+        hidden
+      >
+        <div id="bon-personas-container"></div>
       </section>
 
       <section
