@@ -1,0 +1,44 @@
+/* ============================================================
+   Pagination footer
+   ============================================================ */
+
+.bon-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75em;
+  margin-top: 0.85em;
+  padding: 0.5em 0.25em 0;
+  font-family: var(--bon-font-mono);
+  font-size: 0.74rem;
+  color: var(--bon-muted);
+  letter-spacing: 0.02em;
+}
+.bon-pagination-caption {
+  font-variant-numeric: tabular-nums;
+}
+.bon-pagination-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+}
+.bon-pagination-status {
+  font-variant-numeric: tabular-nums;
+  color: var(--bon-text-soft);
+  padding: 0 0.4em;
+}
+.bon-pagination-btn {
+  padding: 0.4em 0.75em;
+  font-size: 0.72rem;
+}
+.bon-pagination-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+  background: var(--bon-surface);
+  border-color: var(--bon-border);
+  color: var(--bon-muted);
+}
+.bon-pagination-btn:disabled:hover {
+  background: var(--bon-surface);
+  border-color: var(--bon-border);
+}

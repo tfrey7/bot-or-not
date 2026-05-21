@@ -1,0 +1,195 @@
+/* ============================================================
+   Persona picker (custom listbox)
+
+   Native <select> can't render per-option color stripes — macOS in
+   particular shells the menu through the OS so option background-color
+   is silently ignored. This rolls its own button + popover instead.
+   Trigger shows the current value's stripe on the left edge; the open
+   menu shows the same stripe per row, so the visual cue carries.
+   ============================================================ */
+
+.bon-persona-picker {
+  position: relative;
+  display: inline-block;
+}
+
+.bon-persona-picker__trigger {
+  display: inline-flex;
+  align-items: stretch;
+  gap: 0;
+  font-family: var(--bon-font-mono);
+  font-size: 0.82rem;
+  letter-spacing: 0.02em;
+  color: var(--bon-text);
+  background: var(--bon-surface);
+  border: 1px solid var(--bon-border);
+  border-radius: 3px;
+  padding: 0;
+  cursor: pointer;
+  min-width: 10em;
+  overflow: hidden;
+}
+.bon-persona-picker__trigger:hover {
+  border-color: var(--bon-border-strong);
+}
+.bon-persona-picker__trigger:focus-visible {
+  outline: none;
+  border-color: var(--bon-accent);
+  box-shadow: 0 0 0 2px var(--bon-accent-soft);
+}
+
+.bon-persona-picker__trigger-label {
+  flex: 1;
+  text-align: left;
+  padding: 0.3em 0.55em;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35em;
+  min-height: 1.5em;
+}
+.bon-persona-picker__trigger-label--empty {
+  color: var(--bon-muted);
+  font-style: italic;
+}
+
+/* Chip per picked persona inside the trigger. The stripe sits left of the
+   chip label so the color cue stays attached to the persona it represents
+   (rather than floating in a separate column). Mirrors the
+   self-improvement chip vocabulary so the two surfaces feel like the
+   same UI dialect. */
+.bon-persona-picker__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35em;
+  padding: 0.1em 0.5em 0.1em 0.3em;
+  border-radius: 0.25em;
+  background: var(--bon-surface-soft, var(--bon-surface));
+  border: 1px solid var(--bon-border);
+  font-weight: 600;
+}
+.bon-persona-picker__chip .bon-persona-picker__stripe {
+  width: 0.4em;
+  flex: 0 0 0.4em;
+  height: 0.85em;
+  border-radius: 0.1em;
+}
+.bon-persona-picker__chip-label {
+  white-space: nowrap;
+}
+
+.bon-persona-picker__chevron {
+  color: var(--bon-muted);
+  font-size: 0.7em;
+  padding: 0.55em 0.55em 0 0;
+  align-self: flex-start;
+}
+
+.bon-persona-picker__menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 40;
+  min-width: 12em;
+  background: var(--bon-surface);
+  border: 1px solid var(--bon-border-strong);
+  border-radius: 4px;
+  box-shadow: var(--bon-shadow-lg);
+  padding: 0.25em 0;
+  max-height: 18em;
+  overflow-y: auto;
+}
+
+.bon-persona-picker__option {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  font-family: var(--bon-font-mono);
+  font-size: 0.82rem;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  user-select: none;
+  color: var(--bon-text);
+}
+.bon-persona-picker__option-label {
+  flex: 1;
+  padding: 0.4em 0.85em 0.4em 0.55em;
+}
+.bon-persona-picker__option:hover,
+.bon-persona-picker__option--focused {
+  background: var(--bon-row-hover);
+}
+.bon-persona-picker__option[aria-selected="true"] {
+  background: var(--bon-accent-soft);
+  font-weight: 600;
+}
+.bon-persona-picker__option[aria-selected="true"]:hover,
+.bon-persona-picker__option[aria-selected="true"].bon-persona-picker__option--focused {
+  background: var(--bon-accent-soft);
+}
+
+/* Checkbox indicator on each option row. Empty square at rest, fills with
+   the accent color + a tick glyph when the option is in the picked set —
+   gives the multi-select affordance the bold-text + tinted-row state
+   doesn't fully signal on its own. */
+.bon-persona-picker__check {
+  flex: 0 0 auto;
+  width: 0.85em;
+  height: 0.85em;
+  margin: 0.55em 0 0 0.55em;
+  border: 1px solid var(--bon-border-strong);
+  border-radius: 2px;
+  background: var(--bon-surface);
+  position: relative;
+}
+.bon-persona-picker__option[aria-selected="true"] .bon-persona-picker__check {
+  background: var(--bon-accent);
+  border-color: var(--bon-accent);
+}
+.bon-persona-picker__option[aria-selected="true"]
+  .bon-persona-picker__check::after {
+  content: "";
+  position: absolute;
+  left: 0.15em;
+  top: 0.02em;
+  width: 0.25em;
+  height: 0.5em;
+  border: solid white;
+  border-width: 0 1.5px 1.5px 0;
+  transform: rotate(45deg);
+}
+
+/* Stripe element — 4px tall column in the menu rows; chip-scoped CSS above
+   overrides size/shape when the same stripe class lives inside a trigger
+   chip. Color comes from the ...--<key> modifier so the rules apply in
+   both places. Hues mirror BON_ARCHETYPES so the color matches the radar
+   chart accent for the same archetype. */
+.bon-persona-picker__stripe {
+  width: 4px;
+  flex: 0 0 4px;
+  background-color: var(--bon-border);
+}
+.bon-persona-picker__stripe--stan {
+  background-color: hsl(45 70% 50%);
+}
+.bon-persona-picker__stripe--farmer {
+  background-color: hsl(210 65% 50%);
+}
+.bon-persona-picker__stripe--cam_model {
+  background-color: hsl(320 60% 55%);
+}
+.bon-persona-picker__stripe--zealot {
+  background-color: hsl(0 65% 50%);
+}
+.bon-persona-picker__stripe--hustler {
+  background-color: hsl(155 55% 40%);
+}
+.bon-persona-picker__stripe--doomer {
+  background-color: hsl(260 50% 55%);
+}
+.bon-persona-picker__stripe--bot {
+  background-color: var(--bon-stamp-charcoal);
+}
+.bon-persona-picker__stripe--normal {
+  background-color: var(--bon-muted);
+}

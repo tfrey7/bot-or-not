@@ -1,0 +1,35 @@
+/* ============================================================
+   Region badge — rubber-stamp style flag + region code, lives
+   in the table's tags strip and also hoisted into the detail
+   header next to the verdict badge.
+   ============================================================ */
+
+.bon-region-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4em;
+  font-family: var(--bon-font-mono);
+  font-size: 0.62rem;
+  font-weight: 700;
+  padding: 0.3em 0.65em 0.28em 0.5em;
+  border-radius: 0.25em;
+  border: 1.5px solid currentColor;
+  line-height: 1.2;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  background: var(--bon-stamp-bg);
+  white-space: nowrap;
+  color: var(--bon-stamp-charcoal);
+}
+.bon-region-badge--tz-match {
+  color: var(--bon-stamp-moss);
+}
+.bon-region-badge--tz-mismatch {
+  color: var(--bon-stamp-amber);
+}
+.bon-region-badge .bon-region-flag {
+  font-size: 1.1em;
+  line-height: 1;
+  letter-spacing: 0;
+  margin-block: -0.3em;
+}

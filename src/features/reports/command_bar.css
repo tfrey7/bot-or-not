@@ -1,0 +1,232 @@
+/* ============================================================
+   Command bar (lives in .bon-header on the right; compact)
+   ============================================================ */
+
+.bon-command-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+  padding: 0.4em 0.55em 0.4em 0.65em;
+  border: 1px solid var(--bon-border-strong);
+  border-radius: 0.45em;
+  background: var(--bon-surface);
+  box-shadow: var(--bon-shadow-sm);
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s;
+}
+.bon-command-bar:focus-within {
+  border-color: var(--bon-accent);
+  box-shadow: 0 0 0 3px var(--bon-accent-soft);
+}
+.bon-command-bar-prefix {
+  font-size: 0.95rem;
+  line-height: 1;
+  color: var(--bon-muted);
+  flex-shrink: 0;
+  transition: color 0.15s;
+}
+.bon-command-bar:focus-within .bon-command-bar-prefix {
+  color: var(--bon-accent);
+}
+.bon-command-bar-input {
+  flex: 1;
+  min-width: 0;
+  padding: 0.1em 0;
+  border: none;
+  background: transparent;
+  color: var(--bon-text);
+  font-family: var(--bon-font-mono);
+  font-size: 0.82rem;
+  letter-spacing: 0.01em;
+  /* Hide the type=search cancel button so the wrapper border stays visually clean. */
+  appearance: textfield;
+}
+.bon-command-bar-input::-webkit-search-cancel-button {
+  appearance: none;
+}
+.bon-command-bar-input::placeholder {
+  color: var(--bon-muted-soft);
+}
+.bon-command-bar-input:focus {
+  outline: none;
+}
+.bon-command-bar-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3em;
+  flex-shrink: 0;
+  transition: opacity 0.15s;
+}
+.bon-command-bar-hint-key {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.3em;
+  padding: 0.08em 0.32em;
+  border: 1px solid var(--bon-border);
+  border-radius: 0.25em;
+  background: var(--bon-bg-tint);
+  font-family: var(--bon-font-mono);
+  font-size: 0.68rem;
+  color: var(--bon-muted);
+  line-height: 1;
+}
+.bon-command-bar:focus-within .bon-command-bar-hint-key--submit {
+  border-color: var(--bon-accent);
+  background: var(--bon-accent-soft);
+  color: var(--bon-accent);
+}
+.bon-command-bar:focus-within .bon-command-bar-hint-key--focus {
+  display: none;
+}
+
+/* Status line under the command bar. Filled by the modal's auto-minimize
+   flow when the agent ran tools — shows the agent's final summary in place
+   so the operator can see what was done after the modal collapses. Mono-
+   serif italic to read as a journal annotation rather than UI chrome. */
+.bon-command-status {
+  margin: 0.45em 0 0;
+  padding: 0.4em 0.7em;
+  background: var(--bon-bg-tint);
+  border-left: 2px solid var(--bon-accent);
+  border-radius: 0 0.3em 0.3em 0;
+  font-family: var(--bon-font-mono);
+  font-size: 0.74rem;
+  line-height: 1.45;
+  color: var(--bon-text-soft);
+  animation: bon-command-status-in 0.32s ease-out;
+}
+.bon-command-status[hidden] {
+  display: none;
+}
+.bon-command-status code {
+  font-size: 0.92em;
+  padding: 0.05em 0.4em;
+  background: var(--bon-surface);
+  border-radius: 0.25em;
+}
+.bon-command-status strong {
+  color: var(--bon-text);
+  font-weight: 600;
+}
+.bon-command-status em {
+  font-style: italic;
+}
+@keyframes bon-command-status-in {
+  from {
+    opacity: 0;
+    transform: translateY(-3px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .bon-command-status {
+    animation: none;
+  }
+}
+
+/* ============================================================
+   Razzle-dazzle — animated star prefix, sweeping focus ring,
+   placeholder cross-fade. Decorative additions to the command
+   bar above; kept in this file so all command-bar styles live
+   together.
+   ============================================================ */
+
+/* Animated, breathing star glyph. The ✦ prefix already lives in the markup;
+   wrap a span around it (via .bon-command-bar-prefix) and give it a slow
+   pulsing scale + opacity so the bar feels alive when idle. On focus the
+   glyph locks into a steady accent color (handled by the existing focus rule
+   higher up). */
+.bon-command-bar-prefix {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.1em;
+  height: 1.1em;
+  animation: bon-cmd-glyph-pulse 3.2s ease-in-out infinite;
+}
+.bon-command-bar:focus-within .bon-command-bar-prefix {
+  animation-duration: 1.6s;
+}
+@keyframes bon-cmd-glyph-pulse {
+  0%, 100% {
+    opacity: 0.72;
+    transform: rotate(0deg) scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: rotate(8deg) scale(1.08);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .bon-command-bar-prefix {
+    animation: none;
+  }
+}
+
+/* Sweeping gradient focus ring. Layers a faint conic gradient behind the
+   border via ::before; the gradient rotates while the bar is focused. The
+   underlying border keeps its solid color so the ring reads as decoration
+   rather than the actual border. */
+.bon-command-bar {
+  position: relative;
+  isolation: isolate;
+}
+.bon-command-bar::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1px;
+  background: conic-gradient(
+    from var(--bon-cmd-sweep-angle, 0deg),
+    var(--bon-accent),
+    var(--bon-stamp-amber),
+    var(--bon-stamp-red),
+    var(--bon-accent)
+  );
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s;
+  z-index: -1;
+}
+.bon-command-bar:focus-within::before {
+  opacity: 0.85;
+  animation: bon-cmd-sweep 4s linear infinite;
+}
+@property --bon-cmd-sweep-angle {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+@keyframes bon-cmd-sweep {
+  to {
+    --bon-cmd-sweep-angle: 360deg;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .bon-command-bar:focus-within::before {
+    animation: none;
+  }
+}
+
+/* Smooth cross-fade for placeholder rotation. The input's `placeholder` is
+   swapped on a timer; this transition makes the swap feel intentional. */
+.bon-command-bar-input::placeholder {
+  transition: color 0.2s;
+}
+.bon-command-bar-input.bon-command-bar-input--swap::placeholder {
+  color: transparent;
+}

@@ -1,0 +1,75 @@
+/* ============================================================
+   Settings tab — API key, sync, danger zone.
+   ============================================================ */
+
+.bon-settings {
+  max-width: 36em;
+}
+.bon-settings-section + .bon-settings-section {
+  margin-top: 1.5em;
+  padding-top: 1.25em;
+  border-top: 1px solid var(--bon-border);
+}
+.bon-settings-section-title {
+  font-family: var(--bon-font-mono);
+  font-size: 0.66rem;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--bon-muted);
+  font-weight: 700;
+  margin: 0 0 0.55em;
+}
+.bon-settings-section-desc {
+  font-size: 0.85rem;
+  color: var(--bon-text-soft);
+  line-height: 1.5;
+  margin: 0 0 0.9em;
+}
+.bon-settings-field {
+  display: block;
+}
+.bon-settings-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 0.6em;
+}
+.bon-settings-field input {
+  width: 100%;
+  font-family: var(--bon-font-mono);
+  font-size: 0.85rem;
+  padding: 0.6em 0.7em;
+  border: 1px solid var(--bon-border-strong);
+  border-radius: 0.35em;
+  box-sizing: border-box;
+  background: var(--bon-surface);
+  color: var(--bon-text);
+}
+.bon-settings-field input:focus {
+  outline: none;
+  border-color: var(--bon-accent);
+  box-shadow: 0 0 0 3px var(--bon-accent-soft);
+}
+.bon-settings-status {
+  font-size: 0.75rem;
+  color: var(--bon-muted);
+  margin: 0.4em 0 0;
+}
+.bon-settings-status--set {
+  color: var(--bon-stamp-forest);
+}
+.bon-settings-status--missing {
+  color: var(--bon-danger);
+}
+
+.bon-settings-danger-row {
+  display: flex;
+  align-items: center;
+  gap: 0.9em;
+}
+.bon-settings-danger-desc {
+  flex: 1;
+  font-family: var(--bon-font-mono);
+  font-size: 0.75rem;
+  color: var(--bon-muted);
+  line-height: 1.45;
+}

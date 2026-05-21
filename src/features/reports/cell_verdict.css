@@ -1,0 +1,46 @@
+/* ============================================================
+   Classification stamps (verdict + factor signals)
+
+   Rendered as outline rubber stamps: tracked-out mono caps with a
+   colored stroke and a faint cream fill, evoking a case-file label.
+   ============================================================ */
+
+.bon-verdict-badge {
+  display: inline-block;
+  font-family: var(--bon-font-mono);
+  font-size: 0.62rem;
+  font-weight: 700;
+  padding: 0.3em 0.65em 0.28em;
+  border-radius: 0.25em;
+  border: 1.5px solid currentColor;
+  line-height: 1.2;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  background: var(--bon-stamp-bg);
+  white-space: nowrap;
+}
+.bon-verdict-badge--bot {
+  color: var(--bon-stamp-red);
+}
+.bon-verdict-badge--likely-bot {
+  color: var(--bon-stamp-rust);
+}
+.bon-verdict-badge--uncertain {
+  color: var(--bon-stamp-charcoal);
+}
+.bon-verdict-badge--likely-human {
+  color: var(--bon-stamp-moss);
+}
+.bon-verdict-badge--human {
+  color: var(--bon-stamp-forest);
+}
+.bon-verdict-badge--error {
+  color: var(--bon-stamp-red);
+}
+.bon-verdict-badge--running {
+  color: var(--bon-stamp-blue);
+}
+.bon-verdict-badge--queued {
+  color: var(--bon-stamp-charcoal);
+  opacity: 0.75;
+}

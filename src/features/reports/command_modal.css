@@ -1,0 +1,788 @@
+/* ============================================================
+   AI command modal
+   ============================================================ */
+
+.bon-cmd-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 4.5em 1.5em 2em;
+  /* Frosted glass: keep the overlay tint subtle so the underlying page
+     shows through the blur. The blur + saturate combo is what gives the
+     surface its glassy feel — without saturate, the blur reads as muddy. */
+  background: rgba(26, 22, 18, 0.18);
+  backdrop-filter: blur(14px) saturate(115%);
+  -webkit-backdrop-filter: blur(14px) saturate(115%);
+  z-index: 60;
+  opacity: 0;
+  transition: opacity 0.22s ease-out;
+}
+@media (prefers-color-scheme: dark) {
+  .bon-cmd-modal-backdrop {
+    background: rgba(0, 0, 0, 0.36);
+  }
+}
+@supports not (backdrop-filter: blur(1px)) {
+  /* Fallback for browsers that don't support backdrop-filter — fall back to
+     a heavier opaque overlay since we can't blur. */
+  .bon-cmd-modal-backdrop {
+    background: var(--bon-overlay);
+  }
+}
+.bon-cmd-modal-backdrop--in {
+  opacity: 1;
+}
+.bon-cmd-modal-backdrop--out {
+  opacity: 0;
+}
+
+.bon-cmd-modal {
+  position: relative;
+  background: var(--bon-surface);
+  border: 1px solid var(--bon-border-strong);
+  border-radius: 0.6em;
+  box-shadow: var(--bon-shadow-lg);
+  width: min(48em, 100%);
+  max-height: calc(100vh - 6em);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  isolation: isolate;
+  /* Initial state for the JS-driven FLIP morph. JS overrides these with an
+     inline transform that points at the source command bar's bbox, then
+     transitions to identity. The CSS defaults here cover non-morph paths
+     (reduced motion, missing source element) — straight fade. */
+  opacity: 0;
+  transition: opacity 0.22s ease-out;
+}
+.bon-cmd-modal-backdrop--in .bon-cmd-modal {
+  opacity: 1;
+}
+@media (prefers-reduced-motion: reduce) {
+  .bon-cmd-modal,
+  .bon-cmd-modal-backdrop {
+    transition: none;
+  }
+}
+
+/* Magic glowing border — same conic-gradient sweep as the page command bar,
+   redrawn at the modal's inner edge as a 1.5px ring. `overflow: hidden` on
+   the modal clips the ring to the rounded corners; `z-index: 2` lifts it
+   above the conversation content so the ring traces the chrome rather than
+   being obscured by scrolled cards. The sweep runs full-time so the modal
+   always feels alive, and double-speeds while the agent is working. */
+.bon-cmd-modal::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1.5px;
+  background: conic-gradient(
+    from var(--bon-cmd-modal-sweep, 0deg),
+    var(--bon-accent),
+    var(--bon-stamp-amber),
+    var(--bon-stamp-red),
+    var(--bon-accent)
+  );
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.4s ease-out;
+  z-index: 2;
+  animation: bon-cmd-modal-sweep 8s linear infinite;
+}
+.bon-cmd-modal-backdrop--in .bon-cmd-modal::before {
+  opacity: 0.85;
+}
+.bon-cmd-modal[data-status="running"]::before {
+  animation-duration: 3.4s;
+  opacity: 1;
+}
+@property --bon-cmd-modal-sweep {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+@keyframes bon-cmd-modal-sweep {
+  to {
+    --bon-cmd-modal-sweep: 360deg;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .bon-cmd-modal::before {
+    animation: none;
+  }
+}
+
+.bon-cmd-modal-header {
+  display: flex;
+  align-items: center;
+  gap: 0.7em;
+  padding: 0.85em 1em;
+  border-bottom: 1px solid var(--bon-border);
+  background: linear-gradient(
+    180deg,
+    var(--bon-surface-soft) 0%,
+    var(--bon-surface) 100%
+  );
+}
+.bon-cmd-modal-glyph {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.6em;
+  height: 1.6em;
+  border-radius: 50%;
+  background: var(--bon-accent-soft);
+  color: var(--bon-accent);
+  font-size: 0.95rem;
+  flex-shrink: 0;
+}
+.bon-cmd-modal-glyph-spin {
+  display: inline-block;
+  animation: bon-cmd-modal-glyph-spin 4s linear infinite;
+  line-height: 1;
+}
+.bon-cmd-modal[data-status="running"] .bon-cmd-modal-glyph-spin {
+  animation-duration: 1.6s;
+}
+.bon-cmd-modal[data-status="done"] .bon-cmd-modal-glyph,
+.bon-cmd-modal[data-status="done"] .bon-cmd-modal-glyph-spin {
+  background: rgba(31, 102, 68, 0.16);
+  color: var(--bon-stamp-forest);
+  animation-play-state: paused;
+}
+.bon-cmd-modal[data-status="error"] .bon-cmd-modal-glyph,
+.bon-cmd-modal[data-status="error"] .bon-cmd-modal-glyph-spin {
+  background: rgba(139, 30, 30, 0.16);
+  color: var(--bon-stamp-red);
+  animation-play-state: paused;
+}
+.bon-cmd-modal[data-status="aborted"] .bon-cmd-modal-glyph,
+.bon-cmd-modal[data-status="max-turns"] .bon-cmd-modal-glyph {
+  background: var(--bon-bg-tint);
+  color: var(--bon-muted);
+}
+.bon-cmd-modal[data-status="aborted"] .bon-cmd-modal-glyph-spin,
+.bon-cmd-modal[data-status="max-turns"] .bon-cmd-modal-glyph-spin {
+  animation-play-state: paused;
+}
+@keyframes bon-cmd-modal-glyph-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .bon-cmd-modal-glyph-spin {
+    animation: none;
+  }
+}
+
+.bon-cmd-modal-title {
+  font-family: var(--bon-font-mono);
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--bon-text);
+  flex: 1;
+  min-width: 0;
+}
+.bon-cmd-modal-close {
+  appearance: none;
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  width: 1.6em;
+  height: 1.6em;
+  line-height: 1;
+  font-size: 1.2rem;
+  color: var(--bon-muted);
+  border-radius: 0.3em;
+  cursor: pointer;
+}
+.bon-cmd-modal-close:hover {
+  color: var(--bon-text);
+  background: var(--bon-row-hover);
+}
+.bon-cmd-modal-close[hidden] {
+  display: none;
+}
+
+/* Chat layout: conversation log scrolls, statusbar + composer pin at the
+   bottom. `min-height: 0` on the log lets it shrink inside the flex column
+   so the composer stays anchored even with overflowing content. */
+.bon-cmd-modal--chat {
+  width: min(46em, 100%);
+  max-height: min(46em, calc(100vh - 6em));
+}
+.bon-cmd-modal-conversation {
+  padding: 1em 1.1em 0.6em;
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1em;
+}
+
+/* Turn cards. Each operator/agent message is its own card; cards fade-up on
+   insertion so successive turns feel like fresh entries in a transcript
+   rather than the entire pane re-rendering. */
+.bon-cmd-turn {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4em;
+  animation: bon-cmd-turn-in 0.22s ease-out both;
+}
+@keyframes bon-cmd-turn-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .bon-cmd-turn {
+    animation: none;
+  }
+}
+.bon-cmd-turn-label {
+  font-family: var(--bon-font-mono);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--bon-muted);
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4em;
+}
+.bon-cmd-turn-glyph {
+  color: var(--bon-accent);
+  font-size: 0.95em;
+  line-height: 1;
+}
+
+/* Operator card — right-aligned bubble. Chat-app convention: the operator's
+   message sits on the right; the agent's prose sits on the left. The card
+   shrinks to its content (capped to keep long pasted prompts readable) so
+   short messages don't span the whole pane. The "OPERATOR" label is hidden
+   — position alone says who's speaking. */
+.bon-cmd-turn--operator {
+  align-self: flex-end;
+  width: fit-content;
+  max-width: min(80%, 34em);
+}
+.bon-cmd-turn--operator .bon-cmd-turn-label {
+  display: none;
+}
+.bon-cmd-turn--operator .bon-cmd-turn-text {
+  font-family: var(--bon-font-mono);
+  font-size: 0.92rem;
+  color: var(--bon-text);
+  margin: 0;
+  padding: 0.5em 0.85em;
+  background: var(--bon-bg-tint);
+  border: 1px solid var(--bon-border);
+  border-radius: 0.7em;
+  line-height: 1.45;
+  white-space: pre-wrap;
+}
+
+/* Queued operator card — one card holds all consecutive queued prompts as
+   a stack of right-aligned bubbles. Each item gets a dashed-border bubble
+   (vs the solid border of a "real" sent message) and a × to drop it. The
+   "queued · N" chip floats above the stack so the chrome isn't repeated
+   per prompt. */
+.bon-cmd-turn--operator.bon-cmd-turn--queued {
+  /* Override the operator default so the queued group can stretch a bit
+     wider when several items are stacked. */
+  max-width: min(85%, 36em);
+}
+.bon-cmd-turn--operator.bon-cmd-turn--queued .bon-cmd-turn-label {
+  display: block;
+  text-align: right;
+  margin: 0 0 0.3em;
+}
+.bon-cmd-turn-queued-tag {
+  display: inline-block;
+  padding: 0.05em 0.45em;
+  background: var(--bon-bg-tint);
+  border: 1px solid var(--bon-border);
+  border-radius: 0.25em;
+  font-size: 0.95em;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--bon-muted);
+  vertical-align: middle;
+}
+.bon-cmd-turn-queued-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.3em;
+}
+.bon-cmd-turn-queued-item {
+  position: relative;
+  width: fit-content;
+  max-width: 100%;
+  animation: bon-cmd-queued-item-in 0.18s ease-out both;
+}
+@keyframes bon-cmd-queued-item-in {
+  from {
+    opacity: 0;
+    transform: translateY(-3px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .bon-cmd-turn-queued-item {
+    animation: none;
+  }
+}
+.bon-cmd-turn-queued-item .bon-cmd-turn-text {
+  /* Dashed border around the whole bubble marks it as pending; right-side
+     padding leaves room for the per-item × button. */
+  border-style: dashed;
+  opacity: 0.78;
+  padding-right: 2.4em;
+}
+.bon-cmd-turn-cancel {
+  appearance: none;
+  background: none;
+  border: none;
+  position: absolute;
+  top: 0.15em;
+  right: 0.3em;
+  width: 1.4em;
+  height: 1.4em;
+  padding: 0;
+  line-height: 1;
+  font-size: 1.05rem;
+  color: var(--bon-muted);
+  cursor: pointer;
+  border-radius: 0.25em;
+  transition:
+    color 0.15s,
+    background 0.15s;
+}
+.bon-cmd-turn-cancel:hover {
+  color: var(--bon-stamp-red);
+  background: var(--bon-row-hover);
+}
+
+/* Agent card — left-aligned bubble, mirroring the operator on the right.
+   The modal header already says "Bot or Not agent", so the per-card AGENT
+   label is hidden; position alone signals the speaker. The reasoning prose
+   sits in a soft-tint bubble (matching the operator's bubble style) with a
+   slightly wider cap because prose runs longer than the operator's commands.
+   Action-log rows and the meta line live outside the bubble — they're
+   mechanical chrome, not speech. */
+.bon-cmd-turn--agent {
+  align-self: flex-start;
+  width: fit-content;
+  max-width: min(85%, 40em);
+}
+.bon-cmd-turn--agent .bon-cmd-turn-label {
+  display: none;
+}
+
+/* Agent reasoning prose. CSS `pre-wrap` so newlines from the streamed text
+   survive; inline emphasis is rendered with safe-escaped HTML by
+   bonAiCommandFormatBlock at end-of-turn. */
+.bon-cmd-turn-reasoning-section[hidden],
+.bon-cmd-turn-actions-section[hidden] {
+  display: none;
+}
+.bon-cmd-turn-reasoning {
+  font-family: var(--bon-font-mono);
+  font-size: 0.84rem;
+  line-height: 1.55;
+  color: var(--bon-text);
+  white-space: pre-wrap;
+  padding: 0.5em 0.85em;
+  background: var(--bon-bg-tint);
+  border: 1px solid var(--bon-border);
+  border-radius: 0.7em;
+}
+.bon-cmd-turn-reasoning code {
+  font-size: 0.92em;
+  padding: 0.05em 0.4em;
+  background: var(--bon-bg-tint);
+  border-radius: 0.25em;
+}
+.bon-cmd-turn-reasoning strong {
+  color: var(--bon-text);
+  font-weight: 600;
+}
+.bon-cmd-turn-reasoning em {
+  font-style: italic;
+}
+.bon-cmd-turn--error .bon-cmd-turn-reasoning {
+  color: var(--bon-stamp-red);
+}
+.bon-cmd-turn--aborted .bon-cmd-turn-reasoning {
+  color: var(--bon-muted);
+  font-style: italic;
+}
+
+/* Per-turn meta line — elapsed + per-turn cost. Sits unobtrusively below
+   the agent's reasoning so cards still carry their own price tag. */
+.bon-cmd-turn-meta {
+  font-family: var(--bon-font-mono);
+  font-size: 0.66rem;
+  color: var(--bon-muted-soft);
+  margin: 0;
+  letter-spacing: 0.04em;
+}
+.bon-cmd-turn-meta[hidden] {
+  display: none;
+}
+
+/* Each streamed delta chunk lands in its own span and animates in with a
+   short blur→clear fade. Same trick the ChatGPT / Claude.ai UIs use to make
+   token-streaming feel like ink soaking through paper rather than typewriter
+   key-pops. `display: inline` so text wrapping stays natural; `both` keeps
+   the cleared final state once the animation lands. */
+.bon-cmd-stream-chunk {
+  display: inline;
+  animation: bon-cmd-stream-fade 0.42s ease-out both;
+}
+@keyframes bon-cmd-stream-fade {
+  from {
+    opacity: 0;
+    filter: blur(4px);
+  }
+  to {
+    opacity: 1;
+    filter: blur(0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .bon-cmd-stream-chunk {
+    animation: none;
+  }
+}
+
+/* Stream caret — blinks at the end of the streaming text. Hidden once the
+   turn settles (the --streaming class is removed). */
+.bon-cmd-stream-caret {
+  display: inline-block;
+  width: 0.4em;
+  height: 1em;
+  vertical-align: text-bottom;
+  background: var(--bon-accent);
+  margin-left: 1px;
+  opacity: 0;
+}
+.bon-cmd-turn-reasoning--streaming .bon-cmd-stream-caret {
+  opacity: 1;
+  animation: bon-cmd-caret-blink 0.9s steps(2, end) infinite;
+}
+@keyframes bon-cmd-caret-blink {
+  50% {
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .bon-cmd-turn-reasoning--streaming .bon-cmd-stream-caret {
+    animation: none;
+  }
+}
+
+/* Action log rows — same visual as before, just nested under each agent
+   turn's actions-section. */
+.bon-cmd-turn-actions-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3em;
+}
+.bon-cmd-modal-action {
+  display: grid;
+  grid-template-columns: 1.4em auto 1fr;
+  align-items: baseline;
+  gap: 0.55em;
+  font-family: var(--bon-font-mono);
+  font-size: 0.8rem;
+  color: var(--bon-text-soft);
+  padding: 0.32em 0.5em;
+  border-radius: 0.3em;
+  background: var(--bon-bg-tint);
+  border: 1px solid transparent;
+  animation: bon-cmd-action-in 0.18s ease-out;
+}
+@keyframes bon-cmd-action-in {
+  from {
+    opacity: 0;
+    transform: translateX(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .bon-cmd-modal-action {
+    animation: none;
+  }
+}
+.bon-cmd-modal-action-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.2em;
+  height: 1.2em;
+  font-size: 0.85em;
+  border-radius: 50%;
+  color: var(--bon-muted);
+  background: var(--bon-surface);
+  flex-shrink: 0;
+}
+.bon-cmd-modal-action-label {
+  color: var(--bon-text);
+  font-weight: 600;
+}
+.bon-cmd-modal-action-detail {
+  color: var(--bon-muted);
+  font-weight: 400;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.bon-cmd-modal-action-detail--error {
+  color: var(--bon-stamp-red);
+}
+.bon-cmd-modal-action--running .bon-cmd-modal-action-icon {
+  color: var(--bon-accent);
+  background: var(--bon-accent-soft);
+  animation: bon-cmd-action-spin 1.2s linear infinite;
+}
+@keyframes bon-cmd-action-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .bon-cmd-modal-action--running .bon-cmd-modal-action-icon {
+    animation: none;
+  }
+}
+.bon-cmd-modal-action--ok .bon-cmd-modal-action-icon {
+  color: var(--bon-stamp-forest);
+  background: rgba(31, 102, 68, 0.16);
+}
+.bon-cmd-modal-action--error .bon-cmd-modal-action-icon {
+  color: var(--bon-stamp-red);
+  background: rgba(139, 30, 30, 0.16);
+}
+
+/* Status strip between the conversation log and the composer. Holds the
+   live pip + status text and the running cost total. The Cancel button
+   tucks in here while a turn is in flight so it's available without
+   crowding the composer. */
+.bon-cmd-modal-statusbar {
+  display: flex;
+  align-items: center;
+  gap: 0.7em;
+  padding: 0.55em 1.1em;
+  border-top: 1px solid var(--bon-border);
+  background: var(--bon-surface-soft);
+  font-family: var(--bon-font-mono);
+  font-size: 0.72rem;
+  min-height: 2.4em;
+}
+.bon-cmd-modal-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5em;
+  letter-spacing: 0.04em;
+  color: var(--bon-muted);
+}
+.bon-cmd-modal-pip {
+  display: inline-block;
+  width: 0.55em;
+  height: 0.55em;
+  border-radius: 50%;
+  background: var(--bon-accent);
+  box-shadow: 0 0 0 0 var(--bon-accent-soft);
+  animation: bon-cmd-pip-pulse 1.4s ease-out infinite;
+}
+.bon-cmd-modal-pip[data-status="done"] {
+  background: var(--bon-stamp-forest);
+  animation: none;
+  box-shadow: none;
+}
+.bon-cmd-modal-pip[data-status="error"] {
+  background: var(--bon-stamp-red);
+  animation: none;
+  box-shadow: none;
+}
+.bon-cmd-modal-pip[data-status="aborted"],
+.bon-cmd-modal-pip[data-status="max-turns"] {
+  background: var(--bon-muted);
+  animation: none;
+  box-shadow: none;
+}
+@keyframes bon-cmd-pip-pulse {
+  0% {
+    box-shadow: 0 0 0 0 var(--bon-accent-soft);
+  }
+  70% {
+    box-shadow: 0 0 0 0.55em transparent;
+  }
+  100% {
+    box-shadow: 0 0 0 0 transparent;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .bon-cmd-modal-pip {
+    animation: none;
+  }
+}
+.bon-cmd-modal-cost {
+  font-family: var(--bon-font-mono);
+  font-size: 0.7rem;
+  color: var(--bon-muted-soft);
+  letter-spacing: 0.02em;
+}
+.bon-cmd-modal-cost[hidden] {
+  display: none;
+}
+.bon-cmd-modal-cancel {
+  appearance: none;
+  background: none;
+  border: 1px solid var(--bon-border-strong);
+  border-radius: 0.3em;
+  padding: 0.2em 0.65em;
+  font-family: var(--bon-font-mono);
+  font-size: 0.66rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--bon-text-soft);
+  cursor: pointer;
+  margin-left: auto;
+  transition:
+    color 0.15s,
+    border-color 0.15s,
+    background 0.15s;
+}
+.bon-cmd-modal-cancel:hover {
+  color: var(--bon-stamp-red);
+  border-color: var(--bon-stamp-red);
+  background: rgba(139, 30, 30, 0.05);
+}
+.bon-cmd-modal-cancel[hidden] {
+  display: none;
+}
+
+/* Composer — chat input pinned at the bottom. Mirrors the page command bar
+   visually (mono font, accent prefix, gradient-ring focus styling) so the
+   two inputs read as part of the same conversation surface. */
+.bon-cmd-modal-composer {
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+  padding: 0.7em 1.1em 0.95em;
+  border-top: 1px solid var(--bon-border);
+  background: var(--bon-surface);
+  position: relative;
+}
+.bon-cmd-modal-composer-prefix {
+  color: var(--bon-accent);
+  font-family: var(--bon-font-mono);
+  font-size: 1rem;
+  line-height: 1;
+  flex-shrink: 0;
+  opacity: 0.7;
+}
+.bon-cmd-modal-composer-input {
+  flex: 1;
+  min-width: 0;
+  appearance: none;
+  border: 1px solid var(--bon-border-strong);
+  border-radius: 0.45em;
+  background: var(--bon-bg-tint);
+  padding: 0.5em 0.75em;
+  font-family: var(--bon-font-mono);
+  font-size: 0.85rem;
+  color: var(--bon-text);
+  transition:
+    border-color 0.15s,
+    background 0.15s,
+    box-shadow 0.15s;
+}
+.bon-cmd-modal-composer-input::placeholder {
+  color: var(--bon-muted-soft);
+  font-style: italic;
+}
+.bon-cmd-modal-composer-input:focus {
+  outline: none;
+  border-color: var(--bon-accent);
+  background: var(--bon-surface);
+  box-shadow: 0 0 0 3px var(--bon-accent-soft);
+}
+.bon-cmd-modal-composer-input:disabled {
+  opacity: 0.55;
+  cursor: progress;
+}
+.bon-cmd-modal-composer-send {
+  appearance: none;
+  background: var(--bon-accent);
+  color: var(--bon-surface);
+  border: none;
+  border-radius: 0.4em;
+  padding: 0.5em 0.85em;
+  font-family: var(--bon-font-mono);
+  font-size: 0.95rem;
+  line-height: 1;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition:
+    opacity 0.15s,
+    background 0.15s;
+}
+.bon-cmd-modal-composer-send:hover {
+  background: var(--bon-link-hover);
+}
+.bon-cmd-modal-composer-send:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+/* When a turn is still running, Enter queues a follow-up instead of sending
+   immediately. Outline the send button so the affordance reads as "queue"
+   rather than "run-now" — same shape, different weight. */
+.bon-cmd-modal-composer[data-state="queueing"] .bon-cmd-modal-composer-send {
+  background: transparent;
+  color: var(--bon-accent);
+  box-shadow: inset 0 0 0 1px var(--bon-accent);
+}
+.bon-cmd-modal-composer[data-state="queueing"]
+  .bon-cmd-modal-composer-send:hover {
+  background: var(--bon-accent-soft);
+}

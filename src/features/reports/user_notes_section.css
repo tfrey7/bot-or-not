@@ -1,0 +1,71 @@
+/* ============================================================
+   User notes (operator's own call + freeform scratchpad)
+   ============================================================ */
+
+.bon-user-notes__title-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.8em;
+  margin-bottom: 0.9em;
+}
+.bon-user-notes__title-row .bon-detail-title {
+  margin-bottom: 0;
+}
+.bon-user-notes__status {
+  font-family: var(--bon-font-mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--bon-muted);
+}
+.bon-user-notes__status--dirty {
+  color: var(--bon-stamp-rust);
+}
+.bon-user-notes__status--saved {
+  color: var(--bon-stamp-forest);
+}
+
+.bon-user-notes__controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6em 1em;
+  margin-bottom: 0.7em;
+}
+.bon-user-notes__rating {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6em;
+}
+.bon-user-notes__rating-label {
+  font-family: var(--bon-font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--bon-muted);
+}
+
+.bon-user-notes__textarea {
+  width: 100%;
+  box-sizing: border-box;
+  font-family: var(--bon-font-mono);
+  font-size: 0.82rem;
+  line-height: 1.55;
+  color: var(--bon-text);
+  background: var(--bon-surface);
+  border: 1px solid var(--bon-border);
+  border-radius: 3px;
+  padding: 0.65em 0.75em;
+  resize: vertical;
+  min-height: 5.5em;
+}
+.bon-user-notes__textarea:focus {
+  outline: none;
+  border-color: var(--bon-accent);
+  box-shadow: 0 0 0 2px var(--bon-accent-soft);
+}
+.bon-user-notes__textarea::placeholder {
+  color: var(--bon-muted-soft);
+  font-style: italic;
+}

@@ -1,0 +1,133 @@
+/* ============================================================
+   Master-detail split
+   ============================================================ */
+
+.bon-split {
+  display: grid;
+  /* List trimmed to ~40% so the detail pane carries the heavier reading;
+     the list table now has four columns (factor dots ride under the
+     username) so it can run comfortably narrow. */
+  grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+  gap: 1.5em;
+  align-items: start;
+}
+.bon-split-list {
+  min-width: 0;
+}
+.bon-split-detail {
+  /* Detail pane is the editorial-dossier surface — JetBrains Mono throughout.
+     Set here so child widgets inherit; only opt out for prose that needs sans. */
+  font-family: var(--bon-font-mono);
+  background: var(--bon-surface);
+  border: 1px solid var(--bon-border);
+  border-radius: 0.5em;
+  box-shadow: var(--bon-shadow-md);
+  min-width: 0;
+  /* Establish a container so inner widgets (summary-row, persona) can
+     respond to the pane's actual inline size rather than the viewport.
+     Without this, the nested two-column summary/persona layout keeps its
+     side-by-side track even when the pane is squeezed, and the radar's
+     overflow:visible labels paint into the summary text. */
+  container-type: inline-size;
+  container-name: bon-detail;
+  /* When selectRow scrollIntoView()s us, leave room for the sticky header
+     so the dossier top isn't hidden under it. --bon-sticky-shell-height
+     is published by initStickyShellMeasurement in index.ts. */
+  scroll-margin-top: calc(var(--bon-sticky-shell-height, 0px) + 0.5em);
+}
+.bon-split-list .bon-table tbody td,
+.bon-split-list .bon-table thead th {
+  padding-left: 0.45em;
+  padding-right: 0.45em;
+}
+.bon-split-list .bon-table tbody td:first-child,
+.bon-split-list .bon-table thead th:first-child {
+  padding-left: 0.85em;
+}
+.bon-split-list .bon-table tbody td:last-child,
+.bon-split-list .bon-table thead th:last-child {
+  padding-right: 0.65em;
+}
+.bon-split-list .bon-table tbody td {
+  padding-top: 0.7em;
+  padding-bottom: 0.7em;
+}
+.bon-split-list .bon-table thead th {
+  padding-top: 0.8em;
+  padding-bottom: 0.8em;
+}
+.bon-detail-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4em 2em;
+  text-align: center;
+  color: var(--bon-muted);
+  font-family: var(--bon-font-mono);
+  font-size: 0.82rem;
+  letter-spacing: 0.02em;
+  min-height: 18em;
+  gap: 0.4em;
+}
+.bon-detail-empty-icon {
+  font-size: 1.5rem;
+  opacity: 0.55;
+  margin-bottom: 0.4em;
+}
+/* Inside the detail pane the inner section padding had a deep left
+   indent meant to align with the row's expand caret. No caret here, so
+   restore symmetric padding. */
+.bon-split-detail .bon-detail-wrap {
+  padding: 2em 2.25em 2.25em;
+}
+.bon-split-detail > .bon-detail-wrap:first-child {
+  padding-top: 1.25em;
+}
+.bon-split-detail .bon-row-footer {
+  padding: 0.4em 2.25em 1.6em;
+}
+@media (max-width: 82em) {
+  .bon-split {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* ============================================================
+   List sections (active / done)
+
+   The list is split: queued + running rows live in
+   .bon-list-section--active above the main table; everything else
+   sits in the main table below it. Both share the same column
+   layout, so a row moving between them visually slides between
+   the two on the next render.
+   ============================================================ */
+
+.bon-list-section {
+  margin-bottom: 1.1em;
+}
+.bon-list-section[hidden] {
+  display: none;
+}
+.bon-list-section-title {
+  font-family: var(--bon-font-mono);
+  font-size: 0.66rem;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--bon-muted);
+  font-weight: 700;
+  margin: 0 0 0.55em;
+}
+
+/* ============================================================
+   Row footer — action strip pinned below an expanded row's body
+   (used by detail-pane content rendering).
+   ============================================================ */
+
+.bon-row-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5em;
+  padding: 0.4em 1.75em 1.4em 3.5em;
+  background: var(--bon-surface-soft);
+}

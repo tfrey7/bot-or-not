@@ -1,0 +1,38 @@
+/* ============================================================
+   Confirm modal — generic modal chrome shared by the
+   "clear all reports" confirmation and any other simple modal.
+   ============================================================ */
+
+.bon-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: var(--bon-overlay);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1em;
+  z-index: 10;
+}
+.bon-modal-backdrop[hidden] {
+  display: none;
+}
+.bon-modal {
+  background: var(--bon-surface);
+  border: 1px solid var(--bon-border);
+  border-radius: 0.5em;
+  padding: 1.75em;
+  box-shadow: var(--bon-shadow-lg);
+  max-width: 26em;
+  width: 100%;
+}
+.bon-modal p {
+  margin: 0 0 1.25em;
+  font-family: var(--bon-font-mono);
+  font-size: 0.85rem;
+  line-height: 1.55;
+}
+.bon-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5em;
+}

@@ -1,0 +1,30 @@
+/* ============================================================
+   Demographics badge — small inline chip rendered next to the
+   region badge in the profile header. Mirrors .bon-region-badge
+   dimensions so the two non-verdict inferences (country + age)
+   sit visually together.
+   ============================================================ */
+
+.bon-demographics-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4em;
+  font-family: var(--bon-font-mono);
+  font-size: 0.62rem;
+  font-weight: 700;
+  padding: 0.3em 0.65em 0.28em 0.5em;
+  border-radius: 0.25em;
+  border: 1.5px solid currentColor;
+  line-height: 1.2;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  background: var(--bon-stamp-bg);
+  white-space: nowrap;
+  color: var(--bon-stamp-charcoal);
+}
+.bon-demographics-badge__emoji {
+  font-size: 1.1em;
+  line-height: 1;
+  letter-spacing: 0;
+  margin-block: -0.3em;
+}

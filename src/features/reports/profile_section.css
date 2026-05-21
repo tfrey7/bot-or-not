@@ -1,0 +1,144 @@
+/* ============================================================
+   Profile info — Reddit-sidebar-style header in the detail pane.
+   Sits above the AI investigation so the operator sees cake day,
+   status, and report tally without leaving the page.
+   ============================================================ */
+
+/* Rule between the profile block and the investigation below.
+   Pull the bottom padding tight so the rule sits snug under the
+   meta line; the next wrap's top padding supplies the breathing
+   room before the summary. */
+.bon-split-detail > .bon-profile-info {
+  padding-bottom: 1.25em;
+  border-bottom: 1px solid var(--bon-border);
+  /* Pin the identity strip to the top of the viewport (just below the
+     sticky header/tabs shell) so the username + verdict + action buttons
+     stay visible while scrolling through the long dossier below. */
+  position: sticky;
+  top: var(--bon-sticky-shell-height, 0px);
+  z-index: 5;
+  background: var(--bon-surface);
+  /* Match the parent card's rounded top so the sticky background doesn't
+     paint over the corners when the page is at rest (parent has a 1px
+     border, so trim the radius by 1px). */
+  border-top-left-radius: calc(0.5em - 1px);
+  border-top-right-radius: calc(0.5em - 1px);
+}
+
+.bon-profile-info__header {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.85em;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+.bon-profile-info__identity {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25em;
+}
+
+.bon-profile-info__title-row {
+  display: flex;
+  align-items: center;
+  gap: 0.7em;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+.bon-profile-info__title-row .bon-verdict-badge,
+.bon-profile-info__title-row .bon-region-badge,
+.bon-profile-info__title-row .bon-demographics-badge {
+  font-size: 0.65rem;
+  padding: 0.35em 0.75em 0.32em;
+  letter-spacing: 0.16em;
+  flex-shrink: 0;
+}
+
+.bon-profile-info__actions {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4em;
+  flex-shrink: 0;
+}
+.bon-profile-info__actions .bon-btn {
+  /* Top-right strip — tighter than the standard .bon-btn so the buttons
+     don't dwarf the username/verdict on the same row. */
+  font-size: 0.7rem;
+  padding: 0.4em 0.8em;
+}
+
+.bon-profile-info__username {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--bon-text);
+  text-decoration: none;
+}
+
+.bon-profile-info__username:hover {
+  color: var(--bon-stamp-blue);
+  text-decoration: underline;
+}
+
+.bon-profile-info__meta {
+  flex: 1 1 auto;
+  min-width: 0;
+  color: var(--bon-muted);
+  font-size: 0.74rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.bon-profile-info__meta > * {
+  /* Items + separators flow inline so the single-line ellipsis can clip
+     the tail when the row is squeezed. Margin (not flex gap) gives the
+     padding around each separator. */
+  margin-right: 0.3em;
+}
+.bon-profile-info__meta > .bon-profile-info__sep {
+  margin-left: 0.05em;
+  margin-right: 0.35em;
+}
+
+.bon-profile-info__sep {
+  color: var(--bon-muted-soft);
+}
+
+.bon-profile-info__cake {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.3em;
+}
+
+.bon-profile-info__meta-item[title],
+.bon-profile-info__cake[title] {
+  cursor: help;
+}
+
+.bon-profile-info__cake-icon {
+  font-size: 0.95em;
+  line-height: 1;
+}
+
+.bon-profile-info__pending {
+  color: var(--bon-muted-soft);
+  font-style: italic;
+}
+
+/* Tail-end Delete button — far below the dossier, separator above so it
+   reads as a danger-zone footer rather than a primary action. Overrides
+   the default .bon-detail-wrap padding (2em 2.25em 2.25em) so the gap
+   above the button isn't bigger than it needs to be. */
+.bon-split-detail .bon-detail-footer {
+  padding: 1.25em 2.25em 1.5em;
+  border-top: 1px solid var(--bon-border);
+  display: flex;
+  justify-content: flex-end;
+}

@@ -1,0 +1,105 @@
+/* ============================================================
+   Big multi-series subreddit charts. Two visualizations of the
+   same data live here so we can compare and pick one — overlaid
+   lines and stacked area. Top 5 subs get distinct colors; the
+   long tail collapses into a muted "other" series.
+   ============================================================ */
+
+.bon-sub-chart {
+  margin-top: 1.5em;
+  padding-top: 1em;
+  border-top: 1px solid var(--bon-border);
+}
+.bon-sub-chart .bon-detail-title {
+  margin-bottom: 0.5em;
+}
+.bon-sub-chart-uplot {
+  position: relative;
+  width: 100%;
+  max-width: 640px;
+}
+.bon-sub-chart-uplot .uplot,
+.bon-sub-chart-uplot .u-wrap {
+  background: transparent;
+}
+.bon-sub-chart-uplot .u-cursor-x,
+.bon-sub-chart-uplot .u-cursor-y {
+  border-color: var(--bon-border-strong);
+}
+.bon-sub-chart-tooltip {
+  position: absolute;
+  pointer-events: none;
+  z-index: 5;
+  min-width: 9em;
+  padding: 0.45em 0.6em 0.5em;
+  background: var(--bon-bg);
+  border: 1px solid var(--bon-border-strong);
+  border-radius: 3px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
+  font-family: var(--bon-font-mono);
+  font-size: 0.72rem;
+  color: var(--bon-text);
+  line-height: 1.45;
+}
+.bon-sub-chart-tooltip[hidden] {
+  display: none;
+}
+.bon-sub-chart-tooltip__date {
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--bon-muted);
+  margin-bottom: 0.35em;
+  padding-bottom: 0.25em;
+  border-bottom: 1px solid var(--bon-border);
+  font-size: 0.66rem;
+}
+.bon-sub-chart-tooltip__row {
+  display: grid;
+  grid-template-columns: 0.85em 1fr auto;
+  align-items: center;
+  gap: 0.45em;
+}
+.bon-sub-chart-tooltip__swatch {
+  display: inline-block;
+  width: 0.7em;
+  height: 0.7em;
+  border-radius: 2px;
+  background: var(--bon-series-color);
+  box-shadow:
+    0 0 5px var(--bon-series-color),
+    0 0 1.5px var(--bon-series-color);
+}
+.bon-sub-chart-tooltip__count {
+  font-variant-numeric: tabular-nums;
+  color: var(--bon-text-soft);
+}
+.bon-sub-chart-legend {
+  list-style: none;
+  padding: 0;
+  margin: 0.5em 0 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4em 1em;
+  font-size: 0.75rem;
+  color: var(--bon-text-soft);
+}
+.bon-sub-chart-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35em;
+}
+.bon-sub-chart-swatch {
+  display: inline-block;
+  width: 0.9em;
+  height: 0.9em;
+  border-radius: 2px;
+  background: var(--bon-series-color);
+  box-shadow:
+    0 0 6px var(--bon-series-color),
+    0 0 2px var(--bon-series-color);
+}
+.bon-sub-chart-legend-count {
+  color: var(--bon-muted);
+  font-variant-numeric: tabular-nums;
+}

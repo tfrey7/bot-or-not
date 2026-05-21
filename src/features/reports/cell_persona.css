@@ -1,0 +1,34 @@
+/* ============================================================
+   Persona tag — rubber stamp mirroring the verdict badge, tinted
+   by the persona's archetype hue so it reads as a sibling of the
+   region + verdict tags rather than a foreign element.
+   ============================================================ */
+
+.bon-persona-tag {
+  display: inline-block;
+  font-family: var(--bon-font-mono);
+  font-size: 0.62rem;
+  font-weight: 700;
+  padding: 0.3em 0.65em 0.28em;
+  border-radius: 0.25em;
+  border: 1.5px solid currentColor;
+  line-height: 1.2;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  background: var(--bon-stamp-bg);
+  white-space: nowrap;
+  color: hsl(var(--bon-persona-hue, 0) 60% 38%);
+}
+.bon-persona-tag--bot,
+.bon-persona-tag--normal {
+  color: var(--bon-stamp-charcoal);
+}
+@media (prefers-color-scheme: dark) {
+  .bon-persona-tag {
+    color: hsl(var(--bon-persona-hue, 0) 65% 60%);
+  }
+  .bon-persona-tag--bot,
+  .bon-persona-tag--normal {
+    color: var(--bon-stamp-charcoal);
+  }
+}

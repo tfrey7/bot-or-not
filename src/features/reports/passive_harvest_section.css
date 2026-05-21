@@ -1,0 +1,150 @@
+/* ============================================================
+   Passive harvest (DOM-scraped posts for hidden-profile users)
+   Mirrors the Google dossier styles so the two sections read as
+   sibling enrichment panels — same chip rail, same disclosure list,
+   same per-item layout. The stale-badge + fresh-item stripe + the
+   .bon-btn--fresh-harvest treatment on the Investigate button are
+   shared with the Google dossier — both are dossier sources, so
+   "new since last analysis" reads source-agnostic to the operator.
+   ============================================================ */
+
+.bon-passive-harvest__title-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.8em;
+  flex-wrap: wrap;
+  margin-bottom: 0.9em;
+}
+.bon-passive-harvest__title-row .bon-detail-title {
+  margin-bottom: 0;
+}
+.bon-passive-harvest__meta {
+  font-family: var(--bon-font-mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--bon-muted);
+}
+.bon-passive-harvest__stale-badge {
+  font-family: var(--bon-font-mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--bon-accent);
+  background: var(--bon-accent-soft);
+  border: 1px solid var(--bon-accent);
+  border-radius: 3px;
+  padding: 0.15em 0.55em;
+  cursor: help;
+}
+
+.bon-passive-harvest__aggregates {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4em;
+  margin-bottom: 0.9em;
+}
+.bon-passive-harvest__chip {
+  font-family: var(--bon-font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.02em;
+  color: var(--bon-text);
+  background: var(--bon-surface);
+  border: 1px solid var(--bon-border);
+  border-radius: 3px;
+  padding: 0.15em 0.5em;
+}
+
+.bon-passive-harvest__items-summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4em;
+  font-family: var(--bon-font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--bon-muted);
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+}
+.bon-passive-harvest__items-summary::-webkit-details-marker {
+  display: none;
+}
+.bon-passive-harvest__items-summary::before {
+  content: "▸";
+  display: inline-block;
+  font-size: 0.85em;
+  transition: transform 120ms ease-out;
+}
+.bon-passive-harvest__items-disclosure[open]
+  > .bon-passive-harvest__items-summary::before {
+  transform: rotate(90deg);
+}
+.bon-passive-harvest__items-summary:hover {
+  color: var(--bon-text);
+}
+
+.bon-passive-harvest__items {
+  list-style: none;
+  margin: 0.9em 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.9em;
+}
+.bon-passive-harvest__item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2em;
+  padding-bottom: 0.7em;
+  border-bottom: 1px dashed var(--bon-border);
+}
+.bon-passive-harvest__item:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+.bon-passive-harvest__item--fresh {
+  /* Fresh items captured since the last investigation — a hair-thin
+     accent stripe on the leading edge cues "this is what's new" without
+     drawing the eye away from the title text. */
+  padding-left: 0.6em;
+  border-left: 2px solid var(--bon-accent);
+}
+.bon-passive-harvest__item-title {
+  font-size: 0.92rem;
+  color: var(--bon-text);
+  text-decoration: none;
+  font-weight: 500;
+}
+.bon-passive-harvest__item-title:hover {
+  text-decoration: underline;
+}
+.bon-passive-harvest__item-meta {
+  font-family: var(--bon-font-mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--bon-muted);
+}
+.bon-passive-harvest__item-body {
+  font-size: 0.82rem;
+  color: var(--bon-muted);
+  line-height: 1.35;
+}
+.bon-passive-harvest__overflow {
+  font-family: var(--bon-font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  color: var(--bon-muted);
+  font-style: italic;
+}
+
+.bon-btn--fresh-harvest {
+  /* Subtle accent border so the operator notices new evidence is
+     waiting to be re-investigated. Re-runs cost money — this is a
+     prompt, not an obligation. */
+  border-color: var(--bon-accent);
+  box-shadow: 0 0 0 1px var(--bon-accent-soft);
+}

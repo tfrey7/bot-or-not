@@ -1,0 +1,222 @@
+/* ============================================================
+   Table
+   ============================================================ */
+
+.bon-table-wrap {
+  background: var(--bon-surface);
+  border: 1px solid var(--bon-border);
+  border-radius: 0.5em;
+  /* Horizontal scroll is the safety net when a narrow viewport can't fit
+     the factor-dot strip + tags side by side. Factor-card popovers use
+     position: fixed and reparent to <body>, so this overflow doesn't
+     clip them. */
+  overflow-x: auto;
+  box-shadow: var(--bon-shadow-md);
+}
+table.bon-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+  /* Auto layout lets the User column hug the factor-dot strip and gives
+     the Tags column the remainder — no nth-child width tuning needed. */
+  table-layout: auto;
+}
+.bon-table td.bon-tags-cell {
+  /* Hint the auto layout that this column should absorb leftover width
+     rather than collapsing to badge-width when the row is selected. */
+  width: 100%;
+  /* Push the inline-flex inner wrapper to the right edge of the cell. */
+  text-align: right;
+}
+.bon-table tbody td {
+  padding: 0.8em 1em;
+  border-bottom: 1px solid var(--bon-border);
+  vertical-align: middle;
+  transition: background 0.12s;
+}
+.bon-table tbody tr:last-child td {
+  border-bottom: none;
+}
+.bon-table tbody tr.bon-row-summary {
+  cursor: pointer;
+}
+/* Backgrounds paint on the <td>s, not the <tr>, because tr backgrounds
+   render under cell borders in border-collapse: collapse and produce the
+   jagged divider that's haunted this table for a while. */
+.bon-table tbody tr.bon-row-summary:hover td {
+  background: var(--bon-row-hover);
+}
+.bon-table tbody tr.bon-row-summary--selected td,
+.bon-table tbody tr.bon-row-summary--selected:hover td {
+  background: var(--bon-accent-soft);
+}
+.bon-table tbody tr.bon-row-summary--selected td:first-child {
+  box-shadow: inset 3px 0 0 var(--bon-accent);
+}
+
+.bon-username-cell {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.4em;
+  min-width: 0;
+}
+.bon-username-cell-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
+}
+.bon-username-cell a {
+  font-family: var(--bon-font-mono);
+  font-size: 0.85rem;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  color: var(--bon-link);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.bon-username-cell a:hover {
+  text-decoration: underline;
+  color: var(--bon-link-hover);
+}
+
+.bon-reddit-link {
+  color: var(--bon-link);
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--bon-link) 40%, transparent);
+  text-underline-offset: 0.15em;
+}
+.bon-reddit-link:hover {
+  color: var(--bon-link-hover);
+  text-decoration-color: var(--bon-link-hover);
+}
+.bon-cell-muted {
+  color: var(--bon-muted);
+  font-size: 0.82rem;
+  font-variant-numeric: tabular-nums;
+}
+.bon-cell-numeric {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+}
+
+.bon-bb-empty {
+  color: var(--bon-muted-soft);
+  font-size: 0.78rem;
+}
+
+.bon-ring-chip {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 0.4em;
+  padding: 0.05em 0.45em;
+  font-family: var(--bon-font-mono);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  line-height: 1.4;
+  border-radius: 0.3em;
+  background: hsl(var(--bon-ring-hue, 40) 32% 82%);
+  color: hsl(var(--bon-ring-hue, 40) 50% 22%);
+  border: 1px solid rgba(0, 0, 0, 0.18);
+  white-space: nowrap;
+  user-select: none;
+}
+
+@media (prefers-color-scheme: dark) {
+  .bon-ring-chip {
+    background: hsl(var(--bon-ring-hue, 40) 24% 26%);
+    color: hsl(var(--bon-ring-hue, 40) 42% 78%);
+    border-color: rgba(255, 255, 255, 0.14);
+  }
+}
+
+.bon-agent-filter {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6em;
+  font-family: var(--bon-font-sans);
+  font-size: 0.85rem;
+  color: var(--bon-muted);
+  margin: 0 0 0.9em;
+}
+.bon-agent-filter[hidden] {
+  display: none;
+}
+.bon-link-btn {
+  appearance: none;
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: var(--bon-accent);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.bon-link-btn[hidden] {
+  display: none;
+}
+.bon-link-btn:hover {
+  opacity: 0.8;
+}
+.bon-link-btn:focus-visible {
+  outline: 2px solid var(--bon-accent-soft);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* Region + verdict + persona strip in the table's "Tags" column. inline-flex
+   so the cell's text-align: right pushes the strip to the right edge while
+   the strip itself sizes to its tags. */
+.bon-tags-row {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.3em 0.4em;
+  font-size: 0.82rem;
+  line-height: 1.3;
+}
+
+/* ============================================================
+   Empty state — shown in the list when no reports exist
+   ============================================================ */
+
+.bon-empty {
+  text-align: center;
+  padding: 4em 1em;
+  color: var(--bon-muted);
+  font-family: var(--bon-font-mono);
+  font-size: 0.82rem;
+  letter-spacing: 0.02em;
+  background: var(--bon-surface);
+  border: 1px dashed var(--bon-border-strong);
+  border-radius: 0.5em;
+}
+.bon-empty-text {
+  margin: 0;
+}
+.bon-empty-text + .bon-empty-text {
+  margin-top: 0.75em;
+}
+.bon-empty-detail {
+  font-size: 0.78rem;
+  color: var(--bon-ink);
+  word-break: break-word;
+  max-width: 48em;
+  margin-left: auto;
+  margin-right: auto;
+}
+.bon-empty-hint {
+  font-size: 0.78rem;
+  font-style: italic;
+  max-width: 48em;
+  margin-left: auto;
+  margin-right: auto;
+}
+.bon-empty-action {
+  margin-top: 1.25em;
+}
