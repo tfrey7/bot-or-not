@@ -689,6 +689,10 @@ table.bon-table {
 }
 .bon-investigation-loading {
   position: relative;
+  /* Contain the slideshow photo z-counter and the overlay's z-index inside
+     this widget so they don't compete with the sticky profile-info bar
+     (z-index: 5) when this wrap scrolls under it. */
+  isolation: isolate;
   display: flex;
   flex-direction: column;
   align-items: center;
