@@ -1,14 +1,11 @@
-// Reports-page orchestrator. Owns the load / render / poll loop, the
-// search input, the analytics container, and the confirm modal. Each row
-// + cell renderer lives in its own file in this directory; this file
-// just wires them together. Sort order is fixed (most-recently-
-// investigated first) so a fresh investigation always floats to the top.
+// Reports-page orchestrator. Owns the load + render loop and the
+// page-level state (which row is selected, current page, expected
+// duration). Tab activation, the AI command bar, the polling loop, and
+// the dev-mode agent badge each live in their own sibling files so this
+// one stays focused on data → render wiring. Sort order is fixed
+// (most-recently-investigated first) so a fresh investigation always
+// floats to the top.
 
-import {
-  bonAiCommandFormatSummary,
-  type AiCommandAction,
-  type AiCommandResult,
-} from "../ai-command";
 import { bonRenderAnalytics } from "../analytics";
 import { bonRenderDiagnostics } from "../diagnostics";
 import { bonRenderSelfImprovement } from "../self-improvement";
@@ -16,7 +13,13 @@ import { bonRenderSync } from "../sync";
 import { BON_REGION_INFO } from "../regions/data.ts";
 import type { Report } from "../../types.ts";
 import { bonExpectedDurationMs } from "../../utils/expected_duration.ts";
-import { bonIsInvestigationStale } from "../../verdict.ts";
+import { bonReportsInstallAgentBadge } from "./agent_badge.ts";
+import {
+  bonReportsInitCommandBar,
+  type BonReportsCommandBarHandle,
+} from "./command_bar.ts";
+import { bonReportsInitTabs } from "./tabs.ts";
+import { bonReportsInitPolling } from "./polling.ts";
 import { bonReportsDetailEmpty, bonReportsDetailPane } from "./detail_pane.ts";
 import { bonReportsInitConfirmModal } from "./confirm_modal.ts";
 import { bonReportsInitJazzLogo } from "./jazz_logo.ts";
@@ -32,9 +35,6 @@ import {
   bonReportsCompareBy,
   bonReportsCountQueuedAhead,
   bonReportsDiagnoseLoadError,
-  bonReportsFormatRunningCellText,
-  bonReportsFormatRunningTitle,
-  bonReportsHasStructuralChange,
   bonReportsIsActiveRow,
   type ReportRow,
 } from "./logic.ts";
@@ -56,6 +56,15 @@ const searchInput = document.getElementById("bon-search") as HTMLInputElement;
 const commandStatusEl = document.getElementById(
   "bon-command-status"
 ) as HTMLElement;
+const agentFilterEl = document.getElementById(
+  "bon-agent-filter"
+) as HTMLElement;
+const agentFilterLabelEl = document.getElementById(
+  "bon-agent-filter-label"
+) as HTMLElement;
+const agentFilterClearBtn = document.getElementById(
+  "bon-agent-filter-clear"
+) as HTMLButtonElement;
 const paginationContainer = document.getElementById(
   "bon-pagination-container"
 ) as HTMLElement;
@@ -74,16 +83,6 @@ const syncContainer = document.getElementById(
 
 const BON_REPORTS_PAGE_SIZE = 20;
 const BON_REPORTS_URL_USER_PARAM = "user";
-const BON_REPORTS_URL_TAB_PARAM = "tab";
-const BON_REPORTS_DEFAULT_TAB = "reports";
-const BON_REPORTS_TABS = [
-  "reports",
-  "metrics",
-  "diagnostics",
-  "self-improvement",
-  "settings",
-] as const;
-type BonReportsTab = (typeof BON_REPORTS_TABS)[number];
 
 // Vite inlines import.meta.env.DEV at build time, so the suffix only ships
 // in `vite dev` builds — published AMO builds (vite build) get a clean
@@ -94,54 +93,7 @@ if (versionEl) {
   versionEl.textContent = import.meta.env.DEV ? `${version} (dev)` : version;
 }
 
-// Dev-only agent identity: when this build is running from a worktree spawned
-// by new-agent.sh, __BON_AGENT__ is the agent slug. Prefix the tab title and
-// drop a hash-colored badge into the masthead so it's unmistakable which
-// agent's code is loaded. Tree-shakes out for published builds (__BON_AGENT__
-// is null).
-if (__BON_AGENT__) {
-  document.title = `[${__BON_AGENT__}] ${document.title}`;
-
-  const titlesEl = document.querySelector(".bon-header-titles");
-  if (titlesEl) {
-    const palette = [
-      "#d97757",
-      "#7ba6d9",
-      "#a9b665",
-      "#d79921",
-      "#b16286",
-      "#83a598",
-      "#fe8019",
-      "#d3869b",
-    ];
-
-    let hash = 0;
-
-    for (const ch of __BON_AGENT__) {
-      hash = ((hash << 5) - hash + ch.charCodeAt(0)) | 0;
-    }
-
-    const color = palette[Math.abs(hash) % palette.length];
-
-    const badge = document.createElement("span");
-    badge.className = "bon-dev-agent-badge";
-    badge.textContent = `AGENT · ${__BON_AGENT__.toUpperCase()}`;
-    badge.title = `Dev build running from worktree: ${__BON_AGENT__}`;
-    Object.assign(badge.style, {
-      display: "inline-block",
-      marginTop: "6px",
-      padding: "2px 8px",
-      background: color,
-      color: "#1a1410",
-      fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
-      fontSize: "10px",
-      fontWeight: "600",
-      letterSpacing: "0.08em",
-      borderRadius: "3px",
-    });
-    titlesEl.appendChild(badge);
-  }
-}
+bonReportsInstallAgentBadge();
 
 const REGION_LABELS: Record<string, string> = Object.fromEntries(
   Object.entries(BON_REGION_INFO).map(([code, info]) => [code, info.label])
@@ -168,45 +120,6 @@ let lastAnimatedSelection: string | null | undefined = undefined;
 // user-driven paging isn't yanked back.
 let pendingScrollToSelected = !!selectedUsername;
 
-// Username to promote to selectedUsername as soon as it shows up in
-// allReports. Used by the "Investigate u/<name>" empty-state button: the
-// background hasn't written the record yet at click time, so the selection
-// is staged here and applied by render() once the record appears via the
-// storage-change listener.
-let pendingSelectionUsername: string | null = null;
-
-// Username allowlist set by the AI command agent's `filter_users` tool. When
-// non-null, render() intersects the visible rows with this set on top of any
-// search-text filter. Cleared on Esc, on the Clear-filter button, on a new
-// search-shaped keystroke, or by the agent itself with an empty list.
-let agentFilter: Set<string> | null = null;
-const agentFilterEl = document.getElementById(
-  "bon-agent-filter"
-) as HTMLElement;
-const agentFilterLabelEl = document.getElementById(
-  "bon-agent-filter-label"
-) as HTMLElement;
-const agentFilterClearBtn = document.getElementById(
-  "bon-agent-filter-clear"
-) as HTMLButtonElement;
-
-agentFilterClearBtn.addEventListener("click", () => {
-  clearAgentFilter();
-});
-
-// Each fresh load of the reports page starts a new AI conversation. The
-// background keeps the transcript across messages within one page session,
-// but a refresh wipes it — keeps the lifetime intuitive and avoids needing
-// any user-facing reset control.
-void browser.runtime.sendMessage({ type: "ai-command-reset" }).catch(() => {});
-
-// While any investigation is "running", poll storage so the elapsed timer
-// ticks and completion/error transitions land without a manual refresh.
-// storage.onChanged should cover the transitions but doesn't always fire
-// reliably across extension pages, so the poll is the source of truth.
-let pollTimer: ReturnType<typeof setInterval> | null = null;
-const POLL_INTERVAL_MS = 1000;
-
 browser.storage.onChanged.addListener((changes, area) => {
   if (area !== "local") {
     return;
@@ -215,9 +128,9 @@ browser.storage.onChanged.addListener((changes, area) => {
   if (changes.reports) {
     // Route through the poll path so non-structural writes (notes, lazy
     // profile-stat fills) don't tear down whichever widget the operator
-    // is currently typing into. pollTick still does a full re-render when
-    // something actually changed structurally.
-    void pollTick();
+    // is currently typing into. polling.pollNow does a full re-render
+    // only when something actually changed structurally.
+    void polling.pollNow();
   }
 
   if (changes.claudeApiKey) {
@@ -225,60 +138,51 @@ browser.storage.onChanged.addListener((changes, area) => {
   }
 });
 
-searchInput.addEventListener("keydown", (event) => {
-  if (event.key !== "Enter") {
-    return;
-  }
-
-  const raw = searchInput.value.trim();
-  if (!raw) {
-    return;
-  }
-
-  event.preventDefault();
-  void runAiCommand(raw);
-});
-
 bonReportsInitConfirmModal({ onConfirm: load });
 bonReportsInitSettings();
 bonReportsInitJazzLogo();
 
-document.addEventListener("keydown", (event) => {
-  if (event.key !== "Escape" || !agentFilter) {
-    return;
-  }
-
-  // The confirm modal's own Esc handler runs alongside this one; if it's
-  // open, let it win and leave the filter for the next Esc press.
-  const confirmModal = document.getElementById("bon-confirm-modal");
-  if (confirmModal && !confirmModal.hidden) {
-    return;
-  }
-
-  clearAgentFilter();
+const commandBar: BonReportsCommandBarHandle = bonReportsInitCommandBar({
+  searchInput,
+  commandStatusEl,
+  agentFilterEl,
+  agentFilterLabelEl,
+  agentFilterClearBtn,
+  getReports: () => allReports,
+  onAgentFilterChange: () => {
+    currentPage = 1;
+    render();
+  },
+  onNavigateToUser: (username) => {
+    selectedUsername = username;
+    updateUrlForSelection();
+    pendingScrollToSelected = true;
+    render();
+  },
+  onCommandReload: async () => {
+    currentPage = 1;
+    await load();
+  },
 });
 
-document.addEventListener("keydown", (event) => {
-  if (event.key !== "/" || event.metaKey || event.ctrlKey || event.altKey) {
-    return;
-  }
+bonReportsInitTabs({ onActivateSelfImprovement: renderSelfImprovement });
 
-  const target = event.target as HTMLElement | null;
-  if (
-    target &&
-    (target.tagName === "INPUT" ||
-      target.tagName === "TEXTAREA" ||
-      target.isContentEditable)
-  ) {
-    return;
-  }
-
-  event.preventDefault();
-  searchInput.focus();
-  searchInput.select();
+const polling = bonReportsInitPolling({
+  getReports: () => allReports,
+  setReports: (next) => {
+    allReports = next;
+  },
+  onStructuralChange: () => {
+    render();
+    renderAnalytics();
+    renderDiagnostics();
+    renderSelfImprovement();
+  },
+  setExpectedDurationMs: (value) => {
+    expectedDurationMs = value;
+  },
 });
 
-initTabs();
 initStickyShellMeasurement();
 
 bonRenderSync(syncContainer);
@@ -369,8 +273,7 @@ function renderLoadError(error: unknown): void {
 }
 
 // Analytics shows aggregates across every investigation, so it should not
-// react to the search input or to every poll tick — only when the
-// underlying data actually changes.
+// react to every poll tick — only when the underlying data actually changes.
 function renderAnalytics(): void {
   if (!analyticsContainer) {
     return;
@@ -411,17 +314,7 @@ function renderSelfImprovement(): void {
 
 function render(): void {
   expectedDurationMs = bonExpectedDurationMs(allReports);
-  renderAgentFilterBanner();
-
-  if (
-    pendingSelectionUsername &&
-    allReports.some((report) => report.username === pendingSelectionUsername)
-  ) {
-    selectedUsername = pendingSelectionUsername;
-    pendingScrollToSelected = true;
-    pendingSelectionUsername = null;
-    updateUrlForSelection();
-  }
+  commandBar.renderAgentFilterBanner();
 
   // URL deep-links from the inline-tag flyout's "open dossier" button pass
   // the lowercased tag key as ?user=, but storage preserves whatever case
@@ -440,13 +333,10 @@ function render(): void {
     }
   }
 
-  const filtered = allReports.filter((report) => {
-    if (agentFilter && !agentFilter.has(report.username)) {
-      return false;
-    }
-
-    return true;
-  });
+  const agentFilter = commandBar.getAgentFilter();
+  const filtered = agentFilter
+    ? allReports.filter((report) => agentFilter.has(report.username))
+    : allReports;
 
   const activeRows = filtered.filter(bonReportsIsActiveRow);
   const doneRows = filtered.filter((report) => !bonReportsIsActiveRow(report));
@@ -468,7 +358,7 @@ function render(): void {
     pendingScrollToSelected = false;
     renderEmptyState();
     renderDetail();
-    ensurePolling();
+    polling.ensurePolling();
     return;
   }
 
@@ -554,16 +444,16 @@ function render(): void {
 
   renderDetail();
 
-  // Deep-link arrivals (URL ?user=, AI-command navigate, empty-state
-  // investigate) want the dossier in view, not just the row. With the
-  // sticky shell holding the page header, the row scroll alone leaves the
-  // detail pane below the fold on narrow screens. Detail pane's
-  // scroll-margin-top already accounts for the sticky shell height.
+  // Deep-link arrivals (URL ?user=, AI-command navigate) want the dossier
+  // in view, not just the row. With the sticky shell holding the page
+  // header, the row scroll alone leaves the detail pane below the fold on
+  // narrow screens. Detail pane's scroll-margin-top already accounts for
+  // the sticky shell height.
   if (shouldScrollToSelection) {
     detailPane.scrollIntoView({ block: "start" });
   }
 
-  ensurePolling();
+  polling.ensurePolling();
 }
 
 function renderActiveSection(rows: ReportRow[]): void {
@@ -726,110 +616,11 @@ function renderEmptyState(): void {
 
   const text = document.createElement("p");
   text.className = "bon-empty-text";
-  text.textContent = agentFilter
+  text.textContent = commandBar.getAgentFilter()
     ? "No reports match the active filter."
     : "No reports yet. Flag a Reddit user from their profile page to start tracking.";
 
   emptyEl.appendChild(text);
-}
-
-function ensurePolling(): void {
-  const anyLive = allReports.some((report) => {
-    const status = report.investigation?.status;
-    if (status === "queued") {
-      return true;
-    }
-
-    return (
-      status === "running" && !bonIsInvestigationStale(report.investigation)
-    );
-  });
-
-  if (anyLive && !pollTimer) {
-    pollTimer = setInterval(pollTick, POLL_INTERVAL_MS);
-  } else if (!anyLive && pollTimer) {
-    clearInterval(pollTimer);
-    pollTimer = null;
-  }
-}
-
-// Poll tick: fetch fresh data but only do a full re-render if something
-// structural changed. For a running investigation, just update the
-// elapsed time text in place — re-rendering destroys the spinning button
-// DOM and restarts its CSS animation, causing a visible jitter every
-// tick.
-async function pollTick(): Promise<void> {
-  try {
-    const { reports = {} } = (await browser.runtime.sendMessage({
-      type: "get-all-reports",
-    })) as { reports?: Record<string, Report> };
-
-    const fresh: ReportRow[] = Object.entries(reports).map(
-      ([username, data]) => ({
-        username,
-        ...data,
-      })
-    );
-
-    const structuralChange = bonReportsHasStructuralChange(allReports, fresh);
-    allReports = fresh;
-
-    if (structuralChange) {
-      render();
-      renderAnalytics();
-      renderDiagnostics();
-      renderSelfImprovement();
-    } else {
-      updateRunningInPlace();
-      ensurePolling();
-    }
-  } catch (error) {
-    console.error("[Bot or Not] poll tick failed", error);
-  }
-}
-
-function updateRunningInPlace(): void {
-  // Recompute in case a run completed between full renders and we have a
-  // new sample for the median (no full re-render fires for that alone).
-  expectedDurationMs = bonExpectedDurationMs(allReports);
-
-  for (const report of allReports) {
-    const investigation = report.investigation;
-    if (investigation?.status !== "running") {
-      continue;
-    }
-
-    if (bonIsInvestigationStale(investigation)) {
-      continue;
-    }
-
-    if (investigation.startedAt === null) {
-      continue;
-    }
-
-    const elapsedSec = Math.round(
-      Math.max(0, Date.now() - investigation.startedAt) / 1000
-    );
-
-    const buttons = document.querySelectorAll<HTMLButtonElement>(
-      "[data-bon-running-btn]"
-    );
-
-    for (const button of buttons) {
-      if (button.dataset.bonRunningBtn !== report.username) {
-        continue;
-      }
-
-      button.textContent = bonReportsFormatRunningCellText(
-        elapsedSec,
-        expectedDurationMs
-      );
-      button.title = bonReportsFormatRunningTitle(
-        elapsedSec,
-        expectedDurationMs
-      );
-    }
-  }
 }
 
 // Publish the sticky header+tabs block's measured height as a CSS variable
@@ -852,243 +643,4 @@ function initStickyShellMeasurement(): void {
 
   publish();
   new ResizeObserver(publish).observe(shell);
-}
-
-function initTabs(): void {
-  const tabs = document.querySelectorAll<HTMLButtonElement>(".bon-tab");
-  const panels = document.querySelectorAll<HTMLElement>(".bon-tab-panel");
-
-  const activate = (target: BonReportsTab): void => {
-    for (const other of tabs) {
-      const isActive = other.dataset.tab === target;
-      other.classList.toggle("bon-tab--active", isActive);
-      other.setAttribute("aria-selected", isActive ? "true" : "false");
-    }
-
-    for (const panel of panels) {
-      panel.hidden = panel.id !== `bon-panel-${target}`;
-    }
-
-    // Note edits don't trigger a structural re-render, so refresh on
-    // activation to pick up changes made since this tab was last opened.
-    if (target === "self-improvement") {
-      renderSelfImprovement();
-    }
-  };
-
-  for (const tab of tabs) {
-    tab.addEventListener("click", () => {
-      const target = tab.dataset.tab;
-      if (!target || !isBonReportsTab(target)) {
-        return;
-      }
-
-      activate(target);
-      updateUrlForTab(target);
-    });
-  }
-
-  const initialTab = readTabFromUrl();
-  if (initialTab !== BON_REPORTS_DEFAULT_TAB) {
-    activate(initialTab);
-  }
-}
-
-function isBonReportsTab(value: string): value is BonReportsTab {
-  return (BON_REPORTS_TABS as readonly string[]).includes(value);
-}
-
-function readTabFromUrl(): BonReportsTab {
-  const raw = new URLSearchParams(window.location.search).get(
-    BON_REPORTS_URL_TAB_PARAM
-  );
-  const trimmed = raw?.trim();
-  return trimmed && isBonReportsTab(trimmed)
-    ? trimmed
-    : BON_REPORTS_DEFAULT_TAB;
-}
-
-function updateUrlForTab(tab: BonReportsTab): void {
-  const params = new URLSearchParams(window.location.search);
-  const current = params.get(BON_REPORTS_URL_TAB_PARAM);
-
-  if (tab === BON_REPORTS_DEFAULT_TAB) {
-    if (current === null) {
-      return;
-    }
-
-    params.delete(BON_REPORTS_URL_TAB_PARAM);
-  } else {
-    if (current === tab) {
-      return;
-    }
-
-    params.set(BON_REPORTS_URL_TAB_PARAM, tab);
-  }
-
-  const query = params.toString();
-  const newUrl = query
-    ? `${window.location.pathname}?${query}`
-    : window.location.pathname;
-  window.history.replaceState({}, "", newUrl);
-}
-
-let commandInflight = false;
-
-async function runAiCommand(input: string): Promise<void> {
-  if (commandInflight) {
-    return;
-  }
-
-  commandInflight = true;
-  searchInput.disabled = true;
-  setCommandStatus("running", `Running: ${input}`);
-
-  try {
-    const response = (await browser.runtime.sendMessage({
-      type: "ai-command",
-      input,
-    })) as AiCommandResult | { ok: false; error: string };
-
-    if (!response?.ok) {
-      const error = (response as { error?: string })?.error ?? "unknown error";
-      if (error === "no-api-key") {
-        setCommandStatus("error", "No Claude API key — add one in Settings.");
-      } else {
-        setCommandStatus("error", `Command failed: ${error}`);
-      }
-
-      return;
-    }
-
-    const result = response as AiCommandResult;
-    const summary = bonAiCommandFormatSummary(result.summary);
-    setCommandStatus("ok", summary, { html: true });
-    searchInput.value = "";
-    currentPage = 1;
-    await load();
-    applyClientActions(result.actions);
-  } catch (error) {
-    console.error("[Bot or Not] ai-command failed", error);
-    setCommandStatus(
-      "error",
-      `Command failed: ${String(
-        (error as { message?: string })?.message ?? error
-      )}`
-    );
-  } finally {
-    commandInflight = false;
-    searchInput.disabled = false;
-    searchInput.focus();
-  }
-}
-
-// Some agent tools (navigate_to_user, filter_users) are UI-side effects
-// rather than storage mutations — the background returns ok with hints, and
-// we apply them here once the data reload settles. Iterate in order so a
-// multi-step command can end on a specific selection or filter.
-function applyClientActions(actions: AiCommandAction[]): void {
-  for (const action of actions) {
-    if (!action.ok) {
-      continue;
-    }
-
-    if (action.tool === "navigate_to_user") {
-      const resolved =
-        (action.result as { username?: string } | undefined)?.username ??
-        (action.input as { username?: string }).username;
-
-      if (!resolved) {
-        continue;
-      }
-
-      const match = allReports.find(
-        (report) => report.username.toLowerCase() === resolved.toLowerCase()
-      );
-
-      if (!match) {
-        continue;
-      }
-
-      selectedUsername = match.username;
-      updateUrlForSelection();
-      pendingScrollToSelected = true;
-      render();
-    }
-
-    if (action.tool === "filter_users") {
-      const usernames = (action.input as { usernames?: unknown }).usernames;
-      const list = Array.isArray(usernames) ? (usernames as string[]) : [];
-      if (list.length === 0) {
-        clearAgentFilter();
-      } else {
-        // Resolve to canonical stored keys (case-insensitive) so the filter
-        // works even if Claude shifted casing.
-        const resolved = new Set<string>();
-
-        for (const name of list) {
-          const match = allReports.find(
-            (report) => report.username.toLowerCase() === name.toLowerCase()
-          );
-
-          if (match) {
-            resolved.add(match.username);
-          }
-        }
-
-        agentFilter = resolved;
-        currentPage = 1;
-        renderAgentFilterBanner();
-        render();
-      }
-    }
-  }
-}
-
-function clearAgentFilter(): void {
-  if (!agentFilter) {
-    return;
-  }
-
-  agentFilter = null;
-  currentPage = 1;
-  renderAgentFilterBanner();
-  render();
-}
-
-function renderAgentFilterBanner(): void {
-  if (!agentFilter) {
-    agentFilterEl.hidden = true;
-    agentFilterLabelEl.textContent = "";
-    return;
-  }
-
-  agentFilterEl.hidden = false;
-  agentFilterLabelEl.textContent = `AI filter · showing ${agentFilter.size} of ${allReports.length} users`;
-}
-
-function setCommandStatus(
-  kind: "running" | "ok" | "error" | "hidden",
-  content: string,
-  options: { html?: boolean } = {}
-): void {
-  if (kind === "hidden") {
-    commandStatusEl.hidden = true;
-    commandStatusEl.textContent = "";
-    return;
-  }
-
-  commandStatusEl.hidden = false;
-  if (options.html) {
-    commandStatusEl.innerHTML = content;
-  } else {
-    commandStatusEl.textContent = content;
-  }
-
-  commandStatusEl.classList.remove(
-    "bon-command-status--running",
-    "bon-command-status--ok",
-    "bon-command-status--error"
-  );
-  commandStatusEl.classList.add(`bon-command-status--${kind}`);
 }
