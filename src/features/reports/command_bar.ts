@@ -1,20 +1,15 @@
-// AI command bar — the Enter-to-run search input, the agent-filter banner,
-// and the runAiCommand / applyClientActions pipeline. The orchestrator wires
-// this up once and queries the agent filter from its own render() so
-// visibility matches the bar's state. Since the input was made a pure
-// command box, it doesn't double as a row filter — every Enter is a
-// command to the agent.
+// AI command bar — the Enter-to-run search input and the agent-filter banner.
+// On submit, opens the chat-style command modal with the initial prompt; the
+// modal owns the per-turn loop, port lifecycle, and follow-up input from
+// there. This file's job is the page-level input, the persistent
+// agent-filter banner under the tabs, and the / and Esc keyboard hooks.
 
-import {
-  bonAiCommandFormatSummary,
-  type AiCommandAction,
-  type AiCommandResult,
-} from "../ai-command";
+import { type AiCommandAction, type AiCommandResult } from "../ai-command";
+import { bonReportsOpenCommandModal } from "./command_modal.ts";
 import type { ReportRow } from "./logic.ts";
 
 export interface BonReportsCommandBarDeps {
   searchInput: HTMLInputElement;
-  commandStatusEl: HTMLElement;
   agentFilterEl: HTMLElement;
   agentFilterLabelEl: HTMLElement;
   agentFilterClearBtn: HTMLButtonElement;
@@ -29,12 +24,25 @@ export interface BonReportsCommandBarHandle {
   renderAgentFilterBanner(): void;
 }
 
+// Rotating placeholder examples — advertise the agent's range without
+// crowding the bar with help text. Cycled every ~5s when the input is empty
+// and unfocused; pauses on focus so the operator isn't reading a moving
+// target while they type.
+const BON_CMD_PLACEHOLDERS = [
+  "Try: investigate u/alice",
+  "Try: filter to doomer accounts",
+  "Try: link alice + bob into a ring",
+  "Try: what's special about jane?",
+  "Try: open the most recent dossier",
+];
+
+const BON_CMD_PLACEHOLDER_INTERVAL_MS = 5000;
+
 export function bonReportsInitCommandBar(
   deps: BonReportsCommandBarDeps
 ): BonReportsCommandBarHandle {
   const {
     searchInput,
-    commandStatusEl,
     agentFilterEl,
     agentFilterLabelEl,
     agentFilterClearBtn,
@@ -44,32 +52,39 @@ export function bonReportsInitCommandBar(
   let agentFilterLabel = "";
   let commandInflight = false;
 
-  // Each fresh load of the reports page starts a new AI conversation. The
-  // background keeps the transcript across messages within one page session,
-  // but a refresh wipes it — keeps the lifetime intuitive and avoids needing
-  // any user-facing reset control.
-  void browser.runtime
-    .sendMessage({ type: "ai-command-reset" })
-    .catch(() => {});
+  installPlaceholderRotation(searchInput);
 
-  const setCommandStatus = (
-    kind: "running" | "ok" | "error",
-    content: string,
-    options: { html?: boolean } = {}
-  ): void => {
-    commandStatusEl.hidden = false;
-    if (options.html) {
-      commandStatusEl.innerHTML = content;
-    } else {
-      commandStatusEl.textContent = content;
+  // The bar wrapper is the FLIP source — the modal grows out of it and
+  // shrinks back into it. The status element below it is filled with the
+  // agent's final summary when an action turn auto-minimizes.
+  const commandBarEl = searchInput.closest(
+    ".bon-command-bar"
+  ) as HTMLElement | null;
+  const statusEl = document.getElementById(
+    "bon-command-status"
+  ) as HTMLElement | null;
+
+  const showStatusHtml = (html: string): void => {
+    if (!statusEl) {
+      return;
     }
 
-    commandStatusEl.classList.remove(
-      "bon-command-status--running",
-      "bon-command-status--ok",
-      "bon-command-status--error"
-    );
-    commandStatusEl.classList.add(`bon-command-status--${kind}`);
+    // Re-trigger the entry animation each time so successive updates feel
+    // like fresh notes rather than silent edits.
+    statusEl.style.animation = "none";
+    statusEl.innerHTML = html;
+    statusEl.hidden = false;
+    void statusEl.offsetWidth;
+    statusEl.style.animation = "";
+  };
+
+  const clearStatus = (): void => {
+    if (!statusEl) {
+      return;
+    }
+
+    statusEl.hidden = true;
+    statusEl.innerHTML = "";
   };
 
   const renderAgentFilterBanner = (): void => {
@@ -167,53 +182,44 @@ export function bonReportsInitCommandBar(
     }
   };
 
-  const runAiCommand = async (input: string): Promise<void> => {
+  const openModal = (initialPrompt: string): void => {
     if (commandInflight) {
       return;
     }
 
     commandInflight = true;
-    searchInput.disabled = true;
-    setCommandStatus("running", `Running: ${input}`);
+    searchInput.value = "";
 
-    try {
-      const response = (await browser.runtime.sendMessage({
-        type: "ai-command",
-        input,
-      })) as AiCommandResult | { ok: false; error: string };
+    // Clear any leftover status from a previous auto-minimize so the bar
+    // area resets while the new modal grows.
+    clearStatus();
 
-      if (!response?.ok) {
-        const error =
-          (response as { error?: string })?.error ?? "unknown error";
+    bonReportsOpenCommandModal(initialPrompt, {
+      sourceEl: commandBarEl,
 
-        if (error === "no-api-key") {
-          setCommandStatus("error", "No Claude API key — add one in Settings.");
-        } else {
-          setCommandStatus("error", `Command failed: ${error}`);
-        }
+      // Fires once per agent turn that settles. Reload the table, then apply
+      // any UI-side actions the agent emitted. Errors and aborts still flow
+      // through this path so a partial result (e.g. tools ran, then aborted)
+      // still lands in the UI.
+      onTurnSettled: async (result: AiCommandResult) => {
+        await deps.onCommandReload();
+        applyClientActions(result.actions);
+      },
 
-        return;
-      }
+      // Fires when an action turn auto-minimizes — render the agent's final
+      // summary as a status line below the bar so the operator still sees
+      // what was done after the modal collapses.
+      onAutoMinimize: (summaryHtml: string) => {
+        showStatusHtml(summaryHtml);
+      },
+    });
 
-      const result = response as AiCommandResult;
-      const summary = bonAiCommandFormatSummary(result.summary);
-      setCommandStatus("ok", summary, { html: true });
-      searchInput.value = "";
-      await deps.onCommandReload();
-      applyClientActions(result.actions);
-    } catch (error) {
-      console.error("[Bot or Not] ai-command failed", error);
-      setCommandStatus(
-        "error",
-        `Command failed: ${String(
-          (error as { message?: string })?.message ?? error
-        )}`
-      );
-    } finally {
-      commandInflight = false;
-      searchInput.disabled = false;
-      searchInput.focus();
-    }
+    // The modal owns the rest of the conversation from here. We don't await
+    // it — release the inflight flag immediately so a re-open after close
+    // doesn't deadlock. The modal itself guards against double-opens via
+    // its own internal state.
+    commandInflight = false;
+    searchInput.blur();
   };
 
   searchInput.addEventListener("keydown", (event) => {
@@ -227,7 +233,7 @@ export function bonReportsInitCommandBar(
     }
 
     event.preventDefault();
-    void runAiCommand(raw);
+    openModal(raw);
   });
 
   agentFilterClearBtn.addEventListener("click", () => {
@@ -239,10 +245,15 @@ export function bonReportsInitCommandBar(
       return;
     }
 
-    // The confirm modal's own Esc handler runs alongside this one; if it's
-    // open, let it win and leave the filter for the next Esc press.
+    // Modals (confirm or command) own Esc while open — let them handle it
+    // first so we don't both clear the filter and close the modal in one
+    // keystroke.
     const confirmModal = document.getElementById("bon-confirm-modal");
     if (confirmModal && !confirmModal.hidden) {
+      return;
+    }
+
+    if (document.querySelector(".bon-cmd-modal-backdrop")) {
       return;
     }
 
@@ -273,4 +284,53 @@ export function bonReportsInitCommandBar(
     getAgentFilter: () => agentFilter,
     renderAgentFilterBanner,
   };
+}
+
+// Rotating placeholder pulled from a fixed list. Cross-fades by toggling the
+// `--swap` class for one frame to drop opacity, swaps the placeholder text,
+// then drops the class so the next example fades back in. Pauses while the
+// operator has the bar focused or typed anything.
+function installPlaceholderRotation(input: HTMLInputElement): void {
+  let index = 0;
+  let timer: ReturnType<typeof setInterval> | null = null;
+
+  const cycle = (): void => {
+    if (document.activeElement === input || input.value !== "") {
+      return;
+    }
+
+    index = (index + 1) % BON_CMD_PLACEHOLDERS.length;
+    input.classList.add("bon-command-bar-input--swap");
+
+    setTimeout(() => {
+      input.setAttribute("placeholder", BON_CMD_PLACEHOLDERS[index]);
+      input.classList.remove("bon-command-bar-input--swap");
+    }, 200);
+  };
+
+  const start = (): void => {
+    if (timer !== null) {
+      return;
+    }
+
+    timer = setInterval(cycle, BON_CMD_PLACEHOLDER_INTERVAL_MS);
+  };
+
+  const stop = (): void => {
+    if (timer === null) {
+      return;
+    }
+
+    clearInterval(timer);
+    timer = null;
+  };
+
+  input.setAttribute("placeholder", BON_CMD_PLACEHOLDERS[0]);
+  start();
+  input.addEventListener("focus", stop);
+  input.addEventListener("blur", () => {
+    if (input.value === "") {
+      start();
+    }
+  });
 }

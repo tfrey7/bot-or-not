@@ -18,6 +18,7 @@ import {
   bonRunAiCommand,
   type AiCommandDispatch,
   type AiCommandMessage,
+  type AiCommandProgress,
   type AiCommandResult,
 } from "./index.ts";
 
@@ -31,8 +32,14 @@ export function bonAiCommandReset(): void {
   history = [];
 }
 
+export interface BonAiCommandHandleOptions {
+  onProgress?: AiCommandProgress;
+  signal?: AbortSignal;
+}
+
 export async function bonAiCommandHandle(
-  input: string
+  input: string,
+  options: BonAiCommandHandleOptions = {}
 ): Promise<AiCommandResult | { ok: false; error: string }> {
   const trimmed = input.trim();
   if (!trimmed) {
@@ -69,7 +76,11 @@ export async function bonAiCommandHandle(
     snapshot,
     trimmed,
     dispatchTool,
-    history
+    {
+      history,
+      onProgress: options.onProgress,
+      signal: options.signal,
+    }
   );
 
   // Persist the updated transcript so the next call sees this turn as prior

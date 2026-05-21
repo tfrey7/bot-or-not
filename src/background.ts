@@ -276,10 +276,6 @@ browser.runtime.onMessage.addListener((message: BaseMessage) => {
     );
   }
 
-  if (message.type === "ai-command") {
-    return bonAiCommandHandle(message.input as string);
-  }
-
   if (message.type === "ai-command-reset") {
     bonAiCommandReset();
     return Promise.resolve({ ok: true });
@@ -333,6 +329,69 @@ browser.runtime.onMessage.addListener((message: BaseMessage) => {
       }
     );
   }
+});
+
+// Port channel for the AI command bar. Streamed progress events from the
+// agent (tool calls, text deltas, cost) get posted back through the port as
+// they happen; the modal stitches them into a live action log. The reports
+// page disconnects the port when the operator hits Cancel/Esc — we treat
+// that as an abort signal for the in-flight Claude call.
+browser.runtime.onConnect.addListener((port) => {
+  if (port.name !== "ai-command") {
+    return;
+  }
+
+  const controller = new AbortController();
+  let started = false;
+
+  const safePost = (message: unknown): void => {
+    try {
+      port.postMessage(message);
+    } catch {
+      // Port already closed — drop the event.
+    }
+  };
+
+  port.onDisconnect.addListener(() => {
+    if (!controller.signal.aborted) {
+      controller.abort();
+    }
+  });
+
+  port.onMessage.addListener((message: { type?: string; input?: string }) => {
+    if (message?.type !== "ai-command:start") {
+      return;
+    }
+
+    if (started) {
+      return;
+    }
+
+    started = true;
+
+    void bonAiCommandHandle(message.input ?? "", {
+      onProgress: (event) => safePost({ kind: "progress", event }),
+      signal: controller.signal,
+    })
+      .then((result) => {
+        safePost({ kind: "result", result });
+      })
+      .catch((error: unknown) => {
+        safePost({
+          kind: "error",
+          error: String(
+            (error as { message?: string })?.message ?? error ?? "unknown error"
+          ),
+        });
+      })
+      .finally(() => {
+        try {
+          port.disconnect();
+        } catch {
+          // Already gone.
+        }
+      });
+  });
 });
 
 browser.action.onClicked.addListener(() => {

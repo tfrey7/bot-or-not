@@ -55,9 +55,6 @@ const activeTitleEl = document.getElementById(
 const emptyEl = document.getElementById("bon-empty") as HTMLElement;
 const detailPane = document.getElementById("bon-detail-pane") as HTMLElement;
 const searchInput = document.getElementById("bon-search") as HTMLInputElement;
-const commandStatusEl = document.getElementById(
-  "bon-command-status"
-) as HTMLElement;
 const agentFilterEl = document.getElementById(
   "bon-agent-filter"
 ) as HTMLElement;
@@ -152,7 +149,6 @@ bonReportsInitJazzLogo();
 
 const commandBar: BonReportsCommandBarHandle = bonReportsInitCommandBar({
   searchInput,
-  commandStatusEl,
   agentFilterEl,
   agentFilterLabelEl,
   agentFilterClearBtn,

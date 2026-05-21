@@ -31,7 +31,30 @@ export function bonAiCommandFormatSummary(raw: string): string {
   text = text.replace(/\s*\n\s*/g, " · ");
   text = text.replace(/\s+/g, " ").trim();
 
-  text = escapeHtml(text);
+  return applyInlineMarkdown(escapeHtml(text));
+}
+
+// Block-level formatter for the command modal's reasoning pane. Preserves
+// paragraphing (so multi-paragraph answers don't collapse) and applies inline
+// emphasis the same way as the status-line formatter. Caller renders with
+// innerHTML; CSS `white-space: pre-wrap` handles the line breaks.
+export function bonAiCommandFormatBlock(raw: string): string {
+  if (!raw) {
+    return "";
+  }
+
+  let text = raw.trim();
+
+  text = text.replace(/```[\s\S]*?```/g, " ");
+  text = text.replace(/^\s{0,3}#{1,6}\s+/gm, "");
+  text = text.replace(/^\s*[-*+]\s+/gm, "");
+  text = text.replace(/^\s*\d+\.\s+/gm, "");
+
+  return applyInlineMarkdown(escapeHtml(text));
+}
+
+function applyInlineMarkdown(escaped: string): string {
+  let text = escaped;
 
   text = text.replace(/`([^`]+)`/g, "<code>$1</code>");
   text = text.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
