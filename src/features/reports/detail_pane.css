@@ -5,8 +5,8 @@
 .bon-split {
   display: grid;
   /* List trimmed to ~40% so the detail pane carries the heavier reading;
-     the list table now has four columns (factor dots ride under the
-     username) so it can run comfortably narrow. */
+     the list table is just two columns (username + verdict badge) so it
+     can run comfortably narrow. */
   grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
   gap: 1.5em;
   align-items: start;
@@ -87,7 +87,7 @@
 .bon-split-detail .bon-row-footer {
   padding: 0.4em 2.25em 1.6em;
 }
-@media (max-width: 82em) {
+@media (max-width: 60em) {
   .bon-split {
     grid-template-columns: minmax(0, 1fr);
   }
