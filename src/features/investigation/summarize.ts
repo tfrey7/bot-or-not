@@ -22,7 +22,7 @@ import type {
 } from "../../types.ts";
 import { BON_REDDIT_FETCH_LIMIT } from "./fetch.ts";
 
-const BON_MAX_ITEMS_TO_AI = 1000; // per kind (posts + comments)
+const BON_MAX_ITEMS_TO_AI = 300; // per kind (posts + comments)
 
 interface RawPost {
   subreddit?: string;
@@ -183,10 +183,7 @@ function trimPost(post: RawPost): SummaryPost {
     selftext_excerpt: (post.selftext ?? "").slice(0, 400),
     score: post.score ?? null,
     num_comments: post.num_comments ?? null,
-    created_at:
-      typeof post.created_utc === "number"
-        ? new Date(post.created_utc * 1000).toISOString()
-        : null,
+    created_at: typeof post.created_utc === "number" ? post.created_utc : null,
     removed_by_category: post.removed_by_category ?? null,
   };
 }
@@ -197,9 +194,7 @@ function trimComment(comment: RawComment): SummaryComment {
     body_excerpt: (comment.body ?? "").slice(0, 500),
     score: comment.score ?? null,
     created_at:
-      typeof comment.created_utc === "number"
-        ? new Date(comment.created_utc * 1000).toISOString()
-        : null,
+      typeof comment.created_utc === "number" ? comment.created_utc : null,
     link_title: comment.link_title ?? null,
     removed_by_category: comment.removed_by_category ?? null,
   };

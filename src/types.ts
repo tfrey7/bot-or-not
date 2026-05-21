@@ -415,7 +415,10 @@ export interface SummaryPost {
   selftext_excerpt: string;
   score: number | null;
   num_comments: number | null;
-  created_at: string | null;
+
+  // Unix epoch seconds. Per-item timestamps are numeric (not ISO) so 300 of
+  // them don't bloat the input; the account-level created_at stays ISO.
+  created_at: number | null;
   removed_by_category: string | null;
 }
 
@@ -423,7 +426,7 @@ export interface SummaryComment {
   subreddit: string;
   body_excerpt: string;
   score: number | null;
-  created_at: string | null;
+  created_at: number | null;
   link_title: string | null;
   removed_by_category: string | null;
 }
