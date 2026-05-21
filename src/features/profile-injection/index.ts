@@ -241,7 +241,46 @@ function harvestChangedForUser(
 ): boolean {
   const before = findGoogleHarvest(change.oldValue, username);
   const after = findGoogleHarvest(change.newValue, username);
-  return JSON.stringify(before) !== JSON.stringify(after);
+  return harvestRenderSignature(before) !== harvestRenderSignature(after);
+}
+
+// JSON of just the fields the dossier renders — URL set, attribution,
+// title/snippet/meta, and the subreddit aggregates. Deliberately omits
+// `lastSeenAt` / `lastCapturedAt` / `captureCount`: every Google nav re-sends
+// the same SERP, the merge bumps those cosmetic fields, and we don't want
+// to tear down the dossier (collapsing <details>, resetting scroll) every
+// time the operator clicks around in Google.
+function harvestRenderSignature(harvest: unknown): string {
+  if (!harvest || typeof harvest !== "object") {
+    return "null";
+  }
+
+  const h = harvest as {
+    posts?: unknown;
+    subredditDistribution?: unknown;
+  };
+
+  const posts = Array.isArray(h.posts)
+    ? h.posts.map((post) => {
+        const p = post as Record<string, unknown>;
+        return {
+          url: p.url,
+          kind: p.kind,
+          subreddit: p.subreddit,
+          title: p.title,
+          ageHint: p.ageHint,
+          commentCountHint: p.commentCountHint,
+          snippetText: p.snippetText,
+          attribution: p.attribution,
+          firstSeenAt: p.firstSeenAt,
+        };
+      })
+    : [];
+
+  return JSON.stringify({
+    posts,
+    subredditDistribution: h.subredditDistribution ?? {},
+  });
 }
 
 function findGoogleHarvest(reports: unknown, username: string): unknown {
