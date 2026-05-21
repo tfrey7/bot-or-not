@@ -10,8 +10,7 @@ import { bonPersonaComboKey } from "./persona_title.ts";
 const KNOWN_PRIMARIES = new Set<string>([
   "stan",
   "farmer",
-  "teen",
-  "thirst",
+  "cam_model",
   "zealot",
   "hustler",
   "doomer",
@@ -20,27 +19,21 @@ const KNOWN_PRIMARIES = new Set<string>([
 ]);
 
 const KNOWN_BLENDS = new Set<string>([
+  "cam_model+doomer",
+  "cam_model+farmer",
+  "cam_model+hustler",
+  "cam_model+stan",
+  "cam_model+zealot",
   "doomer+farmer",
   "doomer+hustler",
   "doomer+stan",
-  "doomer+teen",
-  "doomer+thirst",
   "doomer+zealot",
   "farmer+hustler",
   "farmer+stan",
-  "farmer+teen",
-  "farmer+thirst",
   "farmer+zealot",
   "hustler+stan",
-  "hustler+teen",
-  "hustler+thirst",
   "hustler+zealot",
-  "stan+teen",
-  "stan+thirst",
   "stan+zealot",
-  "teen+thirst",
-  "teen+zealot",
-  "thirst+zealot",
 ]);
 
 export function bonPersonaIcon(

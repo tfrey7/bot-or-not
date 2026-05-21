@@ -15,11 +15,23 @@ export type InvestigationStatus = "queued" | "running" | "done" | "error";
 export type ArchetypeKey =
   | "stan"
   | "farmer"
-  | "teen"
-  | "thirst"
+  | "cam_model"
   | "zealot"
   | "hustler"
   | "doomer";
+
+// Age band Claude infers for the account operator. Lives parallel to region
+// — same evidentiary model (avatar, voice, sub mix, self-references). `null`
+// when the data genuinely doesn't say. Stored alongside `region` on the
+// investigation result so the UI can surface it as a chip independent of the
+// persona radar.
+export type AgeBand = "teen" | "young-adult" | "adult" | "older";
+
+export interface Demographics {
+  age_band: AgeBand | null;
+  confidence: number;
+  reasoning: string;
+}
 
 export type PersonaLabel = ArchetypeKey | "bot" | "normal";
 
@@ -119,6 +131,7 @@ export interface InvestigationResults {
   factors: Factor[];
   persona: Persona | null;
   region: RegionInferenceAi | null;
+  demographics: Demographics | null;
   summary: string;
   model: string;
   usage: ClaudeUsage | null;

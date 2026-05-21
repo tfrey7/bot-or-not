@@ -231,6 +231,7 @@ async function runInvestigation(
       factors: analysis.factors,
       persona: analysis.persona,
       region: analysis.region,
+      demographics: analysis.demographics,
       summary: analysis.summary,
       model: analysis.model,
       usage: analysis.usage,

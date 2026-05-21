@@ -16,7 +16,7 @@ Each entry has the columns below. Use them to resolve "show me everyone whose…
 - `investigationStatus` — `null` (never investigated), `"queued"`, `"running"`, `"done"`, or `"error"`. The result fields below are only populated when status is `"done"`.
 - `verdict` — `"bot"`, `"likely-bot"`, `"uncertain"`, `"likely-human"`, `"human"`, or `null`.
 - `botProbability`, `confidence` — numbers in 0..1, or `null`.
-- `persona` — the AI's persona label: one of the archetype keys (`"doomer"`, `"stan"`, `"farmer"`, `"teen"`, `"thirst"`, `"zealot"`, `"hustler"`), or `"bot"` / `"normal"`, or `null`. For "show users with the Doomer tag" filter on this field.
+- `persona` — the AI's persona label: one of the archetype keys (`"doomer"`, `"stan"`, `"farmer"`, `"cam_model"`, `"zealot"`, `"hustler"`), or `"bot"` / `"normal"`, or `null`. For "show users with the Doomer tag" filter on this field.
 - `archetypes` — per-archetype strength scores keyed by archetype, each 0..1. Use when the operator wants a flavor that didn't necessarily land as the top label (e.g. "everyone with high doomer score" → `archetypes.doomer >= ~0.5`).
 - `factorScores` — per-factor bot↔human scores keyed by factor key (see the factor keys used in `read_user_details` results), each in -1..+1 where -1 is strong human and +1 is strong bot. Use for "show accounts with high LLM content style" (`factorScores.llm_content_style >= ~0.5`) or "everyone with a positive karma_farming_subs".
 - `region` — ISO country code (`"US"`, `"GB"`, `"IN"`, …) or `null`.

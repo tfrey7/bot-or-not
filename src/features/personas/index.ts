@@ -74,7 +74,7 @@ function buildHeader(
 
   const sub = document.createElement("p");
   sub.className = "bon-personas-subtitle";
-  sub.textContent = `Each investigated account projected onto the seven persona axes (${reports.length} report${reports.length === 1 ? "" : "s"} total).`;
+  sub.textContent = `Each investigated account projected onto the six persona axes (${reports.length} report${reports.length === 1 ? "" : "s"} total).`;
   header.appendChild(sub);
 
   return header;

@@ -6,6 +6,7 @@
 import type { ReportRow } from "./logic.ts";
 import { bonFetchAndStoreProfileStats } from "../../utils/fetch_profile_stats.ts";
 import { bonFormatDate } from "../../utils/format_time.ts";
+import { bonReportsDemographicsBadge } from "./cell_demographics.ts";
 import { bonReportsRegionBadge } from "./cell_region.ts";
 import { bonReportsVerdictBadge } from "./cell_verdict.ts";
 
@@ -109,6 +110,11 @@ export function bonReportsProfileSection(
   const regionBadge = bonReportsRegionBadge(report);
   if (regionBadge) {
     titleRow.appendChild(regionBadge);
+  }
+
+  const demographicsBadge = bonReportsDemographicsBadge(report);
+  if (demographicsBadge) {
+    titleRow.appendChild(demographicsBadge);
   }
 
   const verdictBadge = bonReportsVerdictBadge(investigation, !!ringId);

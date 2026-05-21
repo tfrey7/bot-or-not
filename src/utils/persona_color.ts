@@ -1,7 +1,7 @@
 // Hue on the HSL color wheel for a persona. When the top two archetype scores
 // both clear the combo threshold, the hue is interpolated along the shorter
-// arc — so a Cam Hustler (hustler 155° + thirst 320°) lands between teal and
-// magenta. Returns null for personas that don't map to an archetype (bot,
+// arc — so an Affiliate Spam (farmer 210° + hustler 155°) lands between blue
+// and teal. Returns null for personas that don't map to an archetype (bot,
 // normal) — those fall back to a neutral CSS rule on the card.
 
 import { BON_ARCHETYPES } from "../factors.ts";

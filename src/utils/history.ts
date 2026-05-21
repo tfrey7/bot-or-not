@@ -22,6 +22,7 @@ import type {
   UserNotes,
   Verdict,
 } from "../types.ts";
+import { bonNormalizeDemographics } from "./demographics.ts";
 import { bonNormalizeRegionInference } from "./region_inference.ts";
 
 export function bonMergeHistoryEntries(
@@ -265,6 +266,7 @@ function canonicalizeInvestigation(value: unknown): Investigation | null {
       : [],
     persona: (resultsSource.persona as Persona | null) ?? null,
     region: bonNormalizeRegionInference(resultsSource.region),
+    demographics: bonNormalizeDemographics(resultsSource.demographics),
     summary:
       typeof resultsSource.summary === "string" ? resultsSource.summary : "",
     model: typeof resultsSource.model === "string" ? resultsSource.model : "",

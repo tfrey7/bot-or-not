@@ -467,6 +467,33 @@ table.bon-table {
   margin-block: -0.3em;
 }
 
+/* Demographics badge — small inline chip rendered next to the region badge
+   in the profile header. Mirrors .bon-region-badge dimensions so the two
+   non-verdict inferences (country + age) sit visually together. */
+.bon-demographics-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4em;
+  font-family: var(--bon-font-mono);
+  font-size: 0.62rem;
+  font-weight: 700;
+  padding: 0.3em 0.65em 0.28em 0.5em;
+  border-radius: 0.25em;
+  border: 1.5px solid currentColor;
+  line-height: 1.2;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  background: var(--bon-stamp-bg);
+  white-space: nowrap;
+  color: var(--bon-stamp-charcoal);
+}
+.bon-demographics-badge__emoji {
+  font-size: 1.1em;
+  line-height: 1;
+  letter-spacing: 0;
+  margin-block: -0.3em;
+}
+
 /* ============================================================
    Classification stamps (verdict + factor signals)
 
@@ -1353,9 +1380,9 @@ table.bon-table {
   padding: 0.1em 0 0;
   /* Hue comes from inline style set by persona_block.ts (bonPersonaHue). The
      archetype hues are spaced around the color wheel, so a blend interpolates
-     to a hue between them — Cam Hustler lands between hustler teal and thirst
-     magenta. bot/normal personas have no hue and the override below swaps the
-     accent to a neutral charcoal; the hsl() fallback never renders for them.
+     to a hue between them — Affiliate Spam lands between farmer blue and
+     hustler teal. bot/normal personas have no hue and the override below
+     swaps the accent to a neutral charcoal; the hsl() fallback never renders.
      The same accent/lightness pair drives the radar on the profile panel,
      so colors match across surfaces — see content_script.css. */
   --bon-persona-accent: hsl(var(--bon-persona-hue, 0) 60% 38%);
@@ -1570,7 +1597,8 @@ table.bon-table {
 }
 
 .bon-profile-info__title-row .bon-verdict-badge,
-.bon-profile-info__title-row .bon-region-badge {
+.bon-profile-info__title-row .bon-region-badge,
+.bon-profile-info__title-row .bon-demographics-badge {
   font-size: 0.65rem;
   padding: 0.35em 0.75em 0.32em;
   letter-spacing: 0.16em;
@@ -2176,10 +2204,7 @@ table.bon-table {
 .bon-persona-picker__stripe--farmer {
   background-color: hsl(210 65% 50%);
 }
-.bon-persona-picker__stripe--teen {
-  background-color: hsl(95 55% 45%);
-}
-.bon-persona-picker__stripe--thirst {
+.bon-persona-picker__stripe--cam_model {
   background-color: hsl(320 60% 55%);
 }
 .bon-persona-picker__stripe--zealot {

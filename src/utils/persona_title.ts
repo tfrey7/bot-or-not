@@ -1,6 +1,6 @@
 // Display title for a persona. Defaults to the LLM's single-axis label, but
 // when the account scores high on two archetypes at once we substitute a
-// bespoke combo title (e.g. Hustler + Thirst → "Cam Hustler"). The label
+// bespoke combo title (e.g. Stan + Doomer → "Tragic Stan"). The label
 // modifier class is still derived from `persona.label` so the accent color
 // stays tied to the dominant archetype the LLM picked.
 
@@ -13,29 +13,21 @@ const ARCHETYPE_LABELS = Object.fromEntries(
 
 // Keys are sorted-alphabetical "a+b" so lookup doesn't depend on which axis
 // happens to be highest by 0.01. Pairs not listed fall through to the
-// single-axis label.
+// single-axis label. Note: `cam_model + hustler` is the defining pair of
+// the cam_model archetype itself — no combo title needed; the single label
+// "Cam Model" already says it.
 const COMBO_TITLES: Record<string, string> = {
   "farmer+stan": "Fan Acct",
-  "stan+teen": "Fangirl",
-  "stan+thirst": "Simp",
   "stan+zealot": "Hate-Stan",
-  "hustler+stan": "Influencer",
+  "hustler+stan": "Indie Creator",
   "doomer+stan": "Tragic Stan",
-  "farmer+teen": "Karma Kid",
-  "farmer+thirst": "Thirst-Trap Farm",
   "farmer+zealot": "Rage Farmer",
   "farmer+hustler": "Affiliate Spam",
   "doomer+farmer": "Doom Farmer",
-  "teen+zealot": "Edgelord",
-  "hustler+teen": "Teen Grindset",
-  "doomer+teen": "Black-Pill Teen",
-  "teen+thirst": "Spicy Teen",
-  "thirst+zealot": "Toxic Lover",
-  "hustler+thirst": "Cam Hustler",
-  "doomer+thirst": "Lonely Heart",
   "hustler+zealot": "Grifter",
   "doomer+zealot": "Black-Pill Ranter",
   "doomer+hustler": "Crisis Grifter",
+  "cam_model+stan": "Niche Showcase",
 };
 
 // Top-2 axes must both clear this threshold and the runner-up must be at

@@ -13,6 +13,7 @@ import type {
   ActivityData,
   BotBouncerStatus,
   ClaudeUsage,
+  Demographics,
   Factor,
   GoogleHarvest,
   PassiveHarvest,
@@ -25,6 +26,7 @@ import type {
   Verdict,
   WebSearchResult,
 } from "../../types.ts";
+import { bonNormalizeDemographics } from "../../utils/demographics.ts";
 import { bonExtractJson } from "../../utils/json.ts";
 import { bonNormalizePersona } from "../../utils/persona.ts";
 import { bonExtractActivityData } from "../../utils/reddit_activity.ts";
@@ -70,6 +72,7 @@ export interface OneDAnalysisResult {
   summary: string;
   persona: Persona | null;
   region: RegionInferenceAi | null;
+  demographics: Demographics | null;
   factors: Factor[];
   runAt: number;
   model: string;
@@ -181,6 +184,7 @@ interface ClaudeVerdictPayload {
   summary: string;
   persona: unknown;
   region: unknown;
+  demographics: unknown;
 }
 
 function parseClaudeVerdict(rawText: string): ClaudeVerdictPayload {
@@ -204,6 +208,7 @@ function parseClaudeVerdict(rawText: string): ClaudeVerdictPayload {
     summary: payload.summary,
     persona: payload.persona,
     region: payload.region,
+    demographics: payload.demographics,
   };
 }
 
@@ -234,6 +239,7 @@ export async function bonRunOneDAnalysis(
     summary: parsed.summary,
     persona: bonNormalizePersona(parsed.persona),
     region: bonNormalizeRegionInference(parsed.region),
+    demographics: bonNormalizeDemographics(parsed.demographics),
     factors: parsed.factors,
     runAt: Date.now(),
     model,

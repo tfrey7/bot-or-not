@@ -53,21 +53,26 @@ export interface ArchetypeMeta {
 // `hue` positions the archetype on the HSL color wheel (0–360). The persona
 // card's accent is computed from this hue, and when a blend kicks in the hue
 // is interpolated along the shorter arc — so combo titles get a naturally
-// in-between color (Cam Hustler = hustler teal pulled toward thirst magenta).
+// in-between color (Affiliate Spam = farmer blue pulled toward hustler teal).
 //
 // Axes describe flavors of *human* behavior. `bot` is not on the radar — the
 // bot↔human verdict already answers that question, so giving it a spoke would
 // double-count. `bot` and `normal` remain valid `persona.label` values though
 // (an account that isn't a flavor of human is still labelled, just with an
-// empty radar).
+// empty radar). Age inference is handled separately in the demographics block
+// on the investigation result, not as an archetype axis.
+// Order matters — drives radar placement clockwise from the top. The order
+// here walks the HSL color wheel smoothly so adjacent axes share neighboring
+// hues (yellow → teal → blue → purple → magenta → red → back to yellow).
+// Blended combo colors then interpolate to something visually between the
+// two anchors, instead of leaping across the wheel.
 export const BON_ARCHETYPES: readonly ArchetypeMeta[] = [
   { key: "stan", label: "Stan", hue: 45 },
-  { key: "farmer", label: "Farmer", hue: 210 },
-  { key: "teen", label: "Teen", hue: 95 },
-  { key: "thirst", label: "Thirst", hue: 320 },
-  { key: "zealot", label: "Zealot", hue: 0 },
   { key: "hustler", label: "Hustler", hue: 155 },
+  { key: "farmer", label: "Farmer", hue: 210 },
   { key: "doomer", label: "Doomer", hue: 260 },
+  { key: "cam_model", label: "Cam Model", hue: 320 },
+  { key: "zealot", label: "Zealot", hue: 0 },
 ];
 
 export const BON_ARCHETYPE_KEYS: readonly ArchetypeKey[] = BON_ARCHETYPES.map(
