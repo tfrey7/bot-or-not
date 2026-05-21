@@ -15,7 +15,50 @@ import {
   type AiCommandProgressEvent,
   type AiCommandResult,
 } from "../ai-command";
+import { bonReportsOpenConfirmModal } from "./confirm_modal.ts";
 import { bonFmtUsd } from "../../utils/format_number.ts";
+
+// Human-readable phrasing for each destructive tool the dispatcher gates
+// before executing. Pulled into the confirm modal verbatim so the operator
+// sees the exact action being requested, with the agent-supplied arguments
+// resolved into the sentence.
+function describeAiConfirmRequest(
+  tool: string,
+  input: Record<string, unknown>
+): { text: string; confirmLabel: string } {
+  const username = (input.username as string | undefined)?.trim() ?? "";
+  const usernames = Array.isArray(input.usernames)
+    ? (input.usernames as string[]).filter((u) => typeof u === "string")
+    : [];
+
+  if (tool === "delete_report") {
+    return {
+      text: `The AI command wants to delete u/${username || "?"} from the store. Approve?`,
+      confirmLabel: "Delete",
+    };
+  }
+
+  if (tool === "unlink_ring") {
+    const list = usernames.map((u) => `u/${u}`).join(", ") || "?";
+    return {
+      text: `The AI command wants to clear the ring tag on ${list}. Approve?`,
+      confirmLabel: "Unlink",
+    };
+  }
+
+  if (tool === "set_user_status") {
+    const status = (input.status as string | undefined) ?? "?";
+    return {
+      text: `The AI command wants to mark u/${username || "?"} as ${status}. Approve?`,
+      confirmLabel: "Approve",
+    };
+  }
+
+  return {
+    text: `The AI command wants to run the destructive tool "${tool}". Approve?`,
+    confirmLabel: "Approve",
+  };
+}
 
 // Called once per agent turn that settles successfully (or partially via
 // max-turns / abort). The reports page uses this to reload data and apply
@@ -731,10 +774,47 @@ export function bonReportsOpenCommandModal(
         event?: AiCommandProgressEvent;
         result?: AiCommandResult;
         error?: string;
+        id?: number;
+        tool?: string;
+        input?: Record<string, unknown>;
       };
 
       if (envelope.kind === "progress" && envelope.event) {
         handleProgress(envelope.event);
+        return;
+      }
+
+      if (
+        envelope.kind === "confirm-request" &&
+        typeof envelope.id === "number" &&
+        envelope.tool
+      ) {
+        const id = envelope.id;
+        const { text, confirmLabel } = describeAiConfirmRequest(
+          envelope.tool,
+          envelope.input ?? {}
+        );
+        const reply = (approved: boolean): void => {
+          try {
+            port.postMessage({
+              type: "ai-command:confirm-reply",
+              id,
+              approved,
+            });
+          } catch {
+            // Port already gone — background's onDisconnect handler will
+            // resolve any awaiting confirms as denied.
+          }
+        };
+
+        bonReportsOpenConfirmModal({
+          text,
+          confirmLabel,
+          action: () => reply(true),
+          onCancel: () => reply(false),
+          skipPostConfirm: true,
+        });
+
         return;
       }
 

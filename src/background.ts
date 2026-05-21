@@ -288,6 +288,8 @@ browser.runtime.onConnect.addListener((port) => {
 
   const controller = new AbortController();
   let started = false;
+  let confirmSeq = 0;
+  const pendingConfirms = new Map<number, (approved: boolean) => void>();
 
   const safePost = (message: unknown): void => {
     try {
@@ -297,46 +299,99 @@ browser.runtime.onConnect.addListener((port) => {
     }
   };
 
+  const resolveAllConfirms = (approved: boolean): void => {
+    for (const resolve of pendingConfirms.values()) {
+      resolve(approved);
+    }
+
+    pendingConfirms.clear();
+  };
+
   port.onDisconnect.addListener(() => {
     if (!controller.signal.aborted) {
       controller.abort();
     }
+
+    // The UI is gone — any awaiting confirm requests would otherwise hang
+    // forever. Treat the disconnect as a deny so the agent dispatcher
+    // returns an error and the agent loop wraps up cleanly.
+    resolveAllConfirms(false);
   });
 
-  port.onMessage.addListener((message: { type?: string; input?: string }) => {
-    if (message?.type !== "ai-command:start") {
-      return;
-    }
-
-    if (started) {
-      return;
-    }
-
-    started = true;
-
-    void bonAiCommandHandle(message.input ?? "", {
-      onProgress: (event) => safePost({ kind: "progress", event }),
-      signal: controller.signal,
-    })
-      .then((result) => {
-        safePost({ kind: "result", result });
-      })
-      .catch((error: unknown) => {
-        safePost({
-          kind: "error",
-          error: String(
-            (error as { message?: string })?.message ?? error ?? "unknown error"
-          ),
-        });
-      })
-      .finally(() => {
-        try {
-          port.disconnect();
-        } catch {
-          // Already gone.
+  port.onMessage.addListener(
+    (message: {
+      type?: string;
+      input?: string;
+      id?: number;
+      approved?: boolean;
+    }) => {
+      if (message?.type === "ai-command:confirm-reply") {
+        const id = message.id;
+        if (typeof id !== "number") {
+          return;
         }
-      });
-  });
+
+        const resolve = pendingConfirms.get(id);
+        if (resolve) {
+          pendingConfirms.delete(id);
+          resolve(!!message.approved);
+        }
+
+        return;
+      }
+
+      if (message?.type !== "ai-command:start") {
+        return;
+      }
+
+      if (started) {
+        return;
+      }
+
+      started = true;
+
+      void bonAiCommandHandle(message.input ?? "", {
+        onProgress: (event) => safePost({ kind: "progress", event }),
+        signal: controller.signal,
+        requestConfirm: ({ tool, input }) =>
+          new Promise<boolean>((resolve) => {
+            if (controller.signal.aborted) {
+              resolve(false);
+              return;
+            }
+
+            const id = ++confirmSeq;
+            pendingConfirms.set(id, resolve);
+            safePost({
+              kind: "confirm-request",
+              id,
+              tool,
+              input,
+            });
+          }),
+      })
+        .then((result) => {
+          safePost({ kind: "result", result });
+        })
+        .catch((error: unknown) => {
+          safePost({
+            kind: "error",
+            error: String(
+              (error as { message?: string })?.message ??
+                error ??
+                "unknown error"
+            ),
+          });
+        })
+        .finally(() => {
+          try {
+            port.disconnect();
+          } catch {
+            // Already gone.
+          }
+        });
+    }
+  );
 });
 
 browser.action.onClicked.addListener(() => {

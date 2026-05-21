@@ -22,6 +22,15 @@ import {
   type AiCommandProgress,
   type AiCommandResult,
 } from "./index.ts";
+import { BON_AI_COMMAND_DESTRUCTIVE_TOOLS } from "./tools.ts";
+
+// Reaches up from the dispatcher into the UI to ask the operator to approve
+// a destructive tool call. Resolves to `true` on approve, `false` on deny or
+// when the AI command modal is dismissed before the operator answers.
+export type BonAiCommandConfirmRequest = (request: {
+  tool: string;
+  input: Record<string, unknown>;
+}) => Promise<boolean>;
 
 // In-memory conversation history. Persists across `ai-command` calls but
 // resets on service-worker eviction or extension reload — a hard cap on
@@ -36,6 +45,7 @@ export function bonAiCommandReset(): void {
 export interface BonAiCommandHandleOptions {
   onProgress?: AiCommandProgress;
   signal?: AbortSignal;
+  requestConfirm?: BonAiCommandConfirmRequest;
 }
 
 export async function bonAiCommandHandle(
@@ -74,7 +84,7 @@ export async function bonAiCommandHandle(
     claudeApiKey,
     snapshot,
     trimmed,
-    dispatchTool,
+    makeDispatchTool(options.requestConfirm),
     {
       history,
       onProgress: options.onProgress,
@@ -88,7 +98,32 @@ export async function bonAiCommandHandle(
   return result;
 }
 
-const dispatchTool: AiCommandDispatch = async (tool, args) => {
+function makeDispatchTool(
+  requestConfirm: BonAiCommandConfirmRequest | undefined
+): AiCommandDispatch {
+  return async (tool, args) => {
+    if (BON_AI_COMMAND_DESTRUCTIVE_TOOLS.has(tool)) {
+      // Without a confirm channel, refuse destructive calls outright rather
+      // than executing silently. The reports-page port always supplies one;
+      // callers running headless (CLI, tests) would need to opt in explicitly.
+      if (!requestConfirm) {
+        return {
+          ok: false,
+          error: "destructive tools require operator confirmation",
+        };
+      }
+
+      const approved = await requestConfirm({ tool, input: args });
+      if (!approved) {
+        return { ok: false, error: "operator declined" };
+      }
+    }
+
+    return dispatch(tool, args);
+  };
+}
+
+const dispatch: AiCommandDispatch = async (tool, args) => {
   if (tool === "link_ring") {
     return bonReportsLinkRing(args.usernames as string[]);
   }

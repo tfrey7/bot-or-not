@@ -8,6 +8,18 @@ export interface ClaudeToolSpec {
   };
 }
 
+// Tools that mutate stored data in ways the operator can't trivially undo.
+// The background dispatcher routes each of these through a UI confirm modal
+// before executing, so a prompt-injection attempt that came in via
+// adversarial Reddit content surfaced in the snapshot can't silently nuke
+// the operator's dossiers. Non-destructive tools (filter, navigate, read,
+// investigate, link_ring) skip the gate.
+export const BON_AI_COMMAND_DESTRUCTIVE_TOOLS: ReadonlySet<string> = new Set([
+  "delete_report",
+  "unlink_ring",
+  "set_user_status",
+]);
+
 export const BON_AI_COMMAND_TOOLS: ClaudeToolSpec[] = [
   {
     name: "link_ring",
