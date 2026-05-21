@@ -1,28 +1,32 @@
-// Cumulative-spend line chart. Plots running total of run cost over time,
-// with a marker on the single most-expensive run and a hover hit-rect per
-// segment for tooltips.
+// Cumulative-spend line chart. Plots the running total of run cost over time;
+// the single most-expensive run is highlighted with a marker drawn on top of
+// the line, and hovering anywhere along the line surfaces a tooltip with that
+// run's u/name, individual cost, and the cumulative-so-far.
+
+import uPlot from "uplot";
 
 import { bonFmtUsd } from "../../utils/format_number.ts";
 import type { AnalyticsEntry, AnalyticsSummary } from "./logic.ts";
 import {
-  bonAnalyticsEmptyChart,
-  bonAnalyticsSvgEl,
-  bonAnalyticsSvgRoot,
-  bonAnalyticsSvgText,
-  bonAnalyticsTimeAxisFormatter,
-} from "./svg.ts";
+  bonAnalyticsAxes,
+  bonAnalyticsEmptyPanel,
+  bonAnalyticsPlaceTooltip,
+  bonAnalyticsUplotHost,
+  bonAnalyticsUplotPalette,
+  type UplotChartOptions,
+} from "./uplot_helpers.ts";
+
+interface CostPoint {
+  ts: number;
+  cumulative: number;
+  cost: number;
+  username: string;
+}
 
 export function bonAnalyticsCostChart(
   runs: AnalyticsEntry[],
   _summary: AnalyticsSummary
-): SVGSVGElement {
-  const W = 600;
-  const H = 200;
-  const PAD = { t: 12, r: 12, b: 28, l: 52 };
-  const iw = W - PAD.l - PAD.r;
-  const ih = H - PAD.t - PAD.b;
-  const root = bonAnalyticsSvgRoot(W, H);
-
+): HTMLElement {
   const sorted = runs
     .filter(
       (run): run is AnalyticsEntry & { runAt: number } => run.runAt != null
@@ -30,160 +34,160 @@ export function bonAnalyticsCostChart(
     .sort((a, b) => a.runAt - b.runAt);
 
   if (!sorted.length) {
-    root.appendChild(
-      bonAnalyticsEmptyChart(W, H, "No timestamped runs to plot.")
-    );
-
-    return root;
+    return bonAnalyticsEmptyPanel("No timestamped runs to plot.");
   }
 
-  const first = sorted[0].runAt;
-  const last = sorted[sorted.length - 1].runAt;
-  const span = Math.max(last - first, 1);
-
+  const points: CostPoint[] = [];
   let cumulative = 0;
-  const points = sorted.map((run) => {
+
+  for (const run of sorted) {
     cumulative += run.totalCost;
-    return {
-      x: PAD.l + ((run.runAt - first) / span) * iw,
+    points.push({
+      ts: Math.round(run.runAt / 1000),
       cumulative,
       cost: run.totalCost,
-      runAt: run.runAt,
       username: run.username,
-    };
-  });
-  const maxCumulative = cumulative || 1;
-
-  // Y gridlines + ticks
-  for (let i = 0; i <= 4; i++) {
-    const frac = i / 4;
-    const y = PAD.t + ih - frac * ih;
-    root.appendChild(
-      bonAnalyticsSvgEl("line", {
-        x1: PAD.l,
-        y1: y,
-        x2: PAD.l + iw,
-        y2: y,
-        class: "bon-chart-grid",
-      })
-    );
-    root.appendChild(
-      bonAnalyticsSvgText(
-        PAD.l - 8,
-        y + 3,
-        bonFmtUsd(maxCumulative * frac),
-        null,
-        "end"
-      )
-    );
+    });
   }
 
-  // Area + line
-  const lineCoords = points
-    .map(
-      (point) =>
-        `${point.x.toFixed(2)},${(PAD.t + ih - (point.cumulative / maxCumulative) * ih).toFixed(2)}`
-    )
-    .join(" L ");
-
-  const area = `M ${PAD.l},${PAD.t + ih} L ${lineCoords} L ${(PAD.l + iw).toFixed(2)},${PAD.t + ih} Z`;
-
-  root.appendChild(
-    bonAnalyticsSvgEl("path", { d: area, class: "bon-chart-area" })
-  );
-  root.appendChild(
-    bonAnalyticsSvgEl("path", {
-      d: `M ${lineCoords}`,
-      class: "bon-chart-line",
-    })
-  );
-
-  // Highlight the most expensive single run
+  // Highlight the single most expensive run.
   let maxIndex = 0;
 
-  for (let i = 1; i < points.length; i++) {
+  for (let i = 1; i < sorted.length; i++) {
     if (sorted[i].totalCost > sorted[maxIndex].totalCost) {
       maxIndex = i;
     }
   }
 
-  const maxPoint = points[maxIndex];
-  const maxY = PAD.t + ih - (maxPoint.cumulative / maxCumulative) * ih;
-  const marker = bonAnalyticsSvgEl("circle", {
-    cx: maxPoint.x,
-    cy: maxY,
-    r: 3.5,
-    class: "bon-chart-marker",
-  });
-  const markerTitle = bonAnalyticsSvgEl("title");
-  markerTitle.textContent = `Most expensive: u/${maxPoint.username} — ${bonFmtUsd(maxPoint.cost)} (${new Date(maxPoint.runAt).toLocaleString()})`;
-  marker.appendChild(markerTitle);
-  root.appendChild(marker);
+  const palette = bonAnalyticsUplotPalette();
+  const { host, tooltip, mount } = bonAnalyticsUplotHost();
 
-  // X axis time labels — switch to time-of-day when all runs fall within a
-  // single day, otherwise three identical date labels would render.
-  const xFormatter = bonAnalyticsTimeAxisFormatter(last - first);
+  const xs = points.map((point) => point.ts);
+  const ys = points.map((point) => point.cumulative);
 
-  if (last - first < 60_000 || points.length === 1) {
-    root.appendChild(
-      bonAnalyticsSvgText(
-        PAD.l + iw / 2,
-        PAD.t + ih + 18,
-        xFormatter(first),
-        null,
-        "middle"
-      )
-    );
-  } else {
-    [
-      { frac: 0, anchor: "start" },
-      { frac: 0.5, anchor: "middle" },
-      { frac: 1, anchor: "end" },
-    ].forEach(({ frac, anchor }) => {
-      const timestamp = first + frac * span;
-      const x = PAD.l + frac * iw;
-      root.appendChild(
-        bonAnalyticsSvgText(
-          x,
-          PAD.t + ih + 18,
-          xFormatter(timestamp),
-          null,
-          anchor
-        )
-      );
-    });
+  // Single-run charts are pathological for uplot's autoscale (zero x-range);
+  // pad ±30s so the lone point renders centered with axis labels.
+  if (xs.length === 1) {
+    xs.unshift(xs[0] - 30);
+    xs.push(xs[xs.length - 1] + 30);
+    ys.unshift(NaN);
+    ys.push(NaN);
   }
 
-  // Final value label
-  const lastPoint = points[points.length - 1];
-  const lastY = PAD.t + ih - (lastPoint.cumulative / maxCumulative) * ih;
-  const cap = bonAnalyticsSvgEl("circle", {
-    cx: lastPoint.x,
-    cy: lastY,
-    r: 3,
-    class: "bon-chart-endpoint",
-  });
-  root.appendChild(cap);
+  const data: uPlot.AlignedData = [xs, ys];
 
-  // Add hover hit-rects spanning each segment
-  for (let i = 0; i < points.length; i++) {
-    const point = points[i];
-    const prev = i > 0 ? points[i - 1] : null;
-    const next = i < points.length - 1 ? points[i + 1] : null;
-    const x = prev ? (prev.x + point.x) / 2 : PAD.l;
-    const x2 = next ? (next.x + point.x) / 2 : PAD.l + iw;
-    const hit = bonAnalyticsSvgEl("rect", {
-      x,
-      y: PAD.t,
-      width: Math.max(1, x2 - x),
-      height: ih,
-      fill: "transparent",
-    });
-    const tooltip = bonAnalyticsSvgEl("title");
-    tooltip.textContent = `u/${point.username} · ${new Date(point.runAt).toLocaleString()}\nthis run: ${bonFmtUsd(point.cost)} · cumulative: ${bonFmtUsd(point.cumulative)}`;
-    hit.appendChild(tooltip);
-    root.appendChild(hit);
-  }
+  const opts: UplotChartOptions = {
+    legend: { show: false },
+    cursor: {
+      points: { size: 7 },
+      focus: { prox: 24 },
+      drag: { x: false, y: false, setScale: false },
+    },
+    scales: {
+      x: { time: true },
+      y: { range: (_u, _min, max) => [0, Math.max(max, 0.0001)] },
+    },
+    series: [
+      {},
+      {
+        stroke: palette.accent,
+        width: 1.75,
+        fill: palette.accentSoft,
+        points: { show: false },
+      },
+    ],
+    axes: bonAnalyticsAxes(palette, {
+      yValues: (_u, splits) => splits.map((value) => bonFmtUsd(value)),
+    }),
+    hooks: {
+      draw: [
+        (u) => {
+          // Draw the "most expensive" marker on the actual data point in
+          // axis coords. drawn here (after series) so it sits on top.
+          const sourceIdx = xs.length === ys.length ? maxIndex : maxIndex + 1;
+          const x = u.valToPos(xs[sourceIdx], "x", true);
+          const y = u.valToPos(ys[sourceIdx], "y", true);
+          const ctx = u.ctx;
+          ctx.save();
+          ctx.fillStyle = palette.rust;
+          ctx.strokeStyle = palette.surface;
+          ctx.lineWidth = 1.5 * uPlot.pxRatio;
+          ctx.beginPath();
+          ctx.arc(x, y, 4 * uPlot.pxRatio, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+          ctx.restore();
+        },
+      ],
+      setCursor: [
+        (u) => {
+          const idx = u.cursor.idx;
+          const left = u.cursor.left ?? -1;
+          const top = u.cursor.top ?? -1;
 
-  return root;
+          if (idx == null || left < 0 || top < 0) {
+            tooltip.hidden = true;
+            return;
+          }
+
+          // Skip the synthetic padding points used for single-run charts.
+          const yVal = ys[idx];
+          if (!Number.isFinite(yVal)) {
+            tooltip.hidden = true;
+            return;
+          }
+
+          const sourceIdx = xs.length === points.length ? idx : idx - 1;
+          const point = points[sourceIdx];
+
+          if (!point) {
+            tooltip.hidden = true;
+            return;
+          }
+
+          tooltip.innerHTML = "";
+
+          const headline = document.createElement("div");
+          headline.className = "bon-analytics-uplot-tooltip__head";
+          headline.textContent = `u/${point.username}`;
+          tooltip.appendChild(headline);
+
+          const when = document.createElement("div");
+          when.className = "bon-analytics-uplot-tooltip__sub";
+          when.textContent = new Date(point.ts * 1000).toLocaleString();
+          tooltip.appendChild(when);
+
+          const thisRun = document.createElement("div");
+          thisRun.className = "bon-analytics-uplot-tooltip__row";
+          thisRun.innerHTML = `<span>this run</span><span>${bonFmtUsd(point.cost)}</span>`;
+          tooltip.appendChild(thisRun);
+
+          const cum = document.createElement("div");
+          cum.className = "bon-analytics-uplot-tooltip__row";
+          cum.innerHTML = `<span>cumulative</span><span>${bonFmtUsd(point.cumulative)}</span>`;
+          tooltip.appendChild(cum);
+
+          if (sourceIdx === maxIndex) {
+            const flag = document.createElement("div");
+            flag.className = "bon-analytics-uplot-tooltip__flag";
+            flag.textContent = "Most expensive run";
+            tooltip.appendChild(flag);
+          }
+
+          tooltip.hidden = false;
+          bonAnalyticsPlaceTooltip(
+            host,
+            tooltip,
+            u.over.offsetLeft,
+            u.over.offsetTop,
+            left,
+            top
+          );
+        },
+      ],
+    },
+  };
+
+  mount(opts, data);
+  return host;
 }

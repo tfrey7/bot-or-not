@@ -1,112 +1,99 @@
-// Token mix — single stacked bar showing how the token spend breaks down
-// between fresh input, cache read, cache write, and output. The caption
-// nudges the reader to notice that cache reads are 10× cheaper.
+// Token mix — a single stacked bar showing how the token spend breaks down
+// between fresh input, cache read, cache write, and output. uplot is overkill
+// for a one-row segmented bar, so this is rendered as a styled flex layout
+// instead; the caption nudges the reader to notice that cache reads are
+// ~10× cheaper than fresh input.
 
 import { bonFmtPercent, bonFmtThousands } from "../../utils/format_number.ts";
 import type { AnalyticsSummary } from "./logic.ts";
 import {
-  bonAnalyticsEmptyChart,
-  bonAnalyticsSvgEl,
-  bonAnalyticsSvgRoot,
-  bonAnalyticsSvgText,
-} from "./svg.ts";
+  bonAnalyticsEmptyPanel,
+  bonAnalyticsUplotPalette,
+} from "./uplot_helpers.ts";
 
-export function bonAnalyticsTokenMix(summary: AnalyticsSummary): SVGSVGElement {
-  const W = 600;
-  const H = 200;
-  const root = bonAnalyticsSvgRoot(W, H);
-
+export function bonAnalyticsTokenMix(summary: AnalyticsSummary): HTMLElement {
+  const palette = bonAnalyticsUplotPalette();
   const segments = [
-    { label: "Fresh input", value: summary.totalInput, color: "#3b82f6" },
-    { label: "Cache read", value: summary.totalCacheRead, color: "#16a085" },
-    { label: "Cache write", value: summary.totalCacheWrite, color: "#f59e0b" },
+    { label: "Fresh input", value: summary.totalInput, color: palette.accent },
+    {
+      label: "Cache read",
+      value: summary.totalCacheRead,
+      color: palette.forest,
+    },
+    {
+      label: "Cache write",
+      value: summary.totalCacheWrite,
+      color: palette.amber,
+    },
     { label: "Output", value: summary.totalOutput, color: "#8b5cf6" },
   ];
   const total = segments.reduce((sum, segment) => sum + segment.value, 0);
 
   if (total === 0) {
-    root.appendChild(bonAnalyticsEmptyChart(W, H, "No token usage recorded."));
-    return root;
+    return bonAnalyticsEmptyPanel("No token usage recorded.");
   }
 
-  const BAR_Y = 60;
-  const BAR_H = 42;
-  const PAD = 24;
-  const innerW = W - PAD * 2;
+  const wrap = document.createElement("div");
+  wrap.className = "bon-analytics-token-mix";
 
-  // Caption above the bar
-  root.appendChild(
-    bonAnalyticsSvgText(
-      W / 2,
-      32,
-      "Cache reads cost 10× less than fresh input — more green = better economy",
-      "bon-chart-caption",
-      "middle"
-    )
-  );
+  const caption = document.createElement("p");
+  caption.className = "bon-analytics-token-caption";
+  caption.textContent =
+    "Cache reads cost 10× less than fresh input — more green = better economy";
+  wrap.appendChild(caption);
 
-  let x = PAD;
+  const bar = document.createElement("div");
+  bar.className = "bon-analytics-token-bar";
 
   for (const segment of segments) {
-    const w = (segment.value / total) * innerW;
-
-    if (w <= 0) {
+    if (segment.value <= 0) {
       continue;
     }
 
-    const rect = bonAnalyticsSvgEl("rect", {
-      x: x.toFixed(2),
-      y: BAR_Y,
-      width: w.toFixed(2),
-      height: BAR_H,
-      fill: segment.color,
-    });
-    const title = bonAnalyticsSvgEl("title");
-    title.textContent = `${segment.label}: ${bonFmtThousands(segment.value)} tokens (${bonFmtPercent(segment.value / total, 1)})`;
-    rect.appendChild(title);
-    root.appendChild(rect);
+    const share = segment.value / total;
+    const slot = document.createElement("div");
+    slot.className = "bon-analytics-token-slot";
+    slot.style.flexGrow = String(segment.value);
+    slot.style.background = segment.color;
+    slot.title = `${segment.label}: ${bonFmtThousands(segment.value)} tokens (${bonFmtPercent(share, 1)})`;
 
-    if (w > 60) {
-      root.appendChild(
-        bonAnalyticsSvgText(
-          x + w / 2,
-          BAR_Y + BAR_H / 2 + 5,
-          bonFmtPercent(segment.value / total, 0),
-          "bon-chart-inbar",
-          "middle"
-        )
-      );
+    if (share >= 0.1) {
+      const label = document.createElement("span");
+      label.className = "bon-analytics-token-slot-label";
+      label.textContent = bonFmtPercent(share, 0);
+      slot.appendChild(label);
     }
 
-    x += w;
+    bar.appendChild(slot);
   }
 
-  // Legend grid (2x2)
-  const legendStartY = BAR_Y + BAR_H + 28;
-  const legendColW = innerW / 2;
+  wrap.appendChild(bar);
 
-  segments.forEach((segment, i) => {
-    const lx = PAD + (i % 2) * legendColW;
-    const ly = legendStartY + Math.floor(i / 2) * 22;
-    root.appendChild(
-      bonAnalyticsSvgEl("rect", {
-        x: lx,
-        y: ly - 8,
-        width: 11,
-        height: 11,
-        rx: 2,
-        fill: segment.color,
-      })
-    );
-    root.appendChild(
-      bonAnalyticsSvgText(
-        lx + 18,
-        ly + 1,
-        `${segment.label} — ${bonFmtThousands(segment.value)} (${bonFmtPercent(segment.value / total, 0)})`,
-        "bon-chart-legend"
-      )
-    );
-  });
+  const legend = document.createElement("ul");
+  legend.className = "bon-analytics-token-legend";
 
-  return root;
+  for (const segment of segments) {
+    const item = document.createElement("li");
+    item.className = "bon-analytics-token-legend-item";
+
+    const swatch = document.createElement("span");
+    swatch.className = "bon-analytics-token-legend-swatch";
+    swatch.style.background = segment.color;
+    item.appendChild(swatch);
+
+    const label = document.createElement("span");
+    label.className = "bon-analytics-token-legend-label";
+    label.textContent = segment.label;
+    item.appendChild(label);
+
+    const value = document.createElement("span");
+    value.className = "bon-analytics-token-legend-value";
+    value.textContent = `${bonFmtThousands(segment.value)} · ${bonFmtPercent(segment.value / total, 0)}`;
+    item.appendChild(value);
+
+    legend.appendChild(item);
+  }
+
+  wrap.appendChild(legend);
+  return wrap;
 }

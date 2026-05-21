@@ -1,140 +1,190 @@
-// Wall-clock Reddit fetch duration per investigation, plotted in time
-// order. Successful runs render as dots; runs that hit a Reddit error are
-// drawn in the failure colour so a slow-then-erroring trend stands out.
+// Wall-clock Reddit fetch duration per investigation, plotted in run order.
+// Two overlaid series so the OK and error points can be styled distinctly,
+// while a single connecting line in the background shows trend.
+
+import uPlot from "uplot";
 
 import { bonFmtDuration } from "../../utils/format_time.ts";
 import type { AnalyticsEntry } from "./logic.ts";
 import { bonAnalyticsRedditFetchTimeline } from "./logic.ts";
 import {
-  bonAnalyticsEmptyChart,
-  bonAnalyticsSvgEl,
-  bonAnalyticsSvgRoot,
-  bonAnalyticsSvgText,
-  bonAnalyticsTimeAxisFormatter,
-} from "./svg.ts";
+  bonAnalyticsAxes,
+  bonAnalyticsEmptyPanel,
+  bonAnalyticsPlaceTooltip,
+  bonAnalyticsUplotHost,
+  bonAnalyticsUplotPalette,
+  type UplotChartOptions,
+} from "./uplot_helpers.ts";
 
 export function bonAnalyticsRedditDurationChart(
   runs: AnalyticsEntry[]
-): SVGSVGElement {
-  const W = 600;
-  const H = 200;
-  const PAD = { t: 14, r: 14, b: 28, l: 48 };
-  const iw = W - PAD.l - PAD.r;
-  const ih = H - PAD.t - PAD.b;
-  const root = bonAnalyticsSvgRoot(W, H);
-
+): HTMLElement {
   const points = bonAnalyticsRedditFetchTimeline(runs);
 
   if (!points.length) {
-    root.appendChild(
-      bonAnalyticsEmptyChart(W, H, "No Reddit fetch timing data yet.")
-    );
-
-    return root;
+    return bonAnalyticsEmptyPanel("No Reddit fetch timing data yet.");
   }
 
-  const first = points[0].runAt;
-  const last = points[points.length - 1].runAt;
-  const spanMs = Math.max(1, last - first);
-  const maxDuration = Math.max(
-    1,
-    ...points.map((point) => point.totalDurationMs)
-  );
-
-  // Y gridlines + tick labels (4 across the range).
-  for (let i = 0; i <= 4; i++) {
-    const frac = i / 4;
-    const y = PAD.t + ih - frac * ih;
-    root.appendChild(
-      bonAnalyticsSvgEl("line", {
-        x1: PAD.l,
-        y1: y,
-        x2: PAD.l + iw,
-        y2: y,
-        class: "bon-chart-grid",
-      })
-    );
-    root.appendChild(
-      bonAnalyticsSvgText(
-        PAD.l - 6,
-        y + 3,
-        bonFmtDuration(maxDuration * frac),
-        null,
-        "end"
-      )
-    );
-  }
-
-  // Line connecting the points so trend over time is visible — drawn
-  // first so error dots sit on top.
-  if (points.length > 1) {
-    const path = points
-      .map((point, i) => {
-        const x = PAD.l + ((point.runAt - first) / spanMs) * iw;
-        const y = PAD.t + ih - (point.totalDurationMs / maxDuration) * ih;
-        return `${i === 0 ? "M" : "L"} ${x.toFixed(2)} ${y.toFixed(2)}`;
-      })
-      .join(" ");
-    root.appendChild(
-      bonAnalyticsSvgEl("path", {
-        d: path,
-        class: "bon-chart-line",
-      })
-    );
-  }
+  const xs: number[] = [];
+  const okSeries: Array<number | null> = [];
+  const errorSeries: Array<number | null> = [];
 
   for (const point of points) {
-    const x =
-      points.length === 1
-        ? PAD.l + iw / 2
-        : PAD.l + ((point.runAt - first) / spanMs) * iw;
-    const y = PAD.t + ih - (point.totalDurationMs / maxDuration) * ih;
-    const dot = bonAnalyticsSvgEl("circle", {
-      cx: x.toFixed(2),
-      cy: y.toFixed(2),
-      r: point.hadError ? 4 : 3,
-      class: point.hadError ? "bon-chart-marker" : "bon-chart-endpoint",
-    });
-    const tooltip = bonAnalyticsSvgEl("title");
-    tooltip.textContent =
-      `${new Date(point.runAt).toLocaleString()} · ${bonFmtDuration(point.totalDurationMs)}` +
-      (point.hadError ? " · fetch error" : "");
-    dot.appendChild(tooltip);
-    root.appendChild(dot);
+    xs.push(Math.round(point.runAt / 1000));
+    if (point.hadError) {
+      okSeries.push(null);
+      errorSeries.push(point.totalDurationMs);
+    } else {
+      okSeries.push(point.totalDurationMs);
+      errorSeries.push(null);
+    }
   }
 
-  // X-axis labels — start, middle, end. Use the shared time-axis
-  // formatter so short windows show time-of-day and longer windows show
-  // dates.
-  const formatTimeAxis = bonAnalyticsTimeAxisFormatter(spanMs);
-  if (points.length === 1) {
-    root.appendChild(
-      bonAnalyticsSvgText(
-        PAD.l + iw / 2,
-        PAD.t + ih + 18,
-        formatTimeAxis(first),
-        null,
-        "middle"
-      )
-    );
-  } else {
-    [
-      { frac: 0, anchor: "start" },
-      { frac: 0.5, anchor: "middle" },
-      { frac: 1, anchor: "end" },
-    ].forEach(({ frac, anchor }) => {
-      const timestamp = first + frac * spanMs;
-      root.appendChild(
-        bonAnalyticsSvgText(
-          PAD.l + frac * iw,
-          PAD.t + ih + 18,
-          formatTimeAxis(timestamp),
-          null,
-          anchor
-        )
-      );
-    });
+  // Single-point case: synthesize padding so the time axis renders cleanly.
+  let basePadding = false;
+
+  if (xs.length === 1) {
+    xs.unshift(xs[0] - 30);
+    xs.push(xs[xs.length - 1] + 30);
+    okSeries.unshift(null);
+    okSeries.push(null);
+    errorSeries.unshift(null);
+    errorSeries.push(null);
+    basePadding = true;
   }
 
-  return root;
+  // Connecting line — render all points (regardless of error) so trend is
+  // visible. Drawn as a series with no points, just a stroke.
+  const lineSeries: Array<number | null> = xs.map((_, i) => {
+    const ok = okSeries[i];
+    const err = errorSeries[i];
+    if (ok != null) {
+      return ok;
+    }
+
+    if (err != null) {
+      return err;
+    }
+
+    return null;
+  });
+
+  const palette = bonAnalyticsUplotPalette();
+  const { host, tooltip, mount } = bonAnalyticsUplotHost();
+
+  const data: uPlot.AlignedData = [xs, lineSeries, okSeries, errorSeries];
+
+  const opts: UplotChartOptions = {
+    legend: { show: false },
+    cursor: {
+      points: { size: 7 },
+      focus: { prox: 24 },
+      drag: { x: false, y: false, setScale: false },
+    },
+    scales: {
+      x: { time: true },
+      y: { range: (_u, _min, max) => [0, Math.max(max, 1)] },
+    },
+    series: [
+      {},
+      {
+        stroke: palette.accent,
+        width: 1.5,
+        points: { show: false },
+        spanGaps: true,
+      },
+      {
+        stroke: palette.accent,
+        fill: palette.accent,
+        width: 0,
+        paths: () => null,
+        points: {
+          show: true,
+          size: 6,
+          fill: palette.accent,
+          stroke: palette.surface,
+          width: 1.25,
+        },
+      },
+      {
+        stroke: palette.rust,
+        fill: palette.rust,
+        width: 0,
+        paths: () => null,
+        points: {
+          show: true,
+          size: 8,
+          fill: palette.rust,
+          stroke: palette.surface,
+          width: 1.5,
+        },
+      },
+    ],
+    axes: bonAnalyticsAxes(palette, {
+      yValues: (_u, splits) =>
+        splits.map((value) => bonFmtDuration(Math.max(0, value))),
+    }),
+    hooks: {
+      setCursor: [
+        (u) => {
+          const idx = u.cursor.idx;
+          const left = u.cursor.left ?? -1;
+          const top = u.cursor.top ?? -1;
+
+          if (idx == null || left < 0 || top < 0) {
+            tooltip.hidden = true;
+            return;
+          }
+
+          const value = lineSeries[idx];
+          if (value == null) {
+            tooltip.hidden = true;
+            return;
+          }
+
+          // Map back to original points[] index.
+          const sourceIdx = basePadding ? idx - 1 : idx;
+          const point = points[sourceIdx];
+
+          if (!point) {
+            tooltip.hidden = true;
+            return;
+          }
+
+          tooltip.innerHTML = "";
+
+          const head = document.createElement("div");
+          head.className = "bon-analytics-uplot-tooltip__head";
+          head.textContent = new Date(point.runAt).toLocaleString();
+          tooltip.appendChild(head);
+
+          const row = document.createElement("div");
+          row.className = "bon-analytics-uplot-tooltip__row";
+          row.innerHTML = `<span>wall clock</span><span>${bonFmtDuration(point.totalDurationMs)}</span>`;
+          tooltip.appendChild(row);
+
+          if (point.hadError) {
+            const flag = document.createElement("div");
+            flag.className =
+              "bon-analytics-uplot-tooltip__flag bon-analytics-uplot-tooltip__flag--error";
+            flag.textContent = "Fetch error";
+            tooltip.appendChild(flag);
+          }
+
+          tooltip.hidden = false;
+          bonAnalyticsPlaceTooltip(
+            host,
+            tooltip,
+            u.over.offsetLeft,
+            u.over.offsetTop,
+            left,
+            top
+          );
+        },
+      ],
+    },
+  };
+
+  mount(opts, data);
+  return host;
 }

@@ -121,7 +121,7 @@ export function bonRenderAnalytics(
     redditCharts.appendChild(
       bonAnalyticsChartCard(
         "Per-endpoint timing",
-        "median bar · p95 marker · error count on the right",
+        "bar = median · marker = p95 · rust dot = endpoint has errors",
         bonAnalyticsRedditEndpointTimingChart(reddit)
       )
     );

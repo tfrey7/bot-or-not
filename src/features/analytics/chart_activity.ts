@@ -1,37 +1,28 @@
 // Daily-activity bar chart — one bar per calendar day in the last 30 days,
-// height proportional to runs that day. Tooltip shows the day's spend.
+// height = number of runs that day, tooltip shows the day's spend.
+
+import uPlot from "uplot";
 
 import { bonFmtUsd } from "../../utils/format_number.ts";
 import type { AnalyticsEntry } from "./logic.ts";
 import {
-  bonAnalyticsEmptyChart,
-  bonAnalyticsSvgEl,
-  bonAnalyticsSvgRoot,
-  bonAnalyticsSvgText,
-} from "./svg.ts";
+  bonAnalyticsAxes,
+  bonAnalyticsEmptyPanel,
+  bonAnalyticsPlaceTooltip,
+  bonAnalyticsUplotHost,
+  bonAnalyticsUplotPalette,
+  type UplotChartOptions,
+} from "./uplot_helpers.ts";
 
 const MS_PER_DAY = 86_400_000;
 
-export function bonAnalyticsActivityChart(
-  runs: AnalyticsEntry[]
-): SVGSVGElement {
-  const W = 600;
-  const H = 200;
-  const PAD = { t: 12, r: 8, b: 28, l: 36 };
-  const iw = W - PAD.l - PAD.r;
-  const ih = H - PAD.t - PAD.b;
-  const root = bonAnalyticsSvgRoot(W, H);
-
+export function bonAnalyticsActivityChart(runs: AnalyticsEntry[]): HTMLElement {
   const runsWithTime = runs.filter(
     (run): run is AnalyticsEntry & { runAt: number } => run.runAt != null
   );
 
   if (!runsWithTime.length) {
-    root.appendChild(
-      bonAnalyticsEmptyChart(W, H, "No timestamped runs to plot.")
-    );
-
-    return root;
+    return bonAnalyticsEmptyPanel("No timestamped runs to plot.");
   }
 
   const buckets = new Map<number, { count: number; cost: number }>();
@@ -54,92 +45,105 @@ export function bonAnalyticsActivityChart(
   const maxSpan = 30 * MS_PER_DAY;
   const startTs = Math.max(earliest, todayTs - maxSpan);
   const totalDays = Math.round((todayTs - startTs) / MS_PER_DAY) + 1;
-  const maxCount = Math.max(
-    1,
-    ...Array.from(buckets.values(), (bucket) => bucket.count)
-  );
-  const barW = iw / totalDays;
 
-  // Y gridlines
-  const yTicks = Math.min(4, maxCount);
-
-  for (let i = 0; i <= yTicks; i++) {
-    const frac = i / yTicks;
-    const y = PAD.t + ih - frac * ih;
-    const tickValue = Math.round(maxCount * frac);
-    root.appendChild(
-      bonAnalyticsSvgEl("line", {
-        x1: PAD.l,
-        y1: y,
-        x2: PAD.l + iw,
-        y2: y,
-        class: "bon-chart-grid",
-      })
-    );
-    root.appendChild(
-      bonAnalyticsSvgText(PAD.l - 6, y + 3, String(tickValue), null, "end")
-    );
-  }
+  const xs: number[] = new Array(totalDays);
+  const counts: Array<number | null> = new Array(totalDays);
+  const costs: number[] = new Array(totalDays);
 
   for (let i = 0; i < totalDays; i++) {
-    const timestamp = startTs + i * MS_PER_DAY;
-    const bucket = buckets.get(timestamp);
-
-    if (!bucket) {
-      continue;
-    }
-
-    const h = (bucket.count / maxCount) * ih;
-    const x = PAD.l + i * barW + 1;
-    const y = PAD.t + ih - h;
-    const rect = bonAnalyticsSvgEl("rect", {
-      x: x.toFixed(2),
-      y: y.toFixed(2),
-      width: Math.max(1, barW - 2).toFixed(2),
-      height: h.toFixed(2),
-      rx: 1.5,
-      class: "bon-chart-bar bon-chart-bar--blue",
-    });
-    const tooltip = bonAnalyticsSvgEl("title");
-    tooltip.textContent = `${new Date(timestamp).toLocaleDateString()} — ${bucket.count} run${bucket.count === 1 ? "" : "s"} · ${bonFmtUsd(bucket.cost)}`;
-    rect.appendChild(tooltip);
-    root.appendChild(rect);
+    const dayTs = startTs + i * MS_PER_DAY;
+    const bucket = buckets.get(dayTs);
+    xs[i] = Math.round(dayTs / 1000);
+    counts[i] = bucket ? bucket.count : null;
+    costs[i] = bucket ? bucket.cost : 0;
   }
 
-  if (totalDays === 1) {
-    root.appendChild(
-      bonAnalyticsSvgText(
-        PAD.l + iw / 2,
-        PAD.t + ih + 18,
-        new Date(startTs).toLocaleDateString(undefined, {
-          month: "short",
-          day: "numeric",
-        }),
-        null,
-        "middle"
-      )
-    );
-  } else {
-    [
-      { frac: 0, anchor: "start" },
-      { frac: 0.5, anchor: "middle" },
-      { frac: 1, anchor: "end" },
-    ].forEach(({ frac, anchor }) => {
-      const timestamp = startTs + frac * (totalDays - 1) * MS_PER_DAY;
-      root.appendChild(
-        bonAnalyticsSvgText(
-          PAD.l + frac * iw,
-          PAD.t + ih + 18,
-          new Date(timestamp).toLocaleDateString(undefined, {
-            month: "short",
-            day: "numeric",
-          }),
-          null,
-          anchor
-        )
-      );
-    });
-  }
+  const palette = bonAnalyticsUplotPalette();
+  const { host, tooltip, mount } = bonAnalyticsUplotHost();
 
-  return root;
+  const data: uPlot.AlignedData = [xs, counts];
+
+  // Bar widths: scale so a 30-day chart yields ~70% fill per day cell. For
+  // shorter ranges keep bars slim so single-run days don't dominate.
+  const barWidth = Math.max(0.45, Math.min(0.85, 0.9 - totalDays * 0.005));
+
+  const opts: UplotChartOptions = {
+    legend: { show: false },
+    cursor: {
+      points: { show: false },
+      focus: { prox: 24 },
+      drag: { x: false, y: false, setScale: false },
+    },
+    scales: {
+      x: { time: true },
+      y: { range: (_u, _min, max) => [0, Math.max(1, Math.ceil(max))] },
+    },
+    series: [
+      {},
+      {
+        stroke: palette.accent,
+        fill: palette.accent,
+        width: 0,
+        paths: uPlot.paths.bars!({ size: [barWidth, 32] }),
+        points: { show: false },
+      },
+    ],
+    axes: bonAnalyticsAxes(palette, {
+      yValues: (_u, splits) =>
+        splits.map((value) =>
+          Number.isInteger(value) ? String(value) : value.toFixed(0)
+        ),
+    }),
+    hooks: {
+      setCursor: [
+        (u) => {
+          const idx = u.cursor.idx;
+          const left = u.cursor.left ?? -1;
+          const top = u.cursor.top ?? -1;
+
+          if (
+            idx == null ||
+            left < 0 ||
+            top < 0 ||
+            counts[idx] == null ||
+            counts[idx] === 0
+          ) {
+            tooltip.hidden = true;
+            return;
+          }
+
+          tooltip.innerHTML = "";
+
+          const count = counts[idx] as number;
+          const head = document.createElement("div");
+          head.className = "bon-analytics-uplot-tooltip__head";
+          head.textContent = new Date(xs[idx] * 1000).toLocaleDateString();
+          tooltip.appendChild(head);
+
+          const row1 = document.createElement("div");
+          row1.className = "bon-analytics-uplot-tooltip__row";
+          row1.innerHTML = `<span>runs</span><span>${count}</span>`;
+          tooltip.appendChild(row1);
+
+          const row2 = document.createElement("div");
+          row2.className = "bon-analytics-uplot-tooltip__row";
+          row2.innerHTML = `<span>spend</span><span>${bonFmtUsd(costs[idx])}</span>`;
+          tooltip.appendChild(row2);
+
+          tooltip.hidden = false;
+          bonAnalyticsPlaceTooltip(
+            host,
+            tooltip,
+            u.over.offsetLeft,
+            u.over.offsetTop,
+            left,
+            top
+          );
+        },
+      ],
+    },
+  };
+
+  mount(opts, data);
+  return host;
 }

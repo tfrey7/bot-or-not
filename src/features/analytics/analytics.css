@@ -152,104 +152,189 @@
   letter-spacing: 0.02em;
 }
 
-.bon-chart-svg {
+/* ---------- uplot chart hosts ---------- */
+
+.bon-analytics-uplot {
+  position: relative;
   width: 100%;
+  min-height: 200px;
+}
+
+.bon-analytics-uplot .uplot,
+.bon-analytics-uplot .u-wrap {
+  background: transparent;
+}
+
+.bon-analytics-uplot .u-cursor-x,
+.bon-analytics-uplot .u-cursor-y {
+  border-color: var(--bon-border-strong);
+}
+
+.bon-analytics-uplot--empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   height: 200px;
-  display: block;
+  border: 1px dashed var(--bon-border);
+  border-radius: 0.35em;
+  background: var(--bon-surface-soft, transparent);
 }
 
-/* SVG element styles — referenced via class= attribute on SVG nodes. */
-
-.bon-chart-grid {
-  stroke: var(--bon-border);
-  stroke-width: 1;
-}
-
-.bon-chart-area {
-  fill: var(--bon-accent-soft);
-  stroke: none;
-}
-
-.bon-chart-line {
-  fill: none;
-  stroke: var(--bon-accent);
-  stroke-width: 1.75;
-  stroke-linejoin: round;
-  stroke-linecap: round;
-}
-
-.bon-chart-marker {
-  fill: var(--bon-stamp-rust);
-  stroke: var(--bon-surface);
-  stroke-width: 1.5;
-}
-
-.bon-chart-endpoint {
-  fill: var(--bon-accent);
-  stroke: var(--bon-surface);
-  stroke-width: 1.25;
-}
-
-.bon-chart-bar {
-  transition: opacity 0.15s;
-}
-
-.bon-chart-bar:hover {
-  opacity: 0.78;
-}
-
-.bon-chart-bar--blue {
-  fill: var(--bon-accent);
-}
-
-.bon-chart-bar--teal {
-  fill: var(--bon-stamp-forest);
-}
-
-.bon-chart-median-line {
-  stroke: var(--bon-stamp-red);
-  stroke-width: 1;
-  stroke-dasharray: 3 3;
-}
-
-.bon-chart-tick {
-  font-size: 10px;
-  fill: var(--bon-muted);
-  font-family: var(--bon-font-mono);
-}
-
-.bon-chart-label {
-  font-size: 10px;
-  fill: var(--bon-text);
-  font-family: var(--bon-font-sans);
-  font-weight: 500;
-}
-
-.bon-chart-inbar {
-  font-size: 11px;
-  fill: var(--bon-surface);
-  font-family: var(--bon-font-sans);
-  font-weight: 600;
-}
-
-.bon-chart-legend {
-  font-size: 11px;
-  fill: var(--bon-text);
-  font-family: var(--bon-font-sans);
-  font-variant-numeric: tabular-nums;
-}
-
-.bon-chart-caption {
-  font-size: 11px;
-  fill: var(--bon-muted);
-  font-family: var(--bon-font-sans);
+.bon-analytics-uplot-empty-label {
+  font-size: 0.78rem;
+  color: var(--bon-muted-soft);
   font-style: italic;
 }
 
-.bon-chart-empty {
-  font-size: 12px;
-  fill: var(--bon-muted-soft);
+.bon-analytics-uplot-tooltip {
+  position: absolute;
+  pointer-events: none;
+  z-index: 5;
+  min-width: 10em;
+  padding: 0.45em 0.6em 0.5em;
+  background: var(--bon-bg);
+  border: 1px solid var(--bon-border-strong);
+  border-radius: 3px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
+  font-family: var(--bon-font-mono);
+  font-size: 0.72rem;
+  color: var(--bon-text);
+  line-height: 1.45;
+}
+
+.bon-analytics-uplot-tooltip[hidden] {
+  display: none;
+}
+
+.bon-analytics-uplot-tooltip__head {
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--bon-muted);
+  margin-bottom: 0.2em;
+  font-size: 0.66rem;
+}
+
+.bon-analytics-uplot-tooltip__sub {
+  color: var(--bon-muted-soft);
+  font-size: 0.66rem;
+  margin-bottom: 0.4em;
+  padding-bottom: 0.3em;
+  border-bottom: 1px solid var(--bon-border);
+}
+
+.bon-analytics-uplot-tooltip__row {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.9em;
+}
+
+.bon-analytics-uplot-tooltip__row span:first-child {
+  color: var(--bon-muted);
+}
+
+.bon-analytics-uplot-tooltip__row span:last-child {
+  font-variant-numeric: tabular-nums;
+  color: var(--bon-text);
+}
+
+.bon-analytics-uplot-tooltip__flag {
+  margin-top: 0.35em;
+  padding-top: 0.3em;
+  border-top: 1px solid var(--bon-border);
+  font-size: 0.66rem;
+  letter-spacing: 0.04em;
+  color: var(--bon-stamp-rust);
+  font-style: italic;
+}
+
+.bon-analytics-uplot-tooltip__flag--error {
+  color: var(--bon-stamp-red);
+  font-weight: 600;
+  font-style: normal;
+}
+
+/* ---------- Token mix (single segmented bar) ---------- */
+
+.bon-analytics-token-mix {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.9em;
+  min-height: 200px;
+}
+
+.bon-analytics-token-caption {
+  margin: 0;
+  font-size: 0.74rem;
+  color: var(--bon-muted);
+  font-style: italic;
+  text-align: center;
+}
+
+.bon-analytics-token-bar {
+  display: flex;
+  height: 2.7em;
+  border-radius: 0.3em;
+  overflow: hidden;
+  box-shadow: var(--bon-shadow-sm);
+}
+
+.bon-analytics-token-slot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-basis: 0;
+  min-width: 0;
+  transition: filter 0.15s;
+}
+
+.bon-analytics-token-slot:hover {
+  filter: brightness(1.08);
+}
+
+.bon-analytics-token-slot-label {
+  color: var(--bon-surface);
   font-family: var(--bon-font-sans);
+  font-weight: 600;
+  font-size: 0.78rem;
+  letter-spacing: 0.02em;
+}
+
+.bon-analytics-token-legend {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.35em 1em;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.bon-analytics-token-legend-item {
+  display: grid;
+  grid-template-columns: 0.85em 1fr auto;
+  align-items: center;
+  gap: 0.5em;
+  font-size: 0.74rem;
+  color: var(--bon-text);
+  font-family: var(--bon-font-sans);
+}
+
+.bon-analytics-token-legend-swatch {
+  width: 0.85em;
+  height: 0.85em;
+  border-radius: 2px;
+}
+
+.bon-analytics-token-legend-label {
+  color: var(--bon-text);
+}
+
+.bon-analytics-token-legend-value {
+  font-family: var(--bon-font-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--bon-muted);
+  font-size: 0.72rem;
 }
 
 /* ---------- Table cards ---------- */

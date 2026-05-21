@@ -1,17 +1,21 @@
-// Per-endpoint timing chart. One horizontal bar per Reddit endpoint;
-// bar length = median duration, marker = p95. The slowest endpoint
-// jumps out at a glance and the gap between median and p95 shows tail
-// behaviour.
+// Per-endpoint timing chart. One categorical column per Reddit endpoint;
+// bar height = median duration, a marker above each bar = p95. Endpoints with
+// errors get a rust-colored dot above the p95 marker so a struggling endpoint
+// is visible at a glance; the tooltip carries the full breakdown.
+
+import uPlot from "uplot";
 
 import { bonFmtDuration } from "../../utils/format_time.ts";
 import { bonPercentile } from "../../utils/stats.ts";
 import type { AnalyticsRedditSummary } from "./logic.ts";
 import {
-  bonAnalyticsEmptyChart,
-  bonAnalyticsSvgEl,
-  bonAnalyticsSvgRoot,
-  bonAnalyticsSvgText,
-} from "./svg.ts";
+  bonAnalyticsAxes,
+  bonAnalyticsEmptyPanel,
+  bonAnalyticsPlaceTooltip,
+  bonAnalyticsUplotHost,
+  bonAnalyticsUplotPalette,
+  type UplotChartOptions,
+} from "./uplot_helpers.ts";
 
 interface EndpointStat {
   endpoint: string;
@@ -24,15 +28,7 @@ interface EndpointStat {
 
 export function bonAnalyticsRedditEndpointTimingChart(
   reddit: AnalyticsRedditSummary
-): SVGSVGElement {
-  const W = 600;
-  const ROW_H = 28;
-  const PAD = { t: 14, r: 70, b: 24, l: 96 };
-  const root = bonAnalyticsSvgRoot(
-    W,
-    reddit.endpoints.length * ROW_H + PAD.t + PAD.b
-  );
-
+): HTMLElement {
   const stats: EndpointStat[] = reddit.endpoints.map((bucket) => {
     const sorted = [...bucket.durations].sort((a, b) => a - b);
     return {
@@ -45,114 +41,161 @@ export function bonAnalyticsRedditEndpointTimingChart(
     };
   });
 
-  const anyData = stats.some((stat) => stat.fetches > 0);
-
-  if (!anyData) {
-    const H = reddit.endpoints.length * ROW_H + PAD.t + PAD.b;
-    root.appendChild(bonAnalyticsEmptyChart(W, H, "No fetch metrics yet."));
-    return root;
+  if (!stats.some((stat) => stat.fetches > 0)) {
+    return bonAnalyticsEmptyPanel("No fetch metrics yet.");
   }
 
-  const iw = W - PAD.l - PAD.r;
-  const scaleMax = Math.max(1, ...stats.map((stat) => stat.max || stat.p95));
+  const xs = stats.map((_, i) => i);
+  const medians: Array<number | null> = stats.map((stat) =>
+    stat.fetches > 0 ? stat.median : null
+  );
+  const p95s: Array<number | null> = stats.map((stat) =>
+    stat.fetches > 0 ? stat.p95 : null
+  );
 
-  // X gridlines — 4 ticks across the chart so eyeballing the bar length
-  // back to a millisecond value is easy.
-  for (let i = 0; i <= 4; i++) {
-    const frac = i / 4;
-    const x = PAD.l + frac * iw;
-    root.appendChild(
-      bonAnalyticsSvgEl("line", {
-        x1: x,
-        y1: PAD.t,
-        x2: x,
-        y2: PAD.t + reddit.endpoints.length * ROW_H,
-        class: "bon-chart-grid",
-      })
-    );
-    root.appendChild(
-      bonAnalyticsSvgText(
-        x,
-        PAD.t + reddit.endpoints.length * ROW_H + 14,
-        bonFmtDuration(scaleMax * frac),
-        null,
-        "middle"
-      )
-    );
-  }
+  const palette = bonAnalyticsUplotPalette();
+  const { host, tooltip, mount } = bonAnalyticsUplotHost();
 
-  stats.forEach((stat, i) => {
-    const yRow = PAD.t + i * ROW_H;
-    const yCenter = yRow + ROW_H / 2;
+  const data: uPlot.AlignedData = [xs, medians, p95s];
 
-    root.appendChild(
-      bonAnalyticsSvgText(PAD.l - 8, yCenter + 3, stat.endpoint, null, "end")
-    );
+  const opts: UplotChartOptions = {
+    legend: { show: false },
+    cursor: {
+      points: { show: false },
+      focus: { prox: 36 },
+      drag: { x: false, y: false, setScale: false },
+    },
+    scales: {
+      x: {
+        time: false,
+        range: () => [-0.5, stats.length - 0.5],
+      },
+      y: { range: (_u, _min, max) => [0, Math.max(1, max)] },
+    },
+    series: [
+      {},
+      {
+        stroke: palette.forest,
+        fill: palette.forest,
+        width: 0,
+        paths: uPlot.paths.bars!({ size: [0.6, 32] }),
+        points: { show: false },
+      },
+      {
+        stroke: palette.red,
+        width: 0,
+        paths: () => null,
+        points: {
+          show: true,
+          size: 7,
+          stroke: palette.surface,
+          fill: palette.red,
+          width: 1.25,
+        },
+      },
+    ],
+    axes: bonAnalyticsAxes(palette, {
+      xValues: (_u, splits) =>
+        splits.map((value) => {
+          const idx = Math.round(value);
+          return stats[idx]?.endpoint ?? "";
+        }),
+      yValues: (_u, splits) =>
+        splits.map((value) => bonFmtDuration(Math.max(0, value))),
+    }),
+    hooks: {
+      // Rust dot above the p95 marker for endpoints with errors.
+      draw: [
+        (u) => {
+          const ctx = u.ctx;
+          ctx.save();
+          ctx.fillStyle = palette.rust;
+          ctx.strokeStyle = palette.surface;
+          ctx.lineWidth = 1.25 * uPlot.pxRatio;
 
-    if (stat.fetches === 0) {
-      root.appendChild(
-        bonAnalyticsSvgText(
-          PAD.l + 6,
-          yCenter + 3,
-          "no data",
-          "bon-chart-caption",
-          "start"
-        )
-      );
+          stats.forEach((stat, i) => {
+            if (stat.errors === 0 || stat.fetches === 0) {
+              return;
+            }
 
-      return;
-    }
+            const x = u.valToPos(i, "x", true);
+            const y = u.valToPos(stat.p95, "y", true) - 12 * uPlot.pxRatio;
+            ctx.beginPath();
+            ctx.arc(x, y, 3.5 * uPlot.pxRatio, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+          });
 
-    const barH = ROW_H - 12;
-    const barY = yRow + 6;
-    const barW = Math.max(2, (stat.median / scaleMax) * iw);
+          ctx.restore();
+        },
+      ],
+      setCursor: [
+        (u) => {
+          const idx = u.cursor.idx;
+          const left = u.cursor.left ?? -1;
+          const top = u.cursor.top ?? -1;
+          const stat = idx != null ? stats[idx] : null;
 
-    const rect = bonAnalyticsSvgEl("rect", {
-      x: PAD.l,
-      y: barY,
-      width: barW,
-      height: barH,
-      rx: 2,
-      class: "bon-chart-bar bon-chart-bar--teal",
-    });
-    const tooltip = bonAnalyticsSvgEl("title");
-    tooltip.textContent =
-      `${stat.endpoint}: ${stat.fetches} fetch${stat.fetches === 1 ? "" : "es"}` +
-      ` · median ${bonFmtDuration(stat.median)} · p95 ${bonFmtDuration(stat.p95)}` +
-      ` · max ${bonFmtDuration(stat.max)}` +
-      (stat.errors > 0
-        ? ` · ${stat.errors} error${stat.errors === 1 ? "" : "s"}`
-        : "");
-    rect.appendChild(tooltip);
-    root.appendChild(rect);
+          if (
+            idx == null ||
+            left < 0 ||
+            top < 0 ||
+            !stat ||
+            stat.fetches === 0
+          ) {
+            tooltip.hidden = true;
+            return;
+          }
 
-    // p95 marker — tick line at the 95th-percentile x position with the
-    // duration printed past the right edge of the bar.
-    const p95X = PAD.l + (stat.p95 / scaleMax) * iw;
-    root.appendChild(
-      bonAnalyticsSvgEl("line", {
-        x1: p95X,
-        y1: barY - 2,
-        x2: p95X,
-        y2: barY + barH + 2,
-        class: "bon-chart-median-line",
-      })
-    );
+          tooltip.innerHTML = "";
 
-    const rightLabel =
-      stat.errors > 0
-        ? `${bonFmtDuration(stat.p95)} · ${stat.errors} err`
-        : bonFmtDuration(stat.p95);
-    root.appendChild(
-      bonAnalyticsSvgText(
-        PAD.l + iw + 6,
-        yCenter + 3,
-        rightLabel,
-        stat.errors > 0 ? "bon-chart-label" : null,
-        "start"
-      )
-    );
-  });
+          const head = document.createElement("div");
+          head.className = "bon-analytics-uplot-tooltip__head";
+          head.textContent = stat.endpoint;
+          tooltip.appendChild(head);
 
-  return root;
+          const sub = document.createElement("div");
+          sub.className = "bon-analytics-uplot-tooltip__sub";
+          sub.textContent = `${stat.fetches} fetch${stat.fetches === 1 ? "" : "es"}`;
+          tooltip.appendChild(sub);
+
+          const median = document.createElement("div");
+          median.className = "bon-analytics-uplot-tooltip__row";
+          median.innerHTML = `<span>median</span><span>${bonFmtDuration(stat.median)}</span>`;
+          tooltip.appendChild(median);
+
+          const p95 = document.createElement("div");
+          p95.className = "bon-analytics-uplot-tooltip__row";
+          p95.innerHTML = `<span>p95</span><span>${bonFmtDuration(stat.p95)}</span>`;
+          tooltip.appendChild(p95);
+
+          const max = document.createElement("div");
+          max.className = "bon-analytics-uplot-tooltip__row";
+          max.innerHTML = `<span>max</span><span>${bonFmtDuration(stat.max)}</span>`;
+          tooltip.appendChild(max);
+
+          if (stat.errors > 0) {
+            const flag = document.createElement("div");
+            flag.className =
+              "bon-analytics-uplot-tooltip__flag bon-analytics-uplot-tooltip__flag--error";
+            flag.textContent = `${stat.errors} error${stat.errors === 1 ? "" : "s"}`;
+            tooltip.appendChild(flag);
+          }
+
+          tooltip.hidden = false;
+          bonAnalyticsPlaceTooltip(
+            host,
+            tooltip,
+            u.over.offsetLeft,
+            u.over.offsetTop,
+            left,
+            top
+          );
+        },
+      ],
+    },
+  };
+
+  mount(opts, data);
+  return host;
 }
