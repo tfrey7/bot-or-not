@@ -9,7 +9,8 @@ icons/source/*@source.png
 .playwright-mcp/
 references/
 reddit-page.png
-.claude/
+.claude/*
+!.claude/settings.json
 dev/
 .dev-server.pid
 .dev-server.log
