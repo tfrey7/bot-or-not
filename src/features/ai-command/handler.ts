@@ -1,6 +1,8 @@
-// Background-context handler for the AI command bar. Builds a snapshot of
-// the current reports, runs the agent against it, and routes the agent's
-// tool calls into the matching reports / investigation handlers.
+// Background-context handler for the AI command bar. Runs the agent
+// against the operator's input and routes the agent's tool calls into the
+// matching reports / investigation handlers. The reports snapshot is
+// built lazily by the `list_users` tool dispatch — off-topic or social
+// queries never pay to load it.
 
 import { bonInvestigationStart } from "../investigation/handlers.ts";
 import { bonReportsComputeRegionForReport } from "../reports/region.ts";
@@ -63,26 +65,8 @@ export async function bonAiCommandHandle(
     return { ok: false, error: "no-api-key" };
   }
 
-  const reports = await bonReadReports();
-
-  // Compute a country code per user so the agent can answer "filter to US
-  // accounts" without us shipping all the underlying signals. Soft inferences
-  // (timezone-only band) collapse to null — too noisy as a filter target.
-  const regions: Record<string, string | null> = {};
-
-  for (const [username, report] of Object.entries(reports)) {
-    const result = bonReportsComputeRegionForReport({ username, ...report });
-    regions[username] =
-      result?.kind === "ai" || result?.kind === "deterministic"
-        ? result.region
-        : null;
-  }
-
-  const snapshot = bonAiCommandBuildSnapshot(reports, regions);
-
   const result = await bonRunAiCommand(
     claudeApiKey,
-    snapshot,
     trimmed,
     makeDispatchTool(options.requestConfirm),
     {
@@ -124,6 +108,25 @@ function makeDispatchTool(
 }
 
 const dispatch: AiCommandDispatch = async (tool, args) => {
+  if (tool === "list_users") {
+    // Build the snapshot on demand. Region inference per user is CPU-bound
+    // but cheap (~ms for hundreds of reports) — skipping it on off-topic
+    // queries is still a real win.
+    const latest = await bonReadReports();
+    const regions: Record<string, string | null> = {};
+
+    for (const [username, report] of Object.entries(latest)) {
+      const result = bonReportsComputeRegionForReport({ username, ...report });
+      regions[username] =
+        result?.kind === "ai" || result?.kind === "deterministic"
+          ? result.region
+          : null;
+    }
+
+    const snapshot = bonAiCommandBuildSnapshot(latest, regions);
+    return { ok: true, count: snapshot.length, users: snapshot };
+  }
+
   if (tool === "link_ring") {
     return bonReportsLinkRing(args.usernames as string[]);
   }

@@ -22,6 +22,15 @@ export const BON_AI_COMMAND_DESTRUCTIVE_TOOLS: ReadonlySet<string> = new Set([
 
 export const BON_AI_COMMAND_TOOLS: ClaudeToolSpec[] = [
   {
+    name: "list_users",
+    description:
+      "Return the reports snapshot — every reported user with identifier columns (username, ringId, reportCount, userStatus), investigation lifecycle, verdict, persona, archetype scores, factor scores, region, ratings, totalKarma, accountAgeDays, botBouncerStatus, and profileHidden. **Call this whenever you need to know what users exist, resolve a username, count users, or filter by any column.** Skip the call for off-topic or social input where the snapshot isn't needed (greetings, thanks, questions clearly outside the reports store). Re-call within a conversation if you've mutated data and need a fresh read.",
+    input_schema: {
+      type: "object",
+      properties: {},
+    },
+  },
+  {
     name: "link_ring",
     description:
       "Link 2+ reported users into a shared bot ring. If some users are already in a ring, the others join that ring. Errors if the selection spans multiple existing rings.",

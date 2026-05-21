@@ -9,7 +9,6 @@
 import type { ClaudeUsage } from "../../types.ts";
 import { bonEstimateCostUsd } from "../../utils/cost.ts";
 import BON_AI_COMMAND_PROMPT from "./prompt.md?raw";
-import type { AiCommandSnapshotEntry } from "./snapshot.ts";
 import { BON_AI_COMMAND_TOOLS } from "./tools.ts";
 
 const BON_AI_COMMAND_MODEL = "claude-sonnet-4-6";
@@ -123,7 +122,6 @@ interface ClaudeMessage {
 
 export async function bonRunAiCommand(
   apiKey: string,
-  snapshot: AiCommandSnapshotEntry[],
   input: string,
   dispatch: AiCommandDispatch,
   options: BonRunAiCommandOptions = {}
@@ -131,21 +129,14 @@ export async function bonRunAiCommand(
   const { history = [], onProgress, signal } = options;
   const startedAt = performance.now();
 
-  // The snapshot rides along with the first message of a conversation; on
-  // follow-ups we trust Claude to remember it from prior context (and accept
-  // some drift if the operator mutated data mid-conversation — a fresh
-  // snapshot every turn would balloon tokens). The system prompt is cached,
-  // so the on-the-wire bytes stay manageable as the history grows.
-  const userText =
-    history.length === 0
-      ? `Operator command: ${input}\n\nCurrent reports snapshot (JSON):\n\`\`\`json\n${JSON.stringify(snapshot, null, 2)}\n\`\`\``
-      : `Operator follow-up: ${input}`;
-
+  // The reports snapshot is no longer included inline. Claude calls the
+  // `list_users` tool when it needs it — so off-topic or social input
+  // never pays the ~55K-token snapshot cost.
   const messages: ClaudeMessage[] = [
     ...history,
     {
       role: "user",
-      content: [{ type: "text", text: userText }],
+      content: [{ type: "text", text: input }],
     },
   ];
 
