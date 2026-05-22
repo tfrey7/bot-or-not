@@ -17,7 +17,9 @@
 
 > *Version 7.0.0 · 2026-05-22*
 
-_Run `npm run screenshots` to capture fresh PNGs from a live extension._
+| Reports overview | Single dossier |
+| --- | --- |
+| ![Reports overview](docs/screenshots/reports.png) | ![Single dossier](docs/screenshots/dossier.png) |
 
 ## Install
 
