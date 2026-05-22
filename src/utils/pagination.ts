@@ -1,9 +1,8 @@
-// Pagination footer for the reports list. Renders Prev / status / Next
-// controls and a "showing X–Y of Z" caption. The orchestrator decides
-// when to render it (hidden when only one page) and owns the current
-// page state.
+// Pagination footer. Renders Prev / status / Next controls and a
+// "showing X–Y of Z" caption. The caller decides when to render it
+// (typically hidden when only one page) and owns the current page state.
 
-export interface PaginationOpts {
+export interface BonPaginationOpts {
   currentPage: number;
   totalPages: number;
   totalItems: number;
@@ -11,7 +10,7 @@ export interface PaginationOpts {
   onPageChange: (page: number) => void;
 }
 
-export function bonReportsPagination(opts: PaginationOpts): HTMLElement {
+export function bonPagination(opts: BonPaginationOpts): HTMLElement {
   const { currentPage, totalPages, totalItems, pageSize, onPageChange } = opts;
 
   const wrap = document.createElement("div");

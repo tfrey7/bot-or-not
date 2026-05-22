@@ -6,7 +6,7 @@
 import uPlot from "uplot";
 
 import { bonFmtUsd } from "../../utils/format_number.ts";
-import type { AnalyticsEntry, AnalyticsSummary } from "./logic.ts";
+import type { AnalyticsEntry } from "./logic.ts";
 import {
   bonAnalyticsAxes,
   bonAnalyticsEmptyPanel,
@@ -23,10 +23,7 @@ interface CostPoint {
   username: string;
 }
 
-export function bonAnalyticsCostChart(
-  runs: AnalyticsEntry[],
-  _summary: AnalyticsSummary
-): HTMLElement {
+export function bonAnalyticsCostChart(runs: AnalyticsEntry[]): HTMLElement {
   const sorted = runs
     .filter(
       (run): run is AnalyticsEntry & { runAt: number } => run.runAt != null

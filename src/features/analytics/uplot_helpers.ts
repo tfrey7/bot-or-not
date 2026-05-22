@@ -88,9 +88,17 @@ export function bonAnalyticsUplotHost(): UplotHost {
 
 // Standard axis config used across the charts. The y axis variant keeps the
 // fixed-width gutter so cards in the analytics grid line up vertically.
+//
+// xIncrs override: for daily-bucketed charts (one bar/dot per day), pass
+// `[86400]` so uplot picks day-boundary ticks instead of also drawing the
+// midday tick uplot's default time axis emits at narrow widths.
 export function bonAnalyticsAxes(
   palette: ReturnType<typeof bonAnalyticsUplotPalette>,
-  overrides: { xValues?: uPlot.Axis.Values; yValues?: uPlot.Axis.Values } = {}
+  overrides: {
+    xValues?: uPlot.Axis.Values;
+    xIncrs?: uPlot.Axis.Incrs;
+    yValues?: uPlot.Axis.Values;
+  } = {}
 ): uPlot.Axis[] {
   return [
     {
@@ -100,6 +108,7 @@ export function bonAnalyticsAxes(
       border: { show: true, stroke: palette.border, width: 1 },
       font: "10px ui-monospace, SFMono-Regular, Menlo, monospace",
       ...(overrides.xValues ? { values: overrides.xValues } : {}),
+      ...(overrides.xIncrs ? { incrs: overrides.xIncrs } : {}),
     },
     {
       stroke: palette.muted,

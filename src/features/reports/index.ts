@@ -28,7 +28,7 @@ import {
   bonReportsOpenSettings,
   bonReportsRefreshApiKeyStatus,
 } from "./settings.ts";
-import { bonReportsPagination } from "./pagination.ts";
+import { bonPagination } from "../../utils/pagination.ts";
 import { bonReportsSettingsStrip } from "./settings_strip.ts";
 import { bonReportsRow } from "./table_row.ts";
 import {
@@ -394,7 +394,7 @@ function render(): void {
 
   if (totalPages > 1) {
     paginationContainer.appendChild(
-      bonReportsPagination({
+      bonPagination({
         currentPage,
         totalPages,
         totalItems: doneRows.length,

@@ -1,7 +1,6 @@
-// Run log — one row per completed investigation, newest first. The raw
-// per-run record behind the aggregations above. Capped at MAX_RUN_ROWS so
-// a chatty user doesn't blow up the page; older runs are still counted in
-// the summary.
+// Run log — one row per completed investigation, newest first. Paginated
+// over the full history; the orchestrator owns the current page index
+// and re-renders this widget when it changes.
 
 import {
   bonFmtPercent,
@@ -9,11 +8,20 @@ import {
   bonFmtUsd,
 } from "../../utils/format_number.ts";
 import { bonFmtDuration, bonFmtTimestamp } from "../../utils/format_time.ts";
+import { bonPagination } from "../../utils/pagination.ts";
 import type { AnalyticsEntry } from "./logic.ts";
 
-const MAX_RUN_ROWS = 100;
+export const BON_ANALYTICS_RUN_LOG_PAGE_SIZE = 25;
 
-export function bonAnalyticsRunLog(runs: AnalyticsEntry[]): HTMLDivElement {
+export interface RunLogOpts {
+  currentPage: number;
+  onPageChange: (page: number) => void;
+}
+
+export function bonAnalyticsRunLog(
+  runs: AnalyticsEntry[],
+  opts: RunLogOpts
+): HTMLDivElement {
   const wrap = document.createElement("div");
   wrap.className = "bon-analytics-table-card";
 
@@ -31,7 +39,15 @@ export function bonAnalyticsRunLog(runs: AnalyticsEntry[]): HTMLDivElement {
   }
 
   const sorted = [...runs].sort((a, b) => (b.runAt || 0) - (a.runAt || 0));
-  const rows = sorted.slice(0, MAX_RUN_ROWS);
+
+  const totalPages = Math.max(
+    1,
+    Math.ceil(sorted.length / BON_ANALYTICS_RUN_LOG_PAGE_SIZE)
+  );
+  const currentPage = Math.min(Math.max(1, opts.currentPage), totalPages);
+  const pageStart = (currentPage - 1) * BON_ANALYTICS_RUN_LOG_PAGE_SIZE;
+  const pageEnd = pageStart + BON_ANALYTICS_RUN_LOG_PAGE_SIZE;
+  const rows = sorted.slice(pageStart, pageEnd);
 
   const table = document.createElement("table");
   table.className = "bon-analytics-table";
@@ -125,12 +141,16 @@ export function bonAnalyticsRunLog(runs: AnalyticsEntry[]): HTMLDivElement {
   scroll.appendChild(table);
   wrap.appendChild(scroll);
 
-  if (sorted.length > rows.length) {
-    const note = document.createElement("p");
-    note.className = "bon-analytics-empty-small";
-    note.style.marginTop = "0.75em";
-    note.textContent = `Showing ${rows.length} most recent of ${sorted.length} runs.`;
-    wrap.appendChild(note);
+  if (totalPages > 1) {
+    wrap.appendChild(
+      bonPagination({
+        currentPage,
+        totalPages,
+        totalItems: sorted.length,
+        pageSize: BON_ANALYTICS_RUN_LOG_PAGE_SIZE,
+        onPageChange: opts.onPageChange,
+      })
+    );
   }
 
   return wrap;

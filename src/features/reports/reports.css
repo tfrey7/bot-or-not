@@ -10,7 +10,7 @@
 @import "./cell_demographics.css";
 @import "./cell_verdict.css";
 @import "./cell_persona.css";
-@import "./pagination.css";
+@import "../../utils/pagination.css";
 @import "./investigation_detail.css";
 @import "./confirm_modal.css";
 @import "./settings.css";

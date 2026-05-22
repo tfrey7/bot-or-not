@@ -1,9 +1,10 @@
-// Daily-activity bar chart — one bar per calendar day in the last 30 days,
-// height = number of runs that day, tooltip shows the day's spend.
+// Reddit fetches per day — one bar per calendar day in the last 30 days,
+// height = total fetches that day (summed across endpoints). Each
+// investigation typically issues several fetches, so this is denser than
+// the LLM requests-per-day chart.
 
 import uPlot from "uplot";
 
-import { bonFmtUsd } from "../../utils/format_number.ts";
 import type { AnalyticsEntry } from "./logic.ts";
 import { formatDayTick } from "./tick_helpers.ts";
 import {
@@ -17,55 +18,60 @@ import {
 
 const MS_PER_DAY = 86_400_000;
 
-export function bonAnalyticsActivityChart(runs: AnalyticsEntry[]): HTMLElement {
-  const runsWithTime = runs.filter(
-    (run): run is AnalyticsEntry & { runAt: number } => run.runAt != null
+export function bonAnalyticsRedditRequestsChart(
+  runs: AnalyticsEntry[]
+): HTMLElement {
+  const samples = runs.filter(
+    (run): run is AnalyticsEntry & { runAt: number } =>
+      run.runAt != null && !!run.redditMetrics
   );
 
-  if (!runsWithTime.length) {
-    return bonAnalyticsEmptyPanel("No timestamped runs to plot.");
+  if (!samples.length) {
+    return bonAnalyticsEmptyPanel("No Reddit fetch data yet.");
   }
 
-  const buckets = new Map<number, { count: number; cost: number }>();
+  const buckets = new Map<number, { fetches: number; errors: number }>();
   let earliest = Infinity;
 
-  for (const run of runsWithTime) {
-    const day = new Date(run.runAt);
+  for (const sample of samples) {
+    const day = new Date(sample.runAt);
     day.setHours(0, 0, 0, 0);
-    const timestamp = day.getTime();
-    earliest = Math.min(earliest, timestamp);
-    const bucket = buckets.get(timestamp) || { count: 0, cost: 0 };
-    bucket.count++;
-    bucket.cost += run.totalCost;
-    buckets.set(timestamp, bucket);
+    const ts = day.getTime();
+    earliest = Math.min(earliest, ts);
+    const bucket = buckets.get(ts) || { fetches: 0, errors: 0 };
+
+    for (const fetch of sample.redditMetrics?.fetches || []) {
+      bucket.fetches++;
+      if (fetch.status === "error") {
+        bucket.errors++;
+      }
+    }
+
+    buckets.set(ts, bucket);
   }
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const todayTs = today.getTime();
-  const maxSpan = 30 * MS_PER_DAY;
-  const startTs = Math.max(earliest, todayTs - maxSpan);
+  const startTs = Math.max(earliest, todayTs - 30 * MS_PER_DAY);
   const totalDays = Math.round((todayTs - startTs) / MS_PER_DAY) + 1;
 
   const xs: number[] = new Array(totalDays);
   const counts: Array<number | null> = new Array(totalDays);
-  const costs: number[] = new Array(totalDays);
+  const errs: number[] = new Array(totalDays);
 
   for (let i = 0; i < totalDays; i++) {
     const dayTs = startTs + i * MS_PER_DAY;
     const bucket = buckets.get(dayTs);
     xs[i] = Math.round(dayTs / 1000);
-    counts[i] = bucket ? bucket.count : null;
-    costs[i] = bucket ? bucket.cost : 0;
+    counts[i] = bucket && bucket.fetches > 0 ? bucket.fetches : null;
+    errs[i] = bucket?.errors ?? 0;
   }
 
   const palette = bonAnalyticsUplotPalette();
   const { host, tooltip, mount } = bonAnalyticsUplotHost();
 
   const data: uPlot.AlignedData = [xs, counts];
-
-  // Bar widths: scale so a 30-day chart yields ~70% fill per day cell. For
-  // shorter ranges keep bars slim so single-run days don't dominate.
   const barWidth = Math.max(0.45, Math.min(0.85, 0.9 - totalDays * 0.005));
 
   const opts: UplotChartOptions = {
@@ -88,8 +94,8 @@ export function bonAnalyticsActivityChart(runs: AnalyticsEntry[]): HTMLElement {
     series: [
       {},
       {
-        stroke: palette.accent,
-        fill: palette.accent,
+        stroke: palette.forest,
+        fill: palette.forest,
         width: 0,
         paths: uPlot.paths.bars!({ size: [barWidth, 32] }),
         points: { show: false },
@@ -110,13 +116,7 @@ export function bonAnalyticsActivityChart(runs: AnalyticsEntry[]): HTMLElement {
           const left = u.cursor.left ?? -1;
           const top = u.cursor.top ?? -1;
 
-          if (
-            idx == null ||
-            left < 0 ||
-            top < 0 ||
-            counts[idx] == null ||
-            counts[idx] === 0
-          ) {
+          if (idx == null || left < 0 || top < 0 || !counts[idx]) {
             tooltip.hidden = true;
             return;
           }
@@ -131,13 +131,15 @@ export function bonAnalyticsActivityChart(runs: AnalyticsEntry[]): HTMLElement {
 
           const row1 = document.createElement("div");
           row1.className = "bon-analytics-uplot-tooltip__row";
-          row1.innerHTML = `<span>runs</span><span>${count}</span>`;
+          row1.innerHTML = `<span>fetches</span><span>${count}</span>`;
           tooltip.appendChild(row1);
 
-          const row2 = document.createElement("div");
-          row2.className = "bon-analytics-uplot-tooltip__row";
-          row2.innerHTML = `<span>spend</span><span>${bonFmtUsd(costs[idx])}</span>`;
-          tooltip.appendChild(row2);
+          if (errs[idx] > 0) {
+            const row2 = document.createElement("div");
+            row2.className = "bon-analytics-uplot-tooltip__row";
+            row2.innerHTML = `<span>errors</span><span>${errs[idx]}</span>`;
+            tooltip.appendChild(row2);
+          }
 
           tooltip.hidden = false;
           bonAnalyticsPlaceTooltip(

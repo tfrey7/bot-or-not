@@ -61,55 +61,6 @@
   color: var(--bon-muted-soft);
 }
 
-/* ---------- Stat cards ---------- */
-
-.bon-analytics-stats {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(11.5em, 1fr));
-  gap: 0.75em;
-  margin-bottom: 1.5em;
-}
-
-.bon-analytics-stat {
-  background: var(--bon-surface);
-  border: 1px solid var(--bon-border);
-  border-radius: 0.5em;
-  padding: 0.95em 1.1em 1em;
-  box-shadow: var(--bon-shadow-sm);
-  min-width: 0;
-  border-top: 3px solid var(--bon-border-strong);
-}
-
-.bon-stat-label {
-  font-family: var(--bon-font-mono);
-  font-size: 0.62rem;
-  text-transform: uppercase;
-  letter-spacing: 0.14em;
-  color: var(--bon-muted);
-  font-weight: 700;
-  margin-bottom: 0.45em;
-}
-
-.bon-stat-value {
-  font-size: 1.55rem;
-  font-weight: 700;
-  letter-spacing: -0.015em;
-  color: var(--bon-text);
-  font-variant-numeric: tabular-nums;
-  line-height: 1.15;
-  word-break: break-word;
-}
-
-.bon-stat-sub {
-  font-family: var(--bon-font-mono);
-  font-size: 0.7rem;
-  color: var(--bon-muted);
-  margin-top: 0.4em;
-  font-variant-numeric: tabular-nums;
-  line-height: 1.35;
-  letter-spacing: 0.02em;
-}
-
 /* ---------- Chart cards ---------- */
 
 .bon-analytics-charts {
@@ -254,89 +205,6 @@
   font-style: normal;
 }
 
-/* ---------- Token mix (single segmented bar) ---------- */
-
-.bon-analytics-token-mix {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 0.9em;
-  min-height: 200px;
-}
-
-.bon-analytics-token-caption {
-  margin: 0;
-  font-size: 0.74rem;
-  color: var(--bon-muted);
-  font-style: italic;
-  text-align: center;
-}
-
-.bon-analytics-token-bar {
-  display: flex;
-  height: 2.7em;
-  border-radius: 0.3em;
-  overflow: hidden;
-  box-shadow: var(--bon-shadow-sm);
-}
-
-.bon-analytics-token-slot {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-basis: 0;
-  min-width: 0;
-  transition: filter 0.15s;
-}
-
-.bon-analytics-token-slot:hover {
-  filter: brightness(1.08);
-}
-
-.bon-analytics-token-slot-label {
-  color: var(--bon-surface);
-  font-family: var(--bon-font-sans);
-  font-weight: 600;
-  font-size: 0.78rem;
-  letter-spacing: 0.02em;
-}
-
-.bon-analytics-token-legend {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.35em 1em;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.bon-analytics-token-legend-item {
-  display: grid;
-  grid-template-columns: 0.85em 1fr auto;
-  align-items: center;
-  gap: 0.5em;
-  font-size: 0.74rem;
-  color: var(--bon-text);
-  font-family: var(--bon-font-sans);
-}
-
-.bon-analytics-token-legend-swatch {
-  width: 0.85em;
-  height: 0.85em;
-  border-radius: 2px;
-}
-
-.bon-analytics-token-legend-label {
-  color: var(--bon-text);
-}
-
-.bon-analytics-token-legend-value {
-  font-family: var(--bon-font-mono);
-  font-variant-numeric: tabular-nums;
-  color: var(--bon-muted);
-  font-size: 0.72rem;
-}
-
 /* ---------- Table cards ---------- */
 
 .bon-analytics-table-card {
@@ -408,41 +276,7 @@
   color: var(--bon-text);
 }
 
-/* ---------- Top-spender list ---------- */
-
-.bon-analytics-top-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  /* Parent grid defines the column tracks once; each <li> uses subgrid so
-     every row's rank/name/meta/bar/cost columns line up regardless of
-     individual username length. */
-  display: grid;
-  grid-template-columns: 1.75em 12em 1fr 1fr auto;
-  row-gap: 0.35em;
-  counter-reset: bon-rank;
-}
-.bon-analytics-top-list li {
-  counter-increment: bon-rank;
-  display: grid;
-  grid-column: 1 / -1;
-  grid-template-columns: subgrid;
-  column-gap: 0.85em;
-  align-items: center;
-  padding: 0.55em 0.75em;
-  background: var(--bon-surface-soft);
-  border-radius: 0.4em;
-}
-
-.bon-analytics-top-list li::before {
-  content: counter(bon-rank);
-  font-variant-numeric: tabular-nums;
-  font-weight: 600;
-  color: var(--bon-muted-soft);
-  font-size: 0.95rem;
-  text-align: right;
-  line-height: 1;
-}
+/* ---------- Username link (used by the run-log table) ---------- */
 
 .bon-analytics-top-name {
   font-family: var(--bon-font-mono);
@@ -459,53 +293,4 @@
 .bon-analytics-top-name:hover {
   text-decoration: underline;
   color: var(--bon-link-hover);
-}
-
-.bon-analytics-top-meta {
-  font-family: var(--bon-font-mono);
-  font-size: 0.74rem;
-  color: var(--bon-muted);
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  letter-spacing: 0.02em;
-}
-
-.bon-analytics-top-bar {
-  height: 6px;
-  background: var(--bon-bg-tint);
-  border-radius: 3px;
-  overflow: hidden;
-  min-width: 4em;
-}
-
-.bon-analytics-top-bar-fill {
-  height: 100%;
-  background: linear-gradient(
-    90deg,
-    var(--bon-stamp-forest),
-    var(--bon-stamp-rust)
-  );
-  border-radius: 3px;
-}
-
-.bon-analytics-top-cost {
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-  color: var(--bon-text);
-  font-size: 0.92rem;
-  text-align: right;
-  white-space: nowrap;
-  font-family: var(--bon-font-mono);
-}
-
-/* ---------- Footnote ---------- */
-
-.bon-analytics-footnote {
-  margin: 0.75em 0 0;
-  font-size: 0.78rem;
-  color: var(--bon-muted-soft);
-  text-align: center;
-  font-style: italic;
 }
