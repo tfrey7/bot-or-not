@@ -10,6 +10,7 @@ import { bonClientSend, bonClientSubscribe } from "../../client.ts";
 import { bonRenderAnalytics } from "../analytics";
 import { BON_INVESTIGATION_CONCURRENCY } from "../investigation/handlers.ts";
 import { bonRenderPersonas } from "../personas";
+import { bonRenderSubreddits } from "../subreddits";
 import { bonRenderSync } from "../sync";
 import { BON_REGION_INFO } from "../regions/data.ts";
 import type { Report } from "../../types.ts";
@@ -73,6 +74,9 @@ const analyticsContainer = document.getElementById(
 const personasContainer = document.getElementById(
   "bon-personas-container"
 ) as HTMLElement | null;
+const subredditsContainer = document.getElementById(
+  "bon-subreddits-container"
+) as HTMLElement | null;
 const settingsStripContainer = document.getElementById(
   "bon-settings-strip"
 ) as HTMLElement | null;
@@ -125,6 +129,14 @@ bonClientSubscribe((event) => {
     // is currently typing into. polling.pollNow does a full re-render
     // only when something actually changed structurally.
     void polling.pollNow();
+
+    // Subreddit verdicts derive from per-user reports, so a fresh
+    // user-investigation result shifts the badges on the Subreddits tab.
+    void renderSubreddits();
+  }
+
+  if (event.type === "subreddits-changed") {
+    void renderSubreddits();
   }
 
   if (event.type === "api-key-changed") {
@@ -170,6 +182,7 @@ const polling = bonReportsInitPolling({
     renderAnalytics();
     renderPersonas();
     renderSettingsStrip();
+    void renderSubreddits();
   },
   setExpectedDurationMs: (value) => {
     expectedDurationMs = value;
@@ -197,6 +210,7 @@ async function load(): Promise<void> {
     renderAnalytics();
     renderPersonas();
     renderSettingsStrip();
+    void renderSubreddits();
   } catch (error) {
     console.error("[Bot or Not] failed to load reports", error);
     tableWrap.hidden = true;
@@ -261,6 +275,14 @@ function renderPersonas(): void {
   bonRenderPersonas(allReports, personasContainer, {
     onSelectUser: navigateToUser,
   });
+}
+
+async function renderSubreddits(): Promise<void> {
+  if (!subredditsContainer) {
+    return;
+  }
+
+  await bonRenderSubreddits(subredditsContainer);
 }
 
 function navigateToUser(username: string): void {

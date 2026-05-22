@@ -29,6 +29,10 @@ import {
   bonStatusDetectionResetNav,
   bonStatusDetectionScan,
 } from "./features/status-detection";
+import {
+  bonSubredditInvestigationInit,
+  bonSubredditInvestigationTick,
+} from "./features/subreddit-investigation";
 
 const { version } = browser.runtime.getManifest();
 console.log(`[Bot or Not] v${version} loaded`);
@@ -49,6 +53,7 @@ function scheduleScan(): void {
     bonPassiveHarvestTick();
     bonProfileInjectionTick();
     bonStatusDetectionScan();
+    bonSubredditInvestigationTick();
   });
 }
 
@@ -64,6 +69,7 @@ function startFeatures(): void {
   bonProfileInjectionInit();
   bonReportingInit();
   bonStatusDetectionInit();
+  bonSubredditInvestigationInit();
 
   // Coalesce scan work to one execution per animation frame. Reddit's SPA
   // can fire hundreds of mutations per second while mounting big comment

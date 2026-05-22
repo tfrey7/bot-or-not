@@ -885,3 +885,70 @@ body.bon-hide-pii .bon-pii:not(:hover):not(:focus):not(:focus-within) {
   white-space: pre-wrap;
 }
 
+/* Subreddit-investigation widget. Slots in next to the subreddit's H1
+   header. Inherits Reddit's font (per project rule); the only chrome we
+   add is a hairline outline, an outlined-pill button, and a left-edge
+   tone bar that colours by verdict (neutral / pending / good / bad). */
+.bon-subreddit-investigation {
+  display: flex;
+  align-items: center;
+  gap: 0.75em;
+  margin: 0.75em 0;
+  padding: 0.55em 0.85em;
+  border: 1px solid rgba(128, 128, 128, 0.3);
+  border-left-width: 4px;
+  border-radius: 6px;
+  box-sizing: border-box;
+}
+
+.bon-subreddit-investigation[data-tone="neutral"] {
+  border-left-color: rgba(128, 128, 128, 0.55);
+}
+.bon-subreddit-investigation[data-tone="pending"] {
+  border-left-color: rgba(180, 140, 60, 0.85);
+}
+.bon-subreddit-investigation[data-tone="good"] {
+  border-left-color: rgba(60, 160, 90, 0.85);
+}
+.bon-subreddit-investigation[data-tone="bad"] {
+  border-left-color: rgba(200, 70, 70, 0.9);
+}
+
+.bon-subreddit-investigation__status {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.5em;
+  font-size: 0.9rem;
+  line-height: 1.35;
+  min-width: 0;
+}
+
+.bon-subreddit-investigation__label {
+  font-weight: 700;
+}
+
+.bon-subreddit-investigation__text {
+  color: inherit;
+}
+
+.bon-subreddit-investigation__btn {
+  font: inherit;
+  font-weight: 500;
+  color: inherit;
+  background: transparent;
+  border: 1px solid rgba(128, 128, 128, 0.4);
+  border-radius: 999px;
+  padding: 0.35em 1em;
+  cursor: pointer;
+  flex: 0 0 auto;
+  transition: background 0.12s ease-out;
+}
+.bon-subreddit-investigation__btn:hover:not(:disabled) {
+  background: rgba(128, 128, 128, 0.15);
+}
+.bon-subreddit-investigation__btn:disabled {
+  cursor: default;
+  opacity: 0.6;
+}

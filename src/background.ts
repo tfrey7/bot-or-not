@@ -30,6 +30,11 @@ import {
   bonReportsUpdatePostStatus,
   bonReportsUpdateProfileStats,
 } from "./features/reports/handlers.ts";
+import {
+  bonSubredditAnalyze,
+  bonSubredditGetReport,
+  bonSubredditList,
+} from "./features/subreddit-investigation/handlers.ts";
 import { bonSyncExport, bonSyncImport } from "./features/sync/handlers.ts";
 import { bonRunMigrations } from "./migrations";
 import type { Report } from "./types.ts";
@@ -219,6 +224,21 @@ browser.runtime.onMessage.addListener((message: BaseMessage) => {
 
   if (message.type === "auto-investigate-on-view") {
     return bonInvestigationAutoOnView(message.username as string);
+  }
+
+  if (message.type === "analyze-subreddit") {
+    return bonSubredditAnalyze(
+      message.name as string,
+      Array.isArray(message.authors) ? (message.authors as string[]) : []
+    );
+  }
+
+  if (message.type === "get-subreddit-report") {
+    return bonSubredditGetReport(message.name as string);
+  }
+
+  if (message.type === "list-subreddit-reports") {
+    return bonSubredditList();
   }
 
   if (message.type === "get-api-keys") {

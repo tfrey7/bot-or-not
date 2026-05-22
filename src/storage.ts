@@ -8,7 +8,7 @@
 // is the only change needed to retarget the backend.
 
 import type { LlmVendor } from "./llm/index.ts";
-import type { Report } from "./types.ts";
+import type { Report, SubredditReport } from "./types.ts";
 import { bonNormalizeReport } from "./utils/history.ts";
 
 // Persisted LLM selection. Both fields nullable — `null` means "use the
@@ -25,6 +25,9 @@ export type BonApiKeyMap = Partial<Record<LlmVendor, string>>;
 export interface BonStorage {
   readReports(): Promise<Record<string, Report>>;
   writeReports(reports: Record<string, Report>): Promise<void>;
+
+  readSubreddits(): Promise<Record<string, SubredditReport>>;
+  writeSubreddits(subreddits: Record<string, SubredditReport>): Promise<void>;
 
   readApiKey(vendor: LlmVendor): Promise<string>;
   readAllApiKeys(): Promise<BonApiKeyMap>;
@@ -55,6 +58,28 @@ class BonExtensionStorage implements BonStorage {
 
   async writeReports(reports: Record<string, Report>): Promise<void> {
     await browser.storage.local.set({ reports });
+  }
+
+  async readSubreddits(): Promise<Record<string, SubredditReport>> {
+    const raw = (await browser.storage.local.get("subreddits")) as {
+      subreddits?: Record<string, unknown>;
+    };
+    const out: Record<string, SubredditReport> = {};
+
+    for (const [name, value] of Object.entries(raw.subreddits ?? {})) {
+      const normalized = normalizeSubredditReport(name, value);
+      if (normalized) {
+        out[name] = normalized;
+      }
+    }
+
+    return out;
+  }
+
+  async writeSubreddits(
+    subreddits: Record<string, SubredditReport>
+  ): Promise<void> {
+    await browser.storage.local.set({ subreddits });
   }
 
   async readApiKey(vendor: LlmVendor): Promise<string> {
@@ -158,6 +183,35 @@ class BonExtensionStorage implements BonStorage {
   }
 }
 
+// Canonicalize a stored subreddit record. Drops entries that don't have a
+// usable name or sampled-author list — those are the only fields the
+// derived verdict reads, so a record missing them carries no signal.
+function normalizeSubredditReport(
+  key: string,
+  value: unknown
+): SubredditReport | null {
+  const record = (value && typeof value === "object" ? value : {}) as Record<
+    string,
+    unknown
+  >;
+
+  const name =
+    typeof record.name === "string" && record.name ? record.name : key;
+  const analyzedAt =
+    typeof record.analyzedAt === "number" ? record.analyzedAt : 0;
+  const sampledUsernames = Array.isArray(record.sampledUsernames)
+    ? (record.sampledUsernames as unknown[])
+        .filter((u): u is string => typeof u === "string" && u.length > 0)
+        .map((u) => u.toLowerCase())
+    : [];
+
+  if (sampledUsernames.length === 0) {
+    return null;
+  }
+
+  return { name, analyzedAt, sampledUsernames };
+}
+
 const bonStorage: BonStorage = new BonExtensionStorage();
 
 // Module-level function wrappers — the public API everywhere else in the
@@ -173,6 +227,16 @@ export function bonWriteReports(
   reports: Record<string, Report>
 ): Promise<void> {
   return bonStorage.writeReports(reports);
+}
+
+export function bonReadSubreddits(): Promise<Record<string, SubredditReport>> {
+  return bonStorage.readSubreddits();
+}
+
+export function bonWriteSubreddits(
+  subreddits: Record<string, SubredditReport>
+): Promise<void> {
+  return bonStorage.writeSubreddits(subreddits);
 }
 
 export function bonReadApiKey(vendor: LlmVendor): Promise<string> {

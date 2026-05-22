@@ -5,6 +5,7 @@ const BON_REPORTS_TABS = [
   "reports",
   "metrics",
   "personas",
+  "subreddits",
   "settings",
 ] as const;
 export type BonReportsTab = (typeof BON_REPORTS_TABS)[number];

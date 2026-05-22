@@ -357,6 +357,20 @@ export interface Report {
   passiveHarvest: PassiveHarvest | null;
 }
 
+// Result of a one-click "is this subreddit compromised" analysis. Stored
+// per-subreddit, keyed by lowercase subreddit name. We sample N post-authors
+// from the subreddit's feed, then reuse or enqueue per-user investigations.
+// The verdict is *not* persisted — it's derived live from the sampled users'
+// current Report records (see src/features/subreddit-investigation/verdict.ts),
+// the same way the per-user Verdict derives from factor scores. That means
+// the badge stays accurate as individual investigations complete in the
+// background, without us writing back to the SubredditReport.
+export interface SubredditReport {
+  name: string;
+  analyzedAt: number;
+  sampledUsernames: string[];
+}
+
 // Profile summary handed to Claude as JSON. The prompt does the actual schema
 // enforcement, but the assembly call sites in summarize.ts produce these named
 // shapes so consumers (and prompt authors) can see what's guaranteed.

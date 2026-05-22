@@ -11,6 +11,7 @@ export interface BonClientMessage {
 
 export type BonClientEvent =
   | { type: "reports-changed" }
+  | { type: "subreddits-changed" }
   | { type: "api-key-changed" }
   | { type: "llm-selection-changed" }
   | { type: "hide-pii-changed" };
@@ -38,6 +39,10 @@ class BonExtensionClient implements BonClient {
 
       if (changes.reports) {
         listener({ type: "reports-changed" });
+      }
+
+      if (changes.subreddits) {
+        listener({ type: "subreddits-changed" });
       }
 
       if (changes.apiKeys || changes.claudeApiKey) {

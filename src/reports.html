@@ -14,6 +14,7 @@
     <link rel="stylesheet" href="features/reports/reports.css" />
     <link rel="stylesheet" href="features/analytics/analytics.css" />
     <link rel="stylesheet" href="features/personas/personas.css" />
+    <link rel="stylesheet" href="features/subreddits/subreddits.css" />
     <link rel="stylesheet" href="features/sync/sync.css" />
   </head>
   <body>
@@ -92,6 +93,17 @@
             data-tab="personas"
           >
             Personas
+          </button>
+          <button
+            type="button"
+            class="bon-tab"
+            role="tab"
+            aria-selected="false"
+            aria-controls="bon-panel-subreddits"
+            id="bon-tab-subreddits"
+            data-tab="subreddits"
+          >
+            Subreddits
           </button>
           <button
             type="button"
@@ -181,6 +193,16 @@
         hidden
       >
         <div id="bon-personas-container"></div>
+      </section>
+
+      <section
+        class="bon-tab-panel"
+        role="tabpanel"
+        id="bon-panel-subreddits"
+        aria-labelledby="bon-tab-subreddits"
+        hidden
+      >
+        <div id="bon-subreddits-container"></div>
       </section>
 
       <section

@@ -1,0 +1,120 @@
+/* ============================================================
+   Subreddits tab — table of analyzed subs.
+   Section header matches the Personas/Analytics pattern
+   (large bold h2 + mono-uppercase subtitle). Table headers and
+   row layout mirror the existing reports/analytics tables so
+   this tab reads consistent with the rest of the page.
+   ============================================================ */
+
+.bon-subreddits {
+  display: flex;
+  flex-direction: column;
+  gap: 1.2em;
+}
+
+.bon-subreddits-header h2 {
+  font-size: 1.6rem;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  line-height: 1.15;
+  margin: 0 0 0.15em;
+  color: var(--bon-text);
+}
+
+.bon-subreddits-subtitle {
+  margin: 0.3em 0 0;
+  font-family: var(--bon-font-mono);
+  font-size: 0.7rem;
+  color: var(--bon-muted);
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.bon-subreddits-empty {
+  padding: 1.5em;
+  border: 1px dashed var(--bon-border);
+  border-radius: 0.5em;
+  color: var(--bon-muted);
+  font-size: 0.9rem;
+  background: var(--bon-surface-soft);
+}
+
+/* ---------- Table ---------- */
+
+.bon-subreddits-table-wrap {
+  background: var(--bon-surface);
+  border: 1px solid var(--bon-border);
+  border-radius: 0.5em;
+  overflow-x: auto;
+  box-shadow: var(--bon-shadow-md);
+}
+
+table.bon-subreddits-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+  table-layout: auto;
+}
+
+.bon-subreddits-table th {
+  padding: 0.65em 1em;
+  text-align: left;
+  font-family: var(--bon-font-mono);
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--bon-muted);
+  border-bottom: 1.5px solid var(--bon-rule);
+}
+
+.bon-subreddits-table tbody td {
+  padding: 0.8em 1em;
+  border-bottom: 1px solid var(--bon-border);
+  vertical-align: middle;
+}
+
+.bon-subreddits-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+/* Sample-mix column soaks up leftover width. */
+.bon-subreddits-cell-mix {
+  width: 100%;
+  min-width: 12em;
+}
+
+.bon-subreddits-cell-name a {
+  font-family: var(--bon-font-mono);
+  font-size: 0.85rem;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  color: var(--bon-link);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.bon-subreddits-cell-name a:hover {
+  text-decoration: underline;
+  color: var(--bon-link-hover);
+}
+
+.bon-subreddits-cell-analyzed {
+  font-family: var(--bon-font-mono);
+  color: var(--bon-muted);
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* ---------- Sample mix row ---------- */
+
+.bon-subreddits-mix {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4em;
+}
+
+.bon-subreddits-mix-empty {
+  color: var(--bon-muted);
+}
