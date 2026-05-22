@@ -5,7 +5,8 @@
 
 import type { ReportRow } from "./logic.ts";
 import { bonFetchAndStoreProfileStats } from "../../utils/fetch_profile_stats.ts";
-import { bonFormatDate } from "../../utils/format_time.ts";
+import { bonFmtUsd } from "../../utils/format_number.ts";
+import { bonFmtDuration } from "../../utils/format_time.ts";
 import { bonReportsDemographicsBadge } from "./cell_demographics.ts";
 import { bonReportsRegionBadge } from "./cell_region.ts";
 import { bonReportsVerdictBadge } from "./cell_verdict.ts";
@@ -170,14 +171,26 @@ export function bonReportsProfileSection(
     }
   }
 
-  const reportsCount = report.count || 0;
-  const noun = reportsCount === 1 ? "report" : "reports";
-  const reportsText = report.lastReportedAt
-    ? `${reportsCount} ${noun} · last ${bonFormatDate(report.lastReportedAt)}`
-    : `${reportsCount} ${noun}`;
-  appendMetaItem(meta, reportsText);
-
   identity.appendChild(meta);
+
+  // Second meta line: timing + cost of the most recent investigation,
+  // phrased as a sentence so it reads as a single fact rather than a
+  // bullet list. Only shown for completed runs so the row doesn't carry
+  // "—" placeholders.
+  if (investigation && investigation.status === "done") {
+    const runMeta = document.createElement("div");
+    runMeta.className = "bon-profile-info__meta bon-profile-info__meta--run";
+
+    const duration = bonFmtDuration(investigation.results.durationMs);
+    const cost = investigation.results.costUsd;
+    runMeta.textContent =
+      cost !== null
+        ? `Investigation took ${duration} and cost ${bonFmtUsd(cost)}`
+        : `Investigation took ${duration}`;
+
+    identity.appendChild(runMeta);
+  }
+
   header.appendChild(identity);
 
   if (actions.length > 0) {
