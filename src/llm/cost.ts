@@ -1,9 +1,7 @@
 // LLM pricing tables + cost estimation. Pure — no I/O.
 //
 // USD per million tokens. Verify against current provider pricing — these
-// drift. Web search USD-per-request is retained for legacy investigation
-// records (which used Anthropic's server-side `web_search` tool) — set to
-// 0 because the live pipeline now fetches DuckDuckGo for free.
+// drift.
 
 import type { ClaudeUsage } from "../types.ts";
 
@@ -39,8 +37,6 @@ export const BON_MODEL_PRICING: Record<string, ModelPricing> = {
   },
 };
 
-export const BON_WEB_SEARCH_USD_PER_REQUEST = 0;
-
 // Look up a pricing row by the model id the API echoed back. The API often
 // returns a dated suffix (e.g. "claude-sonnet-4-6-20251022"); match by prefix.
 export function bonLookupPricing(
@@ -67,8 +63,7 @@ export function bonLookupPricing(
 // so callers can distinguish "free" from "unpriced".
 export function bonEstimateCostUsd(
   usage: ClaudeUsage | null | undefined,
-  model: string | null | undefined,
-  webSearchCount = 0
+  model: string | null | undefined
 ): number | null {
   const pricing = bonLookupPricing(model);
   if (!pricing || !usage) {
@@ -86,16 +81,14 @@ export function bonEstimateCostUsd(
   const write5mTokens = write5m != null ? write5m : cacheCreate;
   const write1hTokens = write1h != null ? write1h : 0;
 
-  const usd =
+  return (
     (inputTokens * pricing.input +
       outputTokens * pricing.output +
       cacheRead * pricing.cacheRead +
       write5mTokens * pricing.cacheWrite5m +
       write1hTokens * pricing.cacheWrite1h) /
-      1_000_000 +
-    (webSearchCount || 0) * BON_WEB_SEARCH_USD_PER_REQUEST;
-
-  return usd;
+    1_000_000
+  );
 }
 
 // Sum cost of runs in the last N days. `runs` is an array of records with a

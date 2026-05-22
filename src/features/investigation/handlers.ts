@@ -236,7 +236,6 @@ async function runInvestigation(
       model: analysis.model,
       usage: analysis.usage,
       costUsd: analysis.costUsd,
-      webSearchCount: analysis.webSearchCount,
       postsFetched,
       commentsFetched,
       accountCreatedAt: inputs.summary.account.created_at,

@@ -17,7 +17,6 @@ export interface AnalyticsCall {
   model: string | null;
   usage: ClaudeUsage | null;
   costUsd: number | null;
-  webSearchCount: number;
 }
 
 export interface AnalyticsEntry {
@@ -96,8 +95,7 @@ function buildAnalyticsEntry(
       costUsd:
         typeof run.costUsd === "number"
           ? run.costUsd
-          : bonEstimateCostUsd(run.usage, run.model, run.webSearchCount),
-      webSearchCount: run.webSearchCount || 0,
+          : bonEstimateCostUsd(run.usage, run.model),
     });
   }
 

@@ -275,10 +275,6 @@ function canonicalizeInvestigation(value: unknown): Investigation | null {
       null,
     costUsd:
       typeof resultsSource.costUsd === "number" ? resultsSource.costUsd : null,
-    webSearchCount:
-      typeof resultsSource.webSearchCount === "number"
-        ? resultsSource.webSearchCount
-        : 0,
     postsFetched:
       typeof resultsSource.postsFetched === "number"
         ? resultsSource.postsFetched
@@ -394,8 +390,6 @@ function canonicalizeRunSnapshot(value: unknown): RunSnapshot {
     model: typeof record.model === "string" ? record.model : null,
     usage: (record.usage as RunSnapshot["usage"]) ?? null,
     costUsd: typeof record.costUsd === "number" ? record.costUsd : null,
-    webSearchCount:
-      typeof record.webSearchCount === "number" ? record.webSearchCount : 0,
     postsFetched:
       typeof record.postsFetched === "number" ? record.postsFetched : 0,
     commentsFetched:
@@ -461,7 +455,6 @@ export function bonSnapshotRun(
       model: investigation.results.model,
       usage: investigation.results.usage,
       costUsd: investigation.results.costUsd,
-      webSearchCount: investigation.results.webSearchCount,
       postsFetched: investigation.results.postsFetched,
       commentsFetched: investigation.results.commentsFetched,
       redditMetrics: investigation.redditMetrics,
@@ -479,7 +472,6 @@ export function bonSnapshotRun(
     model: null,
     usage: null,
     costUsd: null,
-    webSearchCount: 0,
     postsFetched: 0,
     commentsFetched: 0,
     redditMetrics: investigation.redditMetrics,

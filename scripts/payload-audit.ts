@@ -5,11 +5,6 @@
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
 
-import { DOMParser as LinkedomDOMParser } from "linkedom";
-
-(globalThis as unknown as { DOMParser: typeof LinkedomDOMParser }).DOMParser =
-  LinkedomDOMParser;
-
 import { bonFetchRedditProfile } from "../src/features/investigation/fetch.ts";
 import { bonSummarizeProfile } from "../src/features/investigation/summarize.ts";
 

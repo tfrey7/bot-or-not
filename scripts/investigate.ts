@@ -5,19 +5,9 @@
 // stores, so a JSON dump from here matches what the reports page sees.
 //
 // Usage:
-//   npm run investigate -- <username> [--no-web-search] [--json]
+//   npm run investigate -- <username> [--json] [--model <id>]
 //
 // Requires CLAUDE_API_KEY in env.
-//
-// The DuckDuckGo search-rescue step IS replicated here. The DDG parser
-// in src/features/web-search/fetch.ts uses `DOMParser`, which is native
-// in the extension's background page; in Node we polyfill it via
-// linkedom (a small spec-compliant DOM in pure JS) so the same parser
-// works for both runtimes. Search-enriched ContextItems flow into the
-// summary in-memory only (no `browser.storage`), so the CLI is
-// stateless: it matches the extension's *pre-persist* state. Pass
-// `--no-web-search` to skip the DDG step entirely if you want to test
-// the prompt's no-rescue path.
 //
 // We intentionally bypass `bonInvestigateUser` from
 // src/features/investigation/index.ts because that module pulls the
@@ -31,14 +21,6 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
 
-import { DOMParser as LinkedomDOMParser } from "linkedom";
-
-// Polyfill `DOMParser` for the Node CLI so the web-search parser in
-// src/features/web-search/fetch.ts works without a code split. Must
-// run BEFORE that module is imported transitively below.
-(globalThis as unknown as { DOMParser: typeof LinkedomDOMParser }).DOMParser =
-  LinkedomDOMParser;
-
 import {
   bonFetchBotBouncerStatus,
   bonFetchRedditProfile,
@@ -50,13 +32,12 @@ import {
   bonSummarizeProfile,
 } from "../src/features/investigation/summarize.ts";
 import { bonInvestigationCallLlm } from "../src/features/investigation/api.ts";
-import { bonWebSearchRedditUser } from "../src/features/web-search/index.ts";
 import { bonExtractJson } from "../src/utils/json.ts";
 import { bonNormalizePersona } from "../src/utils/persona.ts";
 import { bonExtractActivityData } from "../src/utils/reddit_activity.ts";
 import { bonComputeVerdict } from "../src/verdict.ts";
 import { bonInferRegion } from "../src/features/regions/index.ts";
-import { bonReportsInferTimezoneFromTimestamps } from "../src/features/reports/logic.ts";
+import { bonReportsInferTimezoneFromTimestamps } from "../src/features/reports/region.ts";
 import type { Factor } from "../src/types.ts";
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -85,7 +66,7 @@ const username = positional[0];
 
 if (!username) {
   console.error(
-    "Usage: npm run investigate -- <username> [--no-web-search] [--json] [--model <id>]"
+    "Usage: npm run investigate -- <username> [--json] [--model <id>]"
   );
   process.exit(1);
 }
@@ -99,7 +80,6 @@ if (!apiKey) {
 }
 
 const jsonOnly = booleanFlags.has("--json");
-const webSearchEnabled = !booleanFlags.has("--no-web-search");
 
 // Reddit's unauthenticated JSON endpoints rate-limit aggressively against
 // generic UAs. The extension piggybacks on the user's browser UA; here we
@@ -162,21 +142,10 @@ function formatRegion(
 async function main(): Promise<void> {
   log(`[investigate] fetching reddit data for u/${username}...`);
 
-  // Three parallel fetches:
-  //   profile (300 items, paginated) — feeds bonSummarizeProfile so Claude
-  //     sees exactly what the auto-investigation would send, and feeds
-  //     region inference (same depth as the reports-page activity view).
-  //   botbouncer — separate active query, same as bonGatherProfile.
-  //   web search (DDG) — surfaces cached posts/comments for hidden-profile
-  //     rescue. Skipped when --no-web-search.
-  const [profileSettled, botBouncerSettled, webSearchSettled] =
-    await Promise.allSettled([
-      bonFetchRedditProfile(username),
-      bonFetchBotBouncerStatus(username),
-      webSearchEnabled
-        ? bonWebSearchRedditUser(username)
-        : Promise.resolve(null),
-    ]);
+  const [profileSettled, botBouncerSettled] = await Promise.allSettled([
+    bonFetchRedditProfile(username),
+    bonFetchBotBouncerStatus(username),
+  ]);
 
   if (profileSettled.status === "rejected") {
     const reason = profileSettled.reason;
@@ -200,25 +169,13 @@ async function main(): Promise<void> {
     `[investigate] fetched posts=${postCount} comments=${commentCount} botbouncer=${botBouncerStatus ?? "none"}`
   );
 
-  const webSearchResult =
-    webSearchSettled.status === "fulfilled" ? webSearchSettled.value : null;
-  const webSearchResults = webSearchResult?.results ?? [];
-  if (webSearchEnabled) {
-    log(`[investigate] web-search: ddg=${webSearchResults.length} results`);
-  } else {
-    log(`[investigate] web-search: skipped (--no-web-search)`);
-  }
-
   const summary = bonSummarizeProfile(username, profile, {
     ...(botBouncerStatus
       ? { botBouncerStatus, botBouncerCheckedAt: Date.now() }
       : {}),
-    webSearchResults,
   });
 
-  log(
-    `[investigate] calling Claude (web_search_results=${webSearchResults.length})...`
-  );
+  log(`[investigate] calling Claude...`);
 
   const avatarUrl = bonExtractSnoovatarUrl(profile);
   const claudeResult = await bonInvestigationCallLlm(
@@ -279,7 +236,6 @@ async function main(): Promise<void> {
     activityData,
     model: claudeResult.model,
     usage: claudeResult.usage,
-    webSearchCount: 0,
     costUsd: claudeResult.costUsd,
     runAt: Date.now(),
   };

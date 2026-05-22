@@ -16,7 +16,7 @@
 | `npm run typecheck` | Run `tsc --noEmit` against `src/**/*.ts`                                                                |
 | `npm run build`     | Build an unsigned extension zip into `web-ext-artifacts/`                                               |
 | `npm run sign`      | Sign and publish to AMO (self-distribution, unlisted). Reads `AMO_API_KEY`/`AMO_API_SECRET` from `.env` |
-| `npm run investigate -- <username> [--no-web-search] [--json]` | Run the bot/human investigation pipeline against a Reddit username outside the extension. Lets you iterate on the investigation prompt without rebuilding. Reads `CLAUDE_API_KEY` from `.env` (gitignored). |
+| `npm run investigate -- <username> [--json]` | Run the bot/human investigation pipeline against a Reddit username outside the extension. Lets you iterate on the investigation prompt without rebuilding. Reads `CLAUDE_API_KEY` from `.env` (gitignored). |
 
 ### Parallel agent worktrees
 

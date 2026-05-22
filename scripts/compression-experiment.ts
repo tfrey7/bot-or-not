@@ -20,11 +20,6 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
 
-import { DOMParser as LinkedomDOMParser } from "linkedom";
-
-(globalThis as unknown as { DOMParser: typeof LinkedomDOMParser }).DOMParser =
-  LinkedomDOMParser;
-
 import {
   bonFetchBotBouncerStatus,
   bonFetchRedditProfile,
@@ -34,7 +29,6 @@ import {
   bonExtractSnoovatarUrl,
   bonSummarizeProfile,
 } from "../src/features/investigation/summarize.ts";
-import { bonWebSearchRedditUser } from "../src/features/web-search/index.ts";
 import { bonExtractJson } from "../src/utils/json.ts";
 import { bonNormalizePersona } from "../src/utils/persona.ts";
 import { bonEstimateCostUsd } from "../src/llm/cost.ts";
@@ -255,12 +249,10 @@ interface UserExperiment {
 
 async function runUser(username: string): Promise<UserExperiment> {
   console.error(`[${username}] fetching reddit...`);
-  const [profileSettled, botBouncerSettled, webSearchSettled] =
-    await Promise.allSettled([
-      bonFetchRedditProfile(username),
-      bonFetchBotBouncerStatus(username),
-      bonWebSearchRedditUser(username),
-    ]);
+  const [profileSettled, botBouncerSettled] = await Promise.allSettled([
+    bonFetchRedditProfile(username),
+    bonFetchBotBouncerStatus(username),
+  ]);
 
   if (profileSettled.status === "rejected") {
     const r = profileSettled.reason;
@@ -274,21 +266,16 @@ async function runUser(username: string): Promise<UserExperiment> {
     botBouncerSettled.status === "fulfilled"
       ? botBouncerSettled.value.status
       : null;
-  const webSearchResults =
-    webSearchSettled.status === "fulfilled"
-      ? (webSearchSettled.value?.results ?? [])
-      : [];
   const postsFetched = profile.submitted.data?.children?.length ?? 0;
   const commentsFetched = profile.comments.data?.children?.length ?? 0;
   console.error(
-    `[${username}] posts=${postsFetched} comments=${commentsFetched} bb=${botBouncerStatus ?? "-"} ddg=${webSearchResults.length}`
+    `[${username}] posts=${postsFetched} comments=${commentsFetched} bb=${botBouncerStatus ?? "-"}`
   );
 
   const fullSummary = bonSummarizeProfile(username, profile, {
     ...(botBouncerStatus
       ? { botBouncerStatus, botBouncerCheckedAt: Date.now() }
       : {}),
-    webSearchResults,
   });
   // Cap items so uncompressed baseline doesn't 400 on heavy users.
   fullSummary.recent_posts = fullSummary.recent_posts.slice(

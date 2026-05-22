@@ -24,7 +24,6 @@ import type {
   RedditProfile,
   RegionInferenceAi,
   Verdict,
-  WebSearchResult,
 } from "../../types.ts";
 import { bonNormalizeDemographics } from "../../utils/demographics.ts";
 import { bonExtractJson } from "../../utils/json.ts";
@@ -32,7 +31,6 @@ import { bonNormalizePersona } from "../../utils/persona.ts";
 import { bonExtractActivityData } from "../../utils/reddit_activity.ts";
 import { bonNormalizeRegionInference } from "../../utils/region_inference.ts";
 import { bonComputeVerdict } from "../../verdict.ts";
-import { bonWebSearchRedditUser } from "../web-search/index.ts";
 import { bonInvestigationCallLlm } from "./api.ts";
 import {
   bonFetchBotBouncerStatus,
@@ -59,10 +57,6 @@ export interface GatheredProfile {
   botBouncerStatus: BotBouncerStatus;
   botBouncerCheckedAt: number | null;
   redditMetrics: RedditMetrics;
-  webSearchResults: WebSearchResult[];
-  webSearchDurationMs: number;
-  webSearchStatus: "ok" | "error";
-  webSearchError: string | null;
 }
 
 export interface OneDAnalysisResult {
@@ -77,32 +71,25 @@ export interface OneDAnalysisResult {
   runAt: number;
   model: string;
   usage: ClaudeUsage | null;
-  webSearchCount: number;
   costUsd: number | null;
 }
 
 // Fetch + summarize the account once so the analyzer works from a
-// single Reddit fetch per investigation. Reddit profile, BotBouncer
-// lookup, and DDG web search all run in parallel so the wall time is
-// max() not sum() — the web search lands in time to be embedded in the
-// summary that goes to Claude.
+// single Reddit fetch per investigation. Reddit profile and BotBouncer
+// lookup run in parallel so the wall time is max() not sum().
 export async function bonGatherProfile(
   username: string,
   extra: GatherProfileExtra = {}
 ): Promise<GatheredProfile> {
   const wallStart = performance.now();
 
-  const [profileSettled, botBouncerSettled, webSearchSettled] =
-    await Promise.allSettled([
-      bonFetchRedditProfile(username),
-      bonFetchBotBouncerStatus(username),
-      bonWebSearchRedditUser(username),
-    ]);
+  const [profileSettled, botBouncerSettled] = await Promise.allSettled([
+    bonFetchRedditProfile(username),
+    bonFetchBotBouncerStatus(username),
+  ]);
 
   const botBouncerResult =
     botBouncerSettled.status === "fulfilled" ? botBouncerSettled.value : null;
-  const webSearchResult =
-    webSearchSettled.status === "fulfilled" ? webSearchSettled.value : null;
 
   const totalDurationMs = Math.round(performance.now() - wallStart);
 
@@ -141,21 +128,9 @@ export async function bonGatherProfile(
     ? Date.now()
     : (extra.botBouncerCheckedAt ?? null);
 
-  const webSearchResults = webSearchResult?.results ?? [];
-  const webSearchDurationMs = webSearchResult?.durationMs ?? 0;
-  const webSearchStatus = webSearchResult?.status ?? "error";
-  const webSearchError =
-    webSearchResult?.error ??
-    (webSearchSettled.status === "rejected"
-      ? webSearchSettled.reason instanceof Error
-        ? webSearchSettled.reason.message
-        : String(webSearchSettled.reason)
-      : null);
-
   const summary = bonSummarizeProfile(username, profile, {
     ...(botBouncerStatus ? { botBouncerStatus } : {}),
     ...(botBouncerCheckedAt != null ? { botBouncerCheckedAt } : {}),
-    webSearchResults,
     ...(extra.googleHarvest ? { googleHarvest: extra.googleHarvest } : {}),
     ...(extra.passiveHarvest ? { passiveHarvest: extra.passiveHarvest } : {}),
   });
@@ -168,10 +143,6 @@ export async function bonGatherProfile(
     botBouncerStatus,
     botBouncerCheckedAt,
     redditMetrics,
-    webSearchResults,
-    webSearchDurationMs,
-    webSearchStatus,
-    webSearchError,
   };
 }
 
@@ -212,10 +183,7 @@ function parseClaudeVerdict(rawText: string): ClaudeVerdictPayload {
   };
 }
 
-// Runs the 1D bot↔human analysis against an already-built summary. The
-// summary may already carry `web_search_results` from bonGatherProfile;
-// the prompt reads them directly so the Claude call has no server-side
-// search tool anymore.
+// Runs the 1D bot↔human analysis against an already-built summary.
 export async function bonRunOneDAnalysis(
   apiKey: string,
   profileSummary: ProfileSummary,
@@ -244,8 +212,6 @@ export async function bonRunOneDAnalysis(
     runAt: Date.now(),
     model,
     usage,
-    webSearchCount:
-      (profileSummary.web_search_results ?? []).length > 0 ? 1 : 0,
     costUsd,
   };
 }

@@ -31,11 +31,6 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
 
-import { DOMParser as LinkedomDOMParser } from "linkedom";
-
-(globalThis as unknown as { DOMParser: typeof LinkedomDOMParser }).DOMParser =
-  LinkedomDOMParser;
-
 import {
   bonFetchBotBouncerStatus,
   bonFetchRedditProfile,
@@ -47,7 +42,6 @@ import {
   bonSummarizeProfile,
 } from "../src/features/investigation/summarize.ts";
 import { bonInvestigationCallLlm } from "../src/features/investigation/api.ts";
-import { bonWebSearchRedditUser } from "../src/features/web-search/index.ts";
 import { bonExtractJson } from "../src/utils/json.ts";
 import { bonNormalizePersona } from "../src/utils/persona.ts";
 import { bonComputeVerdict } from "../src/verdict.ts";
@@ -319,10 +313,9 @@ function printFactorDeltas(results: VariantResult[]): void {
 
 async function main(): Promise<void> {
   console.log(`Fetching reddit data for u/${username}...`);
-  const [profileRes, bbRes, wsRes] = await Promise.allSettled([
+  const [profileRes, bbRes] = await Promise.allSettled([
     bonFetchRedditProfile(username),
     bonFetchBotBouncerStatus(username),
-    bonWebSearchRedditUser(username),
   ]);
   if (profileRes.status === "rejected") {
     const reason = profileRes.reason;
@@ -335,10 +328,8 @@ async function main(): Promise<void> {
   }
   const { profile } = profileRes.value;
   const bbStatus = bbRes.status === "fulfilled" ? bbRes.value.status : null;
-  const wsResults =
-    wsRes.status === "fulfilled" ? (wsRes.value?.results ?? []) : [];
 
-  const extra: Record<string, unknown> = { webSearchResults: wsResults };
+  const extra: Record<string, unknown> = {};
   if (bbStatus) {
     extra.botBouncerStatus = bbStatus;
     extra.botBouncerCheckedAt = Date.now();
@@ -346,7 +337,7 @@ async function main(): Promise<void> {
   const baseSummary = bonSummarizeProfile(username, profile, extra);
   const avatarUrl = bonExtractSnoovatarUrl(profile);
   console.log(
-    `Fetched: posts=${baseSummary.recent_posts.length}, comments=${baseSummary.recent_comments.length}, ws=${wsResults.length}`
+    `Fetched: posts=${baseSummary.recent_posts.length}, comments=${baseSummary.recent_comments.length}`
   );
   console.log("");
 

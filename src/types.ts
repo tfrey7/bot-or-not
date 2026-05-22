@@ -112,7 +112,6 @@ export interface RunSnapshot {
   model: string | null;
   usage: ClaudeUsage | null;
   costUsd: number | null;
-  webSearchCount: number;
   postsFetched: number;
   commentsFetched: number;
   redditMetrics: RedditMetrics | null;
@@ -136,7 +135,6 @@ export interface InvestigationResults {
   model: string;
   usage: ClaudeUsage | null;
   costUsd: number | null;
-  webSearchCount: number;
   postsFetched: number;
   commentsFetched: number;
   accountCreatedAt: string | null;
@@ -431,17 +429,6 @@ export interface SummaryComment {
   removed_by_category: string | null;
 }
 
-// Single web-search result handed to Claude in the profile summary.
-// Comes from our own DuckDuckGo fetch (see src/features/web-search/);
-// the prompt consumes them in place of an Anthropic web_search tool
-// call, which keeps the per-investigation cost predictable and lets the
-// search run in parallel with the Reddit fetch.
-export interface WebSearchResult {
-  title: string;
-  snippet: string;
-  link: string;
-}
-
 export interface ProfileSummary {
   username: string;
   account: AccountSummary;
@@ -464,7 +451,6 @@ export interface ProfileSummary {
   };
   recent_posts: SummaryPost[];
   recent_comments: SummaryComment[];
-  web_search_results?: WebSearchResult[];
 
   // Posts surfaced by a user-initiated Google site:reddit.com search for
   // this username. Present only when the user has clicked "Search Google"

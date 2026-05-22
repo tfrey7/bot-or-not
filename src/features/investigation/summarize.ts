@@ -18,7 +18,6 @@ import type {
   SummaryComment,
   SummaryPost,
   TopSubreddit,
-  WebSearchResult,
 } from "../../types.ts";
 import { BON_REDDIT_FETCH_LIMIT } from "./fetch.ts";
 
@@ -60,7 +59,6 @@ interface RawModeratedEntry {
 export interface SummarizeExtra {
   botBouncerStatus?: Exclude<BotBouncerStatus, null>;
   botBouncerCheckedAt?: number;
-  webSearchResults?: WebSearchResult[];
   googleHarvest?: GoogleHarvest;
   passiveHarvest?: PassiveHarvest;
 }
@@ -133,7 +131,6 @@ export function bonSummarizeProfile(
     },
     recent_posts: trimmedPosts,
     recent_comments: trimmedComments,
-    web_search_results: extra.webSearchResults ?? [],
     ...(extra.googleHarvest ? { google_harvest: extra.googleHarvest } : {}),
     ...(extra.passiveHarvest ? { passive_harvest: extra.passiveHarvest } : {}),
   };
@@ -210,9 +207,6 @@ export function bonSerializeProfileForClaude(summary: ProfileSummary): string {
       cols: ["s", "body", "score", "t_min", "link", "rm"],
       rows: commentRows,
     },
-    ...(summary.web_search_results
-      ? { web_search_results: summary.web_search_results }
-      : {}),
     ...(summary.google_harvest
       ? { google_harvest: summary.google_harvest }
       : {}),
