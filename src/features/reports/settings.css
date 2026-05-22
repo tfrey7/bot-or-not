@@ -10,6 +10,38 @@
   padding-top: 1.25em;
   border-top: 1px solid var(--bon-border);
 }
+
+/* Compact health strip — three small metrics at the top of Settings. */
+.bon-settings-strip {
+  display: flex;
+  gap: 1.4em;
+  padding: 0.65em 0.9em;
+  margin: 0 0 1.6em;
+  background: var(--bon-surface);
+  border: 1px solid var(--bon-border);
+  border-radius: 0.4em;
+}
+.bon-settings-strip-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.18em;
+  min-width: 0;
+}
+.bon-settings-strip-label {
+  font-family: var(--bon-font-mono);
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--bon-muted);
+  font-weight: 700;
+}
+.bon-settings-strip-value {
+  font-family: var(--bon-font-mono);
+  font-size: 0.95rem;
+  color: var(--bon-text);
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
 .bon-settings-section-title {
   font-family: var(--bon-font-mono);
   font-size: 0.66rem;

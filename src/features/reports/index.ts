@@ -8,7 +8,7 @@
 
 import { bonClientSend, bonClientSubscribe } from "../../client.ts";
 import { bonRenderAnalytics } from "../analytics";
-import { bonRenderDiagnostics } from "../diagnostics";
+import { BON_INVESTIGATION_CONCURRENCY } from "../investigation/handlers.ts";
 import { bonRenderPersonas } from "../personas";
 import { bonRenderSelfImprovement } from "../self-improvement";
 import { bonRenderSync } from "../sync";
@@ -30,6 +30,7 @@ import {
   bonReportsRefreshApiKeyStatus,
 } from "./settings.ts";
 import { bonReportsPagination } from "./pagination.ts";
+import { bonReportsSettingsStrip } from "./settings_strip.ts";
 import { bonReportsRow } from "./table_row.ts";
 import {
   bonReportsCompareActive,
@@ -72,11 +73,11 @@ const analyticsContainer = document.getElementById(
 const personasContainer = document.getElementById(
   "bon-personas-container"
 ) as HTMLElement | null;
-const diagnosticsContainer = document.getElementById(
-  "bon-diagnostics-container"
-) as HTMLElement | null;
 const selfImprovementContainer = document.getElementById(
   "bon-self-improvement-container"
+) as HTMLElement | null;
+const settingsStripContainer = document.getElementById(
+  "bon-settings-strip"
 ) as HTMLElement | null;
 const syncContainer = document.getElementById(
   "bon-sync-container"
@@ -101,7 +102,6 @@ const REGION_LABELS: Record<string, string> = Object.fromEntries(
 );
 
 let allReports: ReportRow[] = [];
-let hasApiKey = false;
 
 // Median duration across all completed runs. Drives the progress ring and
 // "~Xs left" countdown on in-flight investigations. Recomputed before
@@ -131,7 +131,7 @@ bonClientSubscribe((event) => {
   }
 
   if (event.type === "api-key-changed") {
-    void refreshApiKeyState();
+    void bonReportsRefreshApiKeyStatus();
   }
 });
 
@@ -173,7 +173,7 @@ const polling = bonReportsInitPolling({
     render();
     renderAnalytics();
     renderPersonas();
-    renderDiagnostics();
+    renderSettingsStrip();
     renderSelfImprovement();
   },
   setExpectedDurationMs: (value) => {
@@ -189,49 +189,25 @@ await load();
 
 async function load(): Promise<void> {
   try {
-    const [{ reports = {} }, { hasKey }] = await Promise.all([
-      bonClientSend<{ reports?: Record<string, Report> }>({
-        type: "get-all-reports",
-      }),
-      bonClientSend<{ hasKey: boolean }>({ type: "get-claude-api-key" }),
-    ]);
+    const { reports = {} } = await bonClientSend<{
+      reports?: Record<string, Report>;
+    }>({ type: "get-all-reports" });
 
     allReports = Object.entries(reports).map(([username, data]) => ({
       username,
       ...data,
     }));
-    hasApiKey = !!hasKey;
 
     render();
     renderAnalytics();
     renderPersonas();
-    renderDiagnostics();
+    renderSettingsStrip();
     renderSelfImprovement();
   } catch (error) {
     console.error("[Bot or Not] failed to load reports", error);
     tableWrap.hidden = true;
     emptyEl.hidden = false;
     renderLoadError(error);
-  }
-}
-
-async function refreshApiKeyState(): Promise<void> {
-  void bonReportsRefreshApiKeyStatus();
-
-  try {
-    const { hasKey } = await bonClientSend<{ hasKey: boolean }>({
-      type: "get-claude-api-key",
-    });
-    const next = !!hasKey;
-    if (next === hasApiKey) {
-      return;
-    }
-
-    hasApiKey = next;
-    render();
-    renderDiagnostics();
-  } catch (error) {
-    console.error("[Bot or Not] failed to refresh api-key state", error);
   }
 }
 
@@ -301,20 +277,12 @@ function navigateToUser(username: string): void {
   render();
 }
 
-function renderDiagnostics(): void {
-  if (!diagnosticsContainer) {
+function renderSettingsStrip(): void {
+  if (!settingsStripContainer) {
     return;
   }
 
-  const reportsMap: Record<string, Report> = {};
-
-  for (const row of allReports) {
-    reportsMap[row.username] = row;
-  }
-
-  bonRenderDiagnostics(reportsMap, diagnosticsContainer, {
-    apiKeySet: hasApiKey,
-  });
+  bonReportsSettingsStrip(allReports, settingsStripContainer);
 }
 
 function renderSelfImprovement(): void {
@@ -482,7 +450,25 @@ function renderActiveSection(rows: ReportRow[]): void {
   }
 
   activeSection.hidden = false;
-  activeTitleEl.textContent = `In progress · ${rows.length}`;
+
+  let running = 0;
+  let queued = 0;
+
+  for (const row of rows) {
+    if (row.investigation?.status === "running") {
+      running += 1;
+    } else if (row.investigation?.status === "queued") {
+      queued += 1;
+    }
+  }
+
+  // Only expose the running/queued split (and concurrency cap) when there's
+  // queue pressure — otherwise the bare count is enough and the rows below
+  // make the running-vs-queued status obvious.
+  activeTitleEl.textContent =
+    queued > 0
+      ? `In progress · ${running} running · ${queued} queued (cap ${BON_INVESTIGATION_CONCURRENCY})`
+      : `In progress · ${rows.length}`;
 
   for (const report of rows) {
     const summary = bonReportsRow(report, {

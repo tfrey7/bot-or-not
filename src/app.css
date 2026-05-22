@@ -1,10 +1,9 @@
 /* Bot or Not — design tokens and page chrome shared by every tab in
-   reports.html (Reports, Metrics, Diagnostics). Editorial dossier aesthetic:
-   warm parchment surface, Instrument Serif masthead, JetBrains Mono labels.
+   reports.html. Editorial dossier aesthetic: warm parchment surface,
+   Instrument Serif masthead, JetBrains Mono labels.
    Tab-specific styles live next to their feature:
      - features/reports/reports.css
-     - features/analytics/analytics.css
-     - features/diagnostics/diagnostics.css */
+     - features/analytics/analytics.css */
 
 :root {
   /* Type — serif is masthead-only; do not extend to body copy. */

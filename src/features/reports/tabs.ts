@@ -8,7 +8,6 @@ const BON_REPORTS_TABS = [
   "reports",
   "metrics",
   "personas",
-  "diagnostics",
   "self-improvement",
   "settings",
 ] as const;

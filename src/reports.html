@@ -14,7 +14,6 @@
     <link rel="stylesheet" href="features/reports/reports.css" />
     <link rel="stylesheet" href="features/analytics/analytics.css" />
     <link rel="stylesheet" href="features/personas/personas.css" />
-    <link rel="stylesheet" href="features/diagnostics/diagnostics.css" />
     <link
       rel="stylesheet"
       href="features/self-improvement/self-improvement.css"
@@ -97,17 +96,6 @@
             data-tab="personas"
           >
             Personas
-          </button>
-          <button
-            type="button"
-            class="bon-tab"
-            role="tab"
-            aria-selected="false"
-            aria-controls="bon-panel-diagnostics"
-            id="bon-tab-diagnostics"
-            data-tab="diagnostics"
-          >
-            Diagnostics
           </button>
           <button
             type="button"
@@ -213,16 +201,6 @@
       <section
         class="bon-tab-panel"
         role="tabpanel"
-        id="bon-panel-diagnostics"
-        aria-labelledby="bon-tab-diagnostics"
-        hidden
-      >
-        <div id="bon-diagnostics-container"></div>
-      </section>
-
-      <section
-        class="bon-tab-panel"
-        role="tabpanel"
         id="bon-panel-self-improvement"
         aria-labelledby="bon-tab-self-improvement"
         hidden
@@ -238,6 +216,8 @@
         hidden
       >
         <div class="bon-settings">
+          <div id="bon-settings-strip"></div>
+
           <section class="bon-settings-section">
             <p class="bon-settings-section-title">Claude API key</p>
             <div class="bon-settings-field">
