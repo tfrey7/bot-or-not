@@ -27,6 +27,14 @@ export function bonPagination(opts: BonPaginationOpts): HTMLElement {
   const controls = document.createElement("div");
   controls.className = "bon-pagination-controls";
 
+  const first = document.createElement("button");
+  first.type = "button";
+  first.className = "bon-btn bon-pagination-btn";
+  first.textContent = "« First";
+  first.disabled = currentPage <= 1;
+  first.addEventListener("click", () => onPageChange(1));
+  controls.appendChild(first);
+
   const prev = document.createElement("button");
   prev.type = "button";
   prev.className = "bon-btn bon-pagination-btn";
@@ -47,6 +55,14 @@ export function bonPagination(opts: BonPaginationOpts): HTMLElement {
   next.disabled = currentPage >= totalPages;
   next.addEventListener("click", () => onPageChange(currentPage + 1));
   controls.appendChild(next);
+
+  const last = document.createElement("button");
+  last.type = "button";
+  last.className = "bon-btn bon-pagination-btn";
+  last.textContent = "Last »";
+  last.disabled = currentPage >= totalPages;
+  last.addEventListener("click", () => onPageChange(totalPages));
+  controls.appendChild(last);
 
   wrap.appendChild(controls);
 

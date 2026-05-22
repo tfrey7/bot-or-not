@@ -71,6 +71,16 @@ function renderInto(
       )
     );
   } else {
+    section.appendChild(
+      bonAnalyticsRunLog(llmRuns, {
+        currentPage: runLogPage,
+        onPageChange: (next) => {
+          runLogPage = next;
+          renderInto(container, llmRuns, redditRuns, runsWithRedditMetrics);
+        },
+      })
+    );
+
     const llmCharts = document.createElement("div");
     llmCharts.className = "bon-analytics-charts";
     llmCharts.appendChild(
@@ -95,16 +105,6 @@ function renderInto(
       )
     );
     section.appendChild(llmCharts);
-
-    section.appendChild(
-      bonAnalyticsRunLog(llmRuns, {
-        currentPage: runLogPage,
-        onPageChange: (next) => {
-          runLogPage = next;
-          renderInto(container, llmRuns, redditRuns, runsWithRedditMetrics);
-        },
-      })
-    );
   }
 
   section.appendChild(

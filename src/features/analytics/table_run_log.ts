@@ -54,21 +54,13 @@ export function bonAnalyticsRunLog(
 
   const thead = document.createElement("thead");
   const headRow = document.createElement("tr");
-  [
-    "When",
-    "User",
-    "Verdict",
-    "Persona",
-    "Model",
-    "Duration",
-    "Calls",
-    "Tokens",
-    "Cost",
-  ].forEach((label) => {
-    const th = document.createElement("th");
-    th.textContent = label;
-    headRow.appendChild(th);
-  });
+  ["When", "User", "Verdict", "Model", "Duration", "Tokens", "Cost"].forEach(
+    (label) => {
+      const th = document.createElement("th");
+      th.textContent = label;
+      headRow.appendChild(th);
+    }
+  );
   thead.appendChild(headRow);
   table.appendChild(thead);
 
@@ -93,10 +85,6 @@ export function bonAnalyticsRunLog(
     tdVerdict.textContent = formatVerdictCell(run);
     tr.appendChild(tdVerdict);
 
-    const tdPersona = document.createElement("td");
-    tdPersona.textContent = run.persona || "—";
-    tr.appendChild(tdPersona);
-
     const tdModel = document.createElement("td");
     const primaryModel = run.calls[0]?.model || null;
 
@@ -113,10 +101,6 @@ export function bonAnalyticsRunLog(
     const tdDuration = document.createElement("td");
     tdDuration.textContent = bonFmtDuration(run.durationMs);
     tr.appendChild(tdDuration);
-
-    const tdCalls = document.createElement("td");
-    tdCalls.textContent = String(run.calls.length);
-    tr.appendChild(tdCalls);
 
     const tdTokens = document.createElement("td");
     const tokenTotal = sumRunTokens(run);
@@ -190,5 +174,8 @@ function formatVerdictCell(run: AnalyticsEntry): string {
 }
 
 function shortModelName(model: string): string {
-  return model.replace(/^claude-/, "").replace(/-\d{8}$/, "");
+  // Strip both Anthropic's `-YYYYMMDD` and OpenAI's `-YYYY-MM-DD` date
+  // pins. Keep the vendor prefix (`claude-`, `gpt-`) since multi-vendor
+  // run logs need it to disambiguate at a glance.
+  return model.replace(/-\d{4}-?\d{2}-?\d{2}$/, "");
 }

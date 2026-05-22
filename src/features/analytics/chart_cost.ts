@@ -7,6 +7,7 @@ import uPlot from "uplot";
 
 import { bonFmtUsd } from "../../utils/format_number.ts";
 import type { AnalyticsEntry } from "./logic.ts";
+import { formatDayTick } from "./tick_helpers.ts";
 import {
   bonAnalyticsAxes,
   bonAnalyticsEmptyPanel,
@@ -94,6 +95,8 @@ export function bonAnalyticsCostChart(runs: AnalyticsEntry[]): HTMLElement {
       },
     ],
     axes: bonAnalyticsAxes(palette, {
+      xIncrs: [86400],
+      xValues: (_u, splits) => splits.map(formatDayTick),
       yValues: (_u, splits) => splits.map((value) => bonFmtUsd(value)),
     }),
     hooks: {
