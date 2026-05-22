@@ -13,7 +13,7 @@
     "dev-switch": "./scripts/switch-dev.sh",
     "build": "vite build",
     "sign": "source .env && npm run build && web-ext sign --api-key=$AMO_API_KEY --api-secret=$AMO_API_SECRET --channel unlisted --source-dir dist",
-    "updates-json": "node scripts/update-updates-json.mjs",
+    "updates-json": "node scripts/update-updates-json.mjs && node scripts/update-changelog.mjs",
     "investigate": "source .env && tsx scripts/investigate.ts",
     "format": "prettier --write \"src/**/*.{ts,js}\"",
     "lint": "eslint \"src/**/*.{ts,js}\"",

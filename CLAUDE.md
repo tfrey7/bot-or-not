@@ -44,8 +44,8 @@ Operates on `main` once all desired features have been shipped. Commit message c
 
 1. Bump the version in **both** `manifest.json` and `package.json` (keep them in sync).
 2. Run `npm run sign`.
-3. Run `npm run updates-json` to append the new version to `updates.json` (auto-update manifest for self-hosted installs).
-4. Commit (`manifest.json`, `package.json`, `updates.json`).
+3. Run `npm run updates-json` to append the new version to `updates.json` (auto-update manifest for self-hosted installs) and prepend a section to `CHANGELOG.md` (bullets are the per-feature commits since the previous tag). Both files are rewritten by the script — no manual editing.
+4. Commit (`manifest.json`, `package.json`, `updates.json`, `CHANGELOG.md`).
 5. Tag the commit: `git tag vX.Y.Z` (matching the version you bumped to).
 6. Push: `git push && git push origin vX.Y.Z` (push the tag explicitly rather than `--tags` so stray local tags don't leak).
 7. Create the GitHub release with the signed `.xpi` attached:
