@@ -17,15 +17,23 @@ import type {
   LlmCompleteResult,
   LlmContentPart,
   LlmMessage,
+  LlmModelOption,
   LlmProgressListener,
   LlmProvider,
   LlmTool,
   LlmToolLoopRequest,
   LlmToolLoopResult,
+  LlmVendor,
 } from "./provider.ts";
 
 const BON_ANTHROPIC_API_URL = "https://api.anthropic.com/v1/messages";
 const BON_ANTHROPIC_DEFAULT_MODEL = "claude-sonnet-4-6";
+
+const BON_ANTHROPIC_MODELS: readonly LlmModelOption[] = [
+  { id: "claude-opus-4-7", label: "Claude Opus 4.7" },
+  { id: "claude-sonnet-4-6", label: "Claude Sonnet 4.6" },
+  { id: "claude-haiku-4-5", label: "Claude Haiku 4.5" },
+];
 const BON_ANTHROPIC_DEFAULT_COMPLETE_TIMEOUT_MS = 4 * 60 * 1000;
 const BON_ANTHROPIC_DEFAULT_TOOL_TURN_TIMEOUT_MS = 60_000;
 
@@ -118,7 +126,9 @@ function toAnthropicTool(tool: LlmTool): Record<string, unknown> {
 }
 
 export class AnthropicProvider implements LlmProvider {
+  readonly vendor: LlmVendor = "anthropic";
   readonly defaultModel = BON_ANTHROPIC_DEFAULT_MODEL;
+  readonly availableModels = BON_ANTHROPIC_MODELS;
 
   constructor(private readonly apiKey: string) {}
 

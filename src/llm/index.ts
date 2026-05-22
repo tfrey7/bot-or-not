@@ -1,16 +1,55 @@
 // Public entry point for the LLM layer. Callers grab a provider via
-// `bonCreateLlmProvider(apiKey)` and talk to it through the `LlmProvider`
-// interface — they never import a concrete provider class directly.
+// `bonCreateLlmProvider(apiKey, vendor?)` and talk to it through the
+// `LlmProvider` interface — they never import a concrete provider class
+// directly.
 //
-// Today the factory always returns `AnthropicProvider`. When a second
-// provider lands, this is where key-prefix sniffing (`sk-ant-…` vs
-// `sk-…` vs `AIza…`) chooses the implementation.
+// Vendor selection is explicit when the caller passes it; when omitted, we
+// fall back to sniffing the key prefix (`sk-ant-…` → Anthropic). The
+// settings UI persists the user's choice and passes it through; one-off
+// callers without a stored choice (CLI scripts, the dev-key bootstrap)
+// get the sniffing fallback.
 
 import { AnthropicProvider } from "./anthropic.ts";
-import type { LlmProvider } from "./provider.ts";
+import { OpenAIProvider } from "./openai.ts";
+import type { LlmProvider, LlmVendor } from "./provider.ts";
 
-export function bonCreateLlmProvider(apiKey: string): LlmProvider {
-  return new AnthropicProvider(apiKey);
+export const BON_LLM_VENDORS: ReadonlyArray<{
+  id: LlmVendor;
+  label: string;
+  keyPlaceholder: string;
+}> = [
+  { id: "anthropic", label: "Anthropic", keyPlaceholder: "sk-ant-..." },
+  { id: "openai", label: "OpenAI", keyPlaceholder: "sk-..." },
+];
+
+export function bonCreateLlmProvider(
+  apiKey: string,
+  vendor?: LlmVendor | null
+): LlmProvider {
+  const resolved = vendor ?? bonSniffVendor(apiKey);
+
+  switch (resolved) {
+    case "openai":
+      return new OpenAIProvider(apiKey);
+    case "anthropic":
+    default:
+      return new AnthropicProvider(apiKey);
+  }
+}
+
+// Fallback for callers that don't know the user's vendor preference. Keys
+// that don't match a known prefix fall through to Anthropic — the original
+// default.
+export function bonSniffVendor(apiKey: string): LlmVendor {
+  if (apiKey.startsWith("sk-ant-")) {
+    return "anthropic";
+  }
+
+  if (apiKey.startsWith("sk-")) {
+    return "openai";
+  }
+
+  return "anthropic";
 }
 
 export type {
@@ -19,6 +58,7 @@ export type {
   LlmCompleteResult,
   LlmContentPart,
   LlmMessage,
+  LlmModelOption,
   LlmProgressEvent,
   LlmProgressListener,
   LlmProvider,
@@ -27,4 +67,5 @@ export type {
   LlmToolDispatch,
   LlmToolLoopRequest,
   LlmToolLoopResult,
+  LlmVendor,
 } from "./provider.ts";

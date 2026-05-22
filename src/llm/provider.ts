@@ -155,8 +155,25 @@ export interface LlmToolLoopResult {
   maxTurnsExceeded: boolean;
 }
 
+// Curated model entry for the settings dropdown. The id is what gets sent
+// to the provider's API; the label is what the user sees. Vendors expose
+// list-models endpoints, but those include deprecated / embedding / non-tool
+// variants and never include pricing — so the dropdown is fed from this
+// hand-picked list, not from a runtime call. Add a new model = add a row
+// here + a row in `cost.ts` and it appears in the UI.
+export interface LlmModelOption {
+  id: string;
+  label: string;
+}
+
+// Stable id for the backend, used as the storage value of the vendor
+// dropdown and as the explicit hint passed into `bonCreateLlmProvider`.
+export type LlmVendor = "anthropic" | "openai";
+
 export interface LlmProvider {
+  readonly vendor: LlmVendor;
   readonly defaultModel: string;
+  readonly availableModels: readonly LlmModelOption[];
   complete(request: LlmCompleteRequest): Promise<LlmCompleteResult>;
   runToolLoop(request: LlmToolLoopRequest): Promise<LlmToolLoopResult>;
 }

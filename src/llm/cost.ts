@@ -35,6 +35,38 @@ export const BON_MODEL_PRICING: Record<string, ModelPricing> = {
     cacheWrite5m: 1.25,
     cacheWrite1h: 2,
   },
+
+  // OpenAI prompt caching is automatic — no explicit "write" charge, so
+  // cacheWrite5m/1h equal the normal input rate. Cached reads get the
+  // discounted `cacheRead` rate. Verify against openai.com/api/pricing.
+  "gpt-4o": {
+    input: 2.5,
+    output: 10,
+    cacheRead: 1.25,
+    cacheWrite5m: 2.5,
+    cacheWrite1h: 2.5,
+  },
+  "gpt-4o-mini": {
+    input: 0.15,
+    output: 0.6,
+    cacheRead: 0.075,
+    cacheWrite5m: 0.15,
+    cacheWrite1h: 0.15,
+  },
+  "gpt-4.1": {
+    input: 2,
+    output: 8,
+    cacheRead: 0.5,
+    cacheWrite5m: 2,
+    cacheWrite1h: 2,
+  },
+  "gpt-4.1-mini": {
+    input: 0.4,
+    output: 1.6,
+    cacheRead: 0.1,
+    cacheWrite5m: 0.4,
+    cacheWrite1h: 0.4,
+  },
 };
 
 // Look up a pricing row by the model id the API echoed back. The API often
