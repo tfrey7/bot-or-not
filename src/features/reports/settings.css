@@ -81,6 +81,38 @@
   border-color: var(--bon-accent);
   box-shadow: 0 0 0 3px var(--bon-accent-soft);
 }
+.bon-settings-label {
+  display: block;
+  font-family: var(--bon-font-mono);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--bon-muted);
+  margin: 0.7em 0 0.3em;
+}
+.bon-settings-label:first-child {
+  margin-top: 0;
+}
+.bon-settings-select {
+  width: 100%;
+  font-family: var(--bon-font-mono);
+  font-size: 0.85rem;
+  padding: 0.55em 0.7em;
+  border: 1px solid var(--bon-border-strong);
+  border-radius: 0.35em;
+  box-sizing: border-box;
+  background: var(--bon-surface);
+  color: var(--bon-text);
+}
+.bon-settings-select:focus {
+  outline: none;
+  border-color: var(--bon-accent);
+  box-shadow: 0 0 0 3px var(--bon-accent-soft);
+}
+.bon-settings-select:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
 .bon-settings-status {
   font-size: 0.75rem;
   color: var(--bon-muted);

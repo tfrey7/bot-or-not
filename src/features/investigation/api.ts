@@ -6,7 +6,7 @@
 
 import type { ClaudeUsage, ProfileSummary } from "../../types.ts";
 import { bonCreateLlmProvider } from "../../llm/index.ts";
-import type { LlmContentPart } from "../../llm/index.ts";
+import type { LlmContentPart, LlmVendor } from "../../llm/index.ts";
 import { bonSerializeProfileForClaude } from "./summarize.ts";
 
 const BON_INVESTIGATION_MAX_TOKENS = 4096;
@@ -21,6 +21,9 @@ export interface InvestigationLlmResult {
 // `avatarUrl` is the customized Snoovatar PNG URL. When set, the call
 // attaches it as an image content part in front of the JSON text so the
 // prompt's `avatar_style` factor can score it.
+// `vendor` picks the backend (Anthropic, OpenAI, …) — usually sourced
+// from storage in the background path; CLI scripts can omit it for
+// key-prefix sniffing.
 // `model` overrides the provider's default model for experimentation
 // (see scripts/investigate.ts --model flag).
 // `serialize` overrides the user-message serializer — by default we emit
@@ -29,7 +32,8 @@ export interface InvestigationLlmResult {
 // two formats against the same summary.
 export interface InvestigationLlmOptions {
   avatarUrl?: string | null;
-  model?: string;
+  vendor?: LlmVendor | null;
+  model?: string | null;
   serialize?: (summary: ProfileSummary) => string;
 }
 
@@ -40,7 +44,7 @@ export async function bonInvestigationCallLlm(
   label = "investigation 1D",
   options: InvestigationLlmOptions = {}
 ): Promise<InvestigationLlmResult> {
-  const provider = bonCreateLlmProvider(apiKey);
+  const provider = bonCreateLlmProvider(apiKey, options.vendor ?? null);
   const userContent: LlmContentPart[] = [];
 
   if (options.avatarUrl) {

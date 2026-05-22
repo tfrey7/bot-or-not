@@ -11,7 +11,8 @@ export interface BonClientMessage {
 
 export type BonClientEvent =
   | { type: "reports-changed" }
-  | { type: "api-key-changed" };
+  | { type: "api-key-changed" }
+  | { type: "llm-selection-changed" };
 
 export type BonClientListener = (event: BonClientEvent) => void;
 
@@ -38,8 +39,15 @@ class BonExtensionClient implements BonClient {
         listener({ type: "reports-changed" });
       }
 
-      if (changes.claudeApiKey) {
+      if (changes.apiKeys || changes.claudeApiKey) {
+        // `claudeApiKey` is the legacy single-vendor slot; once the
+        // migration runs it becomes `apiKeys`. Subscribe to both so the
+        // UI stays in sync regardless of which slot the change came from.
         listener({ type: "api-key-changed" });
+      }
+
+      if (changes.llmVendor || changes.llmModel) {
+        listener({ type: "llm-selection-changed" });
       }
     };
 

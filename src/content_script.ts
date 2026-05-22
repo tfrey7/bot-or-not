@@ -81,13 +81,19 @@ function startFeatures(): void {
   observer.observe(document.body, { childList: true, subtree: true });
 }
 
-async function hasClaudeApiKey(): Promise<boolean> {
+async function hasAnyApiKey(): Promise<boolean> {
+  // We don't know which vendor the operator picked from a content script;
+  // any key on file is enough to let the features wake up. Mismatches
+  // between vendor selection and the available key surface in the
+  // background-side investigation/AI-command paths.
   try {
-    const { hasKey } = await bonClientSend<{ hasKey: boolean }>({
-      type: "get-claude-api-key",
+    const { hasKey } = await bonClientSend<{
+      hasKey: Record<string, boolean>;
+    }>({
+      type: "get-api-keys",
     });
 
-    return !!hasKey;
+    return Object.values(hasKey).some(Boolean);
   } catch (error) {
     console.error("[Bot or Not] failed to read api-key state", error);
     return false;
@@ -95,13 +101,13 @@ async function hasClaudeApiKey(): Promise<boolean> {
 }
 
 async function bootstrap(): Promise<void> {
-  if (await hasClaudeApiKey()) {
+  if (await hasAnyApiKey()) {
     startFeatures();
     return;
   }
 
   console.log(
-    "[Bot or Not] No Claude API key set — staying dormant. Click the toolbar button, open Settings, paste a key."
+    "[Bot or Not] No API key set — staying dormant. Click the toolbar button, open Settings, paste a key."
   );
 
   // Wake up the moment the key shows up. We don't tear down on removal
@@ -112,7 +118,7 @@ async function bootstrap(): Promise<void> {
     }
 
     void (async () => {
-      if (await hasClaudeApiKey()) {
+      if (await hasAnyApiKey()) {
         startFeatures();
       }
     })();

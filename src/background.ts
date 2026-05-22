@@ -34,7 +34,22 @@ import { bonSyncExport, bonSyncImport } from "./features/sync/handlers.ts";
 import { bonRunMigrations } from "./migrations";
 import type { Report } from "./types.ts";
 import type { BonScrapedPost } from "./features/google-harvest/parse.ts";
-import { bonClearApiKey, bonReadApiKey, bonWriteApiKey } from "./storage.ts";
+import {
+  bonClearAllApiKeys,
+  bonReadAllApiKeys,
+  bonReadApiKey,
+  bonReadLlmSelection,
+  bonWriteApiKey,
+  bonWriteLlmSelection,
+  type BonApiKeyMap,
+} from "./storage.ts";
+import {
+  BON_LLM_VENDORS,
+  bonSniffVendor,
+  type LlmVendor,
+} from "./llm/index.ts";
+import { AnthropicProvider } from "./llm/anthropic.ts";
+import { OpenAIProvider } from "./llm/openai.ts";
 
 console.log("[Bot or Not] background loaded");
 
@@ -86,14 +101,17 @@ async function bootstrapDevClaudeApiKey(): Promise<void> {
   }
 
   try {
-    const claudeApiKey = await bonReadApiKey();
+    // Dev key seeding is Anthropic-only by convention (the .env slot is
+    // named for Claude). If we ever need an OpenAI dev slot it'd be a
+    // second env var + a second branch here.
+    const existing = await bonReadApiKey("anthropic");
 
-    if (claudeApiKey) {
+    if (existing) {
       return;
     }
 
-    await bonWriteApiKey(__BON_DEV_CLAUDE_API_KEY__);
-    console.log("[Bot or Not] dev: seeded Claude API key from .env");
+    await bonWriteApiKey("anthropic", __BON_DEV_CLAUDE_API_KEY__);
+    console.log("[Bot or Not] dev: seeded Anthropic API key from .env");
   } catch (error) {
     console.error(
       "[Bot or Not] dev: bootstrap of Claude API key failed",
@@ -201,12 +219,30 @@ browser.runtime.onMessage.addListener((message: BaseMessage) => {
     return bonInvestigationAutoOnView(message.username as string);
   }
 
-  if (message.type === "get-claude-api-key") {
-    return handleGetClaudeApiKey();
+  if (message.type === "get-api-keys") {
+    return handleGetApiKeys();
   }
 
-  if (message.type === "set-claude-api-key") {
-    return handleSetClaudeApiKey(message.apiKey as string);
+  if (message.type === "set-api-key") {
+    return handleSetApiKey(
+      message.apiKey as string,
+      (message.vendor as LlmVendor | null | undefined) ?? null
+    );
+  }
+
+  if (message.type === "clear-api-keys") {
+    return handleClearApiKeys();
+  }
+
+  if (message.type === "get-llm-selection") {
+    return handleGetLlmSelection();
+  }
+
+  if (message.type === "set-llm-selection") {
+    return handleSetLlmSelection(
+      (message.vendor as LlmVendor | null | undefined) ?? null,
+      (message.model as string | null | undefined) ?? null
+    );
   }
 
   if (message.type === "link-ring") {
@@ -433,20 +469,120 @@ async function openReportsTab(username?: string): Promise<void> {
   }
 }
 
-async function handleGetClaudeApiKey(): Promise<{ hasKey: boolean }> {
-  const claudeApiKey = await bonReadApiKey();
-  return { hasKey: !!claudeApiKey };
+// One bit per vendor: do we have a key on file? Used by the settings UI
+// to render the "Key set" indicator against the currently selected
+// vendor. We don't return the keys themselves — they're write-only from
+// outside the background.
+async function handleGetApiKeys(): Promise<{
+  hasKey: Record<LlmVendor, boolean>;
+}> {
+  const map = await bonReadAllApiKeys();
+  return { hasKey: toHasKeyMap(map) };
 }
 
-async function handleSetClaudeApiKey(
-  apiKey: string
-): Promise<{ ok: boolean; hasKey: boolean }> {
+// Sniff the vendor from the key prefix when the caller doesn't pin it
+// explicitly. The result is also returned so the settings UI can flip the
+// vendor dropdown to match (pasting an Anthropic key while OpenAI is
+// selected is almost always a vendor mismatch — fix it for the operator
+// rather than silently storing it in the wrong slot).
+async function handleSetApiKey(
+  apiKey: string,
+  hintedVendor: LlmVendor | null
+): Promise<{
+  ok: true;
+  vendor: LlmVendor;
+  hasKey: Record<LlmVendor, boolean>;
+}> {
   const key = (apiKey || "").trim();
+
+  // Empty key means "delete the entry for this vendor." If we don't know
+  // which vendor the caller meant, do nothing — clearing all keys is a
+  // separate, explicit message.
   if (!key) {
-    await bonClearApiKey();
-    return { ok: true, hasKey: false };
+    if (hintedVendor) {
+      const map = await bonReadAllApiKeys();
+      delete map[hintedVendor];
+      await browser.storage.local.set({ apiKeys: map });
+    }
+
+    const map = await bonReadAllApiKeys();
+    return {
+      ok: true,
+      vendor: hintedVendor ?? "anthropic",
+      hasKey: toHasKeyMap(map),
+    };
   }
 
-  await bonWriteApiKey(key);
-  return { ok: true, hasKey: true };
+  const vendor = bonSniffVendor(key);
+  await bonWriteApiKey(vendor, key);
+  const map = await bonReadAllApiKeys();
+  return { ok: true, vendor, hasKey: toHasKeyMap(map) };
+}
+
+async function handleClearApiKeys(): Promise<{
+  ok: true;
+  hasKey: Record<LlmVendor, boolean>;
+}> {
+  await bonClearAllApiKeys();
+  return { ok: true, hasKey: toHasKeyMap({}) };
+}
+
+function toHasKeyMap(map: BonApiKeyMap): Record<LlmVendor, boolean> {
+  const out = {} as Record<LlmVendor, boolean>;
+
+  for (const { id } of BON_LLM_VENDORS) {
+    out[id] = !!map[id];
+  }
+
+  return out;
+}
+
+// Vendor list + model list is provider-owned; the background exposes it
+// here so the settings UI doesn't need to know which providers exist.
+async function handleGetLlmSelection(): Promise<{
+  vendor: LlmVendor | null;
+  model: string | null;
+  vendors: ReadonlyArray<{ id: LlmVendor; label: string }>;
+  modelsByVendor: Record<
+    LlmVendor,
+    {
+      defaultModel: string;
+      models: ReadonlyArray<{ id: string; label: string }>;
+    }
+  >;
+}> {
+  const stored = await bonReadLlmSelection();
+
+  const anthropic = new AnthropicProvider("");
+  const openai = new OpenAIProvider("");
+
+  return {
+    vendor: stored.vendor,
+    model: stored.model,
+    vendors: BON_LLM_VENDORS.map(({ id, label }) => ({ id, label })),
+    modelsByVendor: {
+      anthropic: {
+        defaultModel: anthropic.defaultModel,
+        models: anthropic.availableModels.map((m) => ({
+          id: m.id,
+          label: m.label,
+        })),
+      },
+      openai: {
+        defaultModel: openai.defaultModel,
+        models: openai.availableModels.map((m) => ({
+          id: m.id,
+          label: m.label,
+        })),
+      },
+    },
+  };
+}
+
+async function handleSetLlmSelection(
+  vendor: LlmVendor | null,
+  model: string | null
+): Promise<{ ok: true; vendor: LlmVendor | null; model: string | null }> {
+  await bonWriteLlmSelection({ vendor, model });
+  return { ok: true, vendor, model };
 }

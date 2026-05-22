@@ -1,3 +1,4 @@
+import { bonMigrateApiKeysPerVendor } from "./api_keys_per_vendor.ts";
 import { bonMigrateCrankToZealot } from "./crank_to_zealot.ts";
 import { bonMigrateGoogleHarvestAttribution } from "./google_harvest_attribution.ts";
 import { bonMigratePersonaSimplification } from "./persona_simplification.ts";
@@ -11,4 +12,5 @@ export async function bonRunMigrations(): Promise<void> {
   await bonMigrateGoogleHarvestAttribution();
   await bonMigrateUserNotesRatings();
   await bonMigratePersonaSimplification();
+  await bonMigrateApiKeysPerVendor();
 }

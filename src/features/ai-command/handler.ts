@@ -13,7 +13,11 @@ import {
   bonReportsUnlinkRing,
 } from "../reports/handlers.ts";
 import type { Report } from "../../types.ts";
-import { bonReadApiKey, bonReadReports } from "../../storage.ts";
+import {
+  bonReadApiKey,
+  bonReadLlmSelection,
+  bonReadReports,
+} from "../../storage.ts";
 import { bonFindReportKey } from "../../utils/history.ts";
 import {
   bonAiCommandBuildSnapshot,
@@ -59,20 +63,24 @@ export async function bonAiCommandHandle(
     return { ok: false, error: "empty-input" };
   }
 
-  const claudeApiKey = await bonReadApiKey();
+  const selection = await bonReadLlmSelection();
+  const vendor = selection.vendor ?? "anthropic";
+  const apiKey = await bonReadApiKey(vendor);
 
-  if (!claudeApiKey) {
+  if (!apiKey) {
     return { ok: false, error: "no-api-key" };
   }
 
   const result = await bonRunAiCommand(
-    claudeApiKey,
+    apiKey,
     trimmed,
     makeDispatchTool(options.requestConfirm),
     {
       history,
       onProgress: options.onProgress,
       signal: options.signal,
+      vendor,
+      model: selection.model,
     }
   );
 

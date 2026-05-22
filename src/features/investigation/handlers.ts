@@ -13,6 +13,7 @@ import type {
 } from "../../types.ts";
 import {
   bonReadApiKey,
+  bonReadLlmSelection,
   bonReadReports,
   bonWriteReports,
 } from "../../storage.ts";
@@ -130,9 +131,11 @@ export async function bonInvestigationStart(
     return { ok: false, error: "missing username" };
   }
 
-  const claudeApiKey = await bonReadApiKey();
+  const selection = await bonReadLlmSelection();
+  const vendor = selection.vendor ?? "anthropic";
+  const apiKey = await bonReadApiKey(vendor);
 
-  if (!claudeApiKey) {
+  if (!apiKey) {
     return { ok: false, error: "no-api-key" };
   }
 
@@ -160,13 +163,13 @@ export async function bonInvestigationStart(
     return { ok: true, queued: true };
   }
 
-  void runInvestigation(username, claudeApiKey, { resetAttempts: true });
+  void runInvestigation(username, apiKey, { resetAttempts: true });
   return { ok: true, queued: false };
 }
 
 async function runInvestigation(
   username: string,
-  claudeApiKey: string,
+  apiKey: string,
   options: { resetAttempts?: boolean } = {}
 ): Promise<void> {
   const key = username.toLowerCase();
@@ -208,10 +211,12 @@ async function runInvestigation(
         ? { passiveHarvest: existingRecord.passiveHarvest }
         : {}),
     });
+    const selection = await bonReadLlmSelection();
     const analysis = await bonRunOneDAnalysis(
-      claudeApiKey,
+      apiKey,
       inputs.summary,
-      bonExtractSnoovatarUrl(inputs.raw)
+      bonExtractSnoovatarUrl(inputs.raw),
+      selection
     );
 
     const durationMs = Date.now() - startedAt;
@@ -316,9 +321,11 @@ async function drainQueue(): Promise<void> {
   }
 
   try {
-    const claudeApiKey = await bonReadApiKey();
+    const selection = await bonReadLlmSelection();
+    const vendor = selection.vendor ?? "anthropic";
+    const apiKey = await bonReadApiKey(vendor);
 
-    if (!claudeApiKey) {
+    if (!apiKey) {
       return;
     }
 
@@ -348,7 +355,7 @@ async function drainQueue(): Promise<void> {
         return;
       }
 
-      void runInvestigation(username, claudeApiKey);
+      void runInvestigation(username, apiKey);
     }
   } catch (error) {
     console.error("[Bot or Not] drainQueue failed", error);
@@ -368,9 +375,11 @@ export async function bonInvestigationAutoOnView(
   }
 
   try {
-    const claudeApiKey = await bonReadApiKey();
+    const selection = await bonReadLlmSelection();
+    const vendor = selection.vendor ?? "anthropic";
+    const apiKey = await bonReadApiKey(vendor);
 
-    if (!claudeApiKey) {
+    if (!apiKey) {
       return { ok: true, started: false };
     }
 
@@ -405,9 +414,11 @@ export async function bonInvestigationMaybeAuto(
   username: string
 ): Promise<void> {
   try {
-    const claudeApiKey = await bonReadApiKey();
+    const selection = await bonReadLlmSelection();
+    const vendor = selection.vendor ?? "anthropic";
+    const apiKey = await bonReadApiKey(vendor);
 
-    if (!claudeApiKey) {
+    if (!apiKey) {
       return;
     }
 

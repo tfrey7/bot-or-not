@@ -1,8 +1,10 @@
-// Settings tab: Claude API key + danger-zone clear-all. Lives as a
-// regular tab panel rather than a modal; activating the tab uses the
-// shared tab handler, so this module only owns the inputs and buttons.
+// Settings tab: LLM vendor/model pickers, API key, Google harvest
+// permission, sync, danger-zone clear-all. Lives as a regular tab panel
+// rather than a modal; activating the tab uses the shared tab handler,
+// so this module only owns the inputs and buttons.
 
 import { bonClientSend } from "../../client.ts";
+import type { LlmVendor } from "../../llm/index.ts";
 import {
   bonGoogleHarvestIsGranted,
   bonGoogleHarvestMatches,
@@ -32,27 +34,119 @@ const googlePermissionStatus = document.getElementById(
 const googlePermissionToggle = document.getElementById(
   "bon-google-permission-toggle"
 ) as HTMLButtonElement;
+const llmVendorSelect = document.getElementById(
+  "bon-llm-vendor-select"
+) as HTMLSelectElement;
+const llmModelSelect = document.getElementById(
+  "bon-llm-model-select"
+) as HTMLSelectElement;
 
-function renderApiKeyStatus(hasKey: boolean): void {
+interface LlmSelectionPayload {
+  vendor: LlmVendor | null;
+  model: string | null;
+  vendors: Array<{ id: LlmVendor; label: string }>;
+  modelsByVendor: Record<
+    LlmVendor,
+    { defaultModel: string; models: Array<{ id: string; label: string }> }
+  >;
+}
+
+interface ApiKeysPayload {
+  hasKey: Record<LlmVendor, boolean>;
+}
+
+let llmSelectionState: LlmSelectionPayload | null = null;
+let apiKeysState: ApiKeysPayload | null = null;
+
+function renderApiKeyStatus(): void {
+  const vendor = effectiveVendor();
+  const placeholder = vendor === "openai" ? "sk-..." : "sk-ant-...";
+  const vendorLabel =
+    llmSelectionState?.vendors.find((v) => v.id === vendor)?.label ?? vendor;
+  const hasKey = !!apiKeysState?.hasKey[vendor];
+
   if (hasKey) {
-    apiKeyStatus.textContent =
-      "Key set. Type a new one to replace, or leave blank to keep.";
+    apiKeyStatus.textContent = `${vendorLabel} key set. Type a new one to replace, or leave blank to keep.`;
     apiKeyStatus.className = "bon-settings-status bon-settings-status--set";
     apiKeyInput.placeholder = "•••• (key on file)";
   } else {
-    apiKeyStatus.textContent =
-      "No key set. Investigations will fail until one is saved.";
+    apiKeyStatus.textContent = `No ${vendorLabel} key on file. Investigations will fail until one is saved.`;
     apiKeyStatus.className = "bon-settings-status bon-settings-status--missing";
-    apiKeyInput.placeholder = "sk-ant-...";
+    apiKeyInput.placeholder = placeholder;
+  }
+}
+
+function effectiveVendor(): LlmVendor {
+  return (
+    llmSelectionState?.vendor ??
+    llmSelectionState?.vendors[0]?.id ??
+    "anthropic"
+  );
+}
+
+function renderLlmSelection(): void {
+  if (!llmSelectionState) {
+    return;
+  }
+
+  const { vendor, model, vendors, modelsByVendor } = llmSelectionState;
+  const activeVendor = vendor ?? vendors[0]?.id ?? "anthropic";
+
+  llmVendorSelect.innerHTML = "";
+
+  for (const v of vendors) {
+    const opt = document.createElement("option");
+    opt.value = v.id;
+    opt.textContent = v.label;
+    if (v.id === activeVendor) {
+      opt.selected = true;
+    }
+
+    llmVendorSelect.appendChild(opt);
+  }
+
+  const vendorEntry = modelsByVendor[activeVendor];
+  llmModelSelect.innerHTML = "";
+
+  const defaultOpt = document.createElement("option");
+  defaultOpt.value = "";
+  defaultOpt.textContent = `Default (${vendorEntry?.defaultModel ?? "—"})`;
+  llmModelSelect.appendChild(defaultOpt);
+
+  for (const m of vendorEntry?.models ?? []) {
+    const opt = document.createElement("option");
+    opt.value = m.id;
+    opt.textContent = m.label;
+    if (m.id === model) {
+      opt.selected = true;
+    }
+
+    llmModelSelect.appendChild(opt);
+  }
+
+  if (!model) {
+    defaultOpt.selected = true;
+  }
+}
+
+async function loadLlmSelection(): Promise<void> {
+  try {
+    llmSelectionState = await bonClientSend<LlmSelectionPayload>({
+      type: "get-llm-selection",
+    });
+    renderLlmSelection();
+  } catch {
+    apiKeyStatus.textContent = "Failed to load LLM settings.";
+    apiKeyStatus.className = "bon-settings-status bon-settings-status--missing";
   }
 }
 
 export async function bonReportsRefreshApiKeyStatus(): Promise<void> {
   try {
-    const { hasKey } = await bonClientSend<{ hasKey: boolean }>({
-      type: "get-claude-api-key",
+    apiKeysState = await bonClientSend<ApiKeysPayload>({
+      type: "get-api-keys",
     });
-    renderApiKeyStatus(hasKey);
+    renderApiKeyStatus();
   } catch {
     apiKeyStatus.textContent = "Failed to read key status.";
     apiKeyStatus.className = "bon-settings-status bon-settings-status--missing";
@@ -64,24 +158,69 @@ export function bonReportsOpenSettings(): void {
   apiKeyInput.focus();
 }
 
-async function saveApiKey(): Promise<void> {
-  const value = apiKeyInput.value.trim();
-
-  if (!value) {
+// One Save button for the whole section: writes the current vendor + model
+// selection AND the API key field (if the user typed one). Vendor + model
+// dropdowns mutate local state only until Save is clicked.
+//
+// If the typed key's prefix doesn't match the selected vendor, the
+// backend sniffs the true vendor and tells us — we switch the dropdown
+// over and persist the selection so the configuration ends up internally
+// consistent. (Pasting an Anthropic key with OpenAI in the dropdown is
+// almost always a vendor-switch intent, not a mis-pasted key.)
+async function saveSettings(): Promise<void> {
+  if (!llmSelectionState) {
     return;
   }
+
+  let vendor = llmVendorSelect.value as LlmVendor;
+  let model = llmModelSelect.value || null;
+  const keyValue = apiKeyInput.value.trim();
 
   settingsSave.disabled = true;
 
   try {
-    const { hasKey } = await bonClientSend<{ hasKey: boolean }>({
-      type: "set-claude-api-key",
-      apiKey: value,
+    if (keyValue) {
+      const result = await bonClientSend<{
+        ok: true;
+        vendor: LlmVendor;
+        hasKey: Record<LlmVendor, boolean>;
+      }>({
+        type: "set-api-key",
+        apiKey: keyValue,
+        vendor,
+      });
+
+      apiKeysState = { hasKey: result.hasKey };
+      apiKeyInput.value = "";
+
+      // Key prefix wins over dropdown selection. If they diverged, the
+      // dropdown follows the key.
+      if (result.vendor !== vendor) {
+        vendor = result.vendor;
+        model = null;
+        llmSelectionState = {
+          ...llmSelectionState,
+          vendor,
+          model,
+        };
+        renderLlmSelection();
+      }
+    }
+
+    await bonClientSend({
+      type: "set-llm-selection",
+      vendor,
+      model,
     });
-    renderApiKeyStatus(hasKey);
-    apiKeyInput.value = "";
+    llmSelectionState = {
+      ...llmSelectionState,
+      vendor,
+      model,
+    };
+
+    renderApiKeyStatus();
   } catch {
-    apiKeyStatus.textContent = "Failed to save key.";
+    apiKeyStatus.textContent = "Failed to save.";
     apiKeyStatus.className = "bon-settings-status bon-settings-status--missing";
   } finally {
     settingsSave.disabled = false;
@@ -141,15 +280,36 @@ async function toggleGooglePermission(): Promise<void> {
 export function bonReportsInitSettings(): void {
   apiKeyStatus.textContent = "Loading...";
   apiKeyStatus.className = "bon-settings-status";
-  void bonReportsRefreshApiKeyStatus();
+
+  void loadLlmSelection().then(() => bonReportsRefreshApiKeyStatus());
   void refreshGooglePermissionState();
 
-  settingsSave.addEventListener("click", saveApiKey);
+  llmVendorSelect.addEventListener("change", () => {
+    // Switching vendor invalidates the current model choice — re-render
+    // the model list against the new vendor's options and clear the
+    // explicit pick (back to "Default"). State stays local until Save.
+    if (!llmSelectionState) {
+      return;
+    }
+
+    llmSelectionState = {
+      ...llmSelectionState,
+      vendor: llmVendorSelect.value as LlmVendor,
+      model: null,
+    };
+    renderLlmSelection();
+
+    // Refresh the API-key status so the operator sees whether the new
+    // vendor already has a key on file, before they hit Save.
+    renderApiKeyStatus();
+  });
+
+  settingsSave.addEventListener("click", saveSettings);
 
   apiKeyInput.addEventListener("keydown", (event) => {
     if (event.key === "Enter") {
       event.preventDefault();
-      void saveApiKey();
+      void saveSettings();
     }
   });
 
@@ -173,11 +333,11 @@ export function bonReportsInitSettings(): void {
 
   clearAllBtn.addEventListener("click", () => {
     bonReportsOpenConfirmModal({
-      text: "Clear all reported users and your saved API key? This can't be undone.",
+      text: "Clear all reported users and your saved API keys? This can't be undone.",
       confirmLabel: "Clear all",
       action: async () => {
         await bonClientSend({ type: "clear-all-reports" });
-        await bonClientSend({ type: "set-claude-api-key", apiKey: "" });
+        await bonClientSend({ type: "clear-api-keys" });
         await bonReportsRefreshApiKeyStatus();
       },
     });

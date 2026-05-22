@@ -194,15 +194,32 @@
           <div id="bon-settings-strip"></div>
 
           <section class="bon-settings-section">
-            <p class="bon-settings-section-title">Claude API key</p>
+            <p class="bon-settings-section-title">LLM backend</p>
+            <p class="bon-settings-section-desc">
+              Pick the provider, model, and matching API key used for
+              investigations and the AI command bar.
+            </p>
             <div class="bon-settings-field">
+              <label class="bon-settings-label" for="bon-llm-vendor-select"
+                >Vendor</label
+              >
+              <select id="bon-llm-vendor-select" class="bon-settings-select">
+              </select>
+              <label class="bon-settings-label" for="bon-llm-model-select"
+                >Model</label
+              >
+              <select id="bon-llm-model-select" class="bon-settings-select">
+              </select>
+              <label class="bon-settings-label" for="bon-api-key-input"
+                >API key</label
+              >
               <input
                 type="password"
                 id="bon-api-key-input"
                 placeholder="sk-ant-..."
                 autocomplete="off"
                 spellcheck="false"
-                aria-label="Claude API key"
+                aria-label="API key"
               />
               <p id="bon-api-key-status" class="bon-settings-status"></p>
               <div class="bon-settings-actions">

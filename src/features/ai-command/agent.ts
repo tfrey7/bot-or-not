@@ -13,6 +13,7 @@ import type {
   LlmMessage,
   LlmProgressEvent,
   LlmToolDispatch,
+  LlmVendor,
 } from "../../llm/index.ts";
 import BON_AI_COMMAND_PROMPT from "./prompt.md?raw";
 import { BON_AI_COMMAND_TOOLS } from "./tools.ts";
@@ -48,6 +49,8 @@ export interface BonRunAiCommandOptions {
   history?: AiCommandMessage[];
   onProgress?: AiCommandProgress;
   signal?: AbortSignal;
+  vendor?: LlmVendor | null;
+  model?: string | null;
 }
 
 export async function bonRunAiCommand(
@@ -56,14 +59,14 @@ export async function bonRunAiCommand(
   dispatch: AiCommandDispatch,
   options: BonRunAiCommandOptions = {}
 ): Promise<AiCommandResult> {
-  const { history = [], onProgress, signal } = options;
+  const { history = [], onProgress, signal, vendor, model } = options;
 
   const messages: LlmMessage[] = [
     ...history,
     { role: "user", content: [{ kind: "text", text: input }] },
   ];
 
-  const provider = bonCreateLlmProvider(apiKey);
+  const provider = bonCreateLlmProvider(apiKey, vendor ?? null);
 
   const loop = await provider.runToolLoop({
     systemPrompt: BON_AI_COMMAND_PROMPT,
@@ -76,6 +79,7 @@ export async function bonRunAiCommand(
     label: "ai-command",
     ...(onProgress ? { onProgress } : {}),
     ...(signal ? { signal } : {}),
+    ...(model ? { model } : {}),
   });
 
   if (loop.aborted) {

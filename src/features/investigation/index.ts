@@ -9,6 +9,7 @@
 // build time so there's no runtime fetch.
 
 import BON_ANALYSIS_PROMPT from "./prompt.md?raw";
+import type { LlmVendor } from "../../llm/index.ts";
 import type {
   ActivityData,
   BotBouncerStatus,
@@ -183,18 +184,30 @@ function parseClaudeVerdict(rawText: string): ClaudeVerdictPayload {
   };
 }
 
+// Caller-supplied LLM selection. Both fields nullable — null on either
+// means "let the provider/factory decide" (default backend, default model).
+export interface BonInvestigationLlmSelection {
+  vendor?: LlmVendor | null;
+  model?: string | null;
+}
+
 // Runs the 1D bot↔human analysis against an already-built summary.
 export async function bonRunOneDAnalysis(
   apiKey: string,
   profileSummary: ProfileSummary,
-  avatarUrl: string | null = null
+  avatarUrl: string | null = null,
+  selection: BonInvestigationLlmSelection = {}
 ): Promise<OneDAnalysisResult> {
   const { rawText, usage, model, costUsd } = await bonInvestigationCallLlm(
     apiKey,
     BON_ANALYSIS_PROMPT,
     profileSummary,
     "investigation 1D",
-    { avatarUrl }
+    {
+      avatarUrl,
+      vendor: selection.vendor ?? null,
+      model: selection.model ?? null,
+    }
   );
 
   const parsed = parseClaudeVerdict(rawText);
@@ -232,14 +245,16 @@ export interface InvestigateUserResult extends OneDAnalysisResult {
 export async function bonInvestigateUser(
   username: string,
   apiKey: string,
-  extra: GatherProfileExtra = {}
+  extra: GatherProfileExtra = {},
+  selection: BonInvestigationLlmSelection = {}
 ): Promise<InvestigateUserResult> {
   const gathered = await bonGatherProfile(username, extra);
   const avatarUrl = bonExtractSnoovatarUrl(gathered.raw);
   const analysisResult = await bonRunOneDAnalysis(
     apiKey,
     gathered.summary,
-    avatarUrl
+    avatarUrl,
+    selection
   );
 
   return {
