@@ -12,7 +12,8 @@ export interface BonClientMessage {
 export type BonClientEvent =
   | { type: "reports-changed" }
   | { type: "api-key-changed" }
-  | { type: "llm-selection-changed" };
+  | { type: "llm-selection-changed" }
+  | { type: "hide-pii-changed" };
 
 export type BonClientListener = (event: BonClientEvent) => void;
 
@@ -48,6 +49,10 @@ class BonExtensionClient implements BonClient {
 
       if (changes.llmVendor || changes.llmModel) {
         listener({ type: "llm-selection-changed" });
+      }
+
+      if (changes.hidePii) {
+        listener({ type: "hide-pii-changed" });
       }
     };
 

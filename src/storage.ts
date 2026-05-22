@@ -34,6 +34,9 @@ export interface BonStorage {
 
   readLlmSelection(): Promise<BonLlmSelection>;
   writeLlmSelection(selection: BonLlmSelection): Promise<void>;
+
+  readHidePii(): Promise<boolean>;
+  writeHidePii(value: boolean): Promise<void>;
 }
 
 class BonExtensionStorage implements BonStorage {
@@ -113,6 +116,22 @@ class BonExtensionStorage implements BonStorage {
     };
   }
 
+  async readHidePii(): Promise<boolean> {
+    const raw = (await browser.storage.local.get("hidePii")) as {
+      hidePii?: unknown;
+    };
+
+    return raw.hidePii === true;
+  }
+
+  async writeHidePii(value: boolean): Promise<void> {
+    if (value) {
+      await browser.storage.local.set({ hidePii: true });
+    } else {
+      await browser.storage.local.remove("hidePii");
+    }
+  }
+
   async writeLlmSelection(selection: BonLlmSelection): Promise<void> {
     const toRemove: string[] = [];
     const toSet: Record<string, string> = {};
@@ -184,4 +203,12 @@ export function bonWriteLlmSelection(
   selection: BonLlmSelection
 ): Promise<void> {
   return bonStorage.writeLlmSelection(selection);
+}
+
+export function bonReadHidePii(): Promise<boolean> {
+  return bonStorage.readHidePii();
+}
+
+export function bonWriteHidePii(value: boolean): Promise<void> {
+  return bonStorage.writeHidePii(value);
 }

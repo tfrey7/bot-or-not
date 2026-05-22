@@ -38,8 +38,10 @@ import {
   bonClearAllApiKeys,
   bonReadAllApiKeys,
   bonReadApiKey,
+  bonReadHidePii,
   bonReadLlmSelection,
   bonWriteApiKey,
+  bonWriteHidePii,
   bonWriteLlmSelection,
   type BonApiKeyMap,
 } from "./storage.ts";
@@ -243,6 +245,14 @@ browser.runtime.onMessage.addListener((message: BaseMessage) => {
       (message.vendor as LlmVendor | null | undefined) ?? null,
       (message.model as string | null | undefined) ?? null
     );
+  }
+
+  if (message.type === "get-hide-pii") {
+    return bonReadHidePii().then((hidePii) => ({ hidePii }));
+  }
+
+  if (message.type === "set-hide-pii") {
+    return bonWriteHidePii(!!message.value).then(() => ({ ok: true }));
   }
 
   if (message.type === "link-ring") {

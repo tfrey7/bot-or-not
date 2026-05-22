@@ -1,3 +1,15 @@
+/* ---------- Privacy: blur usernames + avatars (settings toggle) ----------
+   When the operator enables "Blur usernames" in settings, the body picks up
+   the `bon-hide-pii` class. Every Reddit username link (text + nested avatar
+   image) and the profile-header h1 we tagged blur out, unblurring on hover /
+   keyboard focus so the operator can still interact. */
+body.bon-hide-pii a[href*="/user/"]:not(:hover):not(:focus):not(:focus-within),
+body.bon-hide-pii a[href*="/u/"]:not(:hover):not(:focus):not(:focus-within),
+body.bon-hide-pii .bon-pii:not(:hover):not(:focus):not(:focus-within) {
+  filter: blur(4px);
+  transition: filter 0.18s ease-in-out;
+}
+
 .bon-user-tag {
   display: inline-flex;
   align-items: center;

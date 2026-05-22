@@ -14,6 +14,7 @@ import { bonRenderSync } from "../sync";
 import { BON_REGION_INFO } from "../regions/data.ts";
 import type { Report } from "../../types.ts";
 import { bonExpectedDurationMs } from "../../utils/expected_duration.ts";
+import { bonPiiBlurInit } from "../../utils/pii_blur.ts";
 import { bonReportsInstallAgentBadge } from "./agent_badge.ts";
 import {
   bonReportsInitCommandBar,
@@ -133,6 +134,7 @@ bonClientSubscribe((event) => {
 
 bonReportsInitConfirmModal({ onConfirm: load });
 bonReportsInitSettings();
+void bonPiiBlurInit();
 
 const commandBar: BonReportsCommandBarHandle = bonReportsInitCommandBar({
   searchInput,

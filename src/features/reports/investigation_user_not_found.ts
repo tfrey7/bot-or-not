@@ -32,7 +32,7 @@ export function bonReportsUserNotFoundPanel(username: string): HTMLDivElement {
   body.append(
     "Reddit has no user named ",
     Object.assign(document.createElement("code"), {
-      className: "bon-user-not-found__name",
+      className: "bon-user-not-found__name bon-pii",
       textContent: `u/${username}`,
     }),
     ". Check the spelling — or the account may have been deleted."

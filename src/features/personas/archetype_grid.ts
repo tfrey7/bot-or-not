@@ -126,7 +126,7 @@ function buildExemplarsList(
 
     const link = document.createElement("button");
     link.type = "button";
-    link.className = "bon-personas-archetype-exemplar";
+    link.className = "bon-personas-archetype-exemplar bon-pii";
     link.textContent = `u/${exemplar.username}`;
     link.title = `${Math.round(exemplar.score * 100)}% — open dossier`;
     link.addEventListener("click", () => onSelectUser(exemplar.username));

@@ -401,3 +401,13 @@ body {
 .bon-btn[hidden] {
   display: none;
 }
+
+/* ---------- Privacy: blur usernames + avatars (settings toggle) ----------
+   Mirror of the rule in content_script.css. When body.bon-hide-pii is set,
+   anything tagged `bon-pii` blurs out (Discord-spoiler-style); hovering or
+   focusing reveals. Reports-page username elements opt in by adding the
+   class at their render site. */
+body.bon-hide-pii .bon-pii:not(:hover):not(:focus):not(:focus-within) {
+  filter: blur(4px);
+  transition: filter 0.18s ease-in-out;
+}

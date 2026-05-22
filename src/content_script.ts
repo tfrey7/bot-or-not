@@ -14,6 +14,7 @@ import {
   bonInlineTagsMark,
   bonInlineTagsResetNav,
 } from "./features/inline-tags";
+import { bonPiiBlurInit } from "./utils/pii_blur.ts";
 import {
   bonPassiveHarvestInit,
   bonPassiveHarvestTick,
@@ -101,6 +102,11 @@ async function hasAnyApiKey(): Promise<boolean> {
 }
 
 async function bootstrap(): Promise<void> {
+  // PII blur is independent of feature state — it should work even on a
+  // dormant install (the operator may have configured privacy before
+  // pasting their API key).
+  void bonPiiBlurInit();
+
   if (await hasAnyApiKey()) {
     startFeatures();
     return;

@@ -40,6 +40,12 @@ const llmVendorSelect = document.getElementById(
 const llmModelSelect = document.getElementById(
   "bon-llm-model-select"
 ) as HTMLSelectElement;
+const hidePiiStatus = document.getElementById(
+  "bon-hide-pii-status"
+) as HTMLElement;
+const hidePiiToggle = document.getElementById(
+  "bon-hide-pii-toggle"
+) as HTMLButtonElement;
 
 interface LlmSelectionPayload {
   vendor: LlmVendor | null;
@@ -244,6 +250,45 @@ function renderGooglePermissionState(granted: boolean): void {
   }
 }
 
+function renderHidePiiState(enabled: boolean): void {
+  hidePiiToggle.hidden = false;
+
+  if (enabled) {
+    hidePiiStatus.textContent = "Enabled.";
+    hidePiiStatus.className =
+      "bon-settings-toggle-status bon-settings-toggle-status--on";
+    hidePiiToggle.textContent = "Disable";
+  } else {
+    hidePiiStatus.textContent = "Disabled.";
+    hidePiiStatus.className = "bon-settings-toggle-status";
+    hidePiiToggle.textContent = "Enable";
+  }
+}
+
+async function refreshHidePiiState(): Promise<void> {
+  try {
+    const { hidePii } = await bonClientSend<{ hidePii: boolean }>({
+      type: "get-hide-pii",
+    });
+    renderHidePiiState(!!hidePii);
+  } catch {
+    hidePiiStatus.textContent = "Failed to read privacy state.";
+    hidePiiToggle.hidden = true;
+  }
+}
+
+async function toggleHidePii(): Promise<void> {
+  hidePiiToggle.disabled = true;
+
+  try {
+    const next = hidePiiToggle.textContent !== "Disable";
+    await bonClientSend({ type: "set-hide-pii", value: next });
+    renderHidePiiState(next);
+  } finally {
+    hidePiiToggle.disabled = false;
+  }
+}
+
 async function refreshGooglePermissionState(): Promise<void> {
   try {
     const granted = await bonGoogleHarvestIsGranted();
@@ -283,6 +328,7 @@ export function bonReportsInitSettings(): void {
 
   void loadLlmSelection().then(() => bonReportsRefreshApiKeyStatus());
   void refreshGooglePermissionState();
+  void refreshHidePiiState();
 
   llmVendorSelect.addEventListener("change", () => {
     // Switching vendor invalidates the current model choice — re-render
@@ -315,6 +361,10 @@ export function bonReportsInitSettings(): void {
 
   googlePermissionToggle.addEventListener("click", () => {
     void toggleGooglePermission();
+  });
+
+  hidePiiToggle.addEventListener("click", () => {
+    void toggleHidePii();
   });
 
   // about:addons lets users revoke optional permissions out-of-band; mirror
