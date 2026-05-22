@@ -7,9 +7,15 @@
 // scores cancels symmetrically toward the origin. "How far from center"
 // reads as "how concentrated this account is on one persona flavor."
 
-import { BON_ARCHETYPES } from "../../factors.ts";
+import { BON_ARCHETYPES, BON_ARCHETYPE_KEYS } from "../../factors.ts";
 import { bonPersonaHue } from "../../utils/persona_color.ts";
 import type { ArchetypeKey, Persona, Report } from "../../types.ts";
+
+// Below this, the archetype score is incidental noise — Claude routinely
+// dribbles 0.1–0.2 into off-axes when scoring. Anything under this floor
+// doesn't deserve to be cited as an exemplar.
+const EXEMPLAR_MIN_SCORE = 0.3;
+const EXEMPLAR_LIMIT = 5;
 
 export interface PersonaPoint {
   username: string;
@@ -122,4 +128,39 @@ export function bonPersonasCollect(reports: PersonasRow[]): PersonaPoint[] {
   }
 
   return points;
+}
+
+export interface PersonaExemplar {
+  username: string;
+  score: number;
+}
+
+export type PersonaExemplars = Record<ArchetypeKey, PersonaExemplar[]>;
+
+// For each archetype, return the top-N investigated accounts by raw score
+// on *that specific axis* (not by top-archetype). A user with 0.7 stan AND
+// 0.65 hustler is a legitimate exemplar of both lists — the radar plots
+// independent axes, so the exemplars do too.
+export function bonPersonasExemplars(points: PersonaPoint[]): PersonaExemplars {
+  const buckets = {} as PersonaExemplars;
+
+  for (const key of BON_ARCHETYPE_KEYS) {
+    buckets[key] = [];
+  }
+
+  for (const archetype of BON_ARCHETYPES) {
+    const ranked: PersonaExemplar[] = [];
+
+    for (const point of points) {
+      const score = point.persona.archetypes?.[archetype.key] ?? 0;
+      if (score >= EXEMPLAR_MIN_SCORE) {
+        ranked.push({ username: point.username, score });
+      }
+    }
+
+    ranked.sort((a, b) => b.score - a.score);
+    buckets[archetype.key] = ranked.slice(0, EXEMPLAR_LIMIT);
+  }
+
+  return buckets;
 }

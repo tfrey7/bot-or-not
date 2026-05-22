@@ -157,6 +157,140 @@
   font-style: italic;
 }
 
+/* ---------- About the archetypes ----------
+   3×2 grid below the scatter — one card per radar axis, medallion + label
+   + blurb. Order matches BON_ARCHETYPES so the cards read in the same
+   clockwise sequence as the chart's spokes. */
+.bon-personas-archetypes {
+  margin-top: 2em;
+}
+
+.bon-personas-archetypes-heading {
+  margin: 0 0 0.85em;
+  font-family: var(--bon-font-mono);
+  font-size: 0.78rem;
+  color: var(--bon-muted);
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.bon-personas-archetypes-grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.85em;
+}
+
+@media (max-width: 720px) {
+  .bon-personas-archetypes-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 460px) {
+  .bon-personas-archetypes-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.bon-personas-archetype-card {
+  display: flex;
+  gap: 0.85em;
+  align-items: flex-start;
+  background: var(--bon-surface);
+  border: 1px solid var(--bon-border);
+  border-left: 3px solid hsl(var(--bon-archetype-hue) 55% 50%);
+  border-radius: 0.5em;
+  padding: 0.85em 0.95em;
+  box-shadow: var(--bon-shadow-sm);
+}
+
+.bon-personas-archetype-hex {
+  flex: 0 0 auto;
+  width: 72px;
+  height: 72px;
+  display: block;
+  overflow: visible;
+}
+
+.bon-personas-archetype-hex-outline {
+  fill: none;
+  stroke: var(--bon-border-strong);
+  stroke-width: 1.25;
+  stroke-linejoin: round;
+}
+
+.bon-personas-archetype-hex-dot {
+  fill: var(--bon-muted-soft, var(--bon-muted));
+  opacity: 0.6;
+}
+
+.bon-personas-archetype-hex-dot--active {
+  stroke: var(--bon-surface);
+  stroke-width: 1.5;
+}
+
+.bon-personas-archetype-text {
+  min-width: 0;
+}
+
+.bon-personas-archetype-label {
+  margin: 0 0 0.3em;
+  font-family: var(--bon-font-mono);
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: hsl(var(--bon-archetype-hue) 55% 38%);
+}
+
+.bon-personas-archetype-blurb {
+  margin: 0;
+  font-size: 0.85rem;
+  line-height: 1.45;
+  color: var(--bon-text);
+}
+
+.bon-personas-archetype-exemplars {
+  margin: 0.55em 0 0;
+  font-size: 0.78rem;
+  line-height: 1.5;
+  color: var(--bon-muted);
+}
+
+.bon-personas-archetype-exemplars-heading {
+  font-family: var(--bon-font-mono);
+  font-weight: 600;
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--bon-muted);
+  margin-right: 0.45em;
+}
+
+.bon-personas-archetype-exemplar {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: hsl(var(--bon-archetype-hue) 55% 38%);
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  text-underline-offset: 2px;
+  transition: text-decoration-color 120ms ease-out;
+}
+
+.bon-personas-archetype-exemplar:hover,
+.bon-personas-archetype-exemplar:focus-visible {
+  text-decoration-color: currentColor;
+  outline: none;
+}
+
 /* ---------- Hover card ----------
    Floats above the chart on dot mouseenter. Body content (.bon-persona,
    .bon-top-reasons) is the same DOM the reports detail pane builds, so

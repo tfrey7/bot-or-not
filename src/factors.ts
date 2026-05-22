@@ -43,6 +43,11 @@ export interface ArchetypeMeta {
   key: ArchetypeKey;
   label: string;
   hue: number;
+
+  // One- or two-sentence user-facing description shown on the personas page.
+  // The long-form analyst definitions in features/investigation/prompt.md are
+  // too dense for the UI; this is the plain-English version.
+  blurb: string;
 }
 
 // Persona archetype axes for the radar chart. Each is an independent 0–1
@@ -67,12 +72,48 @@ export interface ArchetypeMeta {
 // Blended combo colors then interpolate to something visually between the
 // two anchors, instead of leaping across the wheel.
 export const BON_ARCHETYPES: readonly ArchetypeMeta[] = [
-  { key: "stan", label: "Stan", hue: 45 },
-  { key: "hustler", label: "Hustler", hue: 155 },
-  { key: "farmer", label: "Farmer", hue: 210 },
-  { key: "doomer", label: "Doomer", hue: 260 },
-  { key: "cam_model", label: "Cam Model", hue: 320 },
-  { key: "zealot", label: "Zealot", hue: 0 },
+  {
+    key: "stan",
+    label: "Stan",
+    hue: 45,
+    blurb:
+      "A human hyperfocused on one niche — a fandom, regional community, identity community, or earnestly-advocated cause. Posts heavily in a few themed subs with fluent in-group voice.",
+  },
+  {
+    key: "hustler",
+    label: "Hustler",
+    hue: 155,
+    blurb:
+      "A commercial-vehicle account that drives attention to a product, service, or person the operator profits from — crypto pumps, dropship stores, MLM funnels, paid courses, indie apps.",
+  },
+  {
+    key: "farmer",
+    label: "Farmer",
+    hue: 210,
+    blurb:
+      "Human-operated but inauthentic. Reposts viral content, drops generic engagement-bait (“This!”, “Underrated take”), scatters across unrelated big subs to harvest karma.",
+  },
+  {
+    key: "doomer",
+    label: "Doomer",
+    hue: 260,
+    blurb:
+      "Pessimist / burnout poster. Worldview is “things are getting worse and there’s no fix” — heavy on r/collapse, r/antiwork, layoff threads, late-stage-capitalism takes.",
+  },
+  {
+    key: "cam_model",
+    label: "Cam Model",
+    hue: 320,
+    blurb:
+      "A commercial account whose product is the operator’s own appearance. The selfies are the business; the Reddit presence funnels subscribers to OnlyFans, Fansly, or a cam site.",
+  },
+  {
+    key: "zealot",
+    label: "Zealot",
+    hue: 0,
+    blurb:
+      "Single-issue political combatant. Reddit is their battlefield: daily outrage, tribal antagonism, every news item treated as ammunition for the cause.",
+  },
 ];
 
 export const BON_ARCHETYPE_KEYS: readonly ArchetypeKey[] = BON_ARCHETYPES.map(

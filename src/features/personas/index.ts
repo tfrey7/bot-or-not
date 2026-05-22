@@ -3,7 +3,12 @@
 // land between their dominant anchors. Click a dot to jump to its dossier.
 
 import type { Report } from "../../types.ts";
-import { bonPersonasCollect, type PersonasRow } from "./logic.ts";
+import { bonPersonasArchetypeGrid } from "./archetype_grid.ts";
+import {
+  bonPersonasCollect,
+  bonPersonasExemplars,
+  type PersonasRow,
+} from "./logic.ts";
 import { bonPersonasScatter } from "./scatter.ts";
 
 export interface BonRenderPersonasOptions {
@@ -26,9 +31,16 @@ export function bonRenderPersonas(
   section.appendChild(buildHeader(reports));
 
   const points = bonPersonasCollect(reports as PersonasRow[]);
+  const exemplars = bonPersonasExemplars(points);
 
   if (points.length === 0) {
     section.appendChild(buildEmptyState());
+    section.appendChild(
+      bonPersonasArchetypeGrid({
+        exemplars,
+        onSelectUser: options.onSelectUser,
+      })
+    );
     container.appendChild(section);
     return;
   }
@@ -58,6 +70,12 @@ export function bonRenderPersonas(
   section.appendChild(chart);
 
   section.appendChild(buildFootnote());
+  section.appendChild(
+    bonPersonasArchetypeGrid({
+      exemplars,
+      onSelectUser: options.onSelectUser,
+    })
+  );
 
   container.appendChild(section);
 }
