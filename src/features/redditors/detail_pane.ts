@@ -99,14 +99,8 @@ export function bonRedditorsDetailPane(
   );
 
   if (!userNotFound) {
-    // Notes are independent of the AI run — show them regardless of
-    // investigation state so the operator can record their take even
-    // while a (re-)investigation is queued.
-    fragment.appendChild(bonRedditorsUserNotesSection(report));
-
-    // Google dossier sits next to notes because both are operator-curated
-    // context (not AI-derived). Returns null when no Google search has been
-    // run for this user yet — skips the section entirely.
+    // Google dossier — operator-curated context (not AI-derived). Returns
+    // null when no Google search has been run for this user yet.
     const dossier = bonRedditorsGoogleDossierSection(report);
     if (dossier) {
       fragment.appendChild(dossier);
@@ -130,6 +124,12 @@ export function bonRedditorsDetailPane(
     if (!inFlight) {
       fragment.appendChild(bonRedditorsActivitySection(report));
     }
+
+    // Notes sit at the bottom so the AI signals + dossier + activity all
+    // sit above the operator's hand-written take. Independent of the AI
+    // run — show them regardless of investigation state so the operator
+    // can record their take while a (re-)investigation is queued.
+    fragment.appendChild(bonRedditorsUserNotesSection(report));
   }
 
   // Delete lives at the very bottom — out of the prominent top-right action
