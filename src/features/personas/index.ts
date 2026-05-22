@@ -124,7 +124,7 @@ function buildEmptyState(): HTMLElement {
   const div = document.createElement("div");
   div.className = "bon-personas-empty";
   div.textContent =
-    "No personas yet. Run an investigation on a reported user and they'll show up here once Claude scores the archetypes.";
+    "No personas yet. Run an investigation on a reported user and they'll show up here once Claude scores their persona.";
 
   return div;
 }
@@ -133,7 +133,7 @@ function buildFootnote(): HTMLElement {
   const para = document.createElement("p");
   para.className = "bon-personas-footnote";
   para.textContent =
-    "Position = weighted sum of archetype anchors · distance from center reads as how concentrated the persona is · click a dot to open the dossier.";
+    "Position = weighted sum of persona anchors · distance from center reads as how concentrated the persona is · click a dot to open the dossier.";
 
   return para;
 }

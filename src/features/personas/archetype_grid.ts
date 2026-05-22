@@ -52,7 +52,7 @@ export function bonPersonasArchetypeGrid(
 
   const heading = document.createElement("h3");
   heading.className = "bon-personas-archetypes-heading";
-  heading.textContent = "About the archetypes";
+  heading.textContent = "About the personas";
   section.appendChild(heading);
 
   const grid = document.createElement("ul");

@@ -37,7 +37,7 @@ export function bonPersonasScatter(
   svg.setAttribute("role", "img");
   svg.setAttribute(
     "aria-label",
-    `Persona space: ${points.length} accounts plotted across ${BON_ARCHETYPES.length} archetype axes`
+    `Persona space: ${points.length} accounts plotted across ${BON_ARCHETYPES.length} persona axes`
   );
 
   svg.appendChild(buildBackdrop());
