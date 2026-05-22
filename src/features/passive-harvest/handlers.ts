@@ -1,5 +1,5 @@
 // Background-context handlers for passive-harvest messages. Lives in
-// the feature dir (not reports/handlers.ts) so dropping the directory
+// the feature dir (not redditors/handlers.ts) so dropping the directory
 // also drops the storage writes — the message dispatch in
 // background.ts is the only other touchpoint.
 

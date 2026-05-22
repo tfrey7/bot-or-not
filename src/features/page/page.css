@@ -1,0 +1,7 @@
+/* Page chrome styles — generic widgets that wrap the reports page itself
+   rather than any one tab. Loaded by reports.html alongside the per-tab
+   stylesheets. */
+
+@import "./command_bar.css";
+@import "./command_modal.css";
+@import "./confirm_modal.css";

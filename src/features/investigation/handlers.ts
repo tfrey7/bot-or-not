@@ -668,9 +668,9 @@ async function setProfileHidden(
   await bonWriteReports(reports);
 }
 
-// Inlined rather than calling into reports/handlers.ts so the two feature
+// Inlined rather than calling into redditors/handlers.ts so the two feature
 // directories don't form an import cycle. Same shape as
-// bonReportsSetBotBouncerStatus — keep them in sync if the field semantics
+// bonRedditorsSetBotBouncerStatus — keep them in sync if the field semantics
 // change.
 async function persistBotBouncerStatus(
   username: string,

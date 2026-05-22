@@ -1,14 +1,14 @@
 // Singleton floating card shown when the cursor enters a personas-scatter
 // dot. Mirrors the persona preview from the Reddit profile-page panel:
 // persona label + radar + summary on top, HUMAN/BOT signals list below.
-// Reuses bonReportsPersonaBlock / bonTopReasonsList so the visual matches
+// Reuses bonRedditorsPersonaBlock / bonTopReasonsList so the visual matches
 // the reports detail pane exactly — no parallel CSS to keep in sync.
 //
 // The card is non-interactive (pointer-events: none) so it can render
 // anywhere without stealing the mouseleave that closes it.
 
 import type { Report } from "../../types.ts";
-import { bonReportsPersonaBlock } from "../reports/persona_block.ts";
+import { bonRedditorsPersonaBlock } from "../redditors/persona_block.ts";
 import { bonTopReasonsList } from "../../utils/top_reasons_list.ts";
 import { bonNormalizeInvestigation } from "../../verdict.ts";
 
@@ -75,7 +75,7 @@ function buildCard(
   card.appendChild(header);
 
   const personaBlock = persona?.label
-    ? bonReportsPersonaBlock(persona, { summary })
+    ? bonRedditorsPersonaBlock(persona, { summary })
     : null;
 
   if (personaBlock) {

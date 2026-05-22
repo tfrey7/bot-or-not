@@ -1,0 +1,22 @@
+/* Redditors tab styles. Loaded by reports.html alongside the cross-cutting
+   tokens in app.css and the page chrome + settings stylesheets. This file
+   is an index that pulls in per-widget stylesheets; the rule order below
+   mirrors the original single-file cascade so widget overrides keep
+   working. */
+
+@import "./detail_pane.css";
+@import "./table.css";
+@import "./cell_region.css";
+@import "./cell_demographics.css";
+@import "./cell_verdict.css";
+@import "./cell_persona.css";
+@import "../../utils/pagination.css";
+@import "./investigation_detail.css";
+@import "./calendar_heatmap.css";
+@import "./subreddit_chart.css";
+@import "./persona_block.css";
+@import "./profile_section.css";
+@import "./user_notes_section.css";
+@import "./google_dossier_section.css";
+@import "./passive_harvest_section.css";
+@import "./persona_picker.css";

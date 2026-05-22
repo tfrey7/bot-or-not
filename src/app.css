@@ -2,7 +2,7 @@
    reports.html. Editorial dossier aesthetic: warm parchment surface,
    Instrument Serif masthead, JetBrains Mono labels.
    Tab-specific styles live next to their feature:
-     - features/reports/reports.css
+     - features/redditors/redditors.css
      - features/analytics/analytics.css */
 
 :root {
@@ -351,7 +351,7 @@ body {
   color: var(--bon-text);
   border-bottom-color: var(--bon-accent);
 }
-.bon-tab[data-tab="settings"] {
+.bon-tab[data-tab="metrics"] {
   margin-left: auto;
 }
 .bon-tab-panel[hidden] {

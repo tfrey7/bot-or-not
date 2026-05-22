@@ -14,22 +14,22 @@ import {
 } from "./features/passive-harvest/handlers.ts";
 import type { BonPassiveHarvestFinding } from "./features/passive-harvest/scrape.ts";
 import {
-  bonReportsClearAll,
-  bonReportsDelete,
-  bonReportsGetAll,
-  bonReportsGetReport,
-  bonReportsGetState,
-  bonReportsGetTags,
-  bonReportsLinkRing,
-  bonReportsRecordReport,
-  bonReportsSetBotBouncerStatus,
-  bonReportsSetGoogleHarvest,
-  bonReportsSetUserNotes,
-  bonReportsSetUserStatus,
-  bonReportsUnlinkRing,
-  bonReportsUpdatePostStatus,
-  bonReportsUpdateProfileStats,
-} from "./features/reports/handlers.ts";
+  bonRedditorsClearAll,
+  bonRedditorsDelete,
+  bonRedditorsGetAll,
+  bonRedditorsGetReport,
+  bonRedditorsGetState,
+  bonRedditorsGetTags,
+  bonRedditorsLinkRing,
+  bonRedditorsRecordReport,
+  bonRedditorsSetBotBouncerStatus,
+  bonRedditorsSetGoogleHarvest,
+  bonRedditorsSetUserNotes,
+  bonRedditorsSetUserStatus,
+  bonRedditorsUnlinkRing,
+  bonRedditorsUpdatePostStatus,
+  bonRedditorsUpdateProfileStats,
+} from "./features/redditors/handlers.ts";
 import {
   bonSubredditAnalyze,
   bonSubredditGetReport,
@@ -137,37 +137,37 @@ interface BaseMessage {
 // handler. Domain logic lives in the feature modules, not here.
 browser.runtime.onMessage.addListener((message: BaseMessage) => {
   if (message.type === "report-user") {
-    return bonReportsRecordReport(
+    return bonRedditorsRecordReport(
       message.username as string,
       (message.context as Record<string, unknown>) ?? {}
     );
   }
 
   if (message.type === "get-user-state") {
-    return bonReportsGetState(message.username as string);
+    return bonRedditorsGetState(message.username as string);
   }
 
   if (message.type === "get-user-report") {
-    return bonReportsGetReport(message.username as string);
+    return bonRedditorsGetReport(message.username as string);
   }
 
   if (message.type === "get-user-tags") {
-    return bonReportsGetTags();
+    return bonRedditorsGetTags();
   }
 
   if (message.type === "get-all-reports") {
-    return bonReportsGetAll();
+    return bonRedditorsGetAll();
   }
 
   if (message.type === "update-user-status") {
-    return bonReportsSetUserStatus(
+    return bonRedditorsSetUserStatus(
       message.username as string,
       message.status as Report["userStatus"]
     );
   }
 
   if (message.type === "update-user-profile-stats") {
-    return bonReportsUpdateProfileStats(
+    return bonRedditorsUpdateProfileStats(
       message.username as string,
       message.createdAt as number | null,
       message.totalKarma as number | null
@@ -175,14 +175,14 @@ browser.runtime.onMessage.addListener((message: BaseMessage) => {
   }
 
   if (message.type === "update-post-status") {
-    return bonReportsUpdatePostStatus(
+    return bonRedditorsUpdatePostStatus(
       message.permalink as string,
       message.status as string
     );
   }
 
   if (message.type === "set-user-notes") {
-    return bonReportsSetUserNotes(message.username as string, {
+    return bonRedditorsSetUserNotes(message.username as string, {
       ratings: Array.isArray(message.ratings)
         ? (message.ratings as string[])
         : [],
@@ -191,18 +191,18 @@ browser.runtime.onMessage.addListener((message: BaseMessage) => {
   }
 
   if (message.type === "update-botbouncer-status") {
-    return bonReportsSetBotBouncerStatus(
+    return bonRedditorsSetBotBouncerStatus(
       message.username as string,
       message.status as Report["botBouncerStatus"]
     );
   }
 
   if (message.type === "clear-all-reports") {
-    return bonReportsClearAll();
+    return bonRedditorsClearAll();
   }
 
   if (message.type === "delete-report") {
-    return bonReportsDelete(message.username as string);
+    return bonRedditorsDelete(message.username as string);
   }
 
   if (message.type === "open-popup") {
@@ -276,13 +276,13 @@ browser.runtime.onMessage.addListener((message: BaseMessage) => {
   }
 
   if (message.type === "link-ring") {
-    return bonReportsLinkRing(
+    return bonRedditorsLinkRing(
       Array.isArray(message.usernames) ? (message.usernames as string[]) : []
     );
   }
 
   if (message.type === "unlink-ring") {
-    return bonReportsUnlinkRing(
+    return bonRedditorsUnlinkRing(
       Array.isArray(message.usernames) ? (message.usernames as string[]) : []
     );
   }
@@ -330,7 +330,7 @@ browser.runtime.onMessage.addListener((message: BaseMessage) => {
       `[Bot or Not] google-harvest: u/${username} — incoming ${incomingPosts.length} post(s) for "${query}"`
     );
 
-    return bonReportsSetGoogleHarvest(username, query, incomingPosts).then(
+    return bonRedditorsSetGoogleHarvest(username, query, incomingPosts).then(
       (result) => {
         // Trickle attribution checks against Reddit for any newly-added
         // sub-post / comment URLs. Independent of investigation runs —

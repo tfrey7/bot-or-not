@@ -5,13 +5,13 @@
 // queries never pay to load it.
 
 import { bonInvestigationStart } from "../investigation/handlers.ts";
-import { bonReportsComputeRegionForReport } from "../reports/region.ts";
+import { bonRedditorsComputeRegionForReport } from "../redditors/region.ts";
 import {
-  bonReportsDelete,
-  bonReportsLinkRing,
-  bonReportsSetUserStatus,
-  bonReportsUnlinkRing,
-} from "../reports/handlers.ts";
+  bonRedditorsDelete,
+  bonRedditorsLinkRing,
+  bonRedditorsSetUserStatus,
+  bonRedditorsUnlinkRing,
+} from "../redditors/handlers.ts";
 import type { Report } from "../../types.ts";
 import {
   bonReadApiKey,
@@ -125,7 +125,10 @@ const dispatch: AiCommandDispatch = async (tool, args) => {
     const regions: Record<string, string | null> = {};
 
     for (const [username, report] of Object.entries(latest)) {
-      const result = bonReportsComputeRegionForReport({ username, ...report });
+      const result = bonRedditorsComputeRegionForReport({
+        username,
+        ...report,
+      });
       regions[username] =
         result?.kind === "ai" || result?.kind === "deterministic"
           ? result.region
@@ -137,15 +140,15 @@ const dispatch: AiCommandDispatch = async (tool, args) => {
   }
 
   if (tool === "link_ring") {
-    return bonReportsLinkRing(args.usernames as string[]);
+    return bonRedditorsLinkRing(args.usernames as string[]);
   }
 
   if (tool === "unlink_ring") {
-    return bonReportsUnlinkRing(args.usernames as string[]);
+    return bonRedditorsUnlinkRing(args.usernames as string[]);
   }
 
   if (tool === "delete_report") {
-    return bonReportsDelete(args.username as string);
+    return bonRedditorsDelete(args.username as string);
   }
 
   if (tool === "investigate_user") {
@@ -157,7 +160,7 @@ const dispatch: AiCommandDispatch = async (tool, args) => {
   }
 
   if (tool === "set_user_status") {
-    await bonReportsSetUserStatus(
+    await bonRedditorsSetUserStatus(
       args.username as string,
       args.status as Report["userStatus"]
     );

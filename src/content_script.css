@@ -308,7 +308,7 @@ body.bon-hide-pii .bon-pii:not(:hover):not(:focus):not(:focus-within) {
   padding: 0;
   /* Hue comes from inline style set by persona_strip.ts (bonPersonaHue).
      Same HSL pair as the reports detail pane so the radar polygon renders
-     the identical color on both surfaces — see features/reports/reports.css.
+     the identical color on both surfaces — see features/redditors/redditors.css.
      bot/normal personas have no hue and the overrides below swap the accent
      to a neutral gray; the hsl() fallback never renders for them. */
   --bon-persona-accent: hsl(var(--bon-persona-hue, 0) 60% 38%);
@@ -343,7 +343,7 @@ body.bon-hide-pii .bon-pii:not(:hover):not(:focus):not(:focus-within) {
 }
 
 /* Radar widget — shared with reports detail pane via bonPersonaRadar.
-   Keep these rules in sync with .bon-radar-* in features/reports/reports.css;
+   Keep these rules in sync with .bon-radar-* in features/redditors/redditors.css;
    both surfaces consume --bon-persona-accent so a given persona renders the
    identical polygon color on either page. */
 .bon-persona-radar {
@@ -407,7 +407,7 @@ body.bon-hide-pii .bon-pii:not(:hover):not(:focus):not(:focus-within) {
 
 /* Easter egg: hovering the persona title dims the radar overlay and
    brings the portrait up to near-full opacity, letting you peek at the
-   medallion. Mirrors the same rule in features/reports/reports.css for
+   medallion. Mirrors the same rule in features/redditors/redditors.css for
    the panel surface's label class. */
 .bon-persona-radar:has(.bon-radar-bg) .bon-radar-data,
 .bon-persona-radar:has(.bon-radar-bg) .bon-radar-dot,

@@ -18,8 +18,8 @@ import type { Report } from "../../types.ts";
 // Cross-feature import: the Google dossier renderer is a shared
 // visualization, used by both the reports detail pane and this embed.
 // Kept in reports/ for proximity to its only other caller.
-import { bonReportsGoogleDossierSection } from "../reports/google_dossier_section.ts";
-import type { ReportRow } from "../reports/logic.ts";
+import { bonRedditorsGoogleDossierSection } from "../redditors/google_dossier_section.ts";
+import type { ReportRow } from "../redditors/logic.ts";
 
 const reportCache = new Map<string, Report | null>();
 
@@ -118,7 +118,7 @@ function buildContainer(username: string, report: Report | null): HTMLElement {
   container.appendChild(actions);
 
   if (report?.googleHarvest && report.googleHarvest.posts.length > 0) {
-    const dossier = bonReportsGoogleDossierSection({
+    const dossier = bonRedditorsGoogleDossierSection({
       ...report,
       username,
     } as ReportRow);
