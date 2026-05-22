@@ -101,6 +101,42 @@ function buildUserTag(info: UserTagInfo): HTMLSpanElement {
   return tag;
 }
 
+// Reddit nests the username anchor in a chain of wrappers that hug the
+// username text width: `<faceplate-tracker>`, `<faceplate-hovercard>`,
+// `[slot="authorName"]`, `.author-name-meta`, and `inline-flex max-w-full`
+// boxes. Inserting the pill inside that chain leaves no horizontal room
+// next to the anchor, so the pill wraps onto a new line within the
+// wrapper. Climb past every known wrapper before inserting so the pill
+// ends up as a sibling in the actual byline flex row alongside the dot
+// and timestamp.
+function findTagInsertTarget(anchor: HTMLAnchorElement): Element {
+  let target: Element = anchor;
+
+  for (let i = 0; i < 5; i++) {
+    const parent = target.parentElement;
+    if (!parent) {
+      break;
+    }
+
+    const tag = parent.tagName.toLowerCase();
+    const isUsernameWrapper =
+      tag === "faceplate-tracker" ||
+      tag === "faceplate-hovercard" ||
+      parent.getAttribute("slot") === "authorName" ||
+      parent.classList.contains("author-name-meta") ||
+      (parent.classList.contains("inline-flex") &&
+        parent.classList.contains("max-w-full"));
+
+    if (!isUsernameWrapper) {
+      break;
+    }
+
+    target = parent;
+  }
+
+  return target;
+}
+
 // True when the anchor is the author byline link of the active
 // shreddit-post on a /r/*/comments/* page (i.e. the OP of the post the
 // user is currently viewing, not a feed item). The "credit-bar" slot on
@@ -288,9 +324,11 @@ export function bonInlineTagsMark(): void {
 
       const key = match[1].toLowerCase();
 
+      const insertAfter = findTagInsertTarget(anchor);
+
       // Skip if a tag for this user already sits next to this link (Reddit
       // sometimes re-parents anchors, dropping the data-bon-marked flag).
-      const sibling = anchor.nextElementSibling as HTMLElement | null;
+      const sibling = insertAfter.nextElementSibling as HTMLElement | null;
       if (
         sibling?.classList?.contains("bon-user-tag") &&
         sibling.dataset.bonTagFor === key
@@ -313,7 +351,7 @@ export function bonInlineTagsMark(): void {
       }
 
       const tag = buildUserTag(info);
-      anchor.insertAdjacentElement("afterend", tag);
+      insertAfter.insertAdjacentElement("afterend", tag);
 
       const ringChip = bonRingChip(info.ringId ?? null);
       if (ringChip) {
