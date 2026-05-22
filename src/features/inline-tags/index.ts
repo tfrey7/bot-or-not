@@ -256,6 +256,15 @@ export function bonInlineTagsMark(): void {
         return;
       }
 
+      // /user/ links inside a shreddit-post but outside the byline are
+      // post-body content (inline mentions, link-preview cards for a
+      // profile URL). The only anchor per post we ever want to tag is
+      // the author byline in [slot="credit-bar"].
+      const enclosingPost = anchor.closest("shreddit-post");
+      if (enclosingPost && !anchor.closest('[slot="credit-bar"]')) {
+        return;
+      }
+
       let info = userTags.get(match[1].toLowerCase());
       if (!info && isPostAuthorByline(anchor)) {
         // Synthetic idle info: produces the "Bot?" tag so post OPs are
