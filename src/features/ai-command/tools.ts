@@ -125,6 +125,22 @@ export const BON_AI_COMMAND_TOOLS: LlmTool[] = [
     },
   },
   {
+    name: "set_pii_blur",
+    description:
+      "Enable or disable the privacy blur on Reddit usernames and avatars (both inside Reddit pages and across the reports page). Use when the operator wants to obfuscate identities for screenshots — phrasings like 'blur usernames', 'hide pii', 'privacy mode on', 'turn off blur', 'show usernames again'.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        enabled: {
+          type: "boolean",
+          description:
+            "true to turn the blur on, false to turn it off. Resolve the operator's intent yourself; if the phrasing is bare 'toggle' without a direction, default to enabling.",
+        },
+      },
+      required: ["enabled"],
+    },
+  },
+  {
     name: "read_user_details",
     description:
       "Read the full stored dossier for one or more reported users — investigation summary, persona reasoning, per-factor reasoning and evidence, region call, operator's notes, and recent report history. Use this whenever the operator asks a question whose answer lives inside the stored prose (explaining a term used in a summary, comparing two users, recapping why a verdict landed where it did, recalling the operator's own notes, etc.). Resolve usernames against the snapshot before passing them.",

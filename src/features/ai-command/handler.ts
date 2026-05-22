@@ -17,6 +17,7 @@ import {
   bonReadApiKey,
   bonReadLlmSelection,
   bonReadReports,
+  bonWriteHidePii,
 } from "../../storage.ts";
 import { bonFindReportKey } from "../../utils/history.ts";
 import {
@@ -162,6 +163,11 @@ const dispatch: AiCommandDispatch = async (tool, args) => {
     );
 
     return { ok: true };
+  }
+
+  if (tool === "set_pii_blur") {
+    await bonWriteHidePii(!!args.enabled);
+    return { ok: true, enabled: !!args.enabled };
   }
 
   if (tool === "filter_users") {
