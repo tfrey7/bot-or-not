@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Bot or Not",
-  "version": "7.0.0",
+  "version": "7.1.0",
   "description": "Flag suspicious Reddit accounts",
   "browser_specific_settings": {
     "gecko": {
@@ -10,14 +10,22 @@
     }
   },
   "background": {
-    "scripts": ["src/background.ts"]
+    "scripts": [
+      "src/background.ts"
+    ]
   },
-  "permissions": ["storage", "unlimitedStorage", "tabs"],
+  "permissions": [
+    "storage",
+    "unlimitedStorage",
+    "tabs"
+  ],
   "host_permissions": [
     "https://api.anthropic.com/*",
     "https://www.reddit.com/*"
   ],
-  "optional_host_permissions": ["https://www.google.com/*"],
+  "optional_host_permissions": [
+    "https://www.google.com/*"
+  ],
   "content_scripts": [
     {
       "matches": [
@@ -25,12 +33,20 @@
         "*://old.reddit.com/*",
         "*://www.reddit.com/*"
       ],
-      "js": ["src/content_script.ts"],
-      "css": ["src/content_script.css"]
+      "js": [
+        "src/content_script.ts"
+      ],
+      "css": [
+        "src/content_script.css"
+      ]
     },
     {
-      "matches": ["*://www.google.com/search*"],
-      "js": ["src/features/google-harvest/index.ts"],
+      "matches": [
+        "*://www.google.com/search*"
+      ],
+      "js": [
+        "src/features/google-harvest/index.ts"
+      ],
       "run_at": "document_idle"
     }
   ],

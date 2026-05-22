@@ -2,6 +2,22 @@
 
 Notable changes to Bot or Not. Signed `.xpi` builds for each version are attached to the matching [GitHub Release](https://github.com/tfrey7/bot-or-not/releases).
 
+## [7.1.0] — 2026-05-22
+- Redditors tab: rename from Reports, reorder nav, split feature dir
+- README: capture reports + dossier screenshots
+- Queue: pause requeued investigations when upstream returns 429 + Retry-After
+- README: add Playwright screenshot capture (Phase 2)
+- Docs: remove stale IDEAS.md
+- README: add regeneratable pipeline
+- Add subreddit-compromise detection: Reddit-side analyze widget + Reports-page Subreddits tab
+- Publish flow: auto-generate CHANGELOG.md from per-feature commits
+- Investigation: score six factors deterministically in TS
+- AI command: add set_pii_blur tool
+- Privacy: blur usernames + avatars for screenshot mode
+- Inline tags: escape Reddit's username-text wrappers before inserting the pill
+- Manifest: drop unused DuckDuckGo host permission
+- Inline tags: skip /user/ anchors inside a post body
+
 ## [6.8.0] — 2026-05-22
 - Detail pane: noir Chromes art for the queued state
 - Remove Diagnostics tab; surface storage in Settings, queue pressure in Reports
