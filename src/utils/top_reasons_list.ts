@@ -5,14 +5,20 @@
 // respective stylesheets.
 
 import type { Factor } from "../types.ts";
-import { bonLinkifyReddit } from "./linkify_reddit.ts";
+import { bonLinkifyReddit, type BonLinkifyOptions } from "./linkify_reddit.ts";
 import { bonScoreLeaning } from "./scoring.ts";
 import { bonTopReasonsSplit, type RankedFactor } from "../verdict.ts";
 
+export interface BonTopReasonsOptions {
+  perSide?: number;
+  linkify?: BonLinkifyOptions;
+}
+
 export function bonTopReasonsList(
   factors: Factor[],
-  perSide = 3
+  options: BonTopReasonsOptions = {}
 ): HTMLElement | null {
+  const perSide = options.perSide ?? 3;
   const split = bonTopReasonsSplit(factors, perSide);
 
   if (!split.human.length && !split.bot.length) {
@@ -23,17 +29,25 @@ export function bonTopReasonsList(
   container.className = "bon-top-reasons";
 
   if (split.human.length) {
-    container.appendChild(buildColumn("Human signals", split.human));
+    container.appendChild(
+      buildColumn("Human signals", split.human, options.linkify)
+    );
   }
 
   if (split.bot.length) {
-    container.appendChild(buildColumn("Bot signals", split.bot));
+    container.appendChild(
+      buildColumn("Bot signals", split.bot, options.linkify)
+    );
   }
 
   return container;
 }
 
-function buildColumn(title: string, factors: RankedFactor[]): HTMLDivElement {
+function buildColumn(
+  title: string,
+  factors: RankedFactor[],
+  linkify: BonLinkifyOptions | undefined
+): HTMLDivElement {
   const column = document.createElement("div");
   column.className = "bon-top-reasons__column";
 
@@ -46,7 +60,7 @@ function buildColumn(title: string, factors: RankedFactor[]): HTMLDivElement {
   list.className = "bon-top-reasons__list";
 
   for (const factor of factors) {
-    list.appendChild(buildReason(factor));
+    list.appendChild(buildReason(factor, linkify));
   }
 
   column.appendChild(list);
@@ -54,7 +68,10 @@ function buildColumn(title: string, factors: RankedFactor[]): HTMLDivElement {
   return column;
 }
 
-function buildReason(factor: Factor): HTMLLIElement {
+function buildReason(
+  factor: Factor,
+  linkify: BonLinkifyOptions | undefined
+): HTMLLIElement {
   const listItem = document.createElement("li");
   const leaning = bonScoreLeaning(factor.score, factor.confidence);
   listItem.className = `bon-reason bon-reason--${leaning}`;
@@ -68,7 +85,7 @@ function buildReason(factor: Factor): HTMLLIElement {
   text.className = "bon-reason__text";
 
   if (factor.reasoning) {
-    text.appendChild(bonLinkifyReddit(factor.reasoning));
+    text.appendChild(bonLinkifyReddit(factor.reasoning, linkify));
   }
 
   listItem.appendChild(text);

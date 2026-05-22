@@ -1,19 +1,49 @@
 // Turns r/<sub> and u/<user> mentions inside a plain-text string into
-// clickable links that open in a new tab. Returns a DocumentFragment of
-// interleaved text nodes and <a> nodes — drop it into any container that
-// would otherwise have received `.textContent = text`.
+// clickable links. Returns a DocumentFragment of interleaved text nodes
+// and <a> nodes — drop it into any container that would otherwise have
+// received `.textContent = text`.
+//
+// `r/<sub>` mentions always link to Reddit (we don't render subreddits).
+// `u/<user>` mentions default to in-page `?user=<name>` so a click stays
+// inside the reports page. Content scripts injecting into Reddit pages
+// override `userHref` with an absolute URL to the reports page and pass
+// `userLinkTarget: "_blank"` so the click opens our app in a new tab.
 
-// Subreddit names: letters/digits/underscores only (no hyphens). Usernames:
-// letters/digits/underscores AND hyphens. Splitting the alternation prevents
-// "r/FightAntisemitism-modded" from being read as one subreddit ref.
 const REDDIT_REF_RE =
   /(?<![A-Za-z0-9_/])\/?(r\/[A-Za-z0-9_]{2,21}|u\/[A-Za-z0-9_-]{2,21})/gi;
 
-export function bonLinkifyReddit(text: string): DocumentFragment {
+export interface BonLinkifyOptions {
+  userHref?: (username: string) => string;
+  userLinkTarget?: string;
+}
+
+function defaultUserHref(username: string): string {
+  return `?user=${encodeURIComponent(username)}`;
+}
+
+// Options for content scripts injecting linkified text into Reddit pages.
+// A relative `?user=` href would resolve against the Reddit URL, so the
+// reports page URL has to be absolute and the click has to open a new tab.
+export function bonLinkifyPanelOptions(): BonLinkifyOptions {
+  const reportsUrl = browser.runtime.getURL("src/reports.html");
+  return {
+    userHref: (username) =>
+      `${reportsUrl}?user=${encodeURIComponent(username)}`,
+    userLinkTarget: "_blank",
+  };
+}
+
+export function bonLinkifyReddit(
+  text: string,
+  options: BonLinkifyOptions = {}
+): DocumentFragment {
   const fragment = document.createDocumentFragment();
   if (!text) {
     return fragment;
   }
+
+  const userHref = options.userHref ?? defaultUserHref;
+  const userLinkTarget = options.userLinkTarget;
 
   let cursor = 0;
 
@@ -27,11 +57,21 @@ export function bonLinkifyReddit(text: string): DocumentFragment {
     const kind = kindRaw.toLowerCase();
 
     const link = document.createElement("a");
-    link.href = `https://www.reddit.com/${kind}/${name}/`;
-    link.target = "_blank";
-    link.rel = "noopener noreferrer";
     link.className = "bon-reddit-link";
     link.textContent = match[0];
+
+    if (kind === "u") {
+      link.href = userHref(name);
+      if (userLinkTarget) {
+        link.target = userLinkTarget;
+        link.rel = "noopener noreferrer";
+      }
+    } else {
+      link.href = `https://www.reddit.com/${kind}/${name}/`;
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+    }
+
     fragment.appendChild(link);
 
     cursor = start + match[0].length;

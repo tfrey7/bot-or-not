@@ -68,9 +68,7 @@ export function bonAnalyticsRunLog(runs: AnalyticsEntry[]): HTMLDivElement {
     const tdUser = document.createElement("td");
     const userLink = document.createElement("a");
     userLink.className = "bon-analytics-top-name";
-    userLink.href = `https://www.reddit.com/user/${encodeURIComponent(run.username)}`;
-    userLink.target = "_blank";
-    userLink.rel = "noopener noreferrer";
+    userLink.href = `?user=${encodeURIComponent(run.username)}`;
     userLink.textContent = `u/${run.username}`;
     tdUser.appendChild(userLink);
     tr.appendChild(tdUser);

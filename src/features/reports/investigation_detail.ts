@@ -82,7 +82,8 @@ export function bonReportsInvestigationDetail(
   }
 
   const { factors, persona, summary } = investigation.results;
-  const reasonsList = factors.length > 0 ? bonTopReasonsList(factors, 4) : null;
+  const reasonsList =
+    factors.length > 0 ? bonTopReasonsList(factors, { perSide: 4 }) : null;
 
   const personaBlock = bonReportsPersonaBlock(persona, { summary });
 

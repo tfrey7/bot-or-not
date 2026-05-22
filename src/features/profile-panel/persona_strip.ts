@@ -5,7 +5,10 @@
 // profile-page card and the reports detail pane render the same shape.
 
 import type { Persona } from "../../types.ts";
-import { bonLinkifyReddit } from "../../utils/linkify_reddit.ts";
+import {
+  bonLinkifyPanelOptions,
+  bonLinkifyReddit,
+} from "../../utils/linkify_reddit.ts";
 import { bonPersonaHue } from "../../utils/persona_color.ts";
 import { bonPersonaIcon } from "../../utils/persona_icon.ts";
 import {
@@ -59,7 +62,9 @@ export function bonPanelBuildPersonaStrip(
   if (summaryText) {
     const summary = document.createElement("p");
     summary.className = "bon-panel-persona__summary";
-    summary.appendChild(bonLinkifyReddit(summaryText));
+    summary.appendChild(
+      bonLinkifyReddit(summaryText, bonLinkifyPanelOptions())
+    );
     wrap.appendChild(summary);
   }
 

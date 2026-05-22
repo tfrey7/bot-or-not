@@ -10,7 +10,10 @@ import {
 } from "../../verdict.ts";
 import type { Report } from "../../types.ts";
 import { bonInvestigationLoading } from "../../utils/investigation_loading.ts";
-import { bonLinkifyReddit } from "../../utils/linkify_reddit.ts";
+import {
+  bonLinkifyPanelOptions,
+  bonLinkifyReddit,
+} from "../../utils/linkify_reddit.ts";
 import { bonTopReasonsList } from "../../utils/top_reasons_list.ts";
 import { bonPanelBuildPersonaStrip } from "./persona_strip.ts";
 
@@ -72,7 +75,9 @@ export function bonPanelBuildPreview(
     ? bonPanelBuildPersonaStrip(persona, { summary })
     : null;
 
-  const reasonsList = hasFactors ? bonTopReasonsList(factors) : null;
+  const reasonsList = hasFactors
+    ? bonTopReasonsList(factors, { linkify: bonLinkifyPanelOptions() })
+    : null;
 
   if (personaBlock && reasonsList) {
     const row = document.createElement("div");
@@ -91,7 +96,7 @@ export function bonPanelBuildPreview(
   if (summary) {
     const summaryEl = document.createElement("p");
     summaryEl.className = "bon-profile-panel__summary";
-    summaryEl.appendChild(bonLinkifyReddit(summary));
+    summaryEl.appendChild(bonLinkifyReddit(summary, bonLinkifyPanelOptions()));
     preview.appendChild(summaryEl);
   }
 

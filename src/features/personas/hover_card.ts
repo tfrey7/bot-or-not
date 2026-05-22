@@ -82,7 +82,8 @@ function buildCard(
     card.appendChild(personaBlock);
   }
 
-  const reasonsList = factors.length > 0 ? bonTopReasonsList(factors, 2) : null;
+  const reasonsList =
+    factors.length > 0 ? bonTopReasonsList(factors, { perSide: 2 }) : null;
 
   if (reasonsList) {
     card.appendChild(reasonsList);

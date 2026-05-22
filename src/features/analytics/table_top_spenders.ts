@@ -38,9 +38,7 @@ export function bonAnalyticsTopSpenders(
 
     const name = document.createElement("a");
     name.className = "bon-analytics-top-name";
-    name.href = `https://www.reddit.com/user/${encodeURIComponent(run.username)}`;
-    name.target = "_blank";
-    name.rel = "noopener noreferrer";
+    name.href = `?user=${encodeURIComponent(run.username)}`;
     name.textContent = `u/${run.username}`;
     li.appendChild(name);
 

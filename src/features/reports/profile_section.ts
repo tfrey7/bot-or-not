@@ -104,6 +104,7 @@ export function bonReportsProfileSection(
   link.href = `https://www.reddit.com/user/${encodeURIComponent(username)}`;
   link.target = "_blank";
   link.rel = "noopener noreferrer";
+  link.title = "Open on Reddit";
   link.textContent = `u/${username}`;
   titleRow.appendChild(link);
 

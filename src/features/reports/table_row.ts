@@ -50,10 +50,25 @@ export function bonReportsRow(
   linkRow.className = "bon-username-cell-row";
 
   const link = document.createElement("a");
-  link.href = `https://www.reddit.com/user/${encodeURIComponent(username)}`;
-  link.target = "_blank";
-  link.rel = "noopener noreferrer";
+  link.href = `?user=${encodeURIComponent(username)}`;
   link.textContent = `u/${username}`;
+
+  // Plain click stays in-page via the row's onSelect; the href exists so
+  // Cmd/Ctrl-click and right-click "Open in new tab" still work.
+  link.addEventListener("click", (event) => {
+    if (
+      event.metaKey ||
+      event.ctrlKey ||
+      event.shiftKey ||
+      event.button !== 0
+    ) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+    onSelect(username);
+  });
   linkRow.appendChild(link);
 
   const ringChip = bonRingChip(ringId);
