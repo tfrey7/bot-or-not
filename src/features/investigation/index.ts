@@ -26,6 +26,7 @@ import type {
   RegionInferenceAi,
   Verdict,
 } from "../../types.ts";
+import { BON_FACTORS } from "../../factors.ts";
 import { bonNormalizeDemographics } from "../../utils/demographics.ts";
 import { bonExtractJson } from "../../utils/json.ts";
 import { bonNormalizePersona } from "../../utils/persona.ts";
@@ -33,13 +34,29 @@ import { bonExtractActivityData } from "../../utils/reddit_activity.ts";
 import { bonNormalizeRegionInference } from "../../utils/region_inference.ts";
 import { bonComputeVerdict } from "../../verdict.ts";
 import { bonInvestigationCallLlm } from "./api.ts";
+import { bonAssemblePrompt } from "./assemble_prompt.ts";
+import {
+  BON_DETERMINISTIC_FACTOR_KEYS,
+  bonScoreDeterministicFactors,
+} from "./deterministic_factors.ts";
 import {
   bonFetchBotBouncerStatus,
   BON_REDDIT_FETCH_LIMIT,
   bonFetchRedditProfile,
   RedditFetchError,
 } from "./fetch.ts";
+import { bonMergeFactors } from "./merge_factors.ts";
 import { bonExtractSnoovatarUrl, bonSummarizeProfile } from "./summarize.ts";
+
+// Factor keys the LLM is asked to score. The six factors in
+// BON_DETERMINISTIC_FACTOR_KEYS are scored in TS instead — see
+// `deterministic_factors.ts`. Keeping these out of the LLM's prompt
+// trims ~16% of input tokens AND ~27% of output tokens per call.
+const BON_LLM_FACTOR_KEYS: readonly string[] = BON_FACTORS.map(
+  (f) => f.key
+).filter(
+  (k) => !(BON_DETERMINISTIC_FACTOR_KEYS as readonly string[]).includes(k)
+);
 
 // Caller-supplied context for an investigation. Both keys are independently
 // optional — omit when no signal is on hand. The fields themselves never
@@ -191,16 +208,28 @@ export interface BonInvestigationLlmSelection {
   model?: string | null;
 }
 
-// Runs the 1D bot↔human analysis against an already-built summary.
+// Runs the 1D bot↔human analysis against an already-built summary. The
+// system prompt is assembled per call: the six deterministic factor
+// rubrics are stripped out (we score those in TS), but the input-shape
+// conditionals (google_harvest, passive_harvest, hidden_profile, avatar)
+// are kept always-included so the assembled prompt is byte-identical
+// across users — that keeps the Anthropic prompt cache hit rate at
+// baseline levels instead of fragmenting per user.
 export async function bonRunOneDAnalysis(
   apiKey: string,
   profileSummary: ProfileSummary,
   avatarUrl: string | null = null,
   selection: BonInvestigationLlmSelection = {}
 ): Promise<OneDAnalysisResult> {
+  const systemPrompt = bonAssemblePrompt(BON_ANALYSIS_PROMPT, profileSummary, {
+    llmFactorKeys: BON_LLM_FACTOR_KEYS,
+    stripInputConditional: false,
+  });
+  const deterministicFactors = bonScoreDeterministicFactors(profileSummary);
+
   const { rawText, usage, model, costUsd } = await bonInvestigationCallLlm(
     apiKey,
-    BON_ANALYSIS_PROMPT,
+    systemPrompt,
     profileSummary,
     "investigation 1D",
     {
@@ -211,7 +240,8 @@ export async function bonRunOneDAnalysis(
   );
 
   const parsed = parseClaudeVerdict(rawText);
-  const derived = bonComputeVerdict(parsed.factors);
+  const factors = bonMergeFactors(parsed.factors, deterministicFactors);
+  const derived = bonComputeVerdict(factors);
 
   return {
     verdict: derived.verdict,
@@ -221,7 +251,7 @@ export async function bonRunOneDAnalysis(
     persona: bonNormalizePersona(parsed.persona),
     region: bonNormalizeRegionInference(parsed.region),
     demographics: bonNormalizeDemographics(parsed.demographics),
-    factors: parsed.factors,
+    factors,
     runAt: Date.now(),
     model,
     usage,
