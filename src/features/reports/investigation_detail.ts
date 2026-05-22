@@ -40,11 +40,7 @@ export function bonReportsInvestigationDetail(
   const investigation = bonNormalizeInvestigation(rawInvestigation, inRing);
 
   if (investigation.status === "queued") {
-    const message = document.createElement("p");
-    message.className = "bon-verdict-meta";
-    message.textContent =
-      "Queued — will start when an active investigation slot frees up.";
-    wrap.appendChild(message);
+    wrap.appendChild(buildQueuedPanel());
     return wrap;
   }
 
@@ -119,4 +115,24 @@ export function bonReportsInvestigationDetail(
   }
 
   return wrap;
+}
+
+function buildQueuedPanel(): HTMLDivElement {
+  const panel = document.createElement("div");
+  panel.className = "bon-queued-panel";
+
+  const figure = document.createElement("img");
+  figure.className = "bon-queued-panel__art";
+  figure.src = browser.runtime.getURL("icons/chromes-pocket-watch.png");
+  figure.alt =
+    "Sherlock Chromes leaning against a foggy gas-lamp lamppost, checking a brass pocket watch";
+  panel.appendChild(figure);
+
+  const message = document.createElement("p");
+  message.className = "bon-queued-panel__body";
+  message.textContent =
+    "Queued — will start when an active investigation slot frees up.";
+  panel.appendChild(message);
+
+  return panel;
 }

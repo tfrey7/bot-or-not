@@ -189,6 +189,32 @@
   color: var(--bon-danger);
   font-size: 0.85rem;
 }
+.bon-queued-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 0.5em 1em 1em;
+  gap: 0.9em;
+}
+.bon-queued-panel__art {
+  display: block;
+  width: 100%;
+  max-width: 22em;
+  height: auto;
+  border-radius: 0.35em;
+  box-shadow:
+    0 8px 22px rgba(0, 0, 0, 0.4),
+    0 1px 3px rgba(0, 0, 0, 0.25);
+}
+.bon-queued-panel__body {
+  margin: 0;
+  max-width: 32em;
+  color: var(--bon-text-soft);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
 .bon-user-not-found {
   display: flex;
   flex-direction: column;
