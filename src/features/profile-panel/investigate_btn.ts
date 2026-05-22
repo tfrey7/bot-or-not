@@ -17,6 +17,13 @@ export function bonPanelBuildInvestigateBtn(
   button.className = "bon-panel-btn";
 
   const queued = investigation?.status === "queued";
+  const paused =
+    queued &&
+    typeof investigation.notBefore === "number" &&
+    investigation.notBefore > Date.now();
+  const pauseRemainingSec = paused
+    ? Math.max(1, Math.ceil((investigation.notBefore! - Date.now()) / 1000))
+    : null;
   const running = investigation?.status === "running";
   const stale = running && bonIsInvestigationStale(investigation);
   const verdict = bonInvestigationResults(investigation)?.verdict ?? null;
@@ -26,7 +33,9 @@ export function bonPanelBuildInvestigateBtn(
   ): void => {
     if (kind === "queued") {
       button.textContent = "⏸";
-      button.title = "Queued — waiting for a slot";
+      button.title = paused
+        ? `Paused — retrying in ${pauseRemainingSec}s (upstream rate limit)`
+        : "Queued — waiting for a slot";
     } else if (kind === "investigating") {
       button.textContent = "⏳";
       button.title = "Investigating…";

@@ -36,7 +36,17 @@ export function bonPanelBuildPreview(
     preview.className = "bon-profile-panel__preview";
     const message = document.createElement("p");
     message.className = "bon-profile-panel__summary";
-    message.textContent = "Queued — waiting for an open investigation slot.";
+    const remainingMs = investigation.notBefore
+      ? investigation.notBefore - Date.now()
+      : 0;
+
+    if (remainingMs > 0) {
+      const secs = Math.max(1, Math.ceil(remainingMs / 1000));
+      message.textContent = `Paused — upstream rate-limited the last attempt. Retrying in ${secs}s.`;
+    } else {
+      message.textContent = "Queued — waiting for an open investigation slot.";
+    }
+
     preview.appendChild(message);
     return preview;
   }

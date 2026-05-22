@@ -215,6 +215,10 @@ function canonicalizeInvestigation(value: unknown): Investigation | null {
       typeof investigation.queuedAt === "number"
         ? investigation.queuedAt
         : null,
+    notBefore:
+      typeof investigation.notBefore === "number"
+        ? investigation.notBefore
+        : null,
     startedAt:
       typeof investigation.startedAt === "number"
         ? investigation.startedAt

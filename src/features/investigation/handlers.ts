@@ -23,6 +23,7 @@ import {
   bonSnapshotRun,
 } from "../../utils/history.ts";
 import { bonIsProfileHidden } from "../../utils/profile_hidden.ts";
+import { bonClampRetryAfter } from "../../utils/retry_after.ts";
 import { bonIsInvestigationStale } from "../../verdict.ts";
 import {
   bonExtractSnoovatarUrl,
@@ -78,6 +79,7 @@ export async function bonInvestigationSweepOrphans(): Promise<void> {
             investigation: {
               status: "queued",
               queuedAt: now,
+              notBefore: null,
               startedAt: null,
               durationMs,
               error: null,
@@ -94,6 +96,7 @@ export async function bonInvestigationSweepOrphans(): Promise<void> {
             investigation: {
               status: "error",
               queuedAt: investigation.queuedAt,
+              notBefore: null,
               startedAt: null,
               durationMs,
               error: "interrupted before completion",
@@ -283,13 +286,22 @@ async function runInvestigation(
       error instanceof RedditFetchError && error.httpStatus === 404;
 
     if (!isUserNotFound && attempts < BON_INVESTIGATION_MAX_ATTEMPTS) {
+      const retryAfterMs = readRetryAfterMs(error);
+      const notBefore = retryAfterMs
+        ? Date.now() + bonClampRetryAfter(retryAfterMs)
+        : null;
+      const pauseSuffix = notBefore
+        ? ` (paused until ${new Date(notBefore).toLocaleTimeString()})`
+        : "";
+
       console.warn(
-        `[Bot or Not] investigation ${username} failed (attempt ${attempts}/${BON_INVESTIGATION_MAX_ATTEMPTS}); re-queueing: ${message}`
+        `[Bot or Not] investigation ${username} failed (attempt ${attempts}/${BON_INVESTIGATION_MAX_ATTEMPTS}); re-queueing${pauseSuffix}: ${message}`
       );
 
       await setInvestigationState(username, {
         status: "queued",
         queuedAt: Date.now(),
+        notBefore,
         durationMs,
         ...redditMetricsPatch,
       });
@@ -312,9 +324,14 @@ async function runInvestigation(
   }
 }
 
+// Pending wake timer for the next paused-queued record's notBefore. Only
+// one is ever scheduled — drainQueue cancels and re-arms each pass so we
+// always wait for the *soonest* pause to elapse.
+let pauseWakeTimer: ReturnType<typeof setTimeout> | null = null;
+
 // After a run finishes, pull the oldest queued record (by queuedAt) and
-// kick it. Loop because freeing one slot may admit more than one record
-// if other slots are also idle.
+// kick it. Records whose notBefore is in the future are skipped, and the
+// soonest of those is scheduled to re-drain when its cooldown elapses.
 async function drainQueue(): Promise<void> {
   if (activeRuns.size >= BON_INVESTIGATION_CONCURRENCY) {
     return;
@@ -330,7 +347,9 @@ async function drainQueue(): Promise<void> {
     }
 
     const reports = await bonReadReports();
-    const queued: Array<{ username: string; queuedAt: number }> = [];
+    const now = Date.now();
+    const eligible: Array<{ username: string; queuedAt: number }> = [];
+    let nextPauseElapsesAt: number | null = null;
 
     for (const [username, report] of Object.entries(reports)) {
       const investigation = report.investigation;
@@ -342,24 +361,59 @@ async function drainQueue(): Promise<void> {
         continue;
       }
 
-      queued.push({
+      const notBefore = investigation.notBefore ?? null;
+      if (notBefore !== null && notBefore > now) {
+        if (nextPauseElapsesAt === null || notBefore < nextPauseElapsesAt) {
+          nextPauseElapsesAt = notBefore;
+        }
+
+        continue;
+      }
+
+      eligible.push({
         username,
         queuedAt: investigation.queuedAt ?? 0,
       });
     }
 
-    queued.sort((a, b) => a.queuedAt - b.queuedAt);
+    eligible.sort((a, b) => a.queuedAt - b.queuedAt);
 
-    for (const { username } of queued) {
+    for (const { username } of eligible) {
       if (activeRuns.size >= BON_INVESTIGATION_CONCURRENCY) {
-        return;
+        break;
       }
 
       void runInvestigation(username, apiKey);
     }
+
+    scheduleQueueWake(nextPauseElapsesAt);
   } catch (error) {
     console.error("[Bot or Not] drainQueue failed", error);
   }
+}
+
+function scheduleQueueWake(elapsesAt: number | null): void {
+  if (pauseWakeTimer !== null) {
+    clearTimeout(pauseWakeTimer);
+    pauseWakeTimer = null;
+  }
+
+  if (elapsesAt === null) {
+    return;
+  }
+
+  const delayMs = Math.max(0, elapsesAt - Date.now());
+  pauseWakeTimer = setTimeout(() => {
+    pauseWakeTimer = null;
+    void drainQueue();
+  }, delayMs);
+}
+
+function readRetryAfterMs(error: unknown): number | null {
+  const value = (error as { retryAfterMs?: number | null } | null)
+    ?.retryAfterMs;
+
+  return typeof value === "number" && value > 0 ? value : null;
 }
 
 // Viewing someone's profile is itself a signal of suspicion — kick off an
@@ -458,6 +512,7 @@ type InvestigationTransition =
   | {
       status: "queued";
       queuedAt: number;
+      notBefore?: number | null;
       durationMs?: number | null;
       attempts?: number;
       redditMetrics?: RedditMetrics | null;
@@ -512,6 +567,7 @@ async function setInvestigationState(
       nextInvestigation = {
         status: "queued",
         queuedAt: transition.queuedAt,
+        notBefore: transition.notBefore ?? null,
         startedAt: null,
         durationMs: transition.durationMs ?? null,
         error: null,
@@ -525,6 +581,7 @@ async function setInvestigationState(
       nextInvestigation = {
         status: "running",
         queuedAt: null,
+        notBefore: null,
         startedAt: transition.startedAt,
         durationMs: prevInvestigation?.durationMs ?? null,
         error: null,
@@ -538,6 +595,7 @@ async function setInvestigationState(
       nextInvestigation = {
         status: "done",
         queuedAt: prevInvestigation?.queuedAt ?? null,
+        notBefore: null,
         startedAt: null,
         durationMs: transition.durationMs,
         error: null,
@@ -551,6 +609,7 @@ async function setInvestigationState(
       nextInvestigation = {
         status: "error",
         queuedAt: prevInvestigation?.queuedAt ?? null,
+        notBefore: null,
         startedAt: null,
         durationMs: transition.durationMs,
         error: transition.error,

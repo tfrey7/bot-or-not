@@ -13,6 +13,7 @@
 
 import type { ClaudeUsage } from "../types.ts";
 import { bonEstimateCostUsd } from "./cost.ts";
+import { bonEnrichLlmError } from "./provider.ts";
 import type {
   LlmAction,
   LlmCompleteRequest,
@@ -278,8 +279,9 @@ export class OpenAIProvider implements LlmProvider {
         `[Bot or Not] timing: ${label} ${elapsedMs}ms (${response.status})`
       );
       const errorText = await response.text().catch(() => "");
-      throw new Error(
-        `OpenAI API ${response.status}: ${errorText.slice(0, 300)}`
+      throw bonEnrichLlmError(
+        new Error(`OpenAI API ${response.status}: ${errorText.slice(0, 300)}`),
+        response
       );
     }
 
@@ -593,8 +595,9 @@ export class OpenAIProvider implements LlmProvider {
     if (!response.ok) {
       cleanup();
       const errorText = await response.text().catch(() => "");
-      throw new Error(
-        `OpenAI API ${response.status}: ${errorText.slice(0, 300)}`
+      throw bonEnrichLlmError(
+        new Error(`OpenAI API ${response.status}: ${errorText.slice(0, 300)}`),
+        response
       );
     }
 

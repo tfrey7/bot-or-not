@@ -44,3 +44,7 @@
   color: var(--bon-stamp-charcoal);
   opacity: 0.75;
 }
+.bon-verdict-badge--paused {
+  color: var(--bon-stamp-red);
+  opacity: 0.85;
+}

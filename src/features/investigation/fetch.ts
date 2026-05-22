@@ -21,6 +21,7 @@ import type {
   RedditProfile,
 } from "../../types.ts";
 import { bonShortUrl } from "../../utils/format_text.ts";
+import { bonParseRetryAfter } from "../../utils/retry_after.ts";
 
 // Reddit's per-request listing cap. The API silently clamps anything
 // higher to 100, so we paginate via `after=` cursors to reach the
@@ -39,15 +40,18 @@ export const BON_REDDIT_FETCH_LIMIT = 1000;
 export class RedditFetchError extends Error {
   metrics: RedditMetrics;
   httpStatus: number | null;
+  retryAfterMs: number | null;
   constructor(
     message: string,
     metrics: RedditMetrics,
-    httpStatus: number | null = null
+    httpStatus: number | null = null,
+    retryAfterMs: number | null = null
   ) {
     super(message);
     this.name = "RedditFetchError";
     this.metrics = metrics;
     this.httpStatus = httpStatus;
+    this.retryAfterMs = retryAfterMs;
   }
 }
 
@@ -78,7 +82,15 @@ export async function bonFetchJson<T = unknown>(url: string): Promise<T> {
 
     if (!response.ok) {
       const error = new Error(`Reddit fetch ${response.status} for ${url}`);
-      (error as Error & { httpStatus?: number }).httpStatus = response.status;
+      const enriched = error as Error & {
+        httpStatus?: number;
+        retryAfterMs?: number | null;
+      };
+      enriched.httpStatus = response.status;
+      enriched.retryAfterMs = bonParseRetryAfter(
+        response.headers.get("Retry-After")
+      );
+
       throw error;
     }
 
@@ -89,6 +101,7 @@ export async function bonFetchJson<T = unknown>(url: string): Promise<T> {
 interface MeasuredFetch<T> {
   data: T | null;
   metric: RedditFetchMetric;
+  retryAfterMs: number | null;
 }
 
 // Per-endpoint counter — listings expose .data.children.length; about /
@@ -128,6 +141,7 @@ async function measureFetch<T>(
     const data = await bonFetchJson<T>(url);
     return {
       data,
+      retryAfterMs: null,
       metric: {
         endpoint,
         durationMs: Math.round(performance.now() - start),
@@ -141,9 +155,15 @@ async function measureFetch<T>(
       typeof (error as { httpStatus?: number })?.httpStatus === "number"
         ? (error as { httpStatus: number }).httpStatus
         : null;
+    const retryAfterMs =
+      typeof (error as { retryAfterMs?: number | null })?.retryAfterMs ===
+      "number"
+        ? (error as { retryAfterMs: number }).retryAfterMs
+        : null;
 
     return {
       data: null,
+      retryAfterMs,
       metric: {
         endpoint,
         durationMs: Math.round(performance.now() - start),
@@ -158,6 +178,7 @@ async function measureFetch<T>(
 interface PaginatedListingResult {
   data: RedditListing | null;
   metrics: RedditFetchMetric[];
+  retryAfterMs: number | null;
 }
 
 // Walks Reddit's `after=` cursor up to `targetCount` items. Each page is
@@ -173,6 +194,7 @@ async function measureFetchListingPaginated(
   const allChildren: Array<{ data?: Record<string, unknown> }> = [];
   let cursor: string | null = null;
   let lastCursor: string | null = null;
+  let lastRetryAfterMs: number | null = null;
 
   while (allChildren.length < targetCount) {
     const remaining = targetCount - allChildren.length;
@@ -184,10 +206,13 @@ async function measureFetchListingPaginated(
 
     const page = await measureFetch<RedditListing>(endpoint, url);
     metrics.push(page.metric);
+    if (page.retryAfterMs !== null) {
+      lastRetryAfterMs = page.retryAfterMs;
+    }
 
     if (!page.data) {
       if (allChildren.length === 0) {
-        return { data: null, metrics };
+        return { data: null, metrics, retryAfterMs: lastRetryAfterMs };
       }
 
       break;
@@ -207,6 +232,7 @@ async function measureFetchListingPaginated(
   return {
     data: { data: { after: lastCursor, children: allChildren } },
     metrics,
+    retryAfterMs: lastRetryAfterMs,
   };
 }
 
@@ -314,7 +340,8 @@ export async function bonFetchRedditProfile(
     throw new RedditFetchError(
       message,
       { fetches, totalDurationMs: 0 },
-      status
+      status,
+      about.retryAfterMs
     );
   }
 
@@ -332,7 +359,8 @@ export async function bonFetchRedditProfile(
     throw new RedditFetchError(
       `Reddit ${name} fetch failed${status ? ` (${status})` : ""}`,
       { fetches, totalDurationMs: 0 },
-      status
+      status,
+      result.retryAfterMs
     );
   }
 

@@ -40,7 +40,7 @@ export function bonReportsInvestigationDetail(
   const investigation = bonNormalizeInvestigation(rawInvestigation, inRing);
 
   if (investigation.status === "queued") {
-    wrap.appendChild(buildQueuedPanel());
+    wrap.appendChild(buildQueuedPanel(investigation.notBefore ?? null));
     return wrap;
   }
 
@@ -117,7 +117,7 @@ export function bonReportsInvestigationDetail(
   return wrap;
 }
 
-function buildQueuedPanel(): HTMLDivElement {
+function buildQueuedPanel(notBefore: number | null): HTMLDivElement {
   const panel = document.createElement("div");
   panel.className = "bon-queued-panel";
 
@@ -130,8 +130,15 @@ function buildQueuedPanel(): HTMLDivElement {
 
   const message = document.createElement("p");
   message.className = "bon-queued-panel__body";
-  message.textContent =
-    "Queued — will start when an active investigation slot frees up.";
+  const remainingMs = notBefore ? notBefore - Date.now() : 0;
+  if (remainingMs > 0) {
+    const secs = Math.max(1, Math.ceil(remainingMs / 1000));
+    message.textContent = `Paused — the upstream rate-limited the last attempt. Retrying in ${secs}s.`;
+  } else {
+    message.textContent =
+      "Queued — will start when an active investigation slot frees up.";
+  }
+
   panel.appendChild(message);
 
   return panel;

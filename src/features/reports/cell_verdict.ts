@@ -19,7 +19,16 @@ export function bonReportsVerdictBadge(
   }
 
   if (rawInvestigation.status === "queued") {
+    const pauseRemainingSec = queuedPauseRemainingSec(rawInvestigation);
     const span = document.createElement("span");
+
+    if (pauseRemainingSec !== null) {
+      span.className = "bon-verdict-badge bon-verdict-badge--paused";
+      span.textContent = `Paused · ${pauseRemainingSec}s`;
+      span.title = `Upstream rate-limited the last attempt — waiting ${pauseRemainingSec}s before retrying.`;
+      return span;
+    }
+
     span.className = "bon-verdict-badge bon-verdict-badge--queued";
     span.textContent =
       queueAhead === 0 ? "Queued · next" : `Queued · ${queueAhead} ahead`;
@@ -65,4 +74,22 @@ export function bonReportsVerdictBadge(
   span.title = summary || verdict;
 
   return span;
+}
+
+function queuedPauseRemainingSec(investigation: Investigation): number | null {
+  if (investigation.status !== "queued") {
+    return null;
+  }
+
+  const notBefore = investigation.notBefore ?? null;
+  if (notBefore === null) {
+    return null;
+  }
+
+  const remainingMs = notBefore - Date.now();
+  if (remainingMs <= 0) {
+    return null;
+  }
+
+  return Math.max(1, Math.ceil(remainingMs / 1000));
 }

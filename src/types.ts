@@ -145,6 +145,13 @@ export interface InvestigationResults {
 // *current* attempt's queue/run timing — historical runs live in `runs[]`.
 interface InvestigationLifecycle {
   queuedAt: number | null;
+
+  // Earliest ms-since-epoch at which a queued record is eligible to run.
+  // Set after a 429 (or other Retry-After-bearing failure) so drainQueue
+  // skips the record until the upstream's cooldown elapses. Null = ready.
+  // Only meaningful while status === "queued".
+  notBefore: number | null;
+
   startedAt: number | null;
   durationMs: number | null;
   error: string | null;

@@ -15,6 +15,23 @@
 //     "second pass" decision, not laziness.
 
 import type { ClaudeUsage } from "../types.ts";
+import { bonParseRetryAfter } from "../utils/retry_after.ts";
+
+// Stamps httpStatus + retryAfterMs (parsed from the Retry-After header)
+// onto an Error so the queue can pause requeued runs after a 429 instead
+// of immediately hammering the upstream again.
+export function bonEnrichLlmError(error: Error, response: Response): Error {
+  const enriched = error as Error & {
+    httpStatus?: number;
+    retryAfterMs?: number | null;
+  };
+  enriched.httpStatus = response.status;
+  enriched.retryAfterMs = bonParseRetryAfter(
+    response.headers.get("Retry-After")
+  );
+
+  return error;
+}
 
 export type LlmRole = "user" | "assistant";
 
