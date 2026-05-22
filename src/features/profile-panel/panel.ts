@@ -8,6 +8,7 @@ import type { Report } from "../../types.ts";
 import { bonRingChip } from "../../utils/ring_chip.ts";
 import { bonNormalizeInvestigation } from "../../verdict.ts";
 import { bonPanelBuildInvestigateBtn } from "./investigate_btn.ts";
+import { bonPanelBuildNotesStrip } from "./notes_strip.ts";
 import { bonPanelBuildPreview } from "./preview.ts";
 import { bonPanelBuildReportsLink } from "./reports_link.ts";
 
@@ -55,6 +56,11 @@ export function bonPanelBuildProfilePanel(
 
   if (preview) {
     panel.appendChild(preview);
+  }
+
+  const notes = bonPanelBuildNotesStrip(report?.userNotes);
+  if (notes) {
+    panel.appendChild(notes);
   }
 
   return panel;

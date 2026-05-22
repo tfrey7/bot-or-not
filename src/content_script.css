@@ -808,3 +808,68 @@
   font-style: italic;
 }
 
+.bon-panel-notes {
+  padding: 0.85em 1.1em 1em;
+  border-top: 1px solid rgba(128, 128, 128, 0.18);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5em;
+}
+
+.bon-panel-notes__heading {
+  margin: 0;
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(128, 128, 128, 0.85);
+}
+
+.bon-panel-notes__chips {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35em;
+}
+
+/* Mirrors the reports-page persona_picker chip shape: square corners,
+   left color stripe, neutral surface. Reports uses --bon-surface tokens
+   that only load on the reports page; here we substitute with the same
+   rgba palette the rest of the profile panel uses on Reddit. */
+.bon-panel-notes__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35em;
+  padding: 0.1em 0.5em 0.1em 0.3em;
+  border-radius: 0.25em;
+  background: rgba(128, 128, 128, 0.1);
+  border: 1px solid rgba(128, 128, 128, 0.3);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.bon-panel-notes__stripe {
+  width: 0.4em;
+  flex: 0 0 0.4em;
+  height: 0.85em;
+  border-radius: 0.1em;
+  background: hsl(var(--bon-persona-hue, 0) 60% 50%);
+}
+
+.bon-panel-notes__stripe--neutral {
+  background: rgba(128, 128, 128, 0.6);
+}
+
+.bon-panel-notes__chip-label {
+  white-space: nowrap;
+}
+
+.bon-panel-notes__note {
+  margin: 0;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  white-space: pre-wrap;
+}
+
