@@ -29,7 +29,6 @@ const archetypeList = BON_ARCHETYPES.map(
 const screenshotTargets = [
   { label: "Reports overview", file: "reports.png" },
   { label: "Single dossier", file: "dossier.png" },
-  { label: "Inline tag on Reddit", file: "inline-tag.png" },
 ];
 
 const presentScreenshots = screenshotTargets.filter((shot) =>
@@ -39,7 +38,7 @@ const presentScreenshots = screenshotTargets.filter((shot) =>
 let screenshotsSection: string;
 if (presentScreenshots.length === 0) {
   screenshotsSection =
-    "_Screenshot capture is wired up but not yet running — once the live-Firefox + Playwright pipeline lands, this section regenerates from real dossiers._";
+    "_Run `npm run screenshots` to capture fresh PNGs from a live extension._";
 } else {
   const header =
     "| " + presentScreenshots.map((shot) => shot.label).join(" | ") + " |";

@@ -17,7 +17,7 @@
 
 > *Version 7.0.0 · 2026-05-22*
 
-_Screenshot capture is wired up but not yet running — once the live-Firefox + Playwright pipeline lands, this section regenerates from real dossiers._
+_Run `npm run screenshots` to capture fresh PNGs from a live extension._
 
 ## Install
 
