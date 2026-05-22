@@ -131,7 +131,7 @@ export function bonRedditorsProfileSection(
 
   if (createdAt) {
     const cake = document.createElement("span");
-    cake.className = "bon-profile-info__cake";
+    cake.className = "bon-profile-info__cake bon-pii";
     cake.title = `Cake day: ${formatCakeDay(createdAt)}`;
 
     const icon = document.createElement("span");
@@ -154,6 +154,7 @@ export function bonRedditorsProfileSection(
 
   if (typeof totalKarma === "number") {
     const karma = document.createElement("span");
+    karma.className = "bon-pii";
     karma.title = `${totalKarma.toLocaleString()} karma`;
     karma.textContent = `${formatKarma(totalKarma)} karma`;
     appendMetaItem(meta, karma);

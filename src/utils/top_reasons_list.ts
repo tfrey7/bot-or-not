@@ -26,7 +26,11 @@ export function bonTopReasonsList(
   }
 
   const container = document.createElement("div");
-  container.className = "bon-top-reasons";
+
+  // bon-pii: when the operator turns on the privacy blur, the Human/Bot
+  // signal lists hide too. Subreddits the operator screenshots into often
+  // have rules against publishing what we think makes someone a bot.
+  container.className = "bon-top-reasons bon-pii";
 
   if (split.human.length) {
     container.appendChild(
