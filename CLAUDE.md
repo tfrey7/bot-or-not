@@ -1,5 +1,9 @@
 # Bot or Not — Claude Guidelines
 
+## Before editing code
+
+Invoke the `writing-code` Skill (`Skill(writing-code)`) before any Edit/Write/NotebookEdit on source files in this repo. It holds the project's code style, naming, comments, file-role, and TypeScript conventions — none of which are duplicated in this CLAUDE.md. Skipping the skill means edits drift from project norms.
+
 ## Dev Workflow
 
 | Command             | Purpose                                                                                                 |
