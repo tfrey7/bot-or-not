@@ -92,9 +92,13 @@ export function bonReportsInitSettings(): void {
 
   clearAllBtn.addEventListener("click", () => {
     bonReportsOpenConfirmModal({
-      text: "Clear all reported users? This can't be undone.",
+      text: "Clear all reported users and your saved API key? This can't be undone.",
       confirmLabel: "Clear all",
-      action: () => bonClientSend({ type: "clear-all-reports" }),
+      action: async () => {
+        await bonClientSend({ type: "clear-all-reports" });
+        await bonClientSend({ type: "set-claude-api-key", apiKey: "" });
+        await bonReportsRefreshApiKeyStatus();
+      },
     });
   });
 }
