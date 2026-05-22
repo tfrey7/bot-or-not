@@ -113,5 +113,15 @@ export function bonReportsComputeRegionForReport(
     };
   }
 
+  // While an investigation is in flight, suppress the deterministic
+  // fallback. Stale activityData from a prior run would otherwise render
+  // an old (often weak / wrong) flag for the few seconds before the new
+  // AI pick lands — the user should see the badge appear once at the end
+  // of the run, not stream in.
+  const status = report.investigation?.status;
+  if (status === "running" || status === "queued") {
+    return null;
+  }
+
   return deterministic;
 }
