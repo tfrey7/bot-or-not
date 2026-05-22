@@ -281,6 +281,32 @@
           </section>
 
           <section class="bon-settings-section">
+            <p class="bon-settings-section-title">Google dossier</p>
+            <p class="bon-settings-section-desc">
+              Optional. When enabled, the extension reads Reddit results from
+              your Google search pages (only when the query is
+              <code>"&lt;username&gt;" site:reddit.com</code>) and adds them to
+              that user's dossier. Requires permission to read
+              <code>www.google.com</code>; off by default.
+            </p>
+            <div class="bon-settings-toggle-row">
+              <span
+                id="bon-google-permission-status"
+                class="bon-settings-toggle-status"
+                >Loading...</span
+              >
+              <button
+                type="button"
+                id="bon-google-permission-toggle"
+                class="bon-btn"
+                hidden
+              >
+                Enable
+              </button>
+            </div>
+          </section>
+
+          <section class="bon-settings-section">
             <p class="bon-settings-section-title">Sync</p>
             <p class="bon-settings-section-desc">
               Download a backup of your reports, or import one from another

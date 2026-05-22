@@ -1,8 +1,9 @@
 // "Google" action button in the detail-pane actions row. Opens a Google
-// search for the user (scoped to reddit.com) in a new tab. The
-// google-harvest content script activates on any SERP whose query matches
-// the canonical "<username> site:reddit.com" pattern — so this button is
-// just a launcher; pagination + repeat searches all get picked up too.
+// search for the user (scoped to reddit.com) in a new tab. If the operator
+// has opted into the optional google.com permission, the google-harvest
+// content script then activates on the SERP and merges any Reddit hits
+// into the user's dossier — pagination + repeat searches all flow in too.
+// Without that permission, the button is just a launcher.
 
 export function bonReportsRenderGoogleSearchButton(
   username: string
@@ -11,7 +12,9 @@ export function bonReportsRenderGoogleSearchButton(
   button.type = "button";
   button.className = "bon-btn";
   button.textContent = "Google";
-  button.title = `Open Google search for u/${username} (site:reddit.com)`;
+  button.title =
+    `Open Google search for u/${username} (site:reddit.com). ` +
+    `Capture into the dossier requires enabling Google dossier in Settings.`;
 
   button.addEventListener("click", () => {
     // Quote the username so Google treats it as an exact phrase — without it,

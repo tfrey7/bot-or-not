@@ -61,6 +61,21 @@
   color: var(--bon-danger);
 }
 
+.bon-settings-toggle-row {
+  display: flex;
+  align-items: center;
+  gap: 0.9em;
+}
+.bon-settings-toggle-status {
+  flex: 1;
+  font-family: var(--bon-font-mono);
+  font-size: 0.75rem;
+  color: var(--bon-muted);
+}
+.bon-settings-toggle-status--on {
+  color: var(--bon-stamp-forest);
+}
+
 .bon-settings-danger-row {
   display: flex;
   align-items: center;

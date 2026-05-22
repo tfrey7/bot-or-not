@@ -16,9 +16,9 @@
   "host_permissions": [
     "https://api.anthropic.com/*",
     "https://www.reddit.com/*",
-    "https://html.duckduckgo.com/*",
-    "https://www.google.com/*"
+    "https://html.duckduckgo.com/*"
   ],
+  "optional_host_permissions": ["https://www.google.com/*"],
   "content_scripts": [
     {
       "matches": [

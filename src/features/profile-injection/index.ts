@@ -88,7 +88,9 @@ function buildGoogleButton(username: string): HTMLButtonElement {
   button.type = "button";
   button.className = "bon-profile-injection__google-btn";
   button.textContent = "Search Google";
-  button.title = `Open Google search for u/${username} (site:reddit.com)`;
+  button.title =
+    `Open Google search for u/${username} (site:reddit.com). ` +
+    `Capture into the dossier requires enabling Google dossier in Settings.`;
 
   button.addEventListener("click", () => {
     // Quote the username so Google treats it as an exact phrase — without it,
