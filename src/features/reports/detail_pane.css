@@ -4,10 +4,10 @@
 
 .bon-split {
   display: grid;
-  /* List trimmed to ~40% so the detail pane carries the heavier reading;
-     the list table is just two columns (username + verdict badge) so it
-     can run comfortably narrow. */
-  grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+  /* List has a real floor so username + verdict badge always fit on one
+     line; detail pane absorbs the squeeze and stacks below the list once
+     it would itself become too narrow (see the @media block below). */
+  grid-template-columns: minmax(360px, 1fr) minmax(0, 3fr);
   gap: 1.5em;
   align-items: start;
 }
@@ -87,7 +87,10 @@
 .bon-split-detail .bon-row-footer {
   padding: 0.4em 2.25em 1.6em;
 }
-@media (max-width: 60em) {
+/* Stack the split before the detail pane gets uncomfortably narrow. With
+   a 360px list floor and 1.5em gap, a viewport of ~72em leaves the detail
+   pane around 800px — below that it starts feeling cramped. */
+@media (max-width: 72em) {
   .bon-split {
     grid-template-columns: minmax(0, 1fr);
   }
