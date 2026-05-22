@@ -1,31 +1,21 @@
 // Tab bar for the reports page. Owns activation, the `?tab=` URL param,
-// and the tab-name allowlist. The orchestrator wires this up once and
-// supplies an "on activate self-improvement" callback because that tab
-// re-renders on activation (note edits don't trigger a structural
-// re-render of the page).
+// and the tab-name allowlist.
 
 const BON_REPORTS_TABS = [
   "reports",
   "metrics",
   "personas",
-  "self-improvement",
   "settings",
 ] as const;
 export type BonReportsTab = (typeof BON_REPORTS_TABS)[number];
 const BON_REPORTS_DEFAULT_TAB: BonReportsTab = "reports";
 const BON_REPORTS_URL_TAB_PARAM = "tab";
 
-export interface BonReportsTabsDeps {
-  onActivateSelfImprovement(): void;
-}
-
 export interface BonReportsTabsHandle {
   activate(target: BonReportsTab): void;
 }
 
-export function bonReportsInitTabs(
-  deps: BonReportsTabsDeps
-): BonReportsTabsHandle {
+export function bonReportsInitTabs(): BonReportsTabsHandle {
   const tabs = document.querySelectorAll<HTMLButtonElement>(".bon-tab");
   const panels = document.querySelectorAll<HTMLElement>(".bon-tab-panel");
 
@@ -38,10 +28,6 @@ export function bonReportsInitTabs(
 
     for (const panel of panels) {
       panel.hidden = panel.id !== `bon-panel-${target}`;
-    }
-
-    if (target === "self-improvement") {
-      deps.onActivateSelfImprovement();
     }
   };
 

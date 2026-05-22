@@ -55,9 +55,7 @@
 
 /* Chip per picked persona inside the trigger. The stripe sits left of the
    chip label so the color cue stays attached to the persona it represents
-   (rather than floating in a separate column). Mirrors the
-   self-improvement chip vocabulary so the two surfaces feel like the
-   same UI dialect. */
+   (rather than floating in a separate column). */
 .bon-persona-picker__chip {
   display: inline-flex;
   align-items: center;

@@ -10,7 +10,6 @@ import { bonClientSend, bonClientSubscribe } from "../../client.ts";
 import { bonRenderAnalytics } from "../analytics";
 import { BON_INVESTIGATION_CONCURRENCY } from "../investigation/handlers.ts";
 import { bonRenderPersonas } from "../personas";
-import { bonRenderSelfImprovement } from "../self-improvement";
 import { bonRenderSync } from "../sync";
 import { BON_REGION_INFO } from "../regions/data.ts";
 import type { Report } from "../../types.ts";
@@ -72,9 +71,6 @@ const analyticsContainer = document.getElementById(
 ) as HTMLElement | null;
 const personasContainer = document.getElementById(
   "bon-personas-container"
-) as HTMLElement | null;
-const selfImprovementContainer = document.getElementById(
-  "bon-self-improvement-container"
 ) as HTMLElement | null;
 const settingsStripContainer = document.getElementById(
   "bon-settings-strip"
@@ -160,9 +156,7 @@ const commandBar: BonReportsCommandBarHandle = bonReportsInitCommandBar({
   },
 });
 
-const tabs = bonReportsInitTabs({
-  onActivateSelfImprovement: renderSelfImprovement,
-});
+const tabs = bonReportsInitTabs();
 
 const polling = bonReportsInitPolling({
   getReports: () => allReports,
@@ -174,7 +168,6 @@ const polling = bonReportsInitPolling({
     renderAnalytics();
     renderPersonas();
     renderSettingsStrip();
-    renderSelfImprovement();
   },
   setExpectedDurationMs: (value) => {
     expectedDurationMs = value;
@@ -202,7 +195,6 @@ async function load(): Promise<void> {
     renderAnalytics();
     renderPersonas();
     renderSettingsStrip();
-    renderSelfImprovement();
   } catch (error) {
     console.error("[Bot or Not] failed to load reports", error);
     tableWrap.hidden = true;
@@ -283,20 +275,6 @@ function renderSettingsStrip(): void {
   }
 
   bonReportsSettingsStrip(allReports, settingsStripContainer);
-}
-
-function renderSelfImprovement(): void {
-  if (!selfImprovementContainer) {
-    return;
-  }
-
-  const reportsMap: Record<string, Report> = {};
-
-  for (const row of allReports) {
-    reportsMap[row.username] = row;
-  }
-
-  bonRenderSelfImprovement(reportsMap, selfImprovementContainer);
 }
 
 function render(): void {
