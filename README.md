@@ -1,0 +1,105 @@
+# Bot or Not
+
+> *A field dossier for Reddit.* A Firefox extension that pulls a Reddit account through an AI investigation and reports back — bot, human, or something in between — with the receipts.
+
+<p align="center">
+  <img src="icons/chromes-investigating.png" width="240" alt="Sherlock Chromes, the case mascot" />
+</p>
+
+## What it does
+
+- **Flag any Reddit user from their profile page.** The extension pulls their post history and runs an investigation through your chosen LLM (Claude by default) against 16 factors — username patterns, posting timestamps, karma-farming subs, LLM-generated cadence, dormant-account revival, and more.
+- **Returns a verdict on the bot↔human axis,** plus a persona archetype (Stan, Hustler, Farmer, Doomer, …). Both pieces are stored locally — no cloud sync, no telemetry.
+- **Inline tags on Reddit.** Once a user is reported, their username gets a small chip wherever it appears — comment threads, post lists, profile pages — so you can read the room at a glance.
+- **A reports page** with sortable tables, a persona radar chart per dossier, run-log analytics, and a settings tab. Opens from the toolbar.
+
+## Screenshots
+
+> *Version 7.0.0 · 2026-05-22*
+
+_Screenshot capture is wired up but not yet running — once the live-Firefox + Playwright pipeline lands, this section regenerates from real dossiers._
+
+## Install
+
+The extension is **self-distributed via the unlisted AMO channel** — it isn't searchable on addons.mozilla.org. Two ways to get it:
+
+- **Latest signed `.xpi`** — grab the most recent [GitHub release](https://github.com/tfrey7/bot-or-not/releases) and open it in Firefox. Auto-updates via the repo's [`updates.json`](./updates.json).
+- **From source** — clone, `npm install`, `npm run build`. The unsigned zip lands in `web-ext-artifacts/`.
+
+You'll need an API key for whichever LLM backend you pick (Claude API by default). Drop it into the **Settings** tab on first run.
+
+## How it works
+
+The investigation pipeline:
+
+1. **Triggered** when a user is reported — either from their Reddit profile page or directly from the reports page.
+2. **The background service worker** pulls the user's recent post history from Reddit, optionally augments it with a Google dossier (off by default; opt-in under Settings), and packs the result into a structured prompt.
+3. **The LLM** (Claude by default) scores each factor independently — `{score: -1..+1, confidence: 0..1, reasoning, evidence}`, where `-1` is strong human and `+1` is strong bot — and returns a persona block alongside.
+4. **`src/verdict.ts`** aggregates the factor scores deterministically into a bot probability and a 5-band verdict label (`almost certainly bot` → `almost certainly human`). The aggregator is pure — re-running it on stored factor scores reproduces the verdict exactly, so verdict logic lives in one place.
+5. **Stored locally** in `browser.storage.local`, keyed by username. The inline tag on Reddit comes from a `storage.onChanged` listener — no extra fetches.
+
+### Verdict factors
+
+The 16 factors scored per investigation:
+
+- Account age vs activity
+- Dormant account revival
+- Karma-farming subreddits
+- Fake political subreddits
+- LLM-generated content style
+- Posting timestamp patterns
+- Topical drift / inconsistency
+- Engagement patterns
+- Username pattern
+- Hidden post history
+- Bot Bouncer status
+- Moderator removal history
+- Posting volume
+- Moderated subreddits
+- Promotional account
+- Avatar style
+
+The exact weighting, red-flag floors, and probability math live in [`src/verdict.ts`](./src/verdict.ts) — the comment at the top of that file has the formula.
+
+### Persona archetypes
+
+The radar chart on each dossier shows how strongly the account matches each human archetype. They're independent 0–1 strengths, so an account can read both Stan and Hustler at once (e.g. an indie dev posting their own tool in niche-relevant subs).
+
+- **Stan** — A human hyperfocused on one niche — a fandom, regional community, identity community, or earnestly-advocated cause. Posts heavily in a few themed subs with fluent in-group voice.
+- **Hustler** — A commercial-vehicle account that drives attention to a product, service, or person the operator profits from — crypto pumps, dropship stores, MLM funnels, paid courses, indie apps.
+- **Farmer** — Human-operated but inauthentic. Reposts viral content, drops generic engagement-bait (“This!”, “Underrated take”), scatters across unrelated big subs to harvest karma.
+- **Doomer** — Pessimist / burnout poster. Worldview is “things are getting worse and there’s no fix” — heavy on r/collapse, r/antiwork, layoff threads, late-stage-capitalism takes.
+- **Cam Model** — A commercial account whose product is the operator’s own appearance. The selfies are the business; the Reddit presence funnels subscribers to OnlyFans, Fansly, or a cam site.
+- **Zealot** — Single-issue political combatant. Reddit is their battlefield: daily outrage, tribal antagonism, every news item treated as ammunition for the cause.
+
+`bot` and `normal` are also valid persona labels but don't appear on the radar — they're the absence of a human-archetype lean.
+
+## Architecture
+
+Three execution contexts, communicating via `browser.runtime.sendMessage`:
+
+- **Content scripts** — registered in `manifest.json`. One on every Reddit page (DOM injection only); one optional on Google search (off until explicitly enabled).
+- **Background service worker** — `src/background.ts` dispatches to feature handlers under `src/features/<feature>/handlers.ts`. Owns all storage I/O and all LLM calls.
+- **UI surfaces** — `src/reports.html` is the only HTML page; the toolbar button opens it directly (there is no popup).
+
+Each feature lives entirely under `src/features/<feature>/` — drop the directory plus its one or two imports from the entry points and the feature is gone. The cross-feature contracts (`src/factors.ts`, `src/verdict.ts`, `src/types.ts`) are deliberately small.
+
+## Development
+
+[`CLAUDE.md`](./CLAUDE.md) has the full dev workflow — build commands, the parallel-agent worktree setup, and how publishing works. Quick reference:
+
+```bash
+npm run dev          # hot-reload the extension into Firefox
+npm run typecheck    # tsc --noEmit
+npm run lint         # eslint
+npm run build        # production zip into web-ext-artifacts/
+npm run regen-readme # regenerate this README from docs/README.template.md
+```
+
+## License
+
+[GPL-3.0-or-later](./LICENSE). This is a deliberate choice — derivatives stay open.
+
+---
+
+<sub>This README is regenerated by [`scripts/regen-readme.ts`](./scripts/regen-readme.ts). Stamp: **v7.0.0, 2026-05-22**. Factor and archetype lists are pulled from [`src/factors.ts`](./src/factors.ts) so they can't drift.</sub>
