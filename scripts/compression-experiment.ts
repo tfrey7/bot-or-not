@@ -37,7 +37,7 @@ import {
 import { bonWebSearchRedditUser } from "../src/features/web-search/index.ts";
 import { bonExtractJson } from "../src/utils/json.ts";
 import { bonNormalizePersona } from "../src/utils/persona.ts";
-import { bonEstimateCostUsd } from "../src/utils/cost.ts";
+import { bonEstimateCostUsd } from "../src/llm/cost.ts";
 import { bonComputeVerdict } from "../src/verdict.ts";
 import type {
   ClaudeUsage,

@@ -46,7 +46,7 @@ import {
   bonSerializeProfileForClaude,
   bonSummarizeProfile,
 } from "../src/features/investigation/summarize.ts";
-import { bonCallClaude } from "../src/features/investigation/api.ts";
+import { bonInvestigationCallLlm } from "../src/features/investigation/api.ts";
 import { bonWebSearchRedditUser } from "../src/features/web-search/index.ts";
 import { bonExtractJson } from "../src/utils/json.ts";
 import { bonNormalizePersona } from "../src/utils/persona.ts";
@@ -100,10 +100,10 @@ function withLimit(summary: ProfileSummary, n: number): ProfileSummary {
 
 // Serializer that emits the legacy per-item-object JSON shape (pre-compact).
 // This is what production used to send before the columnar refactor. We
-// pass it explicitly via ClaudeCallOptions for the baseline / exp1-4 / combo
-// variants so they remain apples-to-apples comparisons against the original
-// production state. Variants tagged "compact" omit this and let
-// bonCallClaude default to bonSerializeProfileForClaude.
+// pass it explicitly via InvestigationLlmOptions for the baseline / exp1-4 /
+// combo variants so they remain apples-to-apples comparisons against the
+// original production state. Variants tagged "compact" omit this and let
+// bonInvestigationCallLlm default to bonSerializeProfileForClaude.
 function verboseSerialize(summary: ProfileSummary): string {
   return JSON.stringify(summary);
 }
@@ -155,11 +155,13 @@ async function runOnce(
   serialize: (s: ProfileSummary) => string = bonSerializeProfileForClaude
 ): Promise<VariantResult> {
   const t0 = Date.now();
-  const claude = await bonCallClaude(apiKey!, PROMPT, summary, `exp:${name}`, {
-    avatarUrl,
-    model,
-    serialize,
-  });
+  const claude = await bonInvestigationCallLlm(
+    apiKey!,
+    PROMPT,
+    summary,
+    `exp:${name}`,
+    { avatarUrl, model, serialize }
+  );
   const durationMs = Date.now() - t0;
 
   const extracted = bonExtractJson(claude.rawText) as Record<

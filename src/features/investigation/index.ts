@@ -33,7 +33,7 @@ import { bonExtractActivityData } from "../../utils/reddit_activity.ts";
 import { bonNormalizeRegionInference } from "../../utils/region_inference.ts";
 import { bonComputeVerdict } from "../../verdict.ts";
 import { bonWebSearchRedditUser } from "../web-search/index.ts";
-import { bonCallClaude } from "./api.ts";
+import { bonInvestigationCallLlm } from "./api.ts";
 import {
   bonFetchBotBouncerStatus,
   BON_REDDIT_FETCH_LIMIT,
@@ -221,11 +221,11 @@ export async function bonRunOneDAnalysis(
   profileSummary: ProfileSummary,
   avatarUrl: string | null = null
 ): Promise<OneDAnalysisResult> {
-  const { rawText, usage, model, costUsd } = await bonCallClaude(
+  const { rawText, usage, model, costUsd } = await bonInvestigationCallLlm(
     apiKey,
     BON_ANALYSIS_PROMPT,
     profileSummary,
-    "claude 1D",
+    "investigation 1D",
     { avatarUrl }
   );
 

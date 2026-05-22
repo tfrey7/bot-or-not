@@ -1,6 +1,6 @@
-// Claude API pricing table + cost estimation. Pure — no I/O.
+// LLM pricing tables + cost estimation. Pure — no I/O.
 //
-// USD per million tokens. Verify against current Anthropic pricing — these
+// USD per million tokens. Verify against current provider pricing — these
 // drift. Web search USD-per-request is retained for legacy investigation
 // records (which used Anthropic's server-side `web_search` tool) — set to
 // 0 because the live pipeline now fetches DuckDuckGo for free.
@@ -63,7 +63,7 @@ export function bonLookupPricing(
   return null;
 }
 
-// Compute USD cost for one Claude call. Returns null if the model is unknown
+// Compute USD cost for one LLM call. Returns null if the model is unknown
 // so callers can distinguish "free" from "unpriced".
 export function bonEstimateCostUsd(
   usage: ClaudeUsage | null | undefined,

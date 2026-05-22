@@ -25,7 +25,7 @@ import {
   bonExtractSnoovatarUrl,
   bonSummarizeProfile,
 } from "../src/features/investigation/summarize.ts";
-import { bonCallClaude } from "../src/features/investigation/api.ts";
+import { bonInvestigationCallLlm } from "../src/features/investigation/api.ts";
 import { bonWebSearchRedditUser } from "../src/features/web-search/index.ts";
 import { bonExtractJson } from "../src/utils/json.ts";
 import { bonNormalizePersona } from "../src/utils/persona.ts";
@@ -162,10 +162,13 @@ async function investigateUser(username: string): Promise<UserResult> {
   for (const model of MODELS) {
     console.error(`[${username}] calling ${model}...`);
     const start = performance.now();
-    const result = await bonCallClaude(apiKey!, PROMPT, summary, model, {
-      avatarUrl,
+    const result = await bonInvestigationCallLlm(
+      apiKey!,
+      PROMPT,
+      summary,
       model,
-    });
+      { avatarUrl, model }
+    );
     const latencyMs = Math.round(performance.now() - start);
 
     const extracted = bonExtractJson(result.rawText);

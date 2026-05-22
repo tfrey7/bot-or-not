@@ -17,7 +17,7 @@ import {
   bonEstimateCostUsd,
   bonLookupPricing,
   bonRecentCost,
-} from "../../utils/cost.ts";
+} from "../../llm/cost.ts";
 import { bonPercentile } from "../../utils/stats.ts";
 
 export interface AnalyticsCall {
