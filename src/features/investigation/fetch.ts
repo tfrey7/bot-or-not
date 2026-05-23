@@ -10,6 +10,7 @@
 // failure. The metrics ride alongside the data so the analytics page can
 // chart Reddit-side performance the same way it does the Claude call.
 
+import { bonRedditFetchJson, RedditRequestError } from "../../reddit/client.ts";
 import type {
   BotBouncerStatus,
   RedditAboutEnvelope,
@@ -20,8 +21,6 @@ import type {
   RedditModeratedList,
   RedditProfile,
 } from "../../types.ts";
-import { bonShortUrl } from "../../utils/format_text.ts";
-import { bonParseRetryAfter } from "../../utils/retry_after.ts";
 
 // Reddit's per-request listing cap. The API silently clamps anything
 // higher to 100, so we paginate via `after=` cursors to reach the
@@ -31,11 +30,13 @@ export const BON_REDDIT_PAGE_LIMIT = 100;
 // Target item count per listing (submitted / comments). The investigation
 // fetch paginates to this depth so the heatmap, calendar, region inference,
 // and timezone signal all share the same dataset as the AI verdict.
-// 1000 is Reddit's hard ceiling on user-listing endpoints — going higher
-// would silently get clamped. Prolific posters whose recent-300 window
-// spans only a week or two get sampled as bot-shaped (topically monotone),
-// so we cast a wider net and let the AI see more variety.
-export const BON_REDDIT_FETCH_LIMIT = 1000;
+// Reddit's hard cap is 1000 (going higher gets silently clamped), but the
+// subreddit-profiling workflow scales sample size to ~100 users per sub,
+// which 10x'd the per-sub Reddit-hit budget at the old 1000-item cap and
+// throttled us out fast. 500 keeps enough variety for prolific-poster
+// signals (visible_window_days, timezone, region) while halving Reddit
+// pressure when a sub kicks off 100 fresh investigations at once.
+export const BON_REDDIT_FETCH_LIMIT = 500;
 
 export class RedditFetchError extends Error {
   metrics: RedditMetrics;
@@ -53,49 +54,6 @@ export class RedditFetchError extends Error {
     this.httpStatus = httpStatus;
     this.retryAfterMs = retryAfterMs;
   }
-}
-
-export async function bonTimed<T>(
-  label: string,
-  task: () => Promise<T>
-): Promise<T> {
-  const startedAt = performance.now();
-
-  try {
-    const result = await task();
-    const elapsedMs = Math.round(performance.now() - startedAt);
-    console.log(`[Bot or Not] timing: ${label} ${elapsedMs}ms`);
-    return result;
-  } catch (error) {
-    const elapsedMs = Math.round(performance.now() - startedAt);
-    console.log(`[Bot or Not] timing: ${label} ${elapsedMs}ms (failed)`);
-    throw error;
-  }
-}
-
-export async function bonFetchJson<T = unknown>(url: string): Promise<T> {
-  return bonTimed(`fetch ${bonShortUrl(url)}`, async () => {
-    const response = await fetch(url, {
-      headers: { Accept: "application/json" },
-      credentials: "include",
-    });
-
-    if (!response.ok) {
-      const error = new Error(`Reddit fetch ${response.status} for ${url}`);
-      const enriched = error as Error & {
-        httpStatus?: number;
-        retryAfterMs?: number | null;
-      };
-      enriched.httpStatus = response.status;
-      enriched.retryAfterMs = bonParseRetryAfter(
-        response.headers.get("Retry-After")
-      );
-
-      throw error;
-    }
-
-    return response.json() as Promise<T>;
-  });
 }
 
 interface MeasuredFetch<T> {
@@ -138,7 +96,7 @@ async function measureFetch<T>(
   const start = performance.now();
 
   try {
-    const data = await bonFetchJson<T>(url);
+    const data = await bonRedditFetchJson<T>(url);
     return {
       data,
       retryAfterMs: null,
@@ -152,14 +110,9 @@ async function measureFetch<T>(
     };
   } catch (error) {
     const httpStatus =
-      typeof (error as { httpStatus?: number })?.httpStatus === "number"
-        ? (error as { httpStatus: number }).httpStatus
-        : null;
+      error instanceof RedditRequestError ? error.httpStatus : null;
     const retryAfterMs =
-      typeof (error as { retryAfterMs?: number | null })?.retryAfterMs ===
-      "number"
-        ? (error as { retryAfterMs: number }).retryAfterMs
-        : null;
+      error instanceof RedditRequestError ? error.retryAfterMs : null;
 
     return {
       data: null,

@@ -13,8 +13,9 @@
 // stay stable; the next time the user re-investigates (manually or via
 // the staleness check), the prompt gets the freshly attributed data.
 
-import type { GoogleHarvest, GoogleHarvestPost, Report } from "../../types.ts";
+import { bonRedditFetchJson, RedditRequestError } from "../../reddit/client.ts";
 import { bonReadReports, bonWriteReports } from "../../storage.ts";
+import type { GoogleHarvest, GoogleHarvestPost, Report } from "../../types.ts";
 import { bonFindReportKey } from "../../utils/history.ts";
 
 const BON_ATTRIBUTION_CONCURRENCY = 3;
@@ -116,32 +117,19 @@ async function classifyPost(
   // sub-post or comment. Append .json and ask for raw fields.
   const jsonUrl = `${post.url}.json?raw_json=1&limit=500`;
 
-  let response: Response;
-  try {
-    response = await fetch(jsonUrl, {
-      headers: { Accept: "application/json" },
-      credentials: "include",
-    });
-  } catch {
-    // Network blip. Bubble as transient so the worker retries.
-    return { attribution: "unknown", settled: false };
-  }
-
-  // 404 / 403: the post is gone or we can't see it (deleted, private sub,
-  // suspended user). Settle so we stop trying.
-  if (response.status === 404 || response.status === 403) {
-    return { attribution: "unknown", settled: true };
-  }
-
-  if (!response.ok) {
-    // 5xx, rate-limited, etc. Transient.
-    return { attribution: "unknown", settled: false };
-  }
-
   let body: unknown;
   try {
-    body = await response.json();
-  } catch {
+    body = await bonRedditFetchJson<unknown>(jsonUrl);
+  } catch (error) {
+    if (error instanceof RedditRequestError) {
+      // 404 / 403: the post is gone or we can't see it (deleted, private
+      // sub, suspended user). Settle so we stop trying.
+      if (error.httpStatus === 404 || error.httpStatus === 403) {
+        return { attribution: "unknown", settled: true };
+      }
+    }
+
+    // Network blip, 5xx, rate-limited, JSON parse failure. Transient.
     return { attribution: "unknown", settled: false };
   }
 

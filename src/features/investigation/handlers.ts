@@ -11,6 +11,7 @@ import type {
   Report,
   RunSnapshot,
 } from "../../types.ts";
+import { bonRedditGetPausedUntil } from "../../reddit/client.ts";
 import {
   bonReadApiKey,
   bonReadLlmSelection,
@@ -33,17 +34,21 @@ import {
 } from "./index.ts";
 
 const BON_AUTO_INVESTIGATE_FRESHNESS_MS = 60 * 60 * 1000;
-export const BON_INVESTIGATION_CONCURRENCY = 2;
+
+// Reddit throttling is handled globally by the shared Reddit client
+// (src/reddit/client.ts) — its in-flight semaphore is the real backstop.
+// This cap just controls how many investigations overlap their Claude
+// calls (the bulk of wall-clock time once Reddit fetches are bounded).
+export const BON_INVESTIGATION_CONCURRENCY = 5;
 
 // One initial attempt + 3 retries. Counts every time we transition to
 // "running" — so a worker that dies mid-await still spent an attempt.
 const BON_INVESTIGATION_MAX_ATTEMPTS = 4;
 
 // In-memory set of usernames currently executing the Reddit + Claude
-// pipeline. Bounded by BON_INVESTIGATION_CONCURRENCY so Reddit doesn't
-// throttle us when a burst of investigations is requested. Queue position
-// is derived from storage (status: "queued" records ordered by queuedAt)
-// so a worker eviction doesn't lose pending items.
+// pipeline. Queue position is derived from storage (status: "queued"
+// records ordered by queuedAt) so a worker eviction doesn't lose
+// pending items.
 const activeRuns = new Set<string>();
 
 // Investigations stuck at status: "running" at startup are orphaned — a
@@ -285,7 +290,14 @@ async function runInvestigation(
     const isUserNotFound =
       error instanceof RedditFetchError && error.httpStatus === 404;
 
-    if (!isUserNotFound && attempts < BON_INVESTIGATION_MAX_ATTEMPTS) {
+    // 429 is a load signal, not an investigation-specific failure. Refund
+    // the attempt so a rate-limit storm can't burn the operator's whole
+    // retry budget. The Reddit client's global pause handles the wait.
+    const isRateLimited =
+      error instanceof RedditFetchError && error.httpStatus === 429;
+    const accountedAttempts = isRateLimited ? attempts - 1 : attempts;
+
+    if (!isUserNotFound && accountedAttempts < BON_INVESTIGATION_MAX_ATTEMPTS) {
       const retryAfterMs = readRetryAfterMs(error);
       const notBefore = retryAfterMs
         ? Date.now() + bonClampRetryAfter(retryAfterMs)
@@ -295,13 +307,14 @@ async function runInvestigation(
         : "";
 
       console.warn(
-        `[Bot or Not] investigation ${username} failed (attempt ${attempts}/${BON_INVESTIGATION_MAX_ATTEMPTS}); re-queueing${pauseSuffix}: ${message}`
+        `[Bot or Not] investigation ${username} failed (attempt ${accountedAttempts}/${BON_INVESTIGATION_MAX_ATTEMPTS}); re-queueing${pauseSuffix}: ${message}`
       );
 
       await setInvestigationState(username, {
         status: "queued",
         queuedAt: Date.now(),
         notBefore,
+        attempts: accountedAttempts,
         durationMs,
         ...redditMetricsPatch,
       });
@@ -334,6 +347,12 @@ let pauseWakeTimer: ReturnType<typeof setTimeout> | null = null;
 // soonest of those is scheduled to re-drain when its cooldown elapses.
 async function drainQueue(): Promise<void> {
   if (activeRuns.size >= BON_INVESTIGATION_CONCURRENCY) {
+    return;
+  }
+
+  const globalPauseUntil = bonRedditGetPausedUntil();
+  if (globalPauseUntil !== null) {
+    scheduleQueueWake(globalPauseUntil);
     return;
   }
 

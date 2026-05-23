@@ -14,6 +14,7 @@ export {
   bonPageOpenConfirmModal,
   type ConfirmModalOpts,
 } from "./confirm_modal.ts";
+export { bonPageInitRateLimitBanner } from "./rate_limit_banner.ts";
 export {
   bonPageInitTabs,
   type BonPageTab,

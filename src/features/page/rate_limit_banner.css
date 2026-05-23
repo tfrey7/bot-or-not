@@ -1,0 +1,17 @@
+#bon-rate-limit-banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5em;
+  padding: 0.5em 1em;
+  background: var(--bon-warning-bg);
+  color: var(--bon-warning-text);
+  border-top: 1px solid var(--bon-warning-border);
+  border-bottom: 1px solid var(--bon-warning-border);
+  font-size: 0.9em;
+  font-weight: 600;
+}
+
+#bon-rate-limit-banner[hidden] {
+  display: none;
+}

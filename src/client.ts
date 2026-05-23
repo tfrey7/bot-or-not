@@ -14,7 +14,8 @@ export type BonClientEvent =
   | { type: "subreddits-changed" }
   | { type: "api-key-changed" }
   | { type: "llm-selection-changed" }
-  | { type: "hide-pii-changed" };
+  | { type: "hide-pii-changed" }
+  | { type: "reddit-pause-changed" };
 
 export type BonClientListener = (event: BonClientEvent) => void;
 
@@ -58,6 +59,10 @@ class BonExtensionClient implements BonClient {
 
       if (changes.hidePii) {
         listener({ type: "hide-pii-changed" });
+      }
+
+      if (changes.redditPauseUntil) {
+        listener({ type: "reddit-pause-changed" });
       }
     };
 

@@ -19,6 +19,7 @@ import { bonPiiBlurInit } from "../../utils/pii_blur.ts";
 import {
   bonPageInitCommandBar,
   bonPageInitConfirmModal,
+  bonPageInitRateLimitBanner,
   bonPageInitTabs,
   bonPageInstallAgentBadge,
   type BonPageCommandBarHandle,
@@ -78,8 +79,11 @@ const analyticsContainer = document.getElementById(
 const personasContainer = document.getElementById(
   "bon-personas-container"
 ) as HTMLElement | null;
-const subredditsContainer = document.getElementById(
-  "bon-subreddits-container"
+const subredditsListEl = document.getElementById(
+  "bon-subreddits-list"
+) as HTMLElement | null;
+const subredditsDetailEl = document.getElementById(
+  "bon-subreddits-detail"
 ) as HTMLElement | null;
 const settingsStripContainer = document.getElementById(
   "bon-settings-strip"
@@ -155,6 +159,7 @@ bonClientSubscribe((event) => {
 });
 
 bonPageInitConfirmModal({ onConfirm: load });
+bonPageInitRateLimitBanner();
 bonSettingsInit();
 void bonPiiBlurInit();
 
@@ -288,11 +293,11 @@ function renderPersonas(): void {
 }
 
 async function renderSubreddits(): Promise<void> {
-  if (!subredditsContainer) {
-    return;
-  }
-
-  await bonRenderSubreddits(subredditsContainer);
+  await bonRenderSubreddits({
+    listContainer: subredditsListEl,
+    detailContainer: subredditsDetailEl,
+    onSelectUser: navigateToUser,
+  });
 }
 
 function navigateToUser(username: string): void {
