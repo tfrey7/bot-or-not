@@ -277,6 +277,14 @@ export function bonInlineTagsMark(): void {
         return;
       }
 
+      // Reddit's left sidebar contains a /user/<self>/ link once you've
+      // viewed your own profile. The narrow nav column wraps the pill
+      // onto its own line under "Manage Communities" — looks like a bug.
+      // The pill belongs on feed/comment bylines, not in page chrome.
+      if (anchor.closest("reddit-sidebar-nav, #left-sidebar-container")) {
+        return;
+      }
+
       // On a post detail page, hold off marking until the enclosing
       // shreddit-post has its `permalink` attribute set — that's what
       // identifies the OP byline. Without this guard, a tick that runs
