@@ -1,13 +1,18 @@
 // Background-side dispatch for the subreddit-compromise feature.
 //
 // One-click analysis flow (bonSubredditAnalyze):
-//   1. Persist a SubredditReport recording which N authors we sampled.
-//   2. For each sampled author, reuse any existing "done" investigation
+//   1. Fetch up to BON_SUBREDDIT_SAMPLE_SIZE post-authors from
+//      /r/<sub>/new.json via bonSubredditFetchAuthors. Background-only —
+//      we don't depend on the operator having scrolled the feed, and a
+//      Reddit 429 bubbles up the same way it does for any other Reddit
+//      fetch.
+//   2. Persist a SubredditReport recording which authors we sampled.
+//   3. For each sampled author, reuse any existing "done" investigation
 //      as-is — no freshness check, no re-run. We trust stored verdicts
 //      across time (see memory: trust-stale-reports). For authors that
-//      don't have a done report yet, we enqueue a fresh investigation
-//      via the existing per-user queue (concurrency capped at 2 — the
-//      sub-level verdict materializes as those drain).
+//      don't have a done report yet, enqueue a fresh investigation via
+//      the existing per-user queue — the sub-level verdict materializes
+//      as those drain.
 //
 // Read flow (bonSubredditGetReport):
 //   Returns the stored record alongside the live-derived verdict, so the
@@ -21,6 +26,8 @@ import {
 import type { SubredditReport } from "../../types.ts";
 import { bonFindReportKey } from "../../utils/history.ts";
 import { bonInvestigationStart } from "../investigation/handlers.ts";
+import { BON_SUBREDDIT_SAMPLE_SIZE } from "./data.ts";
+import { bonSubredditFetchAuthors } from "./fetch_authors.ts";
 import {
   bonSubredditDeriveVerdict,
   type BonSubredditVerdict,
@@ -51,17 +58,31 @@ export interface BonSubredditListResult {
 }
 
 export async function bonSubredditAnalyze(
-  name: string,
-  authors: string[]
+  name: string
 ): Promise<BonSubredditAnalyzeResult> {
   const trimmedName = (name || "").trim();
   if (!trimmedName) {
     return { ok: false, error: "missing-subreddit-name" };
   }
 
-  const sampledUsernames = dedupedLowercase(authors);
+  let fetched: { authors: string[] };
+  try {
+    fetched = await bonSubredditFetchAuthors(
+      trimmedName,
+      BON_SUBREDDIT_SAMPLE_SIZE
+    );
+  } catch (error) {
+    console.error(
+      `[Bot or Not] subreddit-investigation: author fetch failed for r/${trimmedName}`,
+      error
+    );
+
+    return { ok: false, error: "author-fetch-failed" };
+  }
+
+  const sampledUsernames = dedupedLowercase(fetched.authors);
   if (sampledUsernames.length === 0) {
-    return { ok: false, error: "no-authors-scraped" };
+    return { ok: false, error: "no-authors-found" };
   }
 
   const record: SubredditReport = {

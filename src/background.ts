@@ -227,10 +227,7 @@ browser.runtime.onMessage.addListener((message: BaseMessage) => {
   }
 
   if (message.type === "analyze-subreddit") {
-    return bonSubredditAnalyze(
-      message.name as string,
-      Array.isArray(message.authors) ? (message.authors as string[]) : []
-    );
+    return bonSubredditAnalyze(message.name as string);
   }
 
   if (message.type === "get-subreddit-report") {

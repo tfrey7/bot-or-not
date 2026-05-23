@@ -1,20 +1,23 @@
 // One-click "is this subreddit compromised?" feature. Injected on
 // subreddit feed pages (/r/<sub>). The widget shows a verdict badge if
 // the sub has been analyzed before, plus an Analyze / Re-analyze button
-// that samples post-authors from the current DOM and feeds them through
-// the existing per-user investigation queue.
+// that asks the background to pull a fresh author sample from
+// /r/<sub>/new.json and feed it through the existing per-user
+// investigation queue.
 //
-// Verdict is derived live from the sampled users' Report records — the
-// badge refreshes as individual investigations land via reports-changed.
+// The content script doesn't scrape the DOM or scroll the feed anymore
+// — sample sourcing moved into the background so we can target 100
+// authors without depending on what the operator has loaded into view.
+// Verdict is still derived live from the sampled users' Report records,
+// so the badge refreshes as individual investigations land via
+// reports-changed.
 
 import { bonClientSend, bonClientSubscribe } from "../../client.ts";
 import type { SubredditReport } from "../../types.ts";
 import {
   BON_SUBREDDIT_SAMPLE_SIZE,
-  bonSubredditCountScrapeableAuthors,
   bonSubredditCurrentPage,
   bonSubredditFindMasthead,
-  bonSubredditScrapeAuthors,
   type BonSubredditPageContext,
 } from "./data.ts";
 import type { BonSubredditVerdict } from "./verdict.ts";
@@ -26,7 +29,6 @@ interface State {
   record: SubredditReport | null;
   verdict: BonSubredditVerdict | null;
   busy: boolean;
-  scrapeableCount: number;
 }
 
 let currentState: State | null = null;
@@ -36,18 +38,11 @@ function isMisplaced(container: HTMLElement): boolean {
   return !!container.closest("shreddit-post, shreddit-comment, article");
 }
 
-function hasEnoughPosts(state: State): boolean {
-  return state.scrapeableCount >= BON_SUBREDDIT_SAMPLE_SIZE;
-}
-
 function renderStatusText(state: State): string {
   if (state.busy) {
-    return "Kicking off analysis…";
+    return `Sampling ${BON_SUBREDDIT_SAMPLE_SIZE} recent authors…`;
   }
 
-  // Verdict text always wins when we have one to show — keep it visible
-  // even on partly-loaded feeds, since the button hint already explains
-  // why Re-analyze is locked.
   if (state.record && state.verdict) {
     const { verdict } = state;
     const { doneCount, total, botLeaningCount, errorCount } = verdict;
@@ -68,11 +63,7 @@ function renderStatusText(state: State): string {
       : `Healthy — ${summary}.`;
   }
 
-  if (!hasEnoughPosts(state)) {
-    return `Only ${state.scrapeableCount} of ${BON_SUBREDDIT_SAMPLE_SIZE} posts loaded — scroll the feed to load more.`;
-  }
-
-  return "No analysis yet — sample 10 recent posts' authors.";
+  return `No analysis yet — sample ${BON_SUBREDDIT_SAMPLE_SIZE} recent post-authors.`;
 }
 
 function statusModifier(state: State): string {
@@ -96,7 +87,9 @@ function buttonLabel(state: State): string {
     return "Working…";
   }
 
-  return state.record ? "Re-analyze" : "Analyze 10 recent authors";
+  return state.record
+    ? "Re-analyze"
+    : `Analyze ${BON_SUBREDDIT_SAMPLE_SIZE} recent authors`;
 }
 
 function buildContainer(state: State): HTMLElement {
@@ -125,11 +118,7 @@ function buildContainer(state: State): HTMLElement {
   button.type = "button";
   button.className = "bon-subreddit-investigation__btn";
   button.textContent = buttonLabel(state);
-  const locked = !state.busy && !hasEnoughPosts(state);
-  button.disabled = state.busy || locked;
-  if (locked) {
-    button.title = `Scroll the feed to load at least ${BON_SUBREDDIT_SAMPLE_SIZE} posts, then click to analyze.`;
-  }
+  button.disabled = state.busy;
 
   button.addEventListener("click", () => {
     void handleAnalyzeClick();
@@ -225,7 +214,6 @@ async function refresh(): Promise<void> {
       record,
       verdict,
       busy: currentState?.busy ?? false,
-      scrapeableCount: bonSubredditCountScrapeableAuthors(),
     };
 
     render(currentState);
@@ -239,11 +227,6 @@ async function handleAnalyzeClick(): Promise<void> {
     return;
   }
 
-  const authors = bonSubredditScrapeAuthors();
-  if (authors.length === 0) {
-    return;
-  }
-
   currentState = { ...currentState, busy: true };
   render(currentState);
 
@@ -251,7 +234,6 @@ async function handleAnalyzeClick(): Promise<void> {
     await bonClientSend({
       type: "analyze-subreddit",
       name: currentState.context.name,
-      authors,
     });
   } catch (error) {
     console.error(
@@ -283,25 +265,22 @@ export function bonSubredditInvestigationTick(): void {
     return;
   }
 
-  // No in-memory state yet for this sub — kick a fetch (which will render).
   if (!currentState || currentState.context.nameKey !== context.nameKey) {
     void refresh();
     return;
   }
 
-  // State is for the right sub. Re-render if the DOM was reparented away,
-  // if our placement got misplaced, or if more posts have streamed in and
-  // the scrapeable count has shifted (unlocks / re-locks the button).
+  // State is for the right sub — re-render if the widget got reparented
+  // away from the masthead. (No more scroll-count tracking — the
+  // background pulls authors itself, so DOM state on the feed doesn't
+  // affect button availability.)
   const existing = document.getElementById(CONTAINER_ID) as HTMLElement | null;
-  const scrapeableCount = bonSubredditCountScrapeableAuthors();
 
   if (
     !existing ||
     isMisplaced(existing) ||
-    existing.dataset.subreddit !== context.nameKey ||
-    currentState.scrapeableCount !== scrapeableCount
+    existing.dataset.subreddit !== context.nameKey
   ) {
-    currentState = { ...currentState, scrapeableCount };
     render(currentState);
   }
 }
