@@ -2,7 +2,10 @@
 // into a delay in ms. Reddit usually sends seconds; Anthropic does too. Both
 // occasionally omit the header on a 429, in which case callers pick a default.
 
-const BON_RETRY_AFTER_MIN_MS = 1_000;
+// Floor for the global Reddit pause. When upstream returns 429 (or 5xx)
+// without a Retry-After header, a 1s pause just lets us hammer the same
+// failing endpoint a second later — 30s gives the budget time to refill.
+const BON_RETRY_AFTER_MIN_MS = 30_000;
 const BON_RETRY_AFTER_MAX_MS = 15 * 60 * 1_000;
 
 export function bonParseRetryAfter(header: string | null): number | null {

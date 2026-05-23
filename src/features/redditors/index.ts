@@ -96,6 +96,12 @@ const syncContainer = document.getElementById(
 const BON_REDDITORS_PAGE_SIZE = 20;
 const BON_REDDITORS_URL_USER_PARAM = "user";
 
+// A burst enqueue (e.g. profiling a 100-user subreddit) makes the
+// in-progress table grow really tall and pushes the rest of the page
+// out of view. Show only the first N rows — the title still surfaces
+// the full running/queued counts.
+const BON_ACTIVE_TABLE_VISIBLE_MAX = 10;
+
 // Vite inlines import.meta.env.DEV at build time, so the suffix only ships
 // in `vite dev` builds — published AMO builds (vite build) get a clean
 // version string.
@@ -503,13 +509,26 @@ function renderActiveSection(rows: ReportRow[]): void {
       ? `In progress · ${running} running · ${queued} queued (cap ${BON_INVESTIGATION_CONCURRENCY})`
       : `In progress · ${rows.length}`;
 
-  for (const report of rows) {
+  const visibleRows = rows.slice(0, BON_ACTIVE_TABLE_VISIBLE_MAX);
+
+  for (const report of visibleRows) {
     const summary = bonRedditorsRow(report, {
       selectedUsername,
       queueAhead: bonRedditorsCountQueuedAhead(allReports, report),
       onSelect: selectRow,
     });
     activeTbody.appendChild(summary);
+  }
+
+  const hiddenCount = rows.length - visibleRows.length;
+  if (hiddenCount > 0) {
+    const overflow = document.createElement("tr");
+    overflow.className = "bon-active-overflow";
+    const cell = document.createElement("td");
+    cell.colSpan = 2;
+    cell.textContent = `+${hiddenCount} more queued — will appear as slots free up`;
+    overflow.appendChild(cell);
+    activeTbody.appendChild(overflow);
   }
 }
 

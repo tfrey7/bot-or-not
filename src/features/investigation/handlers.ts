@@ -39,7 +39,7 @@ const BON_AUTO_INVESTIGATE_FRESHNESS_MS = 60 * 60 * 1000;
 // (src/reddit/client.ts) — its in-flight semaphore is the real backstop.
 // This cap just controls how many investigations overlap their Claude
 // calls (the bulk of wall-clock time once Reddit fetches are bounded).
-export const BON_INVESTIGATION_CONCURRENCY = 5;
+export const BON_INVESTIGATION_CONCURRENCY = 3;
 
 // One initial attempt + 3 retries. Counts every time we transition to
 // "running" — so a worker that dies mid-await still spent an attempt.
@@ -284,18 +284,21 @@ async function runInvestigation(
     const redditMetricsPatch =
       error instanceof RedditFetchError ? { redditMetrics: error.metrics } : {};
 
+    const httpStatus =
+      error instanceof RedditFetchError ? error.httpStatus : null;
+
     // 404 on the about endpoint = the username doesn't exist. Retrying
     // won't conjure them, so short-circuit to a terminal error instead
     // of burning attempts.
-    const isUserNotFound =
-      error instanceof RedditFetchError && error.httpStatus === 404;
+    const isUserNotFound = httpStatus === 404;
 
-    // 429 is a load signal, not an investigation-specific failure. Refund
-    // the attempt so a rate-limit storm can't burn the operator's whole
-    // retry budget. The Reddit client's global pause handles the wait.
-    const isRateLimited =
-      error instanceof RedditFetchError && error.httpStatus === 429;
-    const accountedAttempts = isRateLimited ? attempts - 1 : attempts;
+    // 429 / 5xx are upstream-load signals, not investigation-specific
+    // failures. Refund the attempt so a Reddit outage can't burn the
+    // operator's retry budget; the Reddit client's global pause handles
+    // the wait.
+    const isUpstreamLoad =
+      httpStatus === 429 || (httpStatus !== null && httpStatus >= 500);
+    const accountedAttempts = isUpstreamLoad ? attempts - 1 : attempts;
 
     if (!isUserNotFound && accountedAttempts < BON_INVESTIGATION_MAX_ATTEMPTS) {
       const retryAfterMs = readRetryAfterMs(error);

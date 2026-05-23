@@ -5,10 +5,11 @@
 // gate *what work to schedule*; this only gates *how many HTTP calls are
 // in flight*.
 //
-// Also owns the global rate-limit pause: when Reddit returns a 429, every
-// subsequent fetch through this client blocks until Retry-After elapses.
-// State is mirrored to browser.storage.local under `redditPauseUntil` so
-// UI surfaces can show a banner via the standard storage.onChanged path.
+// Also owns the global upstream-pause: when Reddit returns a 429 or 5xx,
+// every subsequent fetch through this client blocks until the cooldown
+// elapses. State is mirrored to browser.storage.local under
+// `redditPauseUntil` so UI surfaces can show a banner via the standard
+// storage.onChanged path.
 
 import { bonShortUrl } from "../utils/format_text.ts";
 import {
@@ -17,6 +18,11 @@ import {
 } from "../utils/retry_after.ts";
 
 const BON_REDDIT_CONCURRENCY = 4;
+
+// Reddit usually answers in well under a second. A 30s ceiling means a
+// hung connection releases its semaphore slot instead of stalling the
+// whole queue behind one dead request.
+const BON_REDDIT_FETCH_TIMEOUT_MS = 30_000;
 
 let inFlight = 0;
 const waiters: Array<() => void> = [];
@@ -61,7 +67,7 @@ function drainWaiters(): void {
   }
 }
 
-function noteRateLimit(retryAfterMs: number | null): void {
+function notePause(retryAfterMs: number | null, reason: string): void {
   const delay = bonClampRetryAfter(retryAfterMs ?? 0);
   const newPausedUntil = Date.now() + delay;
 
@@ -77,7 +83,7 @@ function noteRateLimit(retryAfterMs: number | null): void {
 
   pauseClearTimer = setTimeout(clearPause, delay);
   console.warn(
-    `[Bot or Not] Reddit rate-limited; pausing all fetches for ${Math.round(delay / 1000)}s`
+    `[Bot or Not] Reddit ${reason}; pausing all fetches for ${Math.round(delay / 1000)}s`
   );
 
   void publishPauseState();
@@ -163,6 +169,7 @@ export async function bonRedditFetchJson<T = unknown>(url: string): Promise<T> {
     const response = await fetch(url, {
       headers: { Accept: "application/json" },
       credentials: "include",
+      signal: AbortSignal.timeout(BON_REDDIT_FETCH_TIMEOUT_MS),
     });
 
     if (!response.ok) {
@@ -171,7 +178,9 @@ export async function bonRedditFetchJson<T = unknown>(url: string): Promise<T> {
       );
 
       if (response.status === 429) {
-        noteRateLimit(retryAfterMs);
+        notePause(retryAfterMs, "rate-limited");
+      } else if (response.status >= 500) {
+        notePause(retryAfterMs, `returned ${response.status}`);
       }
 
       throw new RedditRequestError(
