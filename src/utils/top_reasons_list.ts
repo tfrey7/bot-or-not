@@ -26,11 +26,7 @@ export function bonTopReasonsList(
   }
 
   const container = document.createElement("div");
-
-  // bon-pii: when the operator turns on the privacy blur, the Human/Bot
-  // signal lists hide too. Subreddits the operator screenshots into often
-  // have rules against publishing what we think makes someone a bot.
-  container.className = "bon-top-reasons bon-pii";
+  container.className = "bon-top-reasons";
 
   if (split.human.length) {
     container.appendChild(
@@ -60,8 +56,10 @@ function buildColumn(
   heading.textContent = title;
   column.appendChild(heading);
 
+  // bon-pii on the list (not the column or container) so the "Human signals" /
+  // "Bot signals" labels stay legible while the bullet text redacts.
   const list = document.createElement("ul");
-  list.className = "bon-top-reasons__list";
+  list.className = "bon-top-reasons__list bon-pii";
 
   for (const factor of factors) {
     list.appendChild(buildReason(factor, linkify));

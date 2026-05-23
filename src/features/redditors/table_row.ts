@@ -52,7 +52,7 @@ export function bonRedditorsRow(
   const link = document.createElement("a");
   link.href = `?user=${encodeURIComponent(username)}`;
   link.textContent = `u/${username}`;
-  link.classList.add("bon-pii");
+  link.classList.add("bon-pii-name");
 
   // Plain click stays in-page via the row's onSelect; the href exists so
   // Cmd/Ctrl-click and right-click "Open in new tab" still work.

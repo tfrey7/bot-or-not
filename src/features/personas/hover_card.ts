@@ -70,7 +70,7 @@ function buildCard(
   card.className = "bon-personas-hover-card";
 
   const header = document.createElement("p");
-  header.className = "bon-personas-hover-card__username bon-pii";
+  header.className = "bon-personas-hover-card__username bon-pii-name";
   header.textContent = `u/${username}`;
   card.appendChild(header);
 

@@ -148,7 +148,7 @@ export function bonAnalyticsCostChart(runs: AnalyticsEntry[]): HTMLElement {
           tooltip.innerHTML = "";
 
           const headline = document.createElement("div");
-          headline.className = "bon-analytics-uplot-tooltip__head bon-pii";
+          headline.className = "bon-analytics-uplot-tooltip__head bon-pii-name";
           headline.textContent = `u/${point.username}`;
           tooltip.appendChild(headline);
 

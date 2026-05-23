@@ -402,12 +402,47 @@ body {
   display: none;
 }
 
-/* ---------- Privacy: blur usernames + avatars (settings toggle) ----------
-   Mirror of the rule in content_script.css. When body.bon-hide-pii is set,
-   anything tagged `bon-pii` blurs out (Discord-spoiler-style); hovering or
-   focusing reveals. Reports-page username elements opt in by adding the
-   class at their render site. */
+/* ---------- Privacy: redact PII (settings toggle) ----------
+   Mirror of the rules in content_script.css. See that file for the full
+   notes. Two marker classes:
+     - .bon-pii         — general blur (cake day, karma, signal lists)
+     - .bon-pii-name    — destructive bar + "u/" prefix (usernames) */
+
+/* General PII: blur the rendered subtree. */
 body.bon-hide-pii .bon-pii:not(:hover):not(:focus):not(:focus-within) {
-  filter: blur(4px);
+  filter: blur(8px);
   transition: filter 0.18s ease-in-out;
+}
+
+/* Username PII: replace pixels and add a "u/" affordance. */
+body.bon-hide-pii a[href*="/user/"]:not(:hover):not(:focus):not(:focus-within),
+body.bon-hide-pii a[href*="/u/"]:not(:hover):not(:focus):not(:focus-within),
+body.bon-hide-pii .bon-pii-name:not(:hover):not(:focus):not(:focus-within) {
+  position: relative;
+  color: transparent;
+  text-shadow: none;
+  transition: color 0.18s ease-in-out;
+}
+
+body.bon-hide-pii a[href*="/user/"]:not(:hover):not(:focus):not(:focus-within)::after,
+body.bon-hide-pii a[href*="/u/"]:not(:hover):not(:focus):not(:focus-within)::after,
+body.bon-hide-pii .bon-pii-name:not(:hover):not(:focus):not(:focus-within)::after {
+  content: "";
+  position: absolute;
+  inset: -0.1em -0.25em;
+  background: rgba(90, 90, 90, 0.82);
+  border-radius: 0.35em;
+  filter: blur(3.5px);
+  pointer-events: none;
+  z-index: 0;
+}
+
+body.bon-hide-pii a[href*="/user/"]:not(:hover):not(:focus):not(:focus-within)::before,
+body.bon-hide-pii a[href*="/u/"]:not(:hover):not(:focus):not(:focus-within)::before,
+body.bon-hide-pii .bon-pii-name:not(:hover):not(:focus):not(:focus-within)::before {
+  content: "u/";
+  position: relative;
+  z-index: 1;
+  color: rgba(225, 225, 225, 0.95);
+  pointer-events: none;
 }

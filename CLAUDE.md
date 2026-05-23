@@ -94,6 +94,27 @@ Two top-level keys in `browser.storage.local`: `reports` (keyed by username) and
 - On background startup, investigations stuck mid-flight are swept to `status: "error"` — the previous worker died (web-ext reload, browser restart, service-worker eviction) and won't be back to finish them.
 - Inline username tags are keyed by **lowercase** username (Reddit's routing is case-insensitive).
 
+## Privacy / PII redaction
+
+When the operator turns on "Blur usernames" in settings, `body.bon-hide-pii` is set. CSS lives in `src/app.css` (reports page) and `src/content_script.css` (Reddit pages). Hovering or focusing any redacted element reveals. The goal is screenshot safety — operators publish reports into subreddits with anti-doxxing rules, and even our scoring rationale can be sensitive.
+
+Two marker classes, picked by what's being hidden:
+
+- **`bon-pii-name`** — usernames. Destructive: `color: transparent` removes the original glyphs entirely (no pixels for AI to deblur from a short isolated token), a `::after` overlay paints a fuzzy bar over the bounding box (covers nested avatars too), and a `::before` adds a crisp `u/` prefix so screenshots still read as "this is a user reference, redacted." Reddit's own profile links (`<a href*="/user/">`, `<a href*="/u/">`) match by URL pattern automatically — no manual tagging needed in content scripts.
+- **`bon-pii`** — everything else sensitive. General blur on the rendered subtree (TV-news style). Cheap, propagates through arbitrary descendants regardless of their own color/background overrides. Used for long-form text in container elements (e.g. the Human/Bot signal bullet `<ul>`) and short value tokens (cake day, karma). Tag the leaf container that holds the redactable content, not an outer wrapper that also contains labels you want to stay legible.
+
+**When you render any of the following, tag the element at the render site:**
+
+| What | Class |
+| ---- | ----- |
+| Reddit usernames (links, headings, tooltips, table cells, hover cards…) | `bon-pii-name` |
+| Reddit avatars | covered automatically when the surrounding `<a>` to `/user/` or `/u/` is tagged |
+| Cake day + karma (the pair is a near-unique fingerprint) | `bon-pii` |
+| Investigation factor bullets / signal lists (criteria we use to rate someone may itself violate a subreddit's rules) | `bon-pii` (on the `<ul>` of bullets, not the section container — keep "Human signals" / "Bot signals" headings legible) |
+| Anything else that could identify a specific Reddit user or expose our scoring rationale | `bon-pii-name` for username tokens, `bon-pii` otherwise |
+
+**When you add a new category of identifying data, extend this table so future agents don't miss it.**
+
 ## Code organization
 
 Every screen and pipeline lives under `src/features/<feature>/`. Each directory IS the feature — drop the directory, remove the one or two imports from `src/content_script.ts` / `src/background.ts` / `src/reports.html`, and the feature is gone.

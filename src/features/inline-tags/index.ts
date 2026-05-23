@@ -203,11 +203,11 @@ function markProfileHeader(): void {
     return;
   }
 
-  // Mark the h1 so the privacy CSS rule can blur the username text along
-  // with the inline-pill children. The chip blurs too — the operator
+  // Mark the h1 so the privacy CSS rule redacts the username text along
+  // with the inline-pill children. The chip redacts too — the operator
   // hovers to reveal — but that's a fair price for not poking around
   // inside Reddit's slot DOM.
-  h1.classList.add("bon-pii");
+  h1.classList.add("bon-pii-name");
 
   const info: UserTagInfo = userTags.get(key) || {
     username,

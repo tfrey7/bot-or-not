@@ -75,7 +75,7 @@ export function bonAnalyticsRunLog(
 
     const tdUser = document.createElement("td");
     const userLink = document.createElement("a");
-    userLink.className = "bon-analytics-top-name bon-pii";
+    userLink.className = "bon-analytics-top-name bon-pii-name";
     userLink.href = `?user=${encodeURIComponent(run.username)}`;
     userLink.textContent = `u/${run.username}`;
     tdUser.appendChild(userLink);

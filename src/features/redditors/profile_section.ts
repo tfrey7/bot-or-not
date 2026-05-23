@@ -101,7 +101,7 @@ export function bonRedditorsProfileSection(
   titleRow.className = "bon-profile-info__title-row";
 
   const link = document.createElement("a");
-  link.className = "bon-profile-info__username bon-pii";
+  link.className = "bon-profile-info__username bon-pii-name";
   link.href = `https://www.reddit.com/user/${encodeURIComponent(username)}`;
   link.target = "_blank";
   link.rel = "noopener noreferrer";
