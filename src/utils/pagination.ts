@@ -30,7 +30,8 @@ export function bonPagination(opts: BonPaginationOpts): HTMLElement {
   const first = document.createElement("button");
   first.type = "button";
   first.className = "bon-btn bon-pagination-btn";
-  first.textContent = "« First";
+  first.textContent = "«";
+  first.title = "First page";
   first.disabled = currentPage <= 1;
   first.addEventListener("click", () => onPageChange(1));
   controls.appendChild(first);
@@ -38,7 +39,8 @@ export function bonPagination(opts: BonPaginationOpts): HTMLElement {
   const prev = document.createElement("button");
   prev.type = "button";
   prev.className = "bon-btn bon-pagination-btn";
-  prev.textContent = "‹ Prev";
+  prev.textContent = "‹";
+  prev.title = "Previous page";
   prev.disabled = currentPage <= 1;
   prev.addEventListener("click", () => onPageChange(currentPage - 1));
   controls.appendChild(prev);
@@ -51,7 +53,8 @@ export function bonPagination(opts: BonPaginationOpts): HTMLElement {
   const next = document.createElement("button");
   next.type = "button";
   next.className = "bon-btn bon-pagination-btn";
-  next.textContent = "Next ›";
+  next.textContent = "›";
+  next.title = "Next page";
   next.disabled = currentPage >= totalPages;
   next.addEventListener("click", () => onPageChange(currentPage + 1));
   controls.appendChild(next);
@@ -59,7 +62,8 @@ export function bonPagination(opts: BonPaginationOpts): HTMLElement {
   const last = document.createElement("button");
   last.type = "button";
   last.className = "bon-btn bon-pagination-btn";
-  last.textContent = "Last »";
+  last.textContent = "»";
+  last.title = "Last page";
   last.disabled = currentPage >= totalPages;
   last.addEventListener("click", () => onPageChange(totalPages));
   controls.appendChild(last);

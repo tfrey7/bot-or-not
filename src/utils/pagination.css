@@ -16,6 +16,7 @@
 }
 .bon-pagination-caption {
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 .bon-pagination-controls {
   display: flex;
@@ -26,6 +27,7 @@
   font-variant-numeric: tabular-nums;
   color: var(--bon-text-soft);
   padding: 0 0.4em;
+  white-space: nowrap;
 }
 .bon-pagination-btn {
   padding: 0.4em 0.75em;
