@@ -2,6 +2,19 @@
 
 Notable changes to Bot or Not. Signed `.xpi` builds for each version are attached to the matching [GitHub Release](https://github.com/tfrey7/bot-or-not/releases).
 
+## [7.2.0] — 2026-05-23
+- Pause indicator: move from page banner to queue section
+- Privacy: harden username redaction against AI deblurring
+- Subreddits tab: split list + detail pane
+- Subreddit analysis: source authors from /new.json, not the DOM
+- Reddit client: global concurrency cap + 429 pause
+- Pagination: drop button labels, keep arrows only
+- Detail pane: skip rebuild when only sibling rows changed
+- Inline tags: skip anchors inside Reddit's left sidebar
+- CLAUDE.md: require writing-code skill before code edits
+- Privacy blur: extend to cake day, karma, and Human/Bot signal lists
+- Redditors detail: move user notes to the bottom of the panel
+
 ## [7.1.0] — 2026-05-22
 - Redditors tab: rename from Reports, reorder nav, split feature dir
 - README: capture reports + dossier screenshots
