@@ -1,39 +1,126 @@
-// Subreddits tab. Lists every subreddit the operator has analyzed, with a
-// derived verdict (compromised / healthy / inconclusive / pending) and the
-// per-sample author breakdown. Click a sample's username to jump to its
-// dossier in the Reports tab.
+// Subreddits tab orchestrator. Mirrors the Redditors tab's split layout:
+// a compact subreddit list on the left and a single-screen dossier on
+// the right showing the selected subreddit's verdict, sample mix, and
+// persona scatter of just that sub's sampled users.
 //
-// The page-level orchestrator owns the data fetch — it calls
-// `bonRenderSubreddits` on initial load and again whenever the
-// `subreddits` storage key changes OR per-user investigations complete
-// (since verdicts derive from those reports).
+// Selection state lives in this module — the redditors orchestrator
+// calls bonRenderSubreddits whenever data could have changed
+// (`reports-changed`, `subreddits-changed`, initial load), and we
+// preserve the operator's selection across re-renders unless the
+// selected sub is no longer in the list.
 
 import { bonClientSend } from "../../client.ts";
+import type { Report } from "../../types.ts";
 import type {
   BonSubredditListEntry,
   BonSubredditListResult,
 } from "../subreddit-investigation/handlers.ts";
+import { bonRenderSubredditsDetail } from "./detail_pane.ts";
 import { bonRenderSubredditsList } from "./list.ts";
 
+export interface BonRenderSubredditsOptions {
+  listContainer: HTMLElement | null;
+  detailContainer: HTMLElement | null;
+  onSelectUser: (username: string) => void;
+}
+
+let selectedNameKey: string | null = null;
+let lastEntries: BonSubredditListEntry[] = [];
+let lastReportsByUsername: Map<string, Report> = new Map();
+
 export async function bonRenderSubreddits(
-  container: HTMLElement | null
+  options: BonRenderSubredditsOptions
 ): Promise<void> {
-  if (!container) {
+  const { listContainer, detailContainer, onSelectUser } = options;
+  if (!listContainer || !detailContainer) {
     return;
   }
 
   let entries: BonSubredditListEntry[] = [];
+  let reportsByUsername = new Map<string, Report>();
+
   try {
-    const response = await bonClientSend<BonSubredditListResult>({
-      type: "list-subreddit-reports",
-    });
-    entries = response?.entries ?? [];
-  } catch (error) {
-    console.error(
-      "[Bot or Not] subreddits tab: list-subreddit-reports failed",
-      error
+    const [subsResponse, reportsResponse] = await Promise.all([
+      bonClientSend<BonSubredditListResult>({ type: "list-subreddit-reports" }),
+      bonClientSend<{ reports?: Record<string, Report> }>({
+        type: "get-all-reports",
+      }),
+    ]);
+
+    entries = subsResponse?.entries ?? [];
+
+    const reports = reportsResponse?.reports ?? {};
+    reportsByUsername = new Map(
+      Object.entries(reports).map(([username, report]) => [
+        username.toLowerCase(),
+        report,
+      ])
     );
+  } catch (error) {
+    console.error("[Bot or Not] subreddits tab: load failed", error);
   }
 
-  container.replaceChildren(bonRenderSubredditsList(entries));
+  lastEntries = entries;
+  lastReportsByUsername = reportsByUsername;
+
+  if (selectedNameKey === null && entries.length > 0) {
+    // Pre-select the most-recently-analyzed sub on first paint so the
+    // detail pane has something to show without an extra click.
+    selectedNameKey = nameKeyOf(entries[0]);
+  } else if (
+    selectedNameKey !== null &&
+    !entries.some((entry) => nameKeyOf(entry) === selectedNameKey)
+  ) {
+    // Previously-selected sub fell out of the list (e.g. cleared).
+    selectedNameKey = entries.length > 0 ? nameKeyOf(entries[0]) : null;
+  }
+
+  renderList(listContainer, onSelectUser);
+  renderDetail(detailContainer, onSelectUser);
+}
+
+function nameKeyOf(entry: BonSubredditListEntry): string {
+  return entry.record.name.toLowerCase();
+}
+
+function renderList(
+  container: HTMLElement,
+  onSelectUser: (username: string) => void
+): void {
+  container.replaceChildren(
+    bonRenderSubredditsList(lastEntries, {
+      selectedNameKey,
+      onSelect: (nameKey) => {
+        if (selectedNameKey === nameKey) {
+          return;
+        }
+
+        selectedNameKey = nameKey;
+        renderList(container, onSelectUser);
+        const detail = document.getElementById("bon-subreddits-detail");
+        if (detail) {
+          renderDetail(detail, onSelectUser);
+        }
+      },
+    })
+  );
+}
+
+function renderDetail(
+  container: HTMLElement,
+  onSelectUser: (username: string) => void
+): void {
+  const selected = selectedNameKey
+    ? (lastEntries.find((entry) => nameKeyOf(entry) === selectedNameKey) ??
+      null)
+    : null;
+
+  container.replaceChildren(
+    bonRenderSubredditsDetail({
+      entry: selected,
+      reportsByUsername: lastReportsByUsername,
+      hasAnyEntries: lastEntries.length > 0,
+      onSelectUser,
+    })
+  );
 }
