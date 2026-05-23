@@ -73,13 +73,13 @@ void bonRunMigrations().then(() => {
   bonGoogleAttributionDrain();
 });
 
-// In dev builds spawned for a specific agent (new-agent.sh worktree), Firefox
-// is the human-facing test surface — and the reports page is almost always
-// what we want in front of us. Have the background open (or refocus) that
-// tab on each launch so we don't have to navigate to the moz-extension://
-// URL by hand. Production builds (__BON_AGENT__ is null) tree-shake out.
+// In dev builds running from a strand worktree, Firefox is the human-facing
+// test surface — and the reports page is almost always what we want in
+// front of us. Have the background open (or refocus) that tab on each
+// launch so we don't have to navigate to the moz-extension:// URL by hand.
+// Production builds (__BON_STRAND__ is null) tree-shake out.
 async function bootstrapDevReportsTab(): Promise<void> {
-  if (!__BON_AGENT__) {
+  if (!__BON_STRAND__) {
     return;
   }
 

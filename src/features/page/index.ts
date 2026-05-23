@@ -1,8 +1,8 @@
 // Page chrome — generic widgets that wrap the reports page itself rather
 // than any one tab: the tab bar, the AI command bar + chat modal, the
-// shared confirm modal, and the dev-mode agent badge.
+// shared confirm modal, and the dev-mode strand badge.
 
-export { bonPageInstallAgentBadge } from "./agent_badge.ts";
+export { bonPageInstallStrandBadge } from "./strand_badge.ts";
 export {
   bonPageInitCommandBar,
   type BonPageCommandBarDeps,

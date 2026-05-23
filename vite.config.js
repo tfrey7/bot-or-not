@@ -23,16 +23,16 @@ export default defineConfig(({ mode }) => {
   const devClaudeApiKey =
     mode === "development" && env.CLAUDE_API_KEY ? env.CLAUDE_API_KEY : null;
 
-  // Dev-only agent identity: when this build runs from inside a
-  // ../<repo>-worktrees/<slug>/ checkout (i.e. spawned by new-agent.sh), the
-  // slug becomes __BON_AGENT__ so the reports page can label which agent's
-  // code is loaded. Null in production and when running from the main
-  // checkout — the consuming code tree-shakes out.
+  // Dev-only strand identity: when this build runs from inside a
+  // ../<repo>-strands/<slug>/ worktree, the slug becomes __BON_STRAND__ so
+  // the reports page can label which strand's code is loaded. Null in
+  // production and when running from the main checkout — the consuming
+  // code tree-shakes out.
   const parentDir = basename(dirname(process.cwd()));
-  const inferredAgent = parentDir.endsWith("-worktrees")
+  const inferredStrand = parentDir.endsWith("-strands")
     ? basename(process.cwd())
     : null;
-  const devAgent = mode === "development" ? inferredAgent : null;
+  const devStrand = mode === "development" ? inferredStrand : null;
 
   return {
     plugins: [
@@ -55,8 +55,8 @@ export default defineConfig(({ mode }) => {
         webExtConfig: {
           startUrl: ["https://www.reddit.com/"],
           // Persistent profile shared across all worktrees so that switching
-          // which worktree is live (scripts/switch-dev.sh) doesn't lose
-          // extension storage, the open reports tab, or other Firefox state.
+          // which worktree is live (scripts/dev.sh) doesn't lose extension
+          // storage, the open reports tab, or other Firefox state.
           firefoxProfile: `${process.env.HOME}/.bot-or-not-dev-profile`,
           keepProfileChanges: true,
           // First-run prefs still useful for the very first launch when the
@@ -75,7 +75,7 @@ export default defineConfig(({ mode }) => {
     ],
     define: {
       __BON_DEV_CLAUDE_API_KEY__: JSON.stringify(devClaudeApiKey),
-      __BON_AGENT__: JSON.stringify(devAgent),
+      __BON_STRAND__: JSON.stringify(devStrand),
     },
     build: {
       outDir: "dist",

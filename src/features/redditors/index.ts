@@ -20,7 +20,7 @@ import {
   bonPageInitCommandBar,
   bonPageInitConfirmModal,
   bonPageInitTabs,
-  bonPageInstallAgentBadge,
+  bonPageInstallStrandBadge,
   type BonPageCommandBarHandle,
 } from "../page";
 import {
@@ -105,7 +105,7 @@ if (versionEl) {
   versionEl.textContent = import.meta.env.DEV ? `${version} (dev)` : version;
 }
 
-bonPageInstallAgentBadge();
+bonPageInstallStrandBadge();
 
 const REGION_LABELS: Record<string, string> = Object.fromEntries(
   Object.entries(BON_REGION_INFO).map(([code, info]) => [code, info.label])

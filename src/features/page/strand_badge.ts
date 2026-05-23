@@ -1,15 +1,14 @@
-// Dev-only agent identity: when this build is running from a worktree
-// spawned by new-agent.sh, __BON_AGENT__ is the agent slug. Prefix the tab
-// title and drop a hash-colored badge into the masthead so it's
-// unmistakable which agent's code is loaded. Tree-shakes out for published
-// builds — __BON_AGENT__ is null there and the install function bails.
+// Dev builds running from a ../<repo>-strands/<slug>/ worktree get a
+// hash-colored badge in the masthead and a [<slug>] tab-title prefix so it
+// is unmistakable which strand's code is loaded. Tree-shakes out for
+// published builds — __BON_STRAND__ is null and this function bails.
 
-export function bonPageInstallAgentBadge(): void {
-  if (!__BON_AGENT__) {
+export function bonPageInstallStrandBadge(): void {
+  if (!__BON_STRAND__) {
     return;
   }
 
-  document.title = `[${__BON_AGENT__}] ${document.title}`;
+  document.title = `[${__BON_STRAND__}] ${document.title}`;
 
   const titlesEl = document.querySelector(".bon-header-titles");
   if (!titlesEl) {
@@ -29,16 +28,16 @@ export function bonPageInstallAgentBadge(): void {
 
   let hash = 0;
 
-  for (const ch of __BON_AGENT__) {
+  for (const ch of __BON_STRAND__) {
     hash = ((hash << 5) - hash + ch.charCodeAt(0)) | 0;
   }
 
   const color = palette[Math.abs(hash) % palette.length];
 
   const badge = document.createElement("span");
-  badge.className = "bon-dev-agent-badge";
-  badge.textContent = `AGENT · ${__BON_AGENT__.toUpperCase()}`;
-  badge.title = `Dev build running from worktree: ${__BON_AGENT__}`;
+  badge.className = "bon-dev-strand-badge";
+  badge.textContent = `STRAND · ${__BON_STRAND__.toUpperCase()}`;
+  badge.title = `Dev build running from worktree: ${__BON_STRAND__}`;
   Object.assign(badge.style, {
     display: "inline-block",
     marginTop: "6px",
