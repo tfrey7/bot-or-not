@@ -19,7 +19,6 @@ import { bonPiiBlurInit } from "../../utils/pii_blur.ts";
 import {
   bonPageInitCommandBar,
   bonPageInitConfirmModal,
-  bonPageInitRateLimitBanner,
   bonPageInitTabs,
   bonPageInstallAgentBadge,
   type BonPageCommandBarHandle,
@@ -36,6 +35,7 @@ import {
   bonRedditorsDetailEmpty,
   bonRedditorsDetailPane,
 } from "./detail_pane.ts";
+import { bonQueuePauseInit, bonQueuePauseIsActive } from "./queue_pause.ts";
 import { bonRedditorsRow } from "./table_row.ts";
 import {
   bonRedditorsCompareActive,
@@ -58,6 +58,7 @@ const activeSection = document.getElementById(
 const activeTitleEl = document.getElementById(
   "bon-active-title"
 ) as HTMLElement;
+const queuePauseEl = document.getElementById("bon-queue-pause") as HTMLElement;
 const emptyEl = document.getElementById("bon-empty") as HTMLElement;
 const detailPane = document.getElementById("bon-detail-pane") as HTMLElement;
 const searchInput = document.getElementById("bon-search") as HTMLInputElement;
@@ -159,7 +160,10 @@ bonClientSubscribe((event) => {
 });
 
 bonPageInitConfirmModal({ onConfirm: load });
-bonPageInitRateLimitBanner();
+bonQueuePauseInit({
+  pauseEl: queuePauseEl,
+  onChange: () => render(),
+});
 bonSettingsInit();
 void bonPiiBlurInit();
 
@@ -463,12 +467,22 @@ function render(): void {
 }
 
 function renderActiveSection(rows: ReportRow[]): void {
-  if (rows.length === 0) {
+  const paused = bonQueuePauseIsActive();
+
+  if (rows.length === 0 && !paused) {
     activeSection.hidden = true;
     return;
   }
 
   activeSection.hidden = false;
+
+  if (rows.length === 0) {
+    activeTitleEl.hidden = true;
+    activeTitleEl.textContent = "";
+    return;
+  }
+
+  activeTitleEl.hidden = false;
 
   let running = 0;
   let queued = 0;

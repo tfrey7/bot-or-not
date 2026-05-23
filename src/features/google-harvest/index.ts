@@ -6,7 +6,6 @@
 // there unions them into the user's existing harvest.
 
 import { bonClientSend } from "../../client.ts";
-import type { BonScrapedPost } from "./parse.ts";
 import { bonGoogleHarvestParse } from "./parse.ts";
 import { bonGoogleHarvestScrape } from "./scrape.ts";
 
@@ -28,56 +27,48 @@ function readUsernameFromQuery(): string | null {
   return match ? match[1] : null;
 }
 
-function harvest(username: string): void {
-  const scraped = bonGoogleHarvestScrape();
-  const parsed = bonGoogleHarvestParse(scraped);
-  if (parsed.posts.length === 0) {
-    return;
-  }
-
-  const query = new URLSearchParams(window.location.search).get("q") || "";
-  const payload: {
-    type: "google-harvest";
-    username: string;
-    query: string;
-    posts: BonScrapedPost[];
-  } = {
-    type: "google-harvest",
-    username,
-    query,
-    posts: parsed.posts,
-  };
-
-  console.log(
-    `[Bot or Not] google-harvest: ${parsed.posts.length} Reddit hit(s) for u/${username}`,
-    { raw: scraped, parsed }
-  );
-
-  void bonClientSend(payload);
-}
-
 const username = readUsernameFromQuery();
 if (username) {
-  // Google paints results into the DOM after document_idle in many cases
-  // (e.g. consent flow, JS-driven layout shifts). One settle delay catches
-  // the common case; the MutationObserver below catches the rest.
-  setTimeout(() => harvest(username), 400);
-
   let lastCount = 0;
   let settleTimer: ReturnType<typeof setTimeout> | null = null;
+
+  const harvestIfGrown = (): void => {
+    const scraped = bonGoogleHarvestScrape();
+    if (scraped.length <= lastCount) {
+      return;
+    }
+
+    lastCount = scraped.length;
+
+    const parsed = bonGoogleHarvestParse(scraped);
+    if (parsed.posts.length === 0) {
+      return;
+    }
+
+    const query = new URLSearchParams(window.location.search).get("q") || "";
+    console.log(
+      `[Bot or Not] google-harvest: ${parsed.posts.length} Reddit hit(s) for u/${username}`,
+      { raw: scraped, parsed }
+    );
+
+    void bonClientSend<unknown>({
+      type: "google-harvest",
+      username,
+      query,
+      posts: parsed.posts,
+    });
+  };
+
+  // Catches the synchronous-paint case; the observer below catches the
+  // async-paint case (consent flow, JS-driven layout shifts).
+  harvestIfGrown();
 
   const observer = new MutationObserver(() => {
     if (settleTimer) {
       clearTimeout(settleTimer);
     }
 
-    settleTimer = setTimeout(() => {
-      const scraped = bonGoogleHarvestScrape();
-      if (scraped.length > lastCount) {
-        lastCount = scraped.length;
-        harvest(username);
-      }
-    }, 500);
+    settleTimer = setTimeout(harvestIfGrown, 500);
   });
 
   observer.observe(document.body, { childList: true, subtree: true });

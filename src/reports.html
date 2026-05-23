@@ -12,7 +12,6 @@
     />
     <link rel="stylesheet" href="app.css" />
     <link rel="stylesheet" href="features/page/page.css" />
-    <link rel="stylesheet" href="features/page/rate_limit_banner.css" />
     <link rel="stylesheet" href="features/redditors/redditors.css" />
     <link rel="stylesheet" href="features/analytics/analytics.css" />
     <link rel="stylesheet" href="features/personas/personas.css" />
@@ -62,8 +61,6 @@
             <p class="bon-command-status" id="bon-command-status" hidden></p>
           </div>
         </header>
-
-        <div id="bon-rate-limit-banner" role="status" aria-live="polite" hidden></div>
 
         <nav class="bon-tabs" role="tablist" aria-label="Page sections">
           <button
@@ -151,6 +148,13 @@
               <p class="bon-list-section-title" id="bon-active-title">
                 In progress
               </p>
+              <p
+                class="bon-queue-pause"
+                id="bon-queue-pause"
+                role="status"
+                aria-live="polite"
+                hidden
+              ></p>
               <div class="bon-table-wrap">
                 <table class="bon-table">
                   <tbody id="bon-tbody-active"></tbody>

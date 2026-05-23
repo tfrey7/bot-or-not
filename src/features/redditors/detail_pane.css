@@ -122,6 +122,23 @@
   margin: 0 0 0.55em;
 }
 
+.bon-queue-pause {
+  display: flex;
+  align-items: center;
+  gap: 0.4em;
+  margin: 0 0 0.6em;
+  padding: 0.45em 0.7em;
+  background: var(--bon-warning-bg);
+  color: var(--bon-warning-text);
+  border: 1px solid var(--bon-warning-border);
+  border-radius: 0.3em;
+  font-size: 0.85em;
+  font-weight: 600;
+}
+.bon-queue-pause[hidden] {
+  display: none;
+}
+
 /* ============================================================
    Row footer — action strip pinned below an expanded row's body
    (used by detail-pane content rendering).
