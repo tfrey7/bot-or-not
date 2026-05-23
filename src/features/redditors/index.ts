@@ -40,6 +40,7 @@ import {
   bonRedditorsCompareActive,
   bonRedditorsCompareBy,
   bonRedditorsCountQueuedAhead,
+  bonRedditorsDetailFingerprint,
   bonRedditorsDiagnoseLoadError,
   bonRedditorsIsActiveRow,
   type ReportRow,
@@ -119,6 +120,12 @@ let selectedUsername: string | null = readSelectedUsernameFromUrl();
 // swap animation. `undefined` means "no render yet" — the first render is
 // silent so deep-linked loads don't fade in on page open.
 let lastAnimatedSelection: string | null | undefined = undefined;
+
+// Snapshot of the detail pane's last-rendered content. When a sibling row's
+// transition triggers a full render but the selected user's own state is
+// unchanged, this lets renderDetail bail without tearing down the slideshow
+// loader (which would reset its zCounter, photo sequence, and place-anim).
+let lastDetailFingerprint: string | null = null;
 
 // Set when the selection came from the URL (deep link) and we still need to
 // page-jump to it on the next render. Cleared after one render so subsequent
@@ -546,35 +553,41 @@ function updateUrlForSelection(): void {
 }
 
 function renderDetail(): void {
-  detailPane.replaceChildren();
+  let report: ReportRow | null = null;
+  if (selectedUsername) {
+    report =
+      allReports.find((row) => row.username === selectedUsername) ?? null;
 
-  if (!selectedUsername) {
-    if (allReports.length === 0) {
-      detailPane.appendChild(
-        bonRedditorsDetailEmpty(
-          "No reports yet. Flag a Reddit user from their profile to start tracking."
-        )
-      );
-    } else {
-      detailPane.appendChild(
-        bonRedditorsDetailEmpty(
-          "Select a user from the list to see the dossier."
-        )
-      );
+    if (!report) {
+      selectedUsername = null;
     }
+  }
 
-    maybeAnimateDetailSwap();
+  const queueAhead = report
+    ? bonRedditorsCountQueuedAhead(allReports, report)
+    : 0;
+
+  const fingerprint = bonRedditorsDetailFingerprint(
+    report,
+    queueAhead,
+    allReports.length > 0
+  );
+
+  if (fingerprint === lastDetailFingerprint) {
     return;
   }
 
-  const report = allReports.find(
-    (report) => report.username === selectedUsername
-  );
+  lastDetailFingerprint = fingerprint;
+
+  detailPane.replaceChildren();
 
   if (!report) {
-    selectedUsername = null;
     detailPane.appendChild(
-      bonRedditorsDetailEmpty("Select a user from the list to see the dossier.")
+      bonRedditorsDetailEmpty(
+        allReports.length === 0
+          ? "No reports yet. Flag a Reddit user from their profile to start tracking."
+          : "Select a user from the list to see the dossier."
+      )
     );
 
     maybeAnimateDetailSwap();
@@ -584,7 +597,7 @@ function renderDetail(): void {
   detailPane.appendChild(
     bonRedditorsDetailPane(report, {
       expectedDurationMs,
-      queueAhead: bonRedditorsCountQueuedAhead(allReports, report),
+      queueAhead,
       onNoApiKey: bonSettingsOpen,
 
       // Bounce back to page 1 — the fixed investigatedAt-desc sort will

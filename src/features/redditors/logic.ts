@@ -133,6 +133,52 @@ export function bonRedditorsDiagnoseLoadError(
   return "Open the browser console (F12) for more details, then try reloading the page.";
 }
 
+// Stable string snapshot of the parts of `report` (plus queue position) that
+// the detail pane actually renders. Used to bail out of a re-render when a
+// structural change in some *other* row triggers the page-level render —
+// without this check, the polaroid slideshow + elapsed timer in the loading
+// widget for the selected user get torn down and rebuilt every time any
+// sibling investigation completes.
+export function bonRedditorsDetailFingerprint(
+  report: ReportRow | null,
+  queueAhead: number,
+  hasAnyReports: boolean
+): string {
+  if (!report) {
+    return hasAnyReports ? "empty:list" : "empty:none";
+  }
+
+  return [
+    report.username,
+    detailInvestigationSig(report.investigation),
+    `q${queueAhead}`,
+    `c${report.count}`,
+    `lr${report.lastReportedAt}`,
+    `ring${report.ringId ?? ""}`,
+  ].join("|");
+}
+
+function detailInvestigationSig(investigation: Investigation | null): string {
+  if (!investigation) {
+    return "inv:null";
+  }
+
+  if (investigation.status === "done") {
+    return `inv:done:${investigation.results.runAt}`;
+  }
+
+  if (investigation.status === "error") {
+    return `inv:error:${investigation.error ?? ""}`;
+  }
+
+  if (investigation.status === "running") {
+    const stale = bonIsInvestigationStale(investigation) ? "s" : "f";
+    return `inv:running:${investigation.startedAt ?? 0}:${stale}`;
+  }
+
+  return `inv:queued:${investigation.queuedAt ?? 0}:${investigation.notBefore ?? 0}`;
+}
+
 export function bonRedditorsHasStructuralChange(
   prev: ReportRow[],
   next: ReportRow[]
