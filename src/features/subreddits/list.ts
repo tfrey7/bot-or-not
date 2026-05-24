@@ -99,10 +99,17 @@ function buildRow(
 
   const verdictCell = document.createElement("td");
   verdictCell.className = "bon-subreddits-list-verdict";
-  const badge = document.createElement("span");
-  badge.className = `bon-verdict-badge bon-verdict-badge--${descriptor.badgeModifier}`;
-  badge.textContent = descriptor.label;
-  verdictCell.appendChild(badge);
+
+  if (verdict.ready) {
+    const badge = document.createElement("span");
+    badge.className = `bon-verdict-badge bon-verdict-badge--${descriptor.badgeModifier}`;
+    badge.textContent = descriptor.label;
+    verdictCell.appendChild(badge);
+  } else {
+    verdictCell.classList.add("bon-subreddits-list-verdict--progress");
+    verdictCell.appendChild(buildProgress(verdict));
+  }
+
   row.appendChild(verdictCell);
 
   return row;
@@ -122,4 +129,33 @@ function describeVerdict(verdict: BonSubredditVerdict): VerdictDescriptor {
   }
 
   return { badgeModifier: "human", label: "Healthy" };
+}
+
+function buildProgress(verdict: BonSubredditVerdict): HTMLElement {
+  const settled = verdict.doneCount + verdict.errorCount;
+  const total = verdict.total;
+  const percent = total > 0 ? Math.round((settled / total) * 100) : 0;
+
+  const wrap = document.createElement("div");
+  wrap.className = "bon-subreddits-progress";
+  wrap.setAttribute("role", "progressbar");
+  wrap.setAttribute("aria-valuemin", "0");
+  wrap.setAttribute("aria-valuemax", String(total));
+  wrap.setAttribute("aria-valuenow", String(settled));
+  wrap.setAttribute("aria-label", `Analyzing ${settled} of ${total} authors`);
+
+  const label = document.createElement("span");
+  label.className = "bon-subreddits-progress-label";
+  label.textContent = `Analyzing · ${settled}/${total}`;
+  wrap.appendChild(label);
+
+  const bar = document.createElement("div");
+  bar.className = "bon-subreddits-progress-bar";
+  const fill = document.createElement("div");
+  fill.className = "bon-subreddits-progress-fill";
+  fill.style.width = `${Math.max(2, percent)}%`;
+  bar.appendChild(fill);
+  wrap.appendChild(bar);
+
+  return wrap;
 }

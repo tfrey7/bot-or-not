@@ -77,6 +77,54 @@ table.bon-subreddits-list-table {
   text-align: right;
 }
 
+.bon-subreddits-list-verdict--progress {
+  width: auto;
+  min-width: 11em;
+}
+
+.bon-subreddits-progress {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6em;
+  font-family: var(--bon-font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.06em;
+  color: var(--bon-muted);
+  text-transform: uppercase;
+}
+
+.bon-subreddits-progress-label {
+  white-space: nowrap;
+  font-weight: 700;
+}
+
+.bon-subreddits-progress-bar {
+  width: 5em;
+  height: 0.35em;
+  background: var(--bon-bg-tint);
+  border: 1px solid var(--bon-border);
+  border-radius: 0.2em;
+  overflow: hidden;
+  flex: 0 0 auto;
+}
+
+.bon-subreddits-progress-fill {
+  height: 100%;
+  background: var(--bon-accent);
+  transition: width 250ms ease;
+  animation: bon-subreddits-progress-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes bon-subreddits-progress-pulse {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
 /* ---------- Detail column ----------
    The header + body are emitted as two sibling `.bon-detail-wrap`s under
    `.bon-split-detail` so they inherit the same card-padding pattern the
@@ -137,6 +185,40 @@ table.bon-subreddits-list-table {
   display: flex;
   flex-direction: column;
   gap: 1em;
+}
+
+.bon-subreddits-detail-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5em;
+  padding: 0.85em 1em;
+  background: var(--bon-surface-soft);
+  border: 1px solid var(--bon-border);
+  border-radius: 0.5em;
+  box-shadow: var(--bon-shadow-xs);
+}
+
+.bon-subreddits-detail-progress-label {
+  margin: 0;
+  font-family: var(--bon-font-mono);
+  font-size: 0.78rem;
+  letter-spacing: 0.05em;
+  color: var(--bon-text);
+}
+
+.bon-subreddits-detail-progress-bar {
+  height: 0.55em;
+  background: var(--bon-bg-tint);
+  border: 1px solid var(--bon-border);
+  border-radius: 0.3em;
+  overflow: hidden;
+}
+
+.bon-subreddits-detail-progress-fill {
+  height: 100%;
+  background: var(--bon-accent);
+  transition: width 300ms ease;
+  animation: bon-subreddits-progress-pulse 1.6s ease-in-out infinite;
 }
 
 .bon-subreddits-detail-mix {

@@ -85,11 +85,57 @@ export function bonRenderSubredditsDetail(
 
   const body = document.createElement("div");
   body.className = "bon-detail-wrap bon-subreddits-detail-body";
+
+  if (!entry.verdict.ready) {
+    body.appendChild(buildProgress(entry.verdict));
+  }
+
   body.appendChild(buildMixStrip(entry.verdict));
   body.appendChild(buildScatter(entry, options));
   fragment.appendChild(body);
 
   return fragment;
+}
+
+function buildProgress(verdict: BonSubredditVerdict): HTMLElement {
+  const settled = verdict.doneCount + verdict.errorCount;
+  const total = verdict.total;
+  const fraction = total > 0 ? settled / total : 0;
+  const percent = Math.round(fraction * 100);
+
+  const wrap = document.createElement("div");
+  wrap.className = "bon-subreddits-detail-progress";
+  wrap.setAttribute("role", "progressbar");
+  wrap.setAttribute("aria-valuemin", "0");
+  wrap.setAttribute("aria-valuemax", String(total));
+  wrap.setAttribute("aria-valuenow", String(settled));
+
+  const label = document.createElement("p");
+  label.className = "bon-subreddits-detail-progress-label";
+  label.textContent = progressLabel(verdict, percent);
+  wrap.appendChild(label);
+
+  const bar = document.createElement("div");
+  bar.className = "bon-subreddits-detail-progress-bar";
+  const fill = document.createElement("div");
+  fill.className = "bon-subreddits-detail-progress-fill";
+  fill.style.width = `${Math.max(2, percent)}%`;
+  bar.appendChild(fill);
+  wrap.appendChild(bar);
+
+  return wrap;
+}
+
+function progressLabel(verdict: BonSubredditVerdict, percent: number): string {
+  const parts: string[] = [`${verdict.doneCount} complete`];
+
+  if (verdict.errorCount > 0) {
+    parts.push(`${verdict.errorCount} errored`);
+  }
+
+  parts.push(`${verdict.pendingCount} in flight`);
+
+  return `Analyzing ${verdict.total} authors · ${percent}% · ${parts.join(" · ")}`;
 }
 
 function buildEmpty(hasAnyEntries: boolean): HTMLElement {
