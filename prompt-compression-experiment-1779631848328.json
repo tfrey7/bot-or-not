@@ -1,0 +1,2364 @@
+[
+  {
+    "variant": "A",
+    "variantLabel": "baseline",
+    "username": "B-z_B-s",
+    "model": "claude-sonnet-4-6",
+    "promptChars": 75982,
+    "inputTokens": 39503,
+    "outputTokens": 1019,
+    "cacheReadTokens": 20681,
+    "cacheWriteTokens": 0,
+    "cost": 0.1399983,
+    "verdict": "human",
+    "botProb": 0.012742349464111609,
+    "persona": "zealot",
+    "region": "US",
+    "factors": [
+      {
+        "key": "account_age_vs_activity",
+        "score": -0.3,
+        "confidence": 0.6,
+        "evidence": [
+          "Account created 2025-10-15, age 221 days",
+          "4.05 visible items/day from near account creation, sample capped"
+        ],
+        "reasoning": "Young account with immediate sustained high volume; mild bot signal but continuous activity fits an eager new user."
+      },
+      {
+        "key": "dormant_account_revival",
+        "score": 0,
+        "confidence": 0.2,
+        "evidence": [
+          "Visible window 219 days on a 221-day-old account"
+        ],
+        "reasoning": "Account too young for dormancy analysis; activity spans nearly its entire life."
+      },
+      {
+        "key": "karma_farming_subs",
+        "score": 0.2,
+        "confidence": 0.4,
+        "evidence": [
+          "No karma-farming subs in top-21 list",
+          "Sub mix is politics + niche fandom + meta"
+        ],
+        "reasoning": "No karma-farming sub participation observed."
+      },
+      {
+        "key": "fake_political_subs",
+        "score": 0.2,
+        "confidence": 0.5,
+        "evidence": [
+          "r/politics dominates at 712 posts — a legitimate mainstream sub",
+          "No fake political subs in distribution"
+        ],
+        "reasoning": "Posts exclusively in legitimate political sub, not bot-playground subs."
+      },
+      {
+        "key": "llm_content_style",
+        "score": 0.7,
+        "confidence": 0.8,
+        "evidence": [
+          "Multiple concrete first-person anecdotes: autistic cousin refusing to vote, personal Reddit harassment experience, 'my transgender cousin'",
+          "Long-form analytical comments with personal opinion framing and humor (Hazbin Hotel reference, Doctor Who quote)"
+        ],
+        "reasoning": "Rich concrete personal anecdotes and idiosyncratic voice are strongly human; no LLM cadence detected."
+      },
+      {
+        "key": "timestamp_patterns",
+        "score": 0,
+        "confidence": 0.3,
+        "evidence": [
+          "Sample capped at 887 items; detailed burst analysis not feasible",
+          "Posts span 219-day window at ~4/day average"
+        ],
+        "reasoning": "No obvious round-interval or 24-hour-even distribution detectable from available data."
+      },
+      {
+        "key": "topical_drift",
+        "score": 0.5,
+        "confidence": 0.7,
+        "evidence": [
+          "r/politics (712), r/WanderingInn (55), r/complaints (22), r/ProgressionFantasy (4) — coherent dual-focus",
+          "Political posts and WanderingInn posts show consistent distinct voices"
+        ],
+        "reasoning": "Two coherent topic clusters (US politics + web serial fandom) are human-typical, not random drift."
+      },
+      {
+        "key": "engagement_patterns",
+        "score": 0.5,
+        "confidence": 0.6,
+        "evidence": [
+          "Posts in r/complaints explicitly solicit feedback and respond to accusations",
+          "WanderingInn posts show multi-comment back-and-forth engagement (e.g. Skills thread, character polls)"
+        ],
+        "reasoning": "Visible engagement in own threads across both main topics confirms conversational behavior."
+      },
+      {
+        "key": "username_pattern",
+        "score": 0,
+        "confidence": 0.1,
+        "reasoning": "Username doesn't match auto-suggested shape; no signal.",
+        "evidence": [
+          "username: B-z_B-s"
+        ]
+      },
+      {
+        "key": "hidden_post_history",
+        "score": 0.2,
+        "confidence": 0.5,
+        "reasoning": "Visible history present; not hiding.",
+        "evidence": [
+          "posts_fetched: 387, comments_fetched: 500"
+        ]
+      },
+      {
+        "key": "bot_bouncer_status",
+        "score": 0.75,
+        "confidence": 0.8,
+        "reasoning": "Bot Bouncer organic; community + human review verdict.",
+        "evidence": [
+          "Bot Bouncer status: organic"
+        ]
+      },
+      {
+        "key": "moderator_removal_history",
+        "score": -0.2,
+        "confidence": 0.4,
+        "reasoning": "Scattered admin/sitewide removals; modest signal.",
+        "evidence": [
+          "removals: 13 total across 887 items",
+          "reddit: 1",
+          "moderator: 12"
+        ]
+      },
+      {
+        "key": "posting_volume",
+        "score": 0.3,
+        "confidence": 0.5,
+        "reasoning": "Posting rate in <10/day band.",
+        "evidence": [
+          "posting_rate: 4.05 items/day over 219.13 days (sample capped)"
+        ]
+      },
+      {
+        "key": "moderated_subreddits",
+        "score": 0,
+        "confidence": 0.15,
+        "reasoning": "No moderation roles — no signal.",
+        "evidence": [
+          "moderated count: 0"
+        ]
+      },
+      {
+        "key": "promotional_account",
+        "score": 0.3,
+        "confidence": 0.5,
+        "evidence": [
+          "No funnel links, no self-promotion, no product",
+          "Profile posts are personal diary/fandom excerpts, not commercial"
+        ],
+        "reasoning": "No promotional signals; account is here for discussion, not conversion."
+      },
+      {
+        "key": "avatar_style",
+        "score": 0.35,
+        "confidence": 0.5,
+        "evidence": [
+          "Avatar: rainbow-striped jacket, pride-colored hair, flower hat, pet parrot — strong identity-foregrounding",
+          "Customized avatar consistent with earnest-evangelist Stan persona"
+        ],
+        "reasoning": "Deliberately identity-expressive customization is a strong human signal; feeds stan/zealot persona."
+      }
+    ],
+    "durationMs": 25946,
+    "error": null
+  },
+  {
+    "variant": "A",
+    "variantLabel": "baseline",
+    "username": "Ask4MD",
+    "model": "claude-sonnet-4-6",
+    "promptChars": 75982,
+    "inputTokens": 26639,
+    "outputTokens": 1486,
+    "cacheReadTokens": 20681,
+    "cacheWriteTokens": 0,
+    "cost": 0.1084113,
+    "verdict": "human",
+    "botProb": 0.0225326394564473,
+    "persona": "zealot",
+    "region": "IL",
+    "factors": [
+      {
+        "key": "account_age_vs_activity",
+        "score": -0.1,
+        "confidence": 0.4,
+        "evidence": [
+          "Account created 2023-09-15, age ~982 days — well over 1 year",
+          "Sample capped; visible window 195 days at 5.12 items/day"
+        ],
+        "reasoning": "Old enough that age pattern is neutral; defer to dormancy check."
+      },
+      {
+        "key": "dormant_account_revival",
+        "score": 0.4,
+        "confidence": 0.5,
+        "evidence": [
+          "Account ~982 days old; visible window 195 days — substantial earlier history likely beyond API cap",
+          "Sample capped true — activity likely continuous before the visible window"
+        ],
+        "reasoning": "Sample-capped account with no gap evidence; continuous posting is the more plausible shape."
+      },
+      {
+        "key": "karma_farming_subs",
+        "score": 0.3,
+        "confidence": 0.5,
+        "evidence": [
+          "Top subs: r/Conservative (830), r/jewishpolitics (147) — topically focused, not karma-farm venues",
+          "No r/FreeKarma4U, r/MadeMeSmile, r/aww or similar in distribution"
+        ],
+        "reasoning": "Sub mix is ideologically focused, not karma-farm oriented."
+      },
+      {
+        "key": "fake_political_subs",
+        "score": 0.2,
+        "confidence": 0.4,
+        "evidence": [
+          "r/Conservative is a legitimate sub, not a fake-political bot playground",
+          "r/jewishpolitics is niche but not on the known fake-political list"
+        ],
+        "reasoning": "No posting in known fake-political subs."
+      },
+      {
+        "key": "llm_content_style",
+        "score": 0.55,
+        "confidence": 0.7,
+        "evidence": [
+          "Concrete first-person aside: 'No. I am circumcised — are you?'; situated historical analogies (Kremlinologists, Schwartzkopf quote, Lenin quote)",
+          "Idiosyncratic voice: 'BDS (BB derangement syndrome)', 'Inquisitive minds ask', 'Baron Munchausen' reference — not LLM-typical cadence"
+        ],
+        "reasoning": "Distinctive, quirky first-person voice with concrete cultural references inconsistent with LLM generation."
+      },
+      {
+        "key": "timestamp_patterns",
+        "score": 0.1,
+        "confidence": 0.3,
+        "evidence": [
+          "t_min values span a broad range across days without obvious robotic regularity",
+          "No visible burst of identical-minute posts in the sample"
+        ],
+        "reasoning": "No scripted timing pattern detected; insufficient resolution to determine timezone band."
+      },
+      {
+        "key": "topical_drift",
+        "score": -0.2,
+        "confidence": 0.4,
+        "evidence": [
+          "Dominant topics: US conservative politics, Israel/Hamas, anti-Democrat, anti-Iran — tightly coherent",
+          "Minor drift to UK/Europe immigration and Alberta independence, but consistent conservative worldview"
+        ],
+        "reasoning": "Narrow ideological focus with minor international extensions; persona-consistent drift, not random."
+      },
+      {
+        "key": "engagement_patterns",
+        "score": 0.4,
+        "confidence": 0.55,
+        "evidence": [
+          "Comments include multi-paragraph replies engaging with specific arguments (e.g., Ezra Klein rebuttal, NATO cost analysis)",
+          "Responds to individual users in r/jewishpolitics threads ('You just need to compare…', 'Patience is what is required')"
+        ],
+        "reasoning": "Genuine back-and-forth engagement with specific content, not dump-and-leave pattern."
+      },
+      {
+        "key": "username_pattern",
+        "score": 0,
+        "confidence": 0.1,
+        "reasoning": "Username doesn't match auto-suggested shape; no signal.",
+        "evidence": [
+          "username: Ask4MD"
+        ]
+      },
+      {
+        "key": "hidden_post_history",
+        "score": 0.2,
+        "confidence": 0.5,
+        "reasoning": "Visible history present; not hiding.",
+        "evidence": [
+          "posts_fetched: 500, comments_fetched: 500"
+        ]
+      },
+      {
+        "key": "bot_bouncer_status",
+        "score": 0.75,
+        "confidence": 0.8,
+        "reasoning": "Bot Bouncer organic; community + human review verdict.",
+        "evidence": [
+          "Bot Bouncer status: organic"
+        ]
+      },
+      {
+        "key": "moderator_removal_history",
+        "score": 0,
+        "confidence": 0.25,
+        "reasoning": "Scattered or no removals; no strong signal.",
+        "evidence": [
+          "removals: 2 total across 1000 items",
+          "moderator: 2"
+        ]
+      },
+      {
+        "key": "posting_volume",
+        "score": 0.3,
+        "confidence": 0.5,
+        "reasoning": "Posting rate in <10/day band.",
+        "evidence": [
+          "posting_rate: 5.12 items/day over 195.24 days (sample capped)"
+        ]
+      },
+      {
+        "key": "moderated_subreddits",
+        "score": 0,
+        "confidence": 0.15,
+        "reasoning": "No moderation roles — no signal.",
+        "evidence": [
+          "moderated count: 0"
+        ]
+      },
+      {
+        "key": "promotional_account",
+        "score": 0.3,
+        "confidence": 0.5,
+        "evidence": [
+          "No funnel links, product promotions, or self-promotion in any visible post or comment",
+          "Posting is purely political/editorial — no commercial signals"
+        ],
+        "reasoning": "No promotional signals; account posts for political engagement, not conversion."
+      },
+      {
+        "key": "avatar_style",
+        "score": 0,
+        "confidence": 0.15,
+        "evidence": [
+          "Avatar: default snoo (no customization)"
+        ],
+        "reasoning": "Default avatar — no signal either direction."
+      }
+    ],
+    "durationMs": 31752,
+    "error": null
+  },
+  {
+    "variant": "A",
+    "variantLabel": "baseline",
+    "username": "WillyNilly1997",
+    "model": "claude-sonnet-4-6",
+    "promptChars": 75982,
+    "inputTokens": 830,
+    "outputTokens": 1093,
+    "cacheReadTokens": 20681,
+    "cacheWriteTokens": 0,
+    "cost": 0.0250893,
+    "verdict": "uncertain",
+    "botProb": 0.4887518980531451,
+    "persona": "zealot",
+    "region": "IL",
+    "factors": [
+      {
+        "key": "account_age_vs_activity",
+        "score": 0,
+        "confidence": 0.15,
+        "evidence": [
+          "Effectively hidden — 0 posts, 1 comment fetched; 883k karma"
+        ],
+        "reasoning": "Effectively hidden — Pattern B dormancy unmeasurable."
+      },
+      {
+        "key": "dormant_account_revival",
+        "score": 0,
+        "confidence": 0.15,
+        "evidence": [
+          "Account created 2025-01-04; only 1 comment visible"
+        ],
+        "reasoning": "Hidden profile — no visible posting window to evaluate dormancy."
+      },
+      {
+        "key": "karma_farming_subs",
+        "score": 0,
+        "confidence": 0.1,
+        "evidence": [
+          "Hidden profile — no visible items to evaluate"
+        ],
+        "reasoning": "Hidden profile — no visible items to evaluate."
+      },
+      {
+        "key": "fake_political_subs",
+        "score": 0,
+        "confidence": 0.15,
+        "evidence": [
+          "r/Palestinian_Violence (1 comment visible); no known fake-political-sub pattern confirmed"
+        ],
+        "reasoning": "Single visible sub is niche political, not a known fake-political sub."
+      },
+      {
+        "key": "llm_content_style",
+        "score": 0,
+        "confidence": 0.1,
+        "evidence": [
+          "Only 1 comment visible — a block-quote excerpt from Visegrád24"
+        ],
+        "reasoning": "n=1 and the comment is a quote, not generated prose — no style signal."
+      },
+      {
+        "key": "timestamp_patterns",
+        "score": 0,
+        "confidence": 0.1,
+        "evidence": [
+          "Only 1 timestamp available (t_min: 29656129)"
+        ],
+        "reasoning": "Single item — no pattern detectable."
+      },
+      {
+        "key": "topical_drift",
+        "score": 0,
+        "confidence": 0.1,
+        "evidence": [
+          "Hidden profile — insufficient items to assess topical consistency"
+        ],
+        "reasoning": "Hidden profile — no visible items to evaluate."
+      },
+      {
+        "key": "engagement_patterns",
+        "score": 0,
+        "confidence": 0.1,
+        "evidence": [
+          "Hidden history — no engagement data to evaluate"
+        ],
+        "reasoning": "Hidden history — no engagement data to evaluate."
+      },
+      {
+        "key": "username_pattern",
+        "score": -0.2,
+        "confidence": 0.3,
+        "reasoning": "Username matches Reddit's auto-suggested shape.",
+        "evidence": [
+          "username: WillyNilly1997"
+        ]
+      },
+      {
+        "key": "hidden_post_history",
+        "score": -0.1,
+        "confidence": 0.3,
+        "reasoning": "Effectively hidden — substantial karma (100k–1M).",
+        "evidence": [
+          "total_karma: 883121, posts_fetched: 0, comments_fetched: 1",
+          "account age: 504 days"
+        ]
+      },
+      {
+        "key": "bot_bouncer_status",
+        "score": 0,
+        "confidence": 0,
+        "reasoning": "No Bot Bouncer data.",
+        "evidence": [
+          "Bot Bouncer: no data"
+        ]
+      },
+      {
+        "key": "moderator_removal_history",
+        "score": 0,
+        "confidence": 0.15,
+        "reasoning": "Not enough visible history to judge removal rate.",
+        "evidence": [
+          "visible items: 1"
+        ]
+      },
+      {
+        "key": "posting_volume",
+        "score": 0,
+        "confidence": 0.15,
+        "reasoning": "Not enough timestamps to measure rate.",
+        "evidence": [
+          "posting_rate: null"
+        ]
+      },
+      {
+        "key": "moderated_subreddits",
+        "score": 0,
+        "confidence": 0.3,
+        "reasoning": "Niche moderation — informational only.",
+        "evidence": [
+          "mod count: 4; smallest: r/Antisemitismonwiki (24), r/IranianFreedom (98), r/JewHateOnWikipedia (321)"
+        ]
+      },
+      {
+        "key": "promotional_account",
+        "score": 0,
+        "confidence": 0.1,
+        "evidence": [
+          "No funnel links or promo content visible; moderated subs are cause-advocacy, not commercial"
+        ],
+        "reasoning": "No promotional signals present."
+      },
+      {
+        "key": "avatar_style",
+        "score": 0.35,
+        "confidence": 0.45,
+        "evidence": [
+          "Avatar: Shiba Inu / doggo costume onesie — distinctive fandom-style customization"
+        ],
+        "reasoning": "Deliberate fandom-style customization is a clear human signal."
+      }
+    ],
+    "durationMs": 18608,
+    "error": null
+  },
+  {
+    "variant": "A",
+    "variantLabel": "baseline",
+    "username": "candy-fairyx",
+    "model": "claude-sonnet-4-6",
+    "promptChars": 75982,
+    "inputTokens": 692,
+    "outputTokens": 1088,
+    "cacheReadTokens": 20681,
+    "cacheWriteTokens": 0,
+    "cost": 0.0246003,
+    "verdict": "bot",
+    "botProb": 0.9190865327845347,
+    "persona": "bot",
+    "region": null,
+    "factors": [
+      {
+        "key": "account_age_vs_activity",
+        "score": -0.5,
+        "confidence": 0.55,
+        "evidence": [
+          "Account created 2026-02-26, age 86 days, only 2 visible items across 49-day window",
+          "2,750 karma with near-zero visible posting rate (0.04 items/day)"
+        ],
+        "reasoning": "High karma for age with almost no visible footprint — classic pattern of hidden or deleted mass-posting."
+      },
+      {
+        "key": "dormant_account_revival",
+        "score": 0,
+        "confidence": 0.15,
+        "evidence": [
+          "Account only 86 days old"
+        ],
+        "reasoning": "Too young for dormancy analysis."
+      },
+      {
+        "key": "karma_farming_subs",
+        "score": 0,
+        "confidence": 0.15,
+        "evidence": [
+          "Only 2 visible comments in r/CHECKQS and r/AmItheAsshole"
+        ],
+        "reasoning": "Insufficient visible data to assess farming patterns."
+      },
+      {
+        "key": "fake_political_subs",
+        "score": 0,
+        "confidence": 0.1,
+        "evidence": [
+          "No political subs in visible activity"
+        ],
+        "reasoning": "No fake political sub participation visible."
+      },
+      {
+        "key": "llm_content_style",
+        "score": 0,
+        "confidence": 0.15,
+        "evidence": [
+          "Only 2 comments available — sample too small to assess"
+        ],
+        "reasoning": "Sample size of 2 is far below the minimum needed for style analysis."
+      },
+      {
+        "key": "timestamp_patterns",
+        "score": 0,
+        "confidence": 0.15,
+        "evidence": [
+          "Only 2 timestamps available — t_min 29658893 and 29588182"
+        ],
+        "reasoning": "Two data points are insufficient to detect any posting pattern."
+      },
+      {
+        "key": "topical_drift",
+        "score": 0,
+        "confidence": 0.15,
+        "evidence": [
+          "Only 2 visible comments across 2 unrelated subs"
+        ],
+        "reasoning": "Sample too thin to assess topical consistency."
+      },
+      {
+        "key": "engagement_patterns",
+        "score": 0,
+        "confidence": 0.15,
+        "evidence": [
+          "Only 2 visible items total"
+        ],
+        "reasoning": "Insufficient visible history to evaluate engagement behavior."
+      },
+      {
+        "key": "username_pattern",
+        "score": 0,
+        "confidence": 0.1,
+        "reasoning": "Username doesn't match auto-suggested shape; no signal.",
+        "evidence": [
+          "username: candy-fairyx"
+        ]
+      },
+      {
+        "key": "hidden_post_history",
+        "score": -0.4,
+        "confidence": 0.5,
+        "reasoning": "Effectively hidden — moderate karma (1k–10k).",
+        "evidence": [
+          "total_karma: 2750, posts_fetched: 0, comments_fetched: 2",
+          "account age: 86 days"
+        ]
+      },
+      {
+        "key": "bot_bouncer_status",
+        "score": -0.8,
+        "confidence": 0.8,
+        "reasoning": "Bot Bouncer banned; community + human review verdict.",
+        "evidence": [
+          "Bot Bouncer status: banned"
+        ]
+      },
+      {
+        "key": "moderator_removal_history",
+        "score": 0,
+        "confidence": 0.15,
+        "reasoning": "Not enough visible history to judge removal rate.",
+        "evidence": [
+          "visible items: 2"
+        ]
+      },
+      {
+        "key": "posting_volume",
+        "score": 0.5,
+        "confidence": 0.6,
+        "reasoning": "Posting rate in <2/day band.",
+        "evidence": [
+          "posting_rate: 0.04 items/day over 49.1 days"
+        ]
+      },
+      {
+        "key": "moderated_subreddits",
+        "score": 0,
+        "confidence": 0.15,
+        "reasoning": "No moderation roles — no signal.",
+        "evidence": [
+          "moderated count: 0"
+        ]
+      },
+      {
+        "key": "promotional_account",
+        "score": 0,
+        "confidence": 0.15,
+        "evidence": [
+          "No promotional links or self-promo content visible"
+        ],
+        "reasoning": "No promo signals detectable in the thin visible record."
+      },
+      {
+        "key": "avatar_style",
+        "score": 0.35,
+        "confidence": 0.45,
+        "evidence": [
+          "Avatar: full owl costume (hood, body suit, yellow shoes) — a specific, deliberate character choice"
+        ],
+        "reasoning": "Specific fandom/character costume indicates a real human put effort into identity expression."
+      }
+    ],
+    "durationMs": 19375,
+    "error": null
+  },
+  {
+    "variant": "A",
+    "variantLabel": "baseline",
+    "username": "netphilia",
+    "model": "claude-sonnet-4-6",
+    "promptChars": 75982,
+    "inputTokens": 20980,
+    "outputTokens": 1662,
+    "cacheReadTokens": 20681,
+    "cacheWriteTokens": 0,
+    "cost": 0.0940743,
+    "verdict": "human",
+    "botProb": 0.0009434719556814469,
+    "persona": "stan",
+    "region": "DK",
+    "factors": [
+      {
+        "key": "account_age_vs_activity",
+        "score": 0.6,
+        "confidence": 0.7,
+        "evidence": [
+          "Account created 2010-11-12; visible window 1218 days — continuous multi-year activity",
+          "Sample capped at 1000 items; posting rate 0.82 items/day across ~3.3 years of visible history"
+        ],
+        "reasoning": "Long account with continuous broad activity; fits organic long-term human shape."
+      },
+      {
+        "key": "dormant_account_revival",
+        "score": 0.5,
+        "confidence": 0.6,
+        "evidence": [
+          "Account age ~5672 days; visible window 1218 days with sample capped — earlier history exists but not fetched",
+          "Sub mix across visible window is topically consistent with the account's identity (neurodivergent, memes, animals)"
+        ],
+        "reasoning": "Sample cap limits window but consistent sub pattern across years suggests genuine long-term use, not revival."
+      },
+      {
+        "key": "karma_farming_subs",
+        "score": -0.2,
+        "confidence": 0.4,
+        "evidence": [
+          "r/spreadsmile (14 posts), r/Awwducational (31), r/Damnthatsinteresting present in top subs",
+          "But these sit alongside niche identity subs (r/adhdmeme, r/aspiememes, r/ADHD) suggesting mixed rather than pure farming intent"
+        ],
+        "reasoning": "Some karma-adjacent subs present but outnumbered by genuine-interest niche subs."
+      },
+      {
+        "key": "fake_political_subs",
+        "score": 0,
+        "confidence": 0.9,
+        "evidence": [
+          "No fake political subs in top-25 or post/comment data"
+        ],
+        "reasoning": "No relevant signal."
+      },
+      {
+        "key": "llm_content_style",
+        "score": 0.85,
+        "confidence": 0.95,
+        "evidence": [
+          "Multiple concrete first-person anecdotes: 'My sister was raped when she was 12… became an escort'; 'I heard crazy moaning from the couple upstairs — next day they had a newborn'",
+          "Situated self-disclosures: Danish locksmith twice in December, borrowed son's key, therapist misreading autism because she writes novels, MS diagnosis and Tinder dating"
+        ],
+        "reasoning": "Dense concrete anecdotes with proper nouns, family members, and situated detail — strongly human."
+      },
+      {
+        "key": "timestamp_patterns",
+        "score": 0.3,
+        "confidence": 0.4,
+        "evidence": [
+          "Posts span visible window of ~1219 days with no obvious mechanical regularity",
+          "Rate of 0.82 items/day is low and consistent with casual human use"
+        ],
+        "reasoning": "Low, irregular posting rate shows no scripted burst or round-interval pattern."
+      },
+      {
+        "key": "topical_drift",
+        "score": 0.3,
+        "confidence": 0.6,
+        "evidence": [
+          "Sub mix is coherent around a clear identity: neurodivergent (ADHD/ASD/AuDHD), memes, animal facts, abandoned places, writing/books",
+          "Comments in r/MultipleSclerosis, r/ADHD, r/writing, r/AbandonedPorn all tie to stated personal identity"
+        ],
+        "reasoning": "Apparent drift (animals, history, memes, health) actually coheres around one persona's interests."
+      },
+      {
+        "key": "engagement_patterns",
+        "score": 0.6,
+        "confidence": 0.7,
+        "evidence": [
+          "Multiple comment threads show back-and-forth replies within the same post (e.g. r/ADHD therapy thread with 10+ sequential replies)",
+          "Responds to pushback on r/adhdmeme: 'Sorry that my hyperfocus is Reddit at the moment… didn't think this subreddit was where I'd be bullied'"
+        ],
+        "reasoning": "Genuine back-and-forth engagement with replies, including defensive responses to criticism."
+      },
+      {
+        "key": "username_pattern",
+        "score": 0,
+        "confidence": 0.1,
+        "reasoning": "Username doesn't match auto-suggested shape; no signal.",
+        "evidence": [
+          "username: netphilia"
+        ]
+      },
+      {
+        "key": "hidden_post_history",
+        "score": 0.2,
+        "confidence": 0.5,
+        "reasoning": "Visible history present; not hiding.",
+        "evidence": [
+          "posts_fetched: 500, comments_fetched: 500"
+        ]
+      },
+      {
+        "key": "bot_bouncer_status",
+        "score": 0.75,
+        "confidence": 0.8,
+        "reasoning": "Bot Bouncer organic; community + human review verdict.",
+        "evidence": [
+          "Bot Bouncer status: organic"
+        ]
+      },
+      {
+        "key": "moderator_removal_history",
+        "score": 0,
+        "confidence": 0.25,
+        "reasoning": "Scattered or no removals; no strong signal.",
+        "evidence": [
+          "removals: 89 total across 1000 items",
+          "moderator: 89"
+        ]
+      },
+      {
+        "key": "posting_volume",
+        "score": 0.5,
+        "confidence": 0.6,
+        "reasoning": "Posting rate in <2/day band.",
+        "evidence": [
+          "posting_rate: 0.82 items/day over 1218.86 days (sample capped)"
+        ]
+      },
+      {
+        "key": "moderated_subreddits",
+        "score": 0,
+        "confidence": 0.15,
+        "reasoning": "No moderation roles — no signal.",
+        "evidence": [
+          "moderated count: 0"
+        ]
+      },
+      {
+        "key": "promotional_account",
+        "score": 0.3,
+        "confidence": 0.6,
+        "evidence": [
+          "One comment links to rumtilmig.dk (Danish charity recommendation) and one mentions being a published author, but no funnel links or product pitches",
+          "No self-promo sub, no OF/commercial structure, no affiliate codes"
+        ],
+        "reasoning": "No promotional structure; author identity mentioned organically in context, not as a funnel."
+      },
+      {
+        "key": "avatar_style",
+        "score": 0.35,
+        "confidence": 0.5,
+        "evidence": [
+          "Avatar: tiger-hoodie onesie on Snoo with green eyes and yellow boots — clearly customized with a specific cute/kawaii fandom-adjacent aesthetic",
+          "Customization effort and kawaii-animal style consistent with the account's cat/animal-meme focus and neurodivergent community norms"
+        ],
+        "reasoning": "Deliberate identity-expressive customization; fits the account's niche aesthetic convincingly."
+      }
+    ],
+    "durationMs": 36677,
+    "error": null
+  },
+  {
+    "variant": "A",
+    "variantLabel": "baseline",
+    "username": "Biscocino",
+    "model": "claude-sonnet-4-6",
+    "promptChars": 75982,
+    "inputTokens": 10519,
+    "outputTokens": 1425,
+    "cacheReadTokens": 20681,
+    "cacheWriteTokens": 0,
+    "cost": 0.0591363,
+    "verdict": "uncertain",
+    "botProb": 0.36,
+    "persona": "cam_model",
+    "region": "NL",
+    "factors": [
+      {
+        "key": "account_age_vs_activity",
+        "score": -0.3,
+        "confidence": 0.5,
+        "evidence": [
+          "Account created 2025-10-12, age 224 days",
+          "Visible window 212.73 days — activity begins almost immediately after creation"
+        ],
+        "reasoning": "Young account with near-immediate high activity; fits warmup-then-monetize shape."
+      },
+      {
+        "key": "dormant_account_revival",
+        "score": 0,
+        "confidence": 0.2,
+        "evidence": [
+          "Account only 224 days old — too young for dormancy analysis"
+        ],
+        "reasoning": "Account too young for dormancy analysis."
+      },
+      {
+        "key": "karma_farming_subs",
+        "score": -0.2,
+        "confidence": 0.4,
+        "evidence": [
+          "r/PrettyGirls, r/PrettyOlderWomen, r/pics — soft engagement-bait subs for appearance posts",
+          "Only 1 post each; not the primary pattern"
+        ],
+        "reasoning": "Occasional posts in soft karma-bait appearance subs, but primary activity is her own sub."
+      },
+      {
+        "key": "fake_political_subs",
+        "score": 0,
+        "confidence": 0.1,
+        "evidence": [
+          "No political or fake-political subs in activity"
+        ],
+        "reasoning": "No relevant data."
+      },
+      {
+        "key": "llm_content_style",
+        "score": 0.7,
+        "confidence": 0.8,
+        "evidence": [
+          "Concrete anecdotes: 'tiny gold necklace is oldddd got it from my grandma', 'bought this one 3 years ago and the other I have nearly 6'",
+          "Situated humor: 'I know the wavy brown hair can be confusing but I'm not Jesus'"
+        ],
+        "reasoning": "Rich concrete personal detail and situated humor throughout — strongly human voice."
+      },
+      {
+        "key": "timestamp_patterns",
+        "score": 0.2,
+        "confidence": 0.3,
+        "evidence": [
+          "Comments cluster across multiple days at varied hours — no round-interval bursting visible",
+          "No suspicious 24-hour uniform distribution"
+        ],
+        "reasoning": "Timestamps appear organic; no scripted patterns detected."
+      },
+      {
+        "key": "topical_drift",
+        "score": 0.5,
+        "confidence": 0.6,
+        "evidence": [
+          "Overwhelmingly consistent fashion/vintage-Italy niche across all posts and comments",
+          "Occasional one-off posts (r/OldSchoolCool, r/pics) are coherent with her aesthetic interest"
+        ],
+        "reasoning": "Extremely tight topical consistency — hallmark of a niche-focused human."
+      },
+      {
+        "key": "engagement_patterns",
+        "score": 0.8,
+        "confidence": 0.85,
+        "evidence": [
+          "216 comments almost all directly replying to commenters by username ('Thanks map!', 'Noted Johnny!')",
+          "Active back-and-forth threading on every post — no dump-and-leave pattern"
+        ],
+        "reasoning": "Highly engaged; personally replies to virtually every comment with personalized responses."
+      },
+      {
+        "key": "username_pattern",
+        "score": 0,
+        "confidence": 0.1,
+        "reasoning": "Username doesn't match auto-suggested shape; no signal.",
+        "evidence": [
+          "username: Biscocino"
+        ]
+      },
+      {
+        "key": "hidden_post_history",
+        "score": 0.2,
+        "confidence": 0.5,
+        "reasoning": "Visible history present; not hiding.",
+        "evidence": [
+          "posts_fetched: 20, comments_fetched: 216"
+        ]
+      },
+      {
+        "key": "bot_bouncer_status",
+        "score": 0,
+        "confidence": 0,
+        "reasoning": "No Bot Bouncer data.",
+        "evidence": [
+          "Bot Bouncer: no data"
+        ]
+      },
+      {
+        "key": "moderator_removal_history",
+        "score": 0.3,
+        "confidence": 0.5,
+        "reasoning": "Zero removals across substantial visible history.",
+        "evidence": [
+          "removals: 0 total across 236 items"
+        ]
+      },
+      {
+        "key": "posting_volume",
+        "score": 0.5,
+        "confidence": 0.6,
+        "reasoning": "Posting rate in <2/day band.",
+        "evidence": [
+          "posting_rate: 1.11 items/day over 212.73 days"
+        ]
+      },
+      {
+        "key": "moderated_subreddits",
+        "score": 0,
+        "confidence": 0.3,
+        "reasoning": "Niche moderation — informational only.",
+        "evidence": [
+          "mod count: 1; smallest: r/mystyledisplay (885)"
+        ]
+      },
+      {
+        "key": "promotional_account",
+        "score": -0.75,
+        "confidence": 0.85,
+        "evidence": [
+          "Founded r/mystyledisplay (885 subs); 195/236 visible items are her own outfit photos there",
+          "Explicit creator funnel: peachboo.com/biscocino linked in pinned post; repeated subreddit recruitment posts"
+        ],
+        "reasoning": "Owns the venue, posts only her own appearance content, and funnels to an external creator page — textbook cam/creator structural pattern."
+      },
+      {
+        "key": "avatar_style",
+        "score": 0.35,
+        "confidence": 0.5,
+        "evidence": [
+          "Avatar: yellow Shiba Inu / dog costume character — custom, cute, personality-expressive",
+          "Matches username 'Biscocino' (biscuit + cute suffix) and playful brand identity"
+        ],
+        "reasoning": "Deliberately customized avatar matching personal brand — strong human identity signal."
+      }
+    ],
+    "durationMs": 30089,
+    "error": null
+  },
+  {
+    "variant": "A",
+    "variantLabel": "baseline",
+    "username": "siruppaws",
+    "model": "claude-sonnet-4-6",
+    "promptChars": 75982,
+    "inputTokens": 5337,
+    "outputTokens": 1432,
+    "cacheReadTokens": 20681,
+    "cacheWriteTokens": 0,
+    "cost": 0.043695300000000006,
+    "verdict": "likely-bot",
+    "botProb": 0.66,
+    "persona": "cam_model",
+    "region": null,
+    "factors": [
+      {
+        "key": "account_age_vs_activity",
+        "score": -0.3,
+        "confidence": 0.5,
+        "evidence": [
+          "Account created 2025-10-25, age ~210 days; visible activity window only 36.85 days — bulk of posting is very recent.",
+          "Account is 7 months old with continuous posting only in the last ~37 days."
+        ],
+        "reasoning": "Young account with recent posting burst; fits Pattern B mild dormancy on a sub-year account."
+      },
+      {
+        "key": "dormant_account_revival",
+        "score": 0,
+        "confidence": 0.2,
+        "reasoning": "Account under 1 year old — dormancy revival factor not applicable."
+      },
+      {
+        "key": "karma_farming_subs",
+        "score": 0,
+        "confidence": 0.2,
+        "evidence": [
+          "No recognized karma-farming subs in the top-subreddit list."
+        ],
+        "reasoning": "No karma-farm sub participation observed."
+      },
+      {
+        "key": "fake_political_subs",
+        "score": 0,
+        "confidence": 0.1,
+        "reasoning": "No political subs of any kind present."
+      },
+      {
+        "key": "llm_content_style",
+        "score": 0.7,
+        "confidence": 0.7,
+        "evidence": [
+          "Comments contain specific, situated humor and personal references: 'the whole lineage consists of tall grasshoppers', 'i completely forgot i had this skirt', 'twirling around non stop hahah its a very twirly skirt'.",
+          "Casual lowercase register, typos ('likethe'), nickname-addressed replies ('thanks map! 🖤', 'hi safa! how are ya?') — distinctly human cadence."
+        ],
+        "reasoning": "Consistent personal voice with concrete situated detail — clearly human-authored."
+      },
+      {
+        "key": "timestamp_patterns",
+        "score": 0,
+        "confidence": 0.3,
+        "evidence": [
+          "Comment clusters are reply-thread shaped (many items sharing close t_min values under the same post), not round-interval bursts."
+        ],
+        "reasoning": "Clustering reflects active reply engagement, not scripted intervals."
+      },
+      {
+        "key": "topical_drift",
+        "score": 0.3,
+        "confidence": 0.5,
+        "evidence": [
+          "133 of 139 visible items in r/altgothcloset; 1 in r/CozyPlaces; 5 on own profile.",
+          "Zero topical contradiction — single tight niche throughout."
+        ],
+        "reasoning": "Hyper-consistent single-niche focus; no drift whatsoever."
+      },
+      {
+        "key": "engagement_patterns",
+        "score": 0.8,
+        "confidence": 0.75,
+        "evidence": [
+          "Replies to commenters by nickname across every post thread ('thanks map!', 'thanks panda 🖤', 'hi safa! how are ya?').",
+          "120 comments fetched are almost entirely replies to her own posts — active two-way engagement."
+        ],
+        "reasoning": "Highly engaged operator responding personally to nearly every commenter."
+      },
+      {
+        "key": "username_pattern",
+        "score": 0,
+        "confidence": 0.1,
+        "reasoning": "Username doesn't match auto-suggested shape; no signal.",
+        "evidence": [
+          "username: siruppaws"
+        ]
+      },
+      {
+        "key": "hidden_post_history",
+        "score": 0.2,
+        "confidence": 0.5,
+        "reasoning": "Visible history present; not hiding.",
+        "evidence": [
+          "posts_fetched: 19, comments_fetched: 120"
+        ]
+      },
+      {
+        "key": "bot_bouncer_status",
+        "score": -0.8,
+        "confidence": 0.8,
+        "reasoning": "Bot Bouncer banned; community + human review verdict.",
+        "evidence": [
+          "Bot Bouncer status: banned"
+        ]
+      },
+      {
+        "key": "moderator_removal_history",
+        "score": 0.3,
+        "confidence": 0.5,
+        "reasoning": "Zero removals across substantial visible history.",
+        "evidence": [
+          "removals: 0 total across 139 items"
+        ]
+      },
+      {
+        "key": "posting_volume",
+        "score": 0.3,
+        "confidence": 0.5,
+        "reasoning": "Posting rate in <10/day band.",
+        "evidence": [
+          "posting_rate: 3.77 items/day over 36.85 days"
+        ]
+      },
+      {
+        "key": "moderated_subreddits",
+        "score": 0,
+        "confidence": 0.3,
+        "reasoning": "Niche moderation — informational only.",
+        "evidence": [
+          "mod count: 1; smallest: r/altgothcloset (1066)"
+        ]
+      },
+      {
+        "key": "promotional_account",
+        "score": -0.75,
+        "confidence": 0.82,
+        "evidence": [
+          "Founded and moderates r/altgothcloset (1,066 subscribers); 133/139 visible items are her own outfit photos posted there.",
+          "Stickied profile post links to feedviewr.com/siruppaws — explicit creator funnel."
+        ],
+        "reasoning": "Founder-mod posting own appearance content in owned sub, with a live creator funnel link — OF/cam structural fingerprint."
+      },
+      {
+        "key": "avatar_style",
+        "score": 0.35,
+        "confidence": 0.5,
+        "evidence": [
+          "Avatar: brown pigtails, rabbit-ear kawaii hat, purple hoodie, jeans — carefully customized kawaii-girl aesthetic matching the goth/alt fashion persona."
+        ],
+        "reasoning": "Thoughtfully customized identity-expressing avatar — strong human signal consistent with cam-model/creator archetype."
+      }
+    ],
+    "durationMs": 29279,
+    "error": null
+  },
+  {
+    "variant": "B",
+    "variantLabel": "compressed",
+    "username": "B-z_B-s",
+    "model": "claude-sonnet-4-6",
+    "promptChars": 52677,
+    "inputTokens": 39503,
+    "outputTokens": 1541,
+    "cacheReadTokens": 0,
+    "cacheWriteTokens": 15375,
+    "cost": 0.233874,
+    "verdict": "human",
+    "botProb": 0.007729128594160936,
+    "persona": "zealot",
+    "region": "US",
+    "factors": [
+      {
+        "key": "account_age_vs_activity",
+        "score": -0.4,
+        "confidence": 0.7,
+        "evidence": [
+          "Account created 2025-10-15, age ~221 days; 1.18M karma accumulated",
+          "posting_rate: ~4 items/day visible over 219 days; sample capped — earlier volume may be higher"
+        ],
+        "reasoning": "Under a year old with enormous karma accumulation is unusual, though continuous visible activity fits Pattern A″ moderate tilt."
+      },
+      {
+        "key": "dormant_account_revival",
+        "score": 0.3,
+        "confidence": 0.5,
+        "evidence": [
+          "Account ~221 days old; visible window 219 days — no meaningful dormancy gap",
+          "Activity appears continuous from near creation"
+        ],
+        "reasoning": "No revival pattern; account appears active from near creation."
+      },
+      {
+        "key": "karma_farming_subs",
+        "score": 0.1,
+        "confidence": 0.4,
+        "evidence": [
+          "712 of ~887 visible items in r/politics — engagement-bait via news headlines, but r/politics is a legitimate sub",
+          "No classic karma-farm subs (r/aww, r/MadeMeSmile, r/spread) in top subreddits"
+        ],
+        "reasoning": "News-link flooding in r/politics edges toward farming but lacks dedicated karma-farm sub participation."
+      },
+      {
+        "key": "fake_political_subs",
+        "score": 0.2,
+        "confidence": 0.5,
+        "evidence": [
+          "r/politics is legitimate; no r/NoFilterNews, r/TheDemocrats, r/ProgressiveHQ, or similar bot-playground subs present",
+          "r/complaints is own profile-adjacent sub, not a fake political sub"
+        ],
+        "reasoning": "No fake political sub participation detected."
+      },
+      {
+        "key": "llm_content_style",
+        "score": 0.75,
+        "confidence": 0.85,
+        "evidence": [
+          "Numerous concrete first-person anecdotes: 'My transgender cousin refused to vote...'; personal autism self-disclosure; Doctor Who quotes from memory",
+          "Comments show situated humor, typo corrections of other users, mid-comment self-corrections — LLMs don't do this"
+        ],
+        "reasoning": "Dense concrete first-person anecdotes and genuine emotional reactions are strongly anti-LLM."
+      },
+      {
+        "key": "timestamp_patterns",
+        "score": 0,
+        "confidence": 0.2,
+        "evidence": [
+          "t_min values not analyzed for clustering; sample too dense to resolve manually"
+        ],
+        "reasoning": "No clear timestamp anomaly detectable from available data."
+      },
+      {
+        "key": "topical_drift",
+        "score": 0.5,
+        "confidence": 0.7,
+        "evidence": [
+          "r/politics (712 items) + r/WanderingInn fandom posts + r/ProgressionFantasy + r/HazbinHotel — coherent profile of political zealot who also reads LitRPG",
+          "No contradictory persona claims across topics"
+        ],
+        "reasoning": "Two stable clusters (US politics + SFF fandom) are consistent with a single human identity."
+      },
+      {
+        "key": "engagement_patterns",
+        "score": 0.6,
+        "confidence": 0.75,
+        "evidence": [
+          "Comments reply directly to article content with personal asides and humor (e.g. 'TACO Tuesday', Vox from Hazbin Hotel reference)",
+          "Post on own profile explicitly addresses bot accusations and explains high posting volume via autism"
+        ],
+        "reasoning": "Specific reactive engagement with article details and self-aware meta-posts indicate genuine human interaction."
+      },
+      {
+        "key": "username_pattern",
+        "score": 0,
+        "confidence": 0.1,
+        "reasoning": "Username doesn't match auto-suggested shape; no signal.",
+        "evidence": [
+          "username: B-z_B-s"
+        ]
+      },
+      {
+        "key": "hidden_post_history",
+        "score": 0.2,
+        "confidence": 0.5,
+        "reasoning": "Visible history present; not hiding.",
+        "evidence": [
+          "posts_fetched: 387, comments_fetched: 500"
+        ]
+      },
+      {
+        "key": "bot_bouncer_status",
+        "score": 0.75,
+        "confidence": 0.8,
+        "reasoning": "Bot Bouncer organic; community + human review verdict.",
+        "evidence": [
+          "Bot Bouncer status: organic"
+        ]
+      },
+      {
+        "key": "moderator_removal_history",
+        "score": -0.2,
+        "confidence": 0.4,
+        "reasoning": "Scattered admin/sitewide removals; modest signal.",
+        "evidence": [
+          "removals: 13 total across 887 items",
+          "reddit: 1",
+          "moderator: 12"
+        ]
+      },
+      {
+        "key": "posting_volume",
+        "score": 0.3,
+        "confidence": 0.5,
+        "reasoning": "Posting rate in <10/day band.",
+        "evidence": [
+          "posting_rate: 4.05 items/day over 219.13 days (sample capped)"
+        ]
+      },
+      {
+        "key": "moderated_subreddits",
+        "score": 0,
+        "confidence": 0.15,
+        "reasoning": "No moderation roles — no signal.",
+        "evidence": [
+          "moderated count: 0"
+        ]
+      },
+      {
+        "key": "promotional_account",
+        "score": 0.3,
+        "confidence": 0.5,
+        "evidence": [
+          "No funnel links, product promotion, or commercial signals detected",
+          "Profile posts are personal diary/excerpt posts, not monetization funnels"
+        ],
+        "reasoning": "No promotional purpose; account is here for politics and fandom, not conversion."
+      },
+      {
+        "key": "avatar_style",
+        "score": 0.4,
+        "confidence": 0.6,
+        "evidence": [
+          "avatar: rainbow tie-dye shirt + flower hat + pet parrot — identity-foregrounding, pride-adjacent customization",
+          "Customization effort consistent with earnest human self-expression"
+        ],
+        "reasoning": "Identity-flagged customized avatar correlates with earnest-evangelist Stan persona; strong human signal."
+      }
+    ],
+    "durationMs": 35219,
+    "error": null
+  },
+  {
+    "variant": "B",
+    "variantLabel": "compressed",
+    "username": "Ask4MD",
+    "model": "claude-sonnet-4-6",
+    "promptChars": 52677,
+    "inputTokens": 26639,
+    "outputTokens": 1343,
+    "cacheReadTokens": 15375,
+    "cacheWriteTokens": 0,
+    "cost": 0.1046745,
+    "verdict": "likely-human",
+    "botProb": 0.1570954688854527,
+    "persona": "zealot",
+    "region": "US",
+    "factors": [
+      {
+        "key": "account_age_vs_activity",
+        "score": -0.2,
+        "confidence": 0.5,
+        "evidence": [
+          "account created 2023-09-15, age ~982 days",
+          "sample_capped: true — earlier activity outside API window likely"
+        ],
+        "reasoning": "Account is ~2.7 years old with continuous visible activity; no fresh-account burst anomaly, but sample is capped."
+      },
+      {
+        "key": "dormant_account_revival",
+        "score": 0.4,
+        "confidence": 0.5,
+        "evidence": [
+          "visible_window_days: 195 of 982 total days; sample_capped: true",
+          "consistent posting style across visible window — no topical pivot visible"
+        ],
+        "reasoning": "Sample cap means earlier history is unknown, but visible window shows no revival signature."
+      },
+      {
+        "key": "karma_farming_subs",
+        "score": -0.4,
+        "confidence": 0.6,
+        "evidence": [
+          "830/1000 visible items in r/Conservative — a large engagement-bait sub",
+          "link_karma: 1,322,038 vs comment_karma: 42,098 — overwhelmingly link-drops"
+        ],
+        "reasoning": "Near-exclusive link-dumping into a single high-traffic sub is a karma-farming pattern."
+      },
+      {
+        "key": "fake_political_subs",
+        "score": 0,
+        "confidence": 0.3,
+        "evidence": [
+          "r/Conservative and r/jewishpolitics are real communities, not bot-playground subs"
+        ],
+        "reasoning": "No participation in known fake political subs."
+      },
+      {
+        "key": "llm_content_style",
+        "score": 0.5,
+        "confidence": 0.65,
+        "evidence": [
+          "Comments include specific situated observations: 'Exactly seven years two months and 26 days since Gavin Newsom became governor…', detailed geopolitical arguments",
+          "Dry wit: 'Message to the jihadists. Chuck Norris is in heaven. There are no more virgins.'"
+        ],
+        "reasoning": "Concrete first-person reasoning, classical allusions, and sardonic humor are not LLM patterns — this is a human voice."
+      },
+      {
+        "key": "timestamp_patterns",
+        "score": 0,
+        "confidence": 0.3,
+        "evidence": [
+          "t_min values span wide range; no obvious round-interval or burst-within-seconds pattern in visible sample"
+        ],
+        "reasoning": "No scripted timing pattern detectable at available resolution."
+      },
+      {
+        "key": "topical_drift",
+        "score": -0.3,
+        "confidence": 0.5,
+        "evidence": [
+          "830 posts in r/Conservative, 147 in r/jewishpolitics — extremely concentrated",
+          "Topics are consistently US conservative politics + Israel/Iran — no contradictory persona shifts"
+        ],
+        "reasoning": "Topically hyper-focused rather than drifting; mild negative for total absence of other-life posting."
+      },
+      {
+        "key": "engagement_patterns",
+        "score": 0.3,
+        "confidence": 0.55,
+        "evidence": [
+          "Comments show genuine back-and-forth: rebuts individual users, extends arguments across threads",
+          "2 moderator removals out of 1000 items — not a dump-and-leave pattern"
+        ],
+        "reasoning": "Active engagement with replies indicates a human operating the account."
+      },
+      {
+        "key": "username_pattern",
+        "score": 0,
+        "confidence": 0.1,
+        "reasoning": "Username doesn't match auto-suggested shape; no signal.",
+        "evidence": [
+          "username: Ask4MD"
+        ]
+      },
+      {
+        "key": "hidden_post_history",
+        "score": 0.2,
+        "confidence": 0.5,
+        "reasoning": "Visible history present; not hiding.",
+        "evidence": [
+          "posts_fetched: 500, comments_fetched: 500"
+        ]
+      },
+      {
+        "key": "bot_bouncer_status",
+        "score": 0.75,
+        "confidence": 0.8,
+        "reasoning": "Bot Bouncer organic; community + human review verdict.",
+        "evidence": [
+          "Bot Bouncer status: organic"
+        ]
+      },
+      {
+        "key": "moderator_removal_history",
+        "score": 0,
+        "confidence": 0.25,
+        "reasoning": "Scattered or no removals; no strong signal.",
+        "evidence": [
+          "removals: 2 total across 1000 items",
+          "moderator: 2"
+        ]
+      },
+      {
+        "key": "posting_volume",
+        "score": 0.3,
+        "confidence": 0.5,
+        "reasoning": "Posting rate in <10/day band.",
+        "evidence": [
+          "posting_rate: 5.12 items/day over 195.24 days (sample capped)"
+        ]
+      },
+      {
+        "key": "moderated_subreddits",
+        "score": 0,
+        "confidence": 0.15,
+        "reasoning": "No moderation roles — no signal.",
+        "evidence": [
+          "moderated count: 0"
+        ]
+      },
+      {
+        "key": "promotional_account",
+        "score": 0.1,
+        "confidence": 0.35,
+        "evidence": [
+          "No funnel links, product promotions, or self-referential content observed",
+          "Account posts news links and commentary — no commercial vector visible"
+        ],
+        "reasoning": "No promotional signals; account appears ideologically motivated, not commercially."
+      },
+      {
+        "key": "avatar_style",
+        "score": 0,
+        "confidence": 0.15,
+        "evidence": [
+          "avatar: default snoo"
+        ],
+        "reasoning": "Default avatar — no signal."
+      }
+    ],
+    "durationMs": 30790,
+    "error": null
+  },
+  {
+    "variant": "B",
+    "variantLabel": "compressed",
+    "username": "WillyNilly1997",
+    "model": "claude-sonnet-4-6",
+    "promptChars": 52677,
+    "inputTokens": 830,
+    "outputTokens": 1093,
+    "cacheReadTokens": 15375,
+    "cacheWriteTokens": 0,
+    "cost": 0.0234975,
+    "verdict": "uncertain",
+    "botProb": 0.4887518980531451,
+    "persona": "zealot",
+    "region": "IL",
+    "factors": [
+      {
+        "key": "account_age_vs_activity",
+        "score": 0,
+        "confidence": 0.15,
+        "evidence": [
+          "Effectively hidden — 0 posts fetched, 1 comment fetched, 883k karma"
+        ],
+        "reasoning": "Hidden profile makes activity-pattern analysis impossible."
+      },
+      {
+        "key": "dormant_account_revival",
+        "score": 0,
+        "confidence": 0.15,
+        "evidence": [
+          "Account created 2025-01-04; age ~504 days but only 1 visible item"
+        ],
+        "reasoning": "Hidden profile — dormancy gap unmeasurable."
+      },
+      {
+        "key": "karma_farming_subs",
+        "score": 0,
+        "confidence": 0.15,
+        "evidence": [
+          "Only visible sub: r/Palestinian_Violence"
+        ],
+        "reasoning": "No visible items to evaluate karma-farming pattern."
+      },
+      {
+        "key": "fake_political_subs",
+        "score": 0,
+        "confidence": 0.15,
+        "evidence": [
+          "r/Palestinian_Violence is niche advocacy, not a known fake-political bot playground"
+        ],
+        "reasoning": "No matching fake-political subs in visible data."
+      },
+      {
+        "key": "llm_content_style",
+        "score": 0,
+        "confidence": 0.1,
+        "evidence": [
+          "Only 1 visible comment — a block quote with no original prose"
+        ],
+        "reasoning": "Single quote-only comment; insufficient sample for style analysis."
+      },
+      {
+        "key": "timestamp_patterns",
+        "score": 0,
+        "confidence": 0.1,
+        "evidence": [
+          "Only 1 timestamp available: t_min 29656129"
+        ],
+        "reasoning": "Single data point — no pattern detectable."
+      },
+      {
+        "key": "topical_drift",
+        "score": 0,
+        "confidence": 0.1,
+        "evidence": [
+          "Only 1 visible item in 1 sub"
+        ],
+        "reasoning": "Insufficient data to assess topical consistency."
+      },
+      {
+        "key": "engagement_patterns",
+        "score": 0,
+        "confidence": 0.1,
+        "evidence": [
+          "0 posts fetched, 1 comment fetched"
+        ],
+        "reasoning": "Hidden history — no engagement data to evaluate."
+      },
+      {
+        "key": "username_pattern",
+        "score": -0.2,
+        "confidence": 0.3,
+        "reasoning": "Username matches Reddit's auto-suggested shape.",
+        "evidence": [
+          "username: WillyNilly1997"
+        ]
+      },
+      {
+        "key": "hidden_post_history",
+        "score": -0.1,
+        "confidence": 0.3,
+        "reasoning": "Effectively hidden — substantial karma (100k–1M).",
+        "evidence": [
+          "total_karma: 883121, posts_fetched: 0, comments_fetched: 1",
+          "account age: 504 days"
+        ]
+      },
+      {
+        "key": "bot_bouncer_status",
+        "score": 0,
+        "confidence": 0,
+        "reasoning": "No Bot Bouncer data.",
+        "evidence": [
+          "Bot Bouncer: no data"
+        ]
+      },
+      {
+        "key": "moderator_removal_history",
+        "score": 0,
+        "confidence": 0.15,
+        "reasoning": "Not enough visible history to judge removal rate.",
+        "evidence": [
+          "visible items: 1"
+        ]
+      },
+      {
+        "key": "posting_volume",
+        "score": 0,
+        "confidence": 0.15,
+        "reasoning": "Not enough timestamps to measure rate.",
+        "evidence": [
+          "posting_rate: null"
+        ]
+      },
+      {
+        "key": "moderated_subreddits",
+        "score": 0,
+        "confidence": 0.3,
+        "reasoning": "Niche moderation — informational only.",
+        "evidence": [
+          "mod count: 4; smallest: r/Antisemitismonwiki (24), r/IranianFreedom (98), r/JewHateOnWikipedia (321)"
+        ]
+      },
+      {
+        "key": "promotional_account",
+        "score": 0,
+        "confidence": 0.15,
+        "evidence": [
+          "No funnel links, no product content visible"
+        ],
+        "reasoning": "No promotional signals in visible data."
+      },
+      {
+        "key": "avatar_style",
+        "score": 0.35,
+        "confidence": 0.45,
+        "evidence": [
+          "avatar: Shiba Inu / Doge-costumed Snoo — custom cartoon fandom avatar"
+        ],
+        "reasoning": "Customized fandom-style avatar signals genuine human engagement."
+      }
+    ],
+    "durationMs": 19432,
+    "error": null
+  },
+  {
+    "variant": "B",
+    "variantLabel": "compressed",
+    "username": "candy-fairyx",
+    "model": "claude-sonnet-4-6",
+    "promptChars": 52677,
+    "inputTokens": 692,
+    "outputTokens": 1001,
+    "cacheReadTokens": 15375,
+    "cacheWriteTokens": 0,
+    "cost": 0.0217035,
+    "verdict": "bot",
+    "botProb": 0.9244915960594648,
+    "persona": "bot",
+    "region": null,
+    "factors": [
+      {
+        "key": "account_age_vs_activity",
+        "score": -0.5,
+        "confidence": 0.6,
+        "evidence": [
+          "account created 2026-02-26, age 86 days, only 2 visible items fetched",
+          "2,750 karma with 0 posts fetched — bulk of activity hidden or deleted"
+        ],
+        "reasoning": "Karma far exceeds what 2 visible items could explain; hidden or deleted bulk activity on young account."
+      },
+      {
+        "key": "dormant_account_revival",
+        "score": 0,
+        "confidence": 0.1,
+        "evidence": [],
+        "reasoning": "Account too young for dormancy analysis."
+      },
+      {
+        "key": "karma_farming_subs",
+        "score": 0,
+        "confidence": 0.2,
+        "evidence": [
+          "r/CHECKQS, r/AmItheAsshole — neither is a classic karma-farming sub"
+        ],
+        "reasoning": "No karma-farming subs visible in thin sample."
+      },
+      {
+        "key": "fake_political_subs",
+        "score": 0,
+        "confidence": 0.1,
+        "evidence": [],
+        "reasoning": "No fake political subs present."
+      },
+      {
+        "key": "llm_content_style",
+        "score": 0,
+        "confidence": 0.15,
+        "evidence": [
+          "only 2 comments — sample too small to assess style"
+        ],
+        "reasoning": "Fewer than 5 comments; style signal unreliable."
+      },
+      {
+        "key": "timestamp_patterns",
+        "score": 0,
+        "confidence": 0.1,
+        "evidence": [
+          "only 2 timestamps available"
+        ],
+        "reasoning": "Two data points insufficient for pattern analysis."
+      },
+      {
+        "key": "topical_drift",
+        "score": 0,
+        "confidence": 0.1,
+        "evidence": [],
+        "reasoning": "Insufficient items to assess topical consistency."
+      },
+      {
+        "key": "engagement_patterns",
+        "score": 0,
+        "confidence": 0.15,
+        "evidence": [
+          "only 2 comments visible; 0 posts fetched"
+        ],
+        "reasoning": "Hidden history — no meaningful engagement data available."
+      },
+      {
+        "key": "username_pattern",
+        "score": 0,
+        "confidence": 0.1,
+        "reasoning": "Username doesn't match auto-suggested shape; no signal.",
+        "evidence": [
+          "username: candy-fairyx"
+        ]
+      },
+      {
+        "key": "hidden_post_history",
+        "score": -0.4,
+        "confidence": 0.5,
+        "reasoning": "Effectively hidden — moderate karma (1k–10k).",
+        "evidence": [
+          "total_karma: 2750, posts_fetched: 0, comments_fetched: 2",
+          "account age: 86 days"
+        ]
+      },
+      {
+        "key": "bot_bouncer_status",
+        "score": -0.8,
+        "confidence": 0.8,
+        "reasoning": "Bot Bouncer banned; community + human review verdict.",
+        "evidence": [
+          "Bot Bouncer status: banned"
+        ]
+      },
+      {
+        "key": "moderator_removal_history",
+        "score": 0,
+        "confidence": 0.15,
+        "reasoning": "Not enough visible history to judge removal rate.",
+        "evidence": [
+          "visible items: 2"
+        ]
+      },
+      {
+        "key": "posting_volume",
+        "score": 0.5,
+        "confidence": 0.6,
+        "reasoning": "Posting rate in <2/day band.",
+        "evidence": [
+          "posting_rate: 0.04 items/day over 49.1 days"
+        ]
+      },
+      {
+        "key": "moderated_subreddits",
+        "score": 0,
+        "confidence": 0.15,
+        "reasoning": "No moderation roles — no signal.",
+        "evidence": [
+          "moderated count: 0"
+        ]
+      },
+      {
+        "key": "promotional_account",
+        "score": 0,
+        "confidence": 0.1,
+        "evidence": [],
+        "reasoning": "No promotional signals in visible content."
+      },
+      {
+        "key": "avatar_style",
+        "score": 0.35,
+        "confidence": 0.45,
+        "evidence": [
+          "avatar: owl costume (brown feathered onesie, yellow feet, owl head hat)"
+        ],
+        "reasoning": "Customized fandom-style avatar indicates human bothered to personalize."
+      }
+    ],
+    "durationMs": 16878,
+    "error": null
+  },
+  {
+    "variant": "B",
+    "variantLabel": "compressed",
+    "username": "netphilia",
+    "model": "claude-sonnet-4-6",
+    "promptChars": 52677,
+    "inputTokens": 20980,
+    "outputTokens": 1394,
+    "cacheReadTokens": 15375,
+    "cacheWriteTokens": 0,
+    "cost": 0.0884625,
+    "verdict": "human",
+    "botProb": 0.0018056993123712975,
+    "persona": "stan",
+    "region": "DK",
+    "factors": [
+      {
+        "key": "account_age_vs_activity",
+        "score": 0.6,
+        "confidence": 0.75,
+        "evidence": [
+          "account created 2010-11-12, visible window ~1219 days — continuous activity over years",
+          "sample capped: true; long organic history implied"
+        ],
+        "reasoning": "Old account with sustained multi-year visible activity fits genuine long-term human shape."
+      },
+      {
+        "key": "dormant_account_revival",
+        "score": 0.5,
+        "confidence": 0.7,
+        "evidence": [
+          "account age ~5672 days; visible window 1219 days, sample capped — earlier activity likely exists",
+          "no topical incongruence; sub mix consistent throughout"
+        ],
+        "reasoning": "Sample cap means older activity not visible, but no revival pattern — consistent niche throughout."
+      },
+      {
+        "key": "karma_farming_subs",
+        "score": -0.3,
+        "confidence": 0.55,
+        "evidence": [
+          "r/spreadsmile (14 posts), r/Damnthatsinteresting, r/interestingasfuck in top subs",
+          "bulk of karma is link karma (5.23M) from viral image/meme reposts"
+        ],
+        "reasoning": "Some easy-upvote farming subs present, but embedded in a coherent niche rather than pure karma-chasing."
+      },
+      {
+        "key": "fake_political_subs",
+        "score": 0,
+        "confidence": 0.2,
+        "evidence": [
+          "no fake political subs in top-25 or visible posts"
+        ],
+        "reasoning": "No relevant data."
+      },
+      {
+        "key": "llm_content_style",
+        "score": 0.8,
+        "confidence": 0.85,
+        "evidence": [
+          "concrete situated anecdotes: 'My sister was raped when she was 12…'; 'I heard crazy moaning from the couple upstairs, next day they had a newborn'",
+          "specific self-disclosure: Danish, published author, diagnosed ADHD/ASD at 46, son, apartment, therapy details"
+        ],
+        "reasoning": "Dense concrete first-person anecdotes with proper nouns and situated detail — unmistakably human voice."
+      },
+      {
+        "key": "timestamp_patterns",
+        "score": 0,
+        "confidence": 0.2,
+        "evidence": [
+          "timestamps not analyzed for clustering patterns at scale"
+        ],
+        "reasoning": "No burst or round-interval anomalies detected in visible sample."
+      },
+      {
+        "key": "topical_drift",
+        "score": 0.3,
+        "confidence": 0.6,
+        "evidence": [
+          "core cluster: ADHD/ASD memes, animal facts, humor, abandoned places, writing",
+          "minor presence in r/MultipleSclerosis, r/Tinder, r/ADHD — all consistent with personal life thread"
+        ],
+        "reasoning": "Sub mix is wide but coherent around a neurodivergent hobbyist identity, not incoherent drift."
+      },
+      {
+        "key": "engagement_patterns",
+        "score": 0.6,
+        "confidence": 0.7,
+        "evidence": [
+          "lengthy multi-reply engagement on therapy thread (r/ADHD, r/adhdwomen)",
+          "defends own posts when questioned ('Sorry that my hyperfocus is Reddit…')"
+        ],
+        "reasoning": "Active back-and-forth engagement across multiple threads is a strong human signal."
+      },
+      {
+        "key": "username_pattern",
+        "score": 0,
+        "confidence": 0.1,
+        "reasoning": "Username doesn't match auto-suggested shape; no signal.",
+        "evidence": [
+          "username: netphilia"
+        ]
+      },
+      {
+        "key": "hidden_post_history",
+        "score": 0.2,
+        "confidence": 0.5,
+        "reasoning": "Visible history present; not hiding.",
+        "evidence": [
+          "posts_fetched: 500, comments_fetched: 500"
+        ]
+      },
+      {
+        "key": "bot_bouncer_status",
+        "score": 0.75,
+        "confidence": 0.8,
+        "reasoning": "Bot Bouncer organic; community + human review verdict.",
+        "evidence": [
+          "Bot Bouncer status: organic"
+        ]
+      },
+      {
+        "key": "moderator_removal_history",
+        "score": 0,
+        "confidence": 0.25,
+        "reasoning": "Scattered or no removals; no strong signal.",
+        "evidence": [
+          "removals: 89 total across 1000 items",
+          "moderator: 89"
+        ]
+      },
+      {
+        "key": "posting_volume",
+        "score": 0.5,
+        "confidence": 0.6,
+        "reasoning": "Posting rate in <2/day band.",
+        "evidence": [
+          "posting_rate: 0.82 items/day over 1218.86 days (sample capped)"
+        ]
+      },
+      {
+        "key": "moderated_subreddits",
+        "score": 0,
+        "confidence": 0.15,
+        "reasoning": "No moderation roles — no signal.",
+        "evidence": [
+          "moderated count: 0"
+        ]
+      },
+      {
+        "key": "promotional_account",
+        "score": 0.3,
+        "confidence": 0.5,
+        "evidence": [
+          "mentions being a published author and writing novels but no funnel links or product promotion visible",
+          "one Danish charity link in comments — not commercial"
+        ],
+        "reasoning": "No promotional structure; self-description as author is incidental, not a funnel."
+      },
+      {
+        "key": "avatar_style",
+        "score": 0.35,
+        "confidence": 0.5,
+        "evidence": [
+          "avatar: tiger-kigurumi hoodie with cute chibi Snoo — distinctive customized fandom/kawaii aesthetic"
+        ],
+        "reasoning": "Personalized fandom-style avatar signals a real human who invested effort in identity expression."
+      }
+    ],
+    "durationMs": 31706,
+    "error": null
+  },
+  {
+    "variant": "B",
+    "variantLabel": "compressed",
+    "username": "Biscocino",
+    "model": "claude-sonnet-4-6",
+    "promptChars": 52677,
+    "inputTokens": 10519,
+    "outputTokens": 1525,
+    "cacheReadTokens": 15375,
+    "cacheWriteTokens": 0,
+    "cost": 0.0590445,
+    "verdict": "uncertain",
+    "botProb": 0.36,
+    "persona": "cam_model",
+    "region": "NL",
+    "factors": [
+      {
+        "key": "account_age_vs_activity",
+        "score": -0.3,
+        "confidence": 0.6,
+        "evidence": [
+          "Account created 2025-10-12, age 224 days; visible window 212.73 days — activity begins ~11 days after creation",
+          "Sample not capped; near-immediate posting start on a brand-new account"
+        ],
+        "reasoning": "Very rapid posting start on a new account, though window gap is small and content is coherent."
+      },
+      {
+        "key": "dormant_account_revival",
+        "score": 0,
+        "confidence": 0.2,
+        "evidence": [],
+        "reasoning": "Account too young (224 days) for dormancy analysis."
+      },
+      {
+        "key": "karma_farming_subs",
+        "score": -0.2,
+        "confidence": 0.4,
+        "evidence": [
+          "r/PrettyGirls, r/PrettyOlderWomen — low-effort compliment-harvest subs with occasional posts",
+          "Vast majority of posting is in own subreddit, not classic karma-farm subs"
+        ],
+        "reasoning": "Minor karma-farming sub presence; not the primary pattern."
+      },
+      {
+        "key": "fake_political_subs",
+        "score": 0,
+        "confidence": 0.1,
+        "evidence": [],
+        "reasoning": "No fake political subs in activity."
+      },
+      {
+        "key": "llm_content_style",
+        "score": 0.8,
+        "confidence": 0.85,
+        "evidence": [
+          "Numerous concrete anecdotes: 'tiny gold necklace is oldddd got it from my grandma', 'bought this one 3 years ago', 'I have two full sized wardrobes'",
+          "Consistent named-commenter acknowledgments ('Thanks fox!', 'Noted Johnny!') with situational humor and personality"
+        ],
+        "reasoning": "Rich first-person specificity and recurring named regulars — strongly human voice."
+      },
+      {
+        "key": "timestamp_patterns",
+        "score": 0.3,
+        "confidence": 0.4,
+        "evidence": [
+          "Posting spread across multiple days with clusters of replies — consistent with active daily poster, not scripted bursts",
+          "No sub-minute duplicate bursts visible"
+        ],
+        "reasoning": "Timestamp pattern consistent with human daily posting habit."
+      },
+      {
+        "key": "topical_drift",
+        "score": 0.6,
+        "confidence": 0.7,
+        "evidence": [
+          "Virtually all posts are personal outfit photos with consistent Italian-vintage aesthetic thread",
+          "Occasional r/pics, r/OldSchoolCool comments — minor, consistent with browsing"
+        ],
+        "reasoning": "Tightly focused fashion niche with no contradictory persona or topic drift."
+      },
+      {
+        "key": "engagement_patterns",
+        "score": 0.85,
+        "confidence": 0.9,
+        "evidence": [
+          "Responds to nearly every comment with personalised nickname replies ('Thanks fox!', 'Noted Greek!')",
+          "Engages in back-and-forth on wardrobe decisions ('almost everyone is saying keep so back into the closet it goes')"
+        ],
+        "reasoning": "Extremely high reply engagement with named regulars — strong human operator signal."
+      },
+      {
+        "key": "username_pattern",
+        "score": 0,
+        "confidence": 0.1,
+        "reasoning": "Username doesn't match auto-suggested shape; no signal.",
+        "evidence": [
+          "username: Biscocino"
+        ]
+      },
+      {
+        "key": "hidden_post_history",
+        "score": 0.2,
+        "confidence": 0.5,
+        "reasoning": "Visible history present; not hiding.",
+        "evidence": [
+          "posts_fetched: 20, comments_fetched: 216"
+        ]
+      },
+      {
+        "key": "bot_bouncer_status",
+        "score": 0,
+        "confidence": 0,
+        "reasoning": "No Bot Bouncer data.",
+        "evidence": [
+          "Bot Bouncer: no data"
+        ]
+      },
+      {
+        "key": "moderator_removal_history",
+        "score": 0.3,
+        "confidence": 0.5,
+        "reasoning": "Zero removals across substantial visible history.",
+        "evidence": [
+          "removals: 0 total across 236 items"
+        ]
+      },
+      {
+        "key": "posting_volume",
+        "score": 0.5,
+        "confidence": 0.6,
+        "reasoning": "Posting rate in <2/day band.",
+        "evidence": [
+          "posting_rate: 1.11 items/day over 212.73 days"
+        ]
+      },
+      {
+        "key": "moderated_subreddits",
+        "score": 0,
+        "confidence": 0.3,
+        "reasoning": "Niche moderation — informational only.",
+        "evidence": [
+          "mod count: 1; smallest: r/mystyledisplay (885)"
+        ]
+      },
+      {
+        "key": "promotional_account",
+        "score": -0.75,
+        "confidence": 0.85,
+        "evidence": [
+          "Founder-mod of r/mystyledisplay (885 subscribers); 195/236 visible items posted there, all own outfit photos",
+          "Funnel link to peachboo.com/biscocino in pinned post; zero other-life posting in conversational/hobby/news subs"
+        ],
+        "reasoning": "All three OF/cam structural conditions met: own-appearance content dominates, founder-mod of small sub, nearly 100% concentration in that sub."
+      },
+      {
+        "key": "avatar_style",
+        "score": 0.35,
+        "confidence": 0.5,
+        "evidence": [
+          "Avatar: yellow Shiba Inu / Doge character costume — playful, fandom-adjacent customization",
+          "Matches username 'Biscocino' (Italian-diminutive style) and account's warm/cute aesthetic"
+        ],
+        "reasoning": "Deliberately themed avatar matching account persona — consistent with human brand-building."
+      }
+    ],
+    "durationMs": 31648,
+    "error": null
+  },
+  {
+    "variant": "B",
+    "variantLabel": "compressed",
+    "username": "siruppaws",
+    "model": "claude-sonnet-4-6",
+    "promptChars": 52677,
+    "inputTokens": 5337,
+    "outputTokens": 1330,
+    "cacheReadTokens": 15375,
+    "cacheWriteTokens": 0,
+    "cost": 0.0405735,
+    "verdict": "likely-bot",
+    "botProb": 0.7989910002494708,
+    "persona": "cam_model",
+    "region": null,
+    "factors": [
+      {
+        "key": "account_age_vs_activity",
+        "score": -0.3,
+        "confidence": 0.55,
+        "evidence": [
+          "Account created 2025-10-25; visible window 36.85 days out of 210 days old (~83% dormancy gap)",
+          "sample_capped: false — gap is reliable"
+        ],
+        "reasoning": "Long dormant gap before recent burst fits Pattern B moderately."
+      },
+      {
+        "key": "dormant_account_revival",
+        "score": -0.4,
+        "confidence": 0.55,
+        "evidence": [
+          "Account 210 days old; all 139 visible items concentrated in last ~37 days",
+          "Burst coincides with founding r/altgothcloset and launching self-promo content"
+        ],
+        "reasoning": "Near-total activity window vs account age suggests deliberate launch, not organic growth."
+      },
+      {
+        "key": "karma_farming_subs",
+        "score": 0,
+        "confidence": 0.2,
+        "evidence": [],
+        "reasoning": "No known karma-farming subs in activity."
+      },
+      {
+        "key": "fake_political_subs",
+        "score": 0,
+        "confidence": 0.1,
+        "evidence": [],
+        "reasoning": "No political subs present."
+      },
+      {
+        "key": "llm_content_style",
+        "score": 0.6,
+        "confidence": 0.7,
+        "evidence": [
+          "Comments contain personal detail: 'i completely forgot i had this skirt', 'the whole lineage consists of tall grasshoppers', velvet history trivia lookup",
+          "Casual typos, playful humor, named regulars ('map', 'turb', 'panda') — clearly human voice"
+        ],
+        "reasoning": "Concrete situated anecdotes and informal tone are inconsistent with LLM generation."
+      },
+      {
+        "key": "timestamp_patterns",
+        "score": 0,
+        "confidence": 0.2,
+        "evidence": [],
+        "reasoning": "Insufficient spread of timestamps to detect 24-hour patterns."
+      },
+      {
+        "key": "topical_drift",
+        "score": 0.5,
+        "confidence": 0.5,
+        "evidence": [
+          "133/139 items in r/altgothcloset; 1 in r/CozyPlaces; consistent goth-fashion niche throughout"
+        ],
+        "reasoning": "Extremely tight topical focus — no drift, consistent persona."
+      },
+      {
+        "key": "engagement_patterns",
+        "score": 0.7,
+        "confidence": 0.75,
+        "evidence": [
+          "Responds individually to nearly every commenter, using their names/nicknames",
+          "Playful back-and-forth replies (velvet trivia, Morticia logic, 'vegetarian vampire')"
+        ],
+        "reasoning": "Active personal engagement is a strong human signal."
+      },
+      {
+        "key": "username_pattern",
+        "score": 0,
+        "confidence": 0.1,
+        "reasoning": "Username doesn't match auto-suggested shape; no signal.",
+        "evidence": [
+          "username: siruppaws"
+        ]
+      },
+      {
+        "key": "hidden_post_history",
+        "score": 0.2,
+        "confidence": 0.5,
+        "reasoning": "Visible history present; not hiding.",
+        "evidence": [
+          "posts_fetched: 19, comments_fetched: 120"
+        ]
+      },
+      {
+        "key": "bot_bouncer_status",
+        "score": -0.8,
+        "confidence": 0.8,
+        "reasoning": "Bot Bouncer banned; community + human review verdict.",
+        "evidence": [
+          "Bot Bouncer status: banned"
+        ]
+      },
+      {
+        "key": "moderator_removal_history",
+        "score": 0.3,
+        "confidence": 0.5,
+        "reasoning": "Zero removals across substantial visible history.",
+        "evidence": [
+          "removals: 0 total across 139 items"
+        ]
+      },
+      {
+        "key": "posting_volume",
+        "score": 0.3,
+        "confidence": 0.5,
+        "reasoning": "Posting rate in <10/day band.",
+        "evidence": [
+          "posting_rate: 3.77 items/day over 36.85 days"
+        ]
+      },
+      {
+        "key": "moderated_subreddits",
+        "score": 0,
+        "confidence": 0.3,
+        "reasoning": "Niche moderation — informational only.",
+        "evidence": [
+          "mod count: 1; smallest: r/altgothcloset (1066)"
+        ]
+      },
+      {
+        "key": "promotional_account",
+        "score": -0.75,
+        "confidence": 0.82,
+        "evidence": [
+          "Founded and mods r/altgothcloset (1,066 subs); 133/139 visible items are own outfit photos posted there",
+          "Pinned post in u/siruppaws links feedviewr.com/siruppaws — explicit external content feed funnel"
+        ],
+        "reasoning": "Founder-mod of own appearance sub + 96% self-promo concentration + external funnel link = OF/cam structural fingerprint."
+      },
+      {
+        "key": "avatar_style",
+        "score": 0.35,
+        "confidence": 0.5,
+        "evidence": [
+          "avatar: bunny-hat girl with long brown hair, purple hoodie, jeans — kawaii-goth aesthetic matching account theme"
+        ],
+        "reasoning": "Identity-specific avatar matching goth-kawaii niche confirms human curation."
+      }
+    ],
+    "durationMs": 26809,
+    "error": null
+  }
+]
