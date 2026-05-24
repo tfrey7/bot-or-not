@@ -8,32 +8,6 @@
 
 /* ---------- List column ---------- */
 
-.bon-subreddits-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.9em;
-  min-width: 0;
-}
-
-.bon-subreddits-list-header h2 {
-  font-size: 1.4rem;
-  font-weight: 700;
-  letter-spacing: -0.015em;
-  line-height: 1.15;
-  margin: 0 0 0.15em;
-  color: var(--bon-text);
-}
-
-.bon-subreddits-list-subtitle {
-  margin: 0.3em 0 0;
-  font-family: var(--bon-font-mono);
-  font-size: 0.66rem;
-  color: var(--bon-muted);
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-}
-
 .bon-subreddits-list-empty {
   padding: 1.5em;
   border: 1px dashed var(--bon-border);
@@ -55,18 +29,6 @@ table.bon-subreddits-list-table {
   width: 100%;
   border-collapse: collapse;
   font-size: 0.85rem;
-}
-
-.bon-subreddits-list-table th {
-  padding: 0.55em 0.85em;
-  text-align: left;
-  font-family: var(--bon-font-mono);
-  font-size: 0.62rem;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--bon-muted);
-  border-bottom: 1.5px solid var(--bon-rule);
 }
 
 .bon-subreddits-list-row {
@@ -112,60 +74,53 @@ table.bon-subreddits-list-table {
 .bon-subreddits-list-verdict {
   width: 1%;
   white-space: nowrap;
+  text-align: right;
 }
 
-.bon-subreddits-list-analyzed {
-  font-family: var(--bon-font-mono);
-  color: var(--bon-muted);
-  font-size: 0.74rem;
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-  width: 1%;
+/* ---------- Detail column ----------
+   The header + body are emitted as two sibling `.bon-detail-wrap`s under
+   `.bon-split-detail` so they inherit the same card-padding pattern the
+   Redditors pane uses (see redditors/detail_pane.css). The header's
+   :first-child padding-top override pulls the title flush with the top
+   of the card, matching the Redditors header. */
+
+.bon-split-detail > .bon-subreddits-detail-header {
+  padding-bottom: 1.25em;
+  border-bottom: 1px solid var(--bon-border);
+  background: var(--bon-surface);
+  border-top-left-radius: calc(0.5em - 1px);
+  border-top-right-radius: calc(0.5em - 1px);
 }
 
-/* ---------- Detail column ---------- */
-
-.bon-subreddits-detail {
-  display: flex;
-  flex-direction: column;
-  gap: 1em;
-  padding: 1.4em 1.6em 1.6em;
-}
-
-.bon-subreddits-detail-header {
-  display: flex;
-  flex-direction: column;
-  gap: 0.35em;
-}
-
-.bon-subreddits-detail-title {
+.bon-subreddits-detail-title-row {
   display: flex;
   align-items: center;
-  gap: 0.75em;
+  gap: 0.7em;
+  min-width: 0;
   flex-wrap: wrap;
 }
 
+.bon-subreddits-detail-title-row .bon-verdict-badge {
+  font-size: 0.65rem;
+  padding: 0.35em 0.75em 0.32em;
+  letter-spacing: 0.16em;
+  flex-shrink: 0;
+}
+
 .bon-subreddits-detail-name {
-  font-family: var(--bon-font-serif);
-  font-size: 1.6rem;
+  font-size: 1.15rem;
   font-weight: 700;
-  letter-spacing: -0.01em;
   color: var(--bon-text);
   text-decoration: none;
 }
 
 .bon-subreddits-detail-name:hover {
-  color: var(--bon-link);
+  color: var(--bon-stamp-blue);
   text-decoration: underline;
 }
 
-.bon-subreddits-detail-badge {
-  font-size: 0.78rem;
-}
-
 .bon-subreddits-detail-meta {
-  margin: 0;
-  font-family: var(--bon-font-mono);
+  margin: 0.45em 0 0;
   font-size: 0.74rem;
   letter-spacing: 0.04em;
   color: var(--bon-muted);
@@ -173,10 +128,15 @@ table.bon-subreddits-list-table {
 }
 
 .bon-subreddits-detail-blurb {
-  margin: 0;
-  font-family: var(--bon-font-mono);
+  margin: 0.4em 0 0;
   font-size: 0.82rem;
   color: var(--bon-text);
+}
+
+.bon-subreddits-detail-body {
+  display: flex;
+  flex-direction: column;
+  gap: 1em;
 }
 
 .bon-subreddits-detail-mix {

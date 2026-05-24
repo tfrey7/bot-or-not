@@ -73,21 +73,23 @@ interface VerdictDescriptor {
 
 export function bonRenderSubredditsDetail(
   options: BonSubredditsDetailOptions
-): HTMLElement {
+): DocumentFragment | HTMLElement {
   const { entry, hasAnyEntries } = options;
 
   if (!entry) {
     return buildEmpty(hasAnyEntries);
   }
 
-  const wrap = document.createElement("div");
-  wrap.className = "bon-subreddits-detail";
+  const fragment = document.createDocumentFragment();
+  fragment.appendChild(buildHeader(entry));
 
-  wrap.appendChild(buildHeader(entry));
-  wrap.appendChild(buildMixStrip(entry.verdict));
-  wrap.appendChild(buildScatter(entry, options));
+  const body = document.createElement("div");
+  body.className = "bon-detail-wrap bon-subreddits-detail-body";
+  body.appendChild(buildMixStrip(entry.verdict));
+  body.appendChild(buildScatter(entry, options));
+  fragment.appendChild(body);
 
-  return wrap;
+  return fragment;
 }
 
 function buildEmpty(hasAnyEntries: boolean): HTMLElement {
@@ -113,10 +115,10 @@ function buildHeader(entry: BonSubredditListEntry): HTMLElement {
   const descriptor = describeVerdict(verdict);
 
   const header = document.createElement("header");
-  header.className = "bon-subreddits-detail-header";
+  header.className = "bon-detail-wrap bon-subreddits-detail-header";
 
-  const title = document.createElement("div");
-  title.className = "bon-subreddits-detail-title";
+  const titleRow = document.createElement("div");
+  titleRow.className = "bon-subreddits-detail-title-row";
 
   const link = document.createElement("a");
   link.className = "bon-subreddits-detail-name";
@@ -124,14 +126,14 @@ function buildHeader(entry: BonSubredditListEntry): HTMLElement {
   link.target = "_blank";
   link.rel = "noopener noreferrer";
   link.textContent = `r/${record.name}`;
-  title.appendChild(link);
+  titleRow.appendChild(link);
 
   const badge = document.createElement("span");
-  badge.className = `bon-verdict-badge bon-verdict-badge--${descriptor.badgeModifier} bon-subreddits-detail-badge`;
+  badge.className = `bon-verdict-badge bon-verdict-badge--${descriptor.badgeModifier}`;
   badge.textContent = descriptor.label;
-  title.appendChild(badge);
+  titleRow.appendChild(badge);
 
-  header.appendChild(title);
+  header.appendChild(titleRow);
 
   const meta = document.createElement("p");
   meta.className = "bon-subreddits-detail-meta";
