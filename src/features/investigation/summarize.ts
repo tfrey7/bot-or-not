@@ -1,9 +1,17 @@
 // Reduces the raw Reddit profile + recent posts + recent comments into
 // the compact JSON object that gets handed to Claude. Trims item text
-// (post selftext to 400 chars, comment body to 500 chars), computes a
-// posting-rate signal from the visible window, and rolls subreddit
-// counts into a top-25 list — all so the prompt stays well under the
-// context budget.
+// (post selftext + comment body both to 200 chars), drops content-less
+// items ([removed] / [deleted] / empty body — they contribute zero
+// classifier signal but cost row overhead in the columnar payload),
+// computes a posting-rate signal from the visible window, and rolls
+// subreddit counts into a top-25 list.
+//
+// All aggregate signals (`posts_fetched`, `comments_fetched`,
+// `top_subreddits`, `posting_rate`, `moderator_removals`) are computed
+// over the FULL pre-filter Reddit fetch so factor math (especially
+// `posting_volume` and `moderator_removal_history`) is unaffected by
+// the per-item filter. Only the per-item arrays the LLM reads
+// (`recent_posts` / `recent_comments`) are trimmed.
 
 import type {
   BotBouncerStatus,
@@ -22,6 +30,7 @@ import type {
 import { BON_REDDIT_FETCH_LIMIT } from "./fetch.ts";
 
 const BON_MAX_ITEMS_TO_AI = 300; // per kind (posts + comments)
+const BON_MAX_BODY_CHARS = 200; // selftext / comment body excerpt cap
 
 interface RawPost {
   subreddit?: string;
@@ -83,10 +92,12 @@ export function bonSummarizeProfile(
 
   const trimmedPosts: SummaryPost[] = posts
     .slice(0, BON_MAX_ITEMS_TO_AI)
-    .map(trimPost);
+    .map(trimPost)
+    .filter(hasPostContent);
   const trimmedComments: SummaryComment[] = comments
     .slice(0, BON_MAX_ITEMS_TO_AI)
-    .map(trimComment);
+    .map(trimComment)
+    .filter(hasCommentContent);
 
   const moderatorRemovals = countRemovals(posts, comments);
   const postingRate = computePostingRate(posts, comments);
@@ -269,7 +280,7 @@ function trimPost(post: RawPost): SummaryPost {
   return {
     subreddit: subredditLabel(post),
     title: post.title ?? null,
-    selftext_excerpt: (post.selftext ?? "").slice(0, 400),
+    selftext_excerpt: (post.selftext ?? "").slice(0, BON_MAX_BODY_CHARS),
     score: post.score ?? null,
     num_comments: post.num_comments ?? null,
     created_at: typeof post.created_utc === "number" ? post.created_utc : null,
@@ -280,13 +291,38 @@ function trimPost(post: RawPost): SummaryPost {
 function trimComment(comment: RawComment): SummaryComment {
   return {
     subreddit: subredditLabel(comment),
-    body_excerpt: (comment.body ?? "").slice(0, 500),
+    body_excerpt: (comment.body ?? "").slice(0, BON_MAX_BODY_CHARS),
     score: comment.score ?? null,
     created_at:
       typeof comment.created_utc === "number" ? comment.created_utc : null,
     link_title: comment.link_title ?? null,
     removed_by_category: comment.removed_by_category ?? null,
   };
+}
+
+// "Content-less" items have neither a usable body nor a title — Reddit
+// emits `"[removed]"` / `"[deleted]"` (or an empty string) for both
+// admin-removed and user-deleted items. The removal itself is still
+// counted in `activity.moderator_removals` (computed before this
+// filter), so dropping the empty row from the per-item array loses no
+// signal.
+function isContentless(text: string | null | undefined): boolean {
+  if (text == null) {
+    return true;
+  }
+
+  const stripped = text.trim();
+  return (
+    stripped === "" || stripped === "[removed]" || stripped === "[deleted]"
+  );
+}
+
+function hasPostContent(post: SummaryPost): boolean {
+  return !(isContentless(post.selftext_excerpt) && isContentless(post.title));
+}
+
+function hasCommentContent(comment: SummaryComment): boolean {
+  return !isContentless(comment.body_excerpt);
 }
 
 function countRemovals(
