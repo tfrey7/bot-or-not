@@ -1,7 +1,10 @@
 // Anthropic Messages API implementation of `LlmProvider`. Owns:
 //   - the URL / auth headers / `anthropic-version`
-//   - `cache_control: ephemeral` on the system prompt (5-min cache; back-to-back
-//     calls hit it at ~10% of input rate)
+//   - `cache_control: ephemeral` on the system prompt. `complete()` uses
+//     the 1h TTL — investigation queues commonly leave gaps wider than
+//     5m, and the 1.6× write premium pays for itself after a single
+//     subsequent hit. `runToolLoop()` keeps 5m because tool turns are
+//     close together and don't benefit from the longer cache.
 //   - the SSE stream parser used by `runToolLoop`
 //   - translation between `LlmContentPart` / `LlmTool` and Anthropic's
 //     content-block / tool shapes
@@ -152,7 +155,7 @@ export class AnthropicProvider implements LlmProvider {
         {
           type: "text",
           text: systemPrompt,
-          cache_control: { type: "ephemeral" },
+          cache_control: { type: "ephemeral", ttl: "1h" },
         },
       ],
       messages: [
