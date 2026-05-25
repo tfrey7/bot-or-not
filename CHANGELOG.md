@@ -2,6 +2,25 @@
 
 Notable changes to Bot or Not. Signed `.xpi` builds for each version are attached to the matching [GitHub Release](https://github.com/tfrey7/bot-or-not/releases).
 
+## [7.3.0] — 2026-05-25
+- Fix broken README masthead — point at chromes-investigating.webp
+- Dependabot: weekly grouped updates with cooldowns + CI auto-merge
+- Enforce feature directory boundaries via ESLint
+- Attribution worker: switch to p-queue + p-retry
+- Investigation queue: switch to p-queue + p-retry
+- Reddit client: replace hand-rolled scheduler with p-queue
+- Slideshow jitter: coalesce storage events, slim slideshow assets to WebP
+- Dev badge: STRAND · <slug> on strand worktrees, DEV · MAIN on main
+- Wrap up cost-optimization
+- Trim AI payload: 200-char bodies, drop content-less items
+- Investigation cache: bump TTL 5m → 1h
+- Reddit client: proactive pacing via x-ratelimit-* headers
+- Subreddits tab: loading state for in-flight analysis
+- Subreddits tab: match Redditors styling
+- Add .mcp.json registering vibe-stranding MCP server
+- Queue: stop stalling on Reddit overload
+- Wrap up agent-cleanup
+
 ## [7.2.0] — 2026-05-23
 - Pause indicator: move from page banner to queue section
 - Privacy: harden username redaction against AI deblurring
