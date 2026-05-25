@@ -1,18 +1,16 @@
-import {
-  bonAiCommandHandle,
-  bonAiCommandReset,
-} from "./features/ai-command/handler.ts";
-import { bonGoogleAttributionDrain } from "./features/google-harvest/attribution.ts";
+import { bonAiCommandHandle, bonAiCommandReset } from "./features/ai-command";
+import { bonGoogleAttributionDrain } from "./features/google-harvest";
+import type { BonScrapedPost } from "./features/google-harvest";
 import {
   bonInvestigationAutoOnView,
   bonInvestigationStart,
   bonInvestigationSweepOrphans,
-} from "./features/investigation/handlers.ts";
+} from "./features/investigation";
 import {
   bonPassiveHarvestGetHiddenUsernames,
   bonPassiveHarvestRecord,
-} from "./features/passive-harvest/handlers.ts";
-import type { BonPassiveHarvestFinding } from "./features/passive-harvest/scrape.ts";
+} from "./features/passive-harvest";
+import type { BonPassiveHarvestFinding } from "./features/passive-harvest";
 import {
   bonRedditorsClearAll,
   bonRedditorsDelete,
@@ -29,16 +27,15 @@ import {
   bonRedditorsUnlinkRing,
   bonRedditorsUpdatePostStatus,
   bonRedditorsUpdateProfileStats,
-} from "./features/redditors/handlers.ts";
+} from "./features/redditors";
 import {
   bonSubredditAnalyze,
   bonSubredditGetReport,
   bonSubredditList,
-} from "./features/subreddit-investigation/handlers.ts";
-import { bonSyncExport, bonSyncImport } from "./features/sync/handlers.ts";
+} from "./features/subreddit-investigation";
+import { bonSyncExport, bonSyncImport } from "./features/sync";
 import { bonRunMigrations } from "./migrations";
 import type { Report } from "./types.ts";
-import type { BonScrapedPost } from "./features/google-harvest/parse.ts";
 import {
   bonClearAllApiKeys,
   bonReadAllApiKeys,

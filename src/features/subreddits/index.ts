@@ -14,7 +14,7 @@ import type { Report } from "../../types.ts";
 import type {
   BonSubredditListEntry,
   BonSubredditListResult,
-} from "../subreddit-investigation/handlers.ts";
+} from "../subreddit-investigation";
 import { bonRenderSubredditsDetail } from "./detail_pane.ts";
 import { bonRenderSubredditsList } from "./list.ts";
 

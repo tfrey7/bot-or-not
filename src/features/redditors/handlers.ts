@@ -6,8 +6,7 @@
 
 import { BON_PERSONA_LABELS } from "../../factors.ts";
 import type { PersonaLabel, Report, UserNotes } from "../../types.ts";
-import { bonGoogleHarvestMerge } from "../google-harvest/merge.ts";
-import type { BonScrapedPost } from "../google-harvest/parse.ts";
+import { bonGoogleHarvestMerge, type BonScrapedPost } from "../google-harvest";
 import { bonExpectedDurationMs } from "../../utils/expected_duration.ts";
 import { bonReadReports, bonWriteReports } from "../../storage.ts";
 import {
@@ -18,7 +17,7 @@ import {
 } from "../../utils/history.ts";
 import { bonGenerateRingId } from "../../utils/ring_id.ts";
 import { bonNormalizeInvestigation } from "../../verdict.ts";
-import { bonInvestigationMaybeAuto } from "../investigation/handlers.ts";
+import { bonInvestigationMaybeAuto } from "../investigation";
 
 interface UserTag {
   username: string;

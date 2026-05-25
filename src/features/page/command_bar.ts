@@ -6,7 +6,7 @@
 
 import { type AiCommandAction, type AiCommandResult } from "../ai-command";
 import { bonPageOpenCommandModal } from "./command_modal.ts";
-import type { ReportRow } from "../redditors/logic.ts";
+import type { ReportRow } from "../redditors";
 
 export interface BonPageCommandBarDeps {
   searchInput: HTMLInputElement;

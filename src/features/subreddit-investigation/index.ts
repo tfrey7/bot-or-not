@@ -303,3 +303,21 @@ export function bonSubredditInvestigationInit(): void {
     void refresh();
   });
 }
+
+export {
+  bonSubredditAnalyze,
+  bonSubredditList,
+  bonSubredditGetReport,
+} from "./handlers.ts";
+export type {
+  BonSubredditAnalyzeResult,
+  BonSubredditGetReportResult,
+  BonSubredditListEntry,
+  BonSubredditListResult,
+} from "./handlers.ts";
+export { bonSubredditDeriveVerdict } from "./verdict.ts";
+export type {
+  BonSubredditSample,
+  BonSubredditSampleStatus,
+  BonSubredditVerdict,
+} from "./verdict.ts";

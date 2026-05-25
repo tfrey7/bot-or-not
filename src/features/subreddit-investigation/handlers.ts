@@ -25,7 +25,7 @@ import {
 } from "../../storage.ts";
 import type { SubredditReport } from "../../types.ts";
 import { bonFindReportKey } from "../../utils/history.ts";
-import { bonInvestigationStart } from "../investigation/handlers.ts";
+import { bonInvestigationStart } from "../investigation";
 import { BON_SUBREDDIT_SAMPLE_SIZE } from "./data.ts";
 import { bonSubredditFetchAuthors } from "./fetch_authors.ts";
 import {

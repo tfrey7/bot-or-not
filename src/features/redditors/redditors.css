@@ -14,7 +14,7 @@
 @import "./investigation_detail.css";
 @import "./calendar_heatmap.css";
 @import "./subreddit_chart.css";
-@import "./persona_block.css";
+@import "../persona-block/styles.css";
 @import "./profile_section.css";
 @import "./user_notes_section.css";
 @import "./google_dossier_section.css";

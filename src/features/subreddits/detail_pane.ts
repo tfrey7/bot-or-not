@@ -10,19 +10,19 @@
 // CSS gives the scatter a flex floor so it stays comfortably within
 // the viewport on a 768px-tall laptop screen.
 
-import { bonPersonasScatter } from "../personas/scatter.ts";
 import {
+  bonPersonasScatter,
   bonPersonasCollect,
   type PersonaPoint,
   type PersonasRow,
-} from "../personas/logic.ts";
+} from "../personas";
 import { bonFormatDate } from "../../utils/format_time.ts";
 import type { Report, Verdict } from "../../types.ts";
-import type { BonSubredditListEntry } from "../subreddit-investigation/handlers.ts";
 import type {
+  BonSubredditListEntry,
   BonSubredditSample,
   BonSubredditVerdict,
-} from "../subreddit-investigation/verdict.ts";
+} from "../subreddit-investigation";
 
 export interface BonSubredditsDetailOptions {
   entry: BonSubredditListEntry | null;

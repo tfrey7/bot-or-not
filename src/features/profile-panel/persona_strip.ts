@@ -1,7 +1,7 @@
 // The persona "card" rendered in the preview row — shared radar widget,
 // dominant label, and a single summary paragraph below the chart. Prefers
 // the investigation's top-level summary; falls back to `persona.reasoning`
-// for legacy records. Mirrors features/redditors/persona_block.ts so the
+// for legacy records. Mirrors features/persona-block/index.ts so the
 // profile-page card and the reports detail pane render the same shape.
 
 import type { Persona } from "../../types.ts";

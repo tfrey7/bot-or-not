@@ -17,9 +17,8 @@ import type { Report } from "../../types.ts";
 
 // Cross-feature import: the Google dossier renderer is a shared
 // visualization, used by both the reports detail pane and this embed.
-// Kept in reports/ for proximity to its only other caller.
-import { bonRedditorsGoogleDossierSection } from "../redditors/google_dossier_section.ts";
-import type { ReportRow } from "../redditors/logic.ts";
+// Kept in redditors/ for proximity to its only other caller.
+import { bonRedditorsGoogleDossierSection, type ReportRow } from "../redditors";
 
 const reportCache = new Map<string, Report | null>();
 

@@ -384,3 +384,6 @@ function formatImportResult(
 
   return `Imported · ${parts.join(" · ")}`;
 }
+
+export { bonSyncExport, bonSyncImport } from "./handlers.ts";
+export type { ImportRequest } from "./handlers.ts";

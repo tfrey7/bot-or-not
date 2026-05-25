@@ -1,6 +1,6 @@
 // Validation/normalization for the region block Claude returns.
 
-import { BON_REGION_INFO } from "../features/regions/data.ts";
+import { BON_REGION_INFO } from "../features/regions";
 import type { RegionInferenceAi } from "../types.ts";
 
 export function bonNormalizeRegionInference(

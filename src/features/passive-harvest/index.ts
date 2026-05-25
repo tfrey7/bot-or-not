@@ -117,3 +117,9 @@ export function bonPassiveHarvestInit(): void {
     }
   });
 }
+
+export {
+  bonPassiveHarvestGetHiddenUsernames,
+  bonPassiveHarvestRecord,
+} from "./handlers.ts";
+export type { BonPassiveHarvestFinding } from "./scrape.ts";

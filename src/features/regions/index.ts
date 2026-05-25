@@ -40,6 +40,8 @@ import {
 } from "./moderated.ts";
 import type { TimezoneOnlyRegionInference, TzInferred } from "./timezone.ts";
 
+export { BON_REGION_INFO } from "./data.ts";
+export type { RegionInfo } from "./data.ts";
 export { bonNormalizeSubName } from "./subreddit.ts";
 export type { SubRegionHit, SubregionInference } from "./subreddit.ts";
 export type { ScriptInference } from "./scripts.ts";

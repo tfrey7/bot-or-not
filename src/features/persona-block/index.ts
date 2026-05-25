@@ -18,13 +18,13 @@ import {
 } from "../../utils/persona_radar.ts";
 import { bonPersonaTitle } from "../../utils/persona_title.ts";
 
-export interface BonRedditorsPersonaBlockOpts {
+export interface BonPersonaBlockOpts {
   summary?: string | null;
 }
 
-export function bonRedditorsPersonaBlock(
+export function bonPersonaBlock(
   persona: Persona | null | undefined,
-  options: BonRedditorsPersonaBlockOpts = {}
+  options: BonPersonaBlockOpts = {}
 ): HTMLElement | null {
   if (!persona || !persona.label) {
     return null;

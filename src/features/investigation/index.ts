@@ -302,3 +302,11 @@ export async function bonInvestigateUser(
 
 export { RedditFetchError };
 export { bonExtractSnoovatarUrl };
+
+export {
+  BON_INVESTIGATION_CONCURRENCY,
+  bonInvestigationSweepOrphans,
+  bonInvestigationStart,
+  bonInvestigationAutoOnView,
+  bonInvestigationMaybeAuto,
+} from "./handlers.ts";

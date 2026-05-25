@@ -18,3 +18,9 @@ export {
   type AiCommandSnapshotEntry,
   type AiCommandUserDetails,
 } from "./snapshot.ts";
+export {
+  bonAiCommandHandle,
+  bonAiCommandReset,
+  type BonAiCommandConfirmRequest,
+  type BonAiCommandHandleOptions,
+} from "./handler.ts";

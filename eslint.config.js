@@ -1,4 +1,5 @@
 import js from "@eslint/js";
+import boundaries from "eslint-plugin-boundaries";
 import prettier from "eslint-config-prettier";
 import tseslint from "typescript-eslint";
 
@@ -8,6 +9,49 @@ export default tseslint.config(
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,
+  {
+    // Feature-directory boundary enforcement. Imports targeting
+    // `src/features/<feature>/...` from outside that feature must terminate
+    // at the feature's `index.ts` — the package-private public surface.
+    // Same-feature internal imports are unaffected.
+    plugins: { boundaries },
+    settings: {
+      "boundaries/include": ["src/**/*"],
+      "boundaries/elements": [
+        {
+          type: "feature",
+          pattern: "src/features/*",
+          mode: "folder",
+          capture: ["name"],
+        },
+        {
+          // Catch-all for everything else under src/ — entry points,
+          // shared utils, top-level domain modules. Unconstrained by
+          // the rule below; declared only so dependencies originating
+          // here aren't classified as "unknown" and skipped.
+          type: "other",
+          pattern: "src/**/*",
+          mode: "file",
+        },
+      ],
+    },
+    rules: {
+      "boundaries/dependencies": [
+        "error",
+        {
+          default: "allow",
+          rules: [
+            {
+              to: { type: "feature" },
+              disallow: { to: { internalPath: "!(index.*)" } },
+              message:
+                "Cross-feature imports must terminate at the feature's index.ts (file ${to.internalPath} is feature-internal).",
+            },
+          ],
+        },
+      ],
+    },
+  },
   {
     languageOptions: {
       ecmaVersion: 2022,

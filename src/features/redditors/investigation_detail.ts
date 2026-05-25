@@ -10,7 +10,7 @@ import {
 import { bonLinkifyReddit } from "../../utils/linkify_reddit.ts";
 import { bonTopReasonsList } from "../../utils/top_reasons_list.ts";
 import { bonInvestigationLoading } from "../../utils/investigation_loading.ts";
-import { bonRedditorsPersonaBlock } from "./persona_block.ts";
+import { bonPersonaBlock } from "../persona-block";
 import {
   bonRedditorsIsUserNotFoundError,
   bonRedditorsUserNotFoundPanel,
@@ -81,7 +81,7 @@ export function bonRedditorsInvestigationDetail(
   const reasonsList =
     factors.length > 0 ? bonTopReasonsList(factors, { perSide: 4 }) : null;
 
-  const personaBlock = bonRedditorsPersonaBlock(persona, { summary });
+  const personaBlock = bonPersonaBlock(persona, { summary });
 
   if (personaBlock && reasonsList) {
     const row = document.createElement("div");

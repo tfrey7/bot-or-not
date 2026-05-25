@@ -4,8 +4,10 @@
 // detail pane on the right; this list just gives the operator something
 // scannable to click through.
 
-import type { BonSubredditListEntry } from "../subreddit-investigation/handlers.ts";
-import type { BonSubredditVerdict } from "../subreddit-investigation/verdict.ts";
+import type {
+  BonSubredditListEntry,
+  BonSubredditVerdict,
+} from "../subreddit-investigation";
 
 interface BonSubredditsListOptions {
   selectedNameKey: string | null;

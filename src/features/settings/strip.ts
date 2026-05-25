@@ -3,7 +3,7 @@
 // operator can answer "is my install healthy?" without leaving Settings.
 // Stays out of the way; intentionally lighter than the analytics cards.
 
-import type { ReportRow } from "../redditors/logic.ts";
+import type { ReportRow } from "../redditors";
 
 export function bonSettingsStrip(
   reports: ReportRow[],

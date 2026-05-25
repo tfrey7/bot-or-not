@@ -10,43 +10,25 @@ import {
   bonGoogleHarvestMatches,
   bonGoogleHarvestRequest,
   bonGoogleHarvestRevoke,
-} from "../google-harvest/permission.ts";
+} from "../google-harvest";
 import { bonPageOpenConfirmModal } from "../page";
 export { bonSettingsStrip } from "./strip.ts";
 
-const settingsTab = document.getElementById(
-  "bon-tab-settings"
-) as HTMLButtonElement;
-const settingsSave = document.getElementById(
-  "bon-settings-save"
-) as HTMLButtonElement;
-const apiKeyInput = document.getElementById(
-  "bon-api-key-input"
-) as HTMLInputElement;
-const apiKeyStatus = document.getElementById(
-  "bon-api-key-status"
-) as HTMLElement;
-const clearAllBtn = document.getElementById(
-  "bon-clear-btn"
-) as HTMLButtonElement;
-const googlePermissionStatus = document.getElementById(
-  "bon-google-permission-status"
-) as HTMLElement;
-const googlePermissionToggle = document.getElementById(
-  "bon-google-permission-toggle"
-) as HTMLButtonElement;
-const llmVendorSelect = document.getElementById(
-  "bon-llm-vendor-select"
-) as HTMLSelectElement;
-const llmModelSelect = document.getElementById(
-  "bon-llm-model-select"
-) as HTMLSelectElement;
-const hidePiiStatus = document.getElementById(
-  "bon-hide-pii-status"
-) as HTMLElement;
-const hidePiiToggle = document.getElementById(
-  "bon-hide-pii-toggle"
-) as HTMLButtonElement;
+// DOM refs deferred to bonSettingsInit so this module is safe to import
+// from any context (the boundary lint rule forces redditors/index.ts to
+// barrel-re-export ./page.ts, which transitively pulls this module into
+// the background bundle even though the UI never runs there).
+let settingsTab!: HTMLButtonElement;
+let settingsSave!: HTMLButtonElement;
+let apiKeyInput!: HTMLInputElement;
+let apiKeyStatus!: HTMLElement;
+let clearAllBtn!: HTMLButtonElement;
+let googlePermissionStatus!: HTMLElement;
+let googlePermissionToggle!: HTMLButtonElement;
+let llmVendorSelect!: HTMLSelectElement;
+let llmModelSelect!: HTMLSelectElement;
+let hidePiiStatus!: HTMLElement;
+let hidePiiToggle!: HTMLButtonElement;
 
 interface LlmSelectionPayload {
   vendor: LlmVendor | null;
@@ -324,6 +306,34 @@ async function toggleGooglePermission(): Promise<void> {
 }
 
 export function bonSettingsInit(): void {
+  settingsTab = document.getElementById(
+    "bon-tab-settings"
+  ) as HTMLButtonElement;
+  settingsSave = document.getElementById(
+    "bon-settings-save"
+  ) as HTMLButtonElement;
+  apiKeyInput = document.getElementById(
+    "bon-api-key-input"
+  ) as HTMLInputElement;
+  apiKeyStatus = document.getElementById("bon-api-key-status") as HTMLElement;
+  clearAllBtn = document.getElementById("bon-clear-btn") as HTMLButtonElement;
+  googlePermissionStatus = document.getElementById(
+    "bon-google-permission-status"
+  ) as HTMLElement;
+  googlePermissionToggle = document.getElementById(
+    "bon-google-permission-toggle"
+  ) as HTMLButtonElement;
+  llmVendorSelect = document.getElementById(
+    "bon-llm-vendor-select"
+  ) as HTMLSelectElement;
+  llmModelSelect = document.getElementById(
+    "bon-llm-model-select"
+  ) as HTMLSelectElement;
+  hidePiiStatus = document.getElementById("bon-hide-pii-status") as HTMLElement;
+  hidePiiToggle = document.getElementById(
+    "bon-hide-pii-toggle"
+  ) as HTMLButtonElement;
+
   apiKeyStatus.textContent = "Loading...";
   apiKeyStatus.className = "bon-settings-status";
 

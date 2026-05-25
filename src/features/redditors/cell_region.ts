@@ -5,10 +5,11 @@
 // enumerates every signal source that contributed so the operator can
 // audit the pick.
 
-import { BON_REGION_INFO, type RegionInfo } from "../regions/data.ts";
-import type {
-  AiRegionInference,
-  DeterministicRegionInference,
+import {
+  BON_REGION_INFO,
+  type RegionInfo,
+  type AiRegionInference,
+  type DeterministicRegionInference,
 } from "../regions";
 import type { ReportRow } from "./logic.ts";
 import { bonRedditorsComputeRegionForReport } from "./region.ts";

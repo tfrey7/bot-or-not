@@ -45,7 +45,7 @@
         "*://www.google.com/search*"
       ],
       "js": [
-        "src/features/google-harvest/index.ts"
+        "src/features/google-harvest/search_listener.ts"
       ],
       "run_at": "document_idle"
     }

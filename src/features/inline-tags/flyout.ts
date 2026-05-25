@@ -10,7 +10,7 @@ import {
   bonIsInvestigationStale,
   bonNormalizeInvestigation,
 } from "../../verdict.ts";
-import { bonPanelBuildProfilePanel } from "../profile-panel/panel.ts";
+import { bonPanelBuildProfilePanel } from "../profile-panel";
 
 interface FlyoutState {
   username: string;

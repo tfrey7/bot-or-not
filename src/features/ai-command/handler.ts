@@ -4,14 +4,14 @@
 // built lazily by the `list_users` tool dispatch — off-topic or social
 // queries never pay to load it.
 
-import { bonInvestigationStart } from "../investigation/handlers.ts";
-import { bonRedditorsComputeRegionForReport } from "../redditors/region.ts";
+import { bonInvestigationStart } from "../investigation";
 import {
+  bonRedditorsComputeRegionForReport,
   bonRedditorsDelete,
   bonRedditorsLinkRing,
   bonRedditorsSetUserStatus,
   bonRedditorsUnlinkRing,
-} from "../redditors/handlers.ts";
+} from "../redditors";
 import type { Report } from "../../types.ts";
 import {
   bonReadApiKey,

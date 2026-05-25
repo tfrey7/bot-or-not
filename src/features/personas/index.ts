@@ -137,3 +137,8 @@ function buildFootnote(): HTMLElement {
 
   return para;
 }
+
+export { bonPersonasScatter } from "./scatter.ts";
+export type { BonPersonasScatterOptions } from "./scatter.ts";
+export { bonPersonasCollect } from "./logic.ts";
+export type { PersonaPoint, PersonasRow } from "./logic.ts";
