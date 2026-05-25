@@ -8,17 +8,17 @@ import uPlot from "uplot";
 import type { AnalyticsEntry } from "./logic.ts";
 import { formatDayTick } from "./tick_helpers.ts";
 import {
-  bonAnalyticsAxes,
-  bonAnalyticsEmptyPanel,
-  bonAnalyticsPlaceTooltip,
-  bonAnalyticsUplotHost,
-  bonAnalyticsUplotPalette,
+  analyticsAxes,
+  analyticsEmptyPanel,
+  analyticsPlaceTooltip,
+  analyticsUplotHost,
+  analyticsUplotPalette,
   type UplotChartOptions,
 } from "./uplot_helpers.ts";
 
 const MS_PER_DAY = 86_400_000;
 
-export function bonAnalyticsRedditRequestsChart(
+export function analyticsRedditRequestsChart(
   runs: AnalyticsEntry[]
 ): HTMLElement {
   const samples = runs.filter(
@@ -27,7 +27,7 @@ export function bonAnalyticsRedditRequestsChart(
   );
 
   if (!samples.length) {
-    return bonAnalyticsEmptyPanel("No Reddit fetch data yet.");
+    return analyticsEmptyPanel("No Reddit fetch data yet.");
   }
 
   const buckets = new Map<number, { fetches: number; errors: number }>();
@@ -68,8 +68,8 @@ export function bonAnalyticsRedditRequestsChart(
     errs[i] = bucket?.errors ?? 0;
   }
 
-  const palette = bonAnalyticsUplotPalette();
-  const { host, tooltip, mount } = bonAnalyticsUplotHost();
+  const palette = analyticsUplotPalette();
+  const { host, tooltip, mount } = analyticsUplotHost();
 
   const data: uPlot.AlignedData = [xs, counts];
   const barWidth = Math.max(0.45, Math.min(0.85, 0.9 - totalDays * 0.005));
@@ -101,7 +101,7 @@ export function bonAnalyticsRedditRequestsChart(
         points: { show: false },
       },
     ],
-    axes: bonAnalyticsAxes(palette, {
+    axes: analyticsAxes(palette, {
       xIncrs: [86400],
       xValues: (_u, splits) => splits.map(formatDayTick),
       yValues: (_u, splits) =>
@@ -142,7 +142,7 @@ export function bonAnalyticsRedditRequestsChart(
           }
 
           tooltip.hidden = false;
-          bonAnalyticsPlaceTooltip(
+          analyticsPlaceTooltip(
             host,
             tooltip,
             u.over.offsetLeft,

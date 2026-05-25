@@ -1,9 +1,9 @@
 // Validation/normalization for the region block Claude returns.
 
-import { BON_REGION_INFO } from "../features/regions";
+import { REGION_INFO } from "../features/regions";
 import type { RegionInferenceAi } from "../types.ts";
 
-export function bonNormalizeRegionInference(
+export function normalizeRegionInference(
   raw: unknown
 ): RegionInferenceAi | null {
   if (!raw || typeof raw !== "object") {
@@ -12,7 +12,7 @@ export function bonNormalizeRegionInference(
 
   const record = raw as Record<string, unknown>;
   const rawCode = typeof record.code === "string" ? record.code.trim() : "";
-  const code = rawCode && BON_REGION_INFO[rawCode] ? rawCode : null;
+  const code = rawCode && REGION_INFO[rawCode] ? rawCode : null;
 
   const rawConfidence =
     typeof record.confidence === "number" ? record.confidence : 0;

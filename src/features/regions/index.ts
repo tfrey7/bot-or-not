@@ -16,39 +16,39 @@
 //     coarsest signal; used as a tie-breaker bonus, never as a primary
 //     input — UTC+5 alone could be Pakistan, India, Kazakhstan, Maldives.
 //
-// `bonInferRegion` combines them into a single weighted pick.
+// `inferRegion` combines them into a single weighted pick.
 
 import type { ActivityData } from "../../types.ts";
-import { BON_REGION_INFO } from "./data.ts";
+import { REGION_INFO } from "./data.ts";
 import {
-  bonInferRegionFromSubreddits,
+  inferRegionFromSubreddits,
   type SubregionInference,
 } from "./subreddit.ts";
 import {
-  bonInferRegionFromScripts,
-  bonRegionsDetectScripts,
+  inferRegionFromScripts,
+  regionsDetectScripts,
   type ScriptInference,
 } from "./scripts.ts";
 import {
-  bonInferRegionFromLanguage,
-  bonRegionsDetectLanguageMarkers,
+  inferRegionFromLanguage,
+  regionsDetectLanguageMarkers,
   type LanguageInference,
 } from "./language.ts";
 import {
-  bonInferRegionFromModerated,
+  inferRegionFromModerated,
   type ModeratedInference,
 } from "./moderated.ts";
 import type { TimezoneOnlyRegionInference, TzInferred } from "./timezone.ts";
 
-export { BON_REGION_INFO } from "./data.ts";
+export { REGION_INFO } from "./data.ts";
 export type { RegionInfo } from "./data.ts";
-export { bonNormalizeSubName } from "./subreddit.ts";
+export { normalizeSubName } from "./subreddit.ts";
 export type { SubRegionHit, SubregionInference } from "./subreddit.ts";
 export type { ScriptInference } from "./scripts.ts";
 export type { LanguageInference } from "./language.ts";
 export type { ModeratedInference } from "./moderated.ts";
 export {
-  bonRegionForOffset,
+  regionForOffset,
   type TimezoneOnlyRegionInference,
   type TzInferred,
 } from "./timezone.ts";
@@ -94,14 +94,14 @@ export type RegionInferenceResult =
 
 // One-shot scan over a concatenated text corpus. Run during the investigation
 // fetch — output is stored in activityData.{scriptSignals,languageSignals,languageSamples}.
-export function bonScanTextSignals(text: string): {
+export function scanTextSignals(text: string): {
   scripts: Record<string, number>;
   languages: Record<string, number>;
   languageSamples: Record<string, string[]>;
 } {
-  const detected = bonRegionsDetectLanguageMarkers(text);
+  const detected = regionsDetectLanguageMarkers(text);
   return {
-    scripts: bonRegionsDetectScripts(text),
+    scripts: regionsDetectScripts(text),
     languages: detected.counts,
     languageSamples: detected.samples,
   };
@@ -110,24 +110,24 @@ export function bonScanTextSignals(text: string): {
 // Combine all deterministic signals (subreddit, script, language, moderator)
 // plus timezone, picking the region with the highest weighted score.
 // `tzInferred` is the result of reports' inferTimezoneFromTimestamps().
-export function bonInferRegion(
+export function inferRegion(
   activityData: ActivityData | null | undefined,
   tzInferred: TzInferred | { kind: string } | null | undefined
 ): DeterministicRegionResult {
   const subredditResult = activityData
-    ? bonInferRegionFromSubreddits(activityData.subredditCounts)
+    ? inferRegionFromSubreddits(activityData.subredditCounts)
     : null;
   const scriptResult = activityData
-    ? bonInferRegionFromScripts(activityData.scriptSignals)
+    ? inferRegionFromScripts(activityData.scriptSignals)
     : null;
   const languageResult = activityData
-    ? bonInferRegionFromLanguage(
+    ? inferRegionFromLanguage(
         activityData.languageSignals,
         activityData.languageSamples
       )
     : null;
   const moderatorResult = activityData
-    ? bonInferRegionFromModerated(activityData.moderatedSubs)
+    ? inferRegionFromModerated(activityData.moderatedSubs)
     : null;
   const timezoneOffset =
     tzInferred?.kind === "inferred"
@@ -142,7 +142,7 @@ export function bonInferRegion(
   //  - Timezone is a tie-breaker, never a primary signal — it only bonuses
   //    regions already nominated by something else.
   //  - Diaspora-attracting regions (US, Israel) are filtered out of the
-  //    subreddit pipeline upstream — see bonInferRegionFromSubreddits.
+  //    subreddit pipeline upstream — see inferRegionFromSubreddits.
   const scores: Record<string, number> = {};
   function addScore(region: string, points: number): void {
     scores[region] = (scores[region] || 0) + points;
@@ -180,7 +180,7 @@ export function bonInferRegion(
 
   if (timezoneOffset != null) {
     for (const region of Object.keys(scores)) {
-      const offsets = BON_REGION_INFO[region]?.utcOffsets || [];
+      const offsets = REGION_INFO[region]?.utcOffsets || [];
       if (offsets.includes(timezoneOffset)) {
         scores[region] += 1;
       }
@@ -193,7 +193,7 @@ export function bonInferRegion(
 
     const tzMatch =
       timezoneOffset != null
-        ? !!BON_REGION_INFO[topRegion]?.utcOffsets?.includes(timezoneOffset)
+        ? !!REGION_INFO[topRegion]?.utcOffsets?.includes(timezoneOffset)
         : null;
 
     return {
@@ -214,7 +214,7 @@ export function bonInferRegion(
 
   if (tzInferred?.kind === "inferred") {
     const offsetHours = (tzInferred as TzInferred).offsetHours;
-    const possibleRegions = Object.entries(BON_REGION_INFO)
+    const possibleRegions = Object.entries(REGION_INFO)
       .filter(([, info]) => info.utcOffsets.includes(offsetHours))
       .map(([code]) => code);
 

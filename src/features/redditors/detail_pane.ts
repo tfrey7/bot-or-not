@@ -4,26 +4,26 @@
 // selected, renders a quiet placeholder so the pane doesn't appear
 // broken.
 
-import { bonInvestigationResults } from "../../utils/history.ts";
-import { bonRedditorsActivitySection } from "./activity_section.ts";
+import { investigationResults } from "../../utils/history.ts";
+import { redditorsActivitySection } from "./activity_section.ts";
 import {
-  bonRedditorsRenderDeleteButton,
-  bonRedditorsRenderInvestigateButton,
+  redditorsRenderDeleteButton,
+  redditorsRenderInvestigateButton,
 } from "./cell_actions.ts";
-import { bonRedditorsRenderGoogleSearchButton } from "./cell_google_search.ts";
+import { redditorsRenderGoogleSearchButton } from "./cell_google_search.ts";
 import {
-  bonRedditorsGoogleDossierCountFresh,
-  bonRedditorsGoogleDossierSection,
+  redditorsGoogleDossierCountFresh,
+  redditorsGoogleDossierSection,
 } from "./google_dossier_section.ts";
-import { bonRedditorsInvestigationDetail } from "./investigation_detail.ts";
-import { bonRedditorsIsUserNotFoundError } from "./investigation_user_not_found.ts";
+import { redditorsInvestigationDetail } from "./investigation_detail.ts";
+import { redditorsIsUserNotFoundError } from "./investigation_user_not_found.ts";
 import type { ReportRow } from "./logic.ts";
 import {
-  bonRedditorsPassiveHarvestCountFresh,
-  bonRedditorsPassiveHarvestSection,
+  redditorsPassiveHarvestCountFresh,
+  redditorsPassiveHarvestSection,
 } from "./passive_harvest_section.ts";
-import { bonRedditorsProfileSection } from "./profile_section.ts";
-import { bonRedditorsUserNotesSection } from "./user_notes_section.ts";
+import { redditorsProfileSection } from "./profile_section.ts";
+import { redditorsUserNotesSection } from "./user_notes_section.ts";
 
 export interface DetailPaneOptions {
   expectedDurationMs: number | null;
@@ -32,7 +32,7 @@ export interface DetailPaneOptions {
   onInvestigate: () => void;
 }
 
-export function bonRedditorsDetailEmpty(message: string): HTMLDivElement {
+export function redditorsDetailEmpty(message: string): HTMLDivElement {
   const wrap = document.createElement("div");
   wrap.className = "bon-detail-empty";
 
@@ -49,7 +49,7 @@ export function bonRedditorsDetailEmpty(message: string): HTMLDivElement {
   return wrap;
 }
 
-export function bonRedditorsDetailPane(
+export function redditorsDetailPane(
   report: ReportRow,
   opts: DetailPaneOptions
 ): DocumentFragment {
@@ -65,34 +65,34 @@ export function bonRedditorsDetailPane(
   // the username they typed, or hunt for a deleted account elsewhere).
   const userNotFound =
     investigation?.status === "error" &&
-    bonRedditorsIsUserNotFoundError(investigation.error);
+    redditorsIsUserNotFoundError(investigation.error);
 
   // Combined "new since last analysis" tally across both dossier sources
   // (Google SERP + passive DOM scrape). The button surfaces a single
   // number — operator-facing language stays source-agnostic since the
   // re-investigation incorporates every new item regardless of origin.
-  const lastRunAt = bonInvestigationResults(investigation)?.runAt ?? 0;
+  const lastRunAt = investigationResults(investigation)?.runAt ?? 0;
   const freshHarvestCount =
-    bonRedditorsGoogleDossierCountFresh(report.googleHarvest, lastRunAt) +
-    bonRedditorsPassiveHarvestCountFresh(report.passiveHarvest, lastRunAt);
+    redditorsGoogleDossierCountFresh(report.googleHarvest, lastRunAt) +
+    redditorsPassiveHarvestCountFresh(report.passiveHarvest, lastRunAt);
 
   const actions = userNotFound
-    ? [bonRedditorsRenderGoogleSearchButton(username)]
+    ? [redditorsRenderGoogleSearchButton(username)]
     : [
-        bonRedditorsRenderInvestigateButton(username, investigation, {
+        redditorsRenderInvestigateButton(username, investigation, {
           expectedDurationMs,
           queueAhead,
           freshHarvestCount,
           onNoApiKey,
           onInvestigate,
         }),
-        bonRedditorsRenderGoogleSearchButton(username),
+        redditorsRenderGoogleSearchButton(username),
       ];
 
-  fragment.appendChild(bonRedditorsProfileSection(report, actions));
+  fragment.appendChild(redditorsProfileSection(report, actions));
 
   fragment.appendChild(
-    bonRedditorsInvestigationDetail(investigation, !!ringId, {
+    redditorsInvestigationDetail(investigation, !!ringId, {
       expectedDurationMs,
       username,
     })
@@ -101,7 +101,7 @@ export function bonRedditorsDetailPane(
   if (!userNotFound) {
     // Google dossier — operator-curated context (not AI-derived). Returns
     // null when no Google search has been run for this user yet.
-    const dossier = bonRedditorsGoogleDossierSection(report);
+    const dossier = redditorsGoogleDossierSection(report);
     if (dossier) {
       fragment.appendChild(dossier);
     }
@@ -110,7 +110,7 @@ export function bonRedditorsDetailPane(
     // this hidden-profile user. Returns null when the report has no
     // harvested items yet (the common case until the operator browses
     // somewhere this user has posted).
-    const passive = bonRedditorsPassiveHarvestSection(report);
+    const passive = redditorsPassiveHarvestSection(report);
     if (passive) {
       fragment.appendChild(passive);
     }
@@ -122,14 +122,14 @@ export function bonRedditorsDetailPane(
       investigation?.status === "queued" || investigation?.status === "running";
 
     if (!inFlight) {
-      fragment.appendChild(bonRedditorsActivitySection(report));
+      fragment.appendChild(redditorsActivitySection(report));
     }
 
     // Notes sit at the bottom so the AI signals + dossier + activity all
     // sit above the operator's hand-written take. Independent of the AI
     // run — show them regardless of investigation state so the operator
     // can record their take while a (re-)investigation is queued.
-    fragment.appendChild(bonRedditorsUserNotesSection(report));
+    fragment.appendChild(redditorsUserNotesSection(report));
   }
 
   // Delete lives at the very bottom — out of the prominent top-right action
@@ -137,7 +137,7 @@ export function bonRedditorsDetailPane(
   // past the dossier before they can reach the button.
   const deleteFooter = document.createElement("div");
   deleteFooter.className = "bon-detail-wrap bon-detail-footer";
-  deleteFooter.appendChild(bonRedditorsRenderDeleteButton(username));
+  deleteFooter.appendChild(redditorsRenderDeleteButton(username));
   fragment.appendChild(deleteFooter);
 
   return fragment;

@@ -6,51 +6,48 @@
 // fixed (most-recently-investigated first) so a fresh investigation always
 // floats to the top.
 //
-// Entry point: bonRedditorsRenderReportsPage() — called once from
+// Entry point: redditorsRenderReportsPage() — called once from
 // src/reports.ts when the page loads.
 
-import { bonClientSend, bonClientSubscribe } from "../../client.ts";
-import { bonRenderAnalytics } from "../analytics";
-import { BON_INVESTIGATION_CONCURRENCY } from "../investigation";
-import { bonRenderPersonas } from "../personas";
-import { bonRenderSubreddits } from "../subreddits";
-import { bonRenderSync } from "../sync";
-import { BON_REGION_INFO } from "../regions";
+import { clientSend, clientSubscribe } from "../../client.ts";
+import { renderAnalyticsTab } from "../analytics";
+import { INVESTIGATION_CONCURRENCY } from "../investigation";
+import { renderPersonasTab } from "../personas";
+import { renderSubredditsTab } from "../subreddits";
+import { renderSync } from "../sync";
+import { REGION_INFO } from "../regions";
 import type { Report } from "../../types.ts";
-import { bonExpectedDurationMs } from "../../utils/expected_duration.ts";
-import { bonPiiBlurInit } from "../../utils/pii_blur.ts";
+import { computeExpectedDurationMs } from "../../utils/expected_duration.ts";
+import { piiBlurInit } from "../../utils/pii_blur.ts";
 import {
-  bonPageInitCommandBar,
-  bonPageInitConfirmModal,
-  bonPageInitTabs,
-  bonPageInstallDevBadge,
-  type BonPageCommandBarHandle,
+  pageInitCommandBar,
+  pageInitConfirmModal,
+  pageInitTabs,
+  pageInstallDevBadge,
+  type PageCommandBarHandle,
 } from "../page";
 import {
-  bonSettingsInit,
-  bonSettingsOpen,
-  bonSettingsRefreshApiKeyStatus,
-  bonSettingsStrip,
+  settingsInit,
+  settingsOpen,
+  settingsRefreshApiKeyStatus,
+  settingsStrip,
 } from "../settings";
-import { bonPagination } from "../../utils/pagination.ts";
-import { bonRedditorsInitPolling } from "./polling.ts";
+import { pagination } from "../../utils/pagination.ts";
+import { redditorsInitPolling } from "./polling.ts";
+import { redditorsDetailEmpty, redditorsDetailPane } from "./detail_pane.ts";
+import { queuePauseInit, queuePauseIsActive } from "./queue_pause.ts";
+import { redditorsRow } from "./table_row.ts";
 import {
-  bonRedditorsDetailEmpty,
-  bonRedditorsDetailPane,
-} from "./detail_pane.ts";
-import { bonQueuePauseInit, bonQueuePauseIsActive } from "./queue_pause.ts";
-import { bonRedditorsRow } from "./table_row.ts";
-import {
-  bonRedditorsCompareActive,
-  bonRedditorsCompareBy,
-  bonRedditorsCountQueuedAhead,
-  bonRedditorsDetailFingerprint,
-  bonRedditorsDiagnoseLoadError,
-  bonRedditorsIsActiveRow,
+  redditorsCompareActive,
+  redditorsCompareBy,
+  redditorsCountQueuedAhead,
+  redditorsDetailFingerprint,
+  redditorsDiagnoseLoadError,
+  redditorsIsActiveRow,
   type ReportRow,
 } from "./logic.ts";
 
-export async function bonRedditorsRenderReportsPage(): Promise<void> {
+export async function redditorsRenderReportsPage(): Promise<void> {
   const tbody = document.getElementById("bon-tbody") as HTMLTableSectionElement;
   const tableWrap = document.getElementById("bon-table-wrap") as HTMLElement;
   const activeTbody = document.getElementById(
@@ -99,14 +96,14 @@ export async function bonRedditorsRenderReportsPage(): Promise<void> {
     "bon-sync-container"
   ) as HTMLElement | null;
 
-  const BON_REDDITORS_PAGE_SIZE = 20;
-  const BON_REDDITORS_URL_USER_PARAM = "user";
+  const REDDITORS_PAGE_SIZE = 20;
+  const REDDITORS_URL_USER_PARAM = "user";
 
   // A burst enqueue (e.g. profiling a 100-user subreddit) makes the
   // in-progress table grow really tall and pushes the rest of the page
   // out of view. Show only the first N rows — the title still surfaces
   // the full running/queued counts.
-  const BON_ACTIVE_TABLE_VISIBLE_MAX = 10;
+  const ACTIVE_TABLE_VISIBLE_MAX = 10;
 
   // Vite inlines import.meta.env.DEV at build time, so the suffix only ships
   // in `vite dev` builds — published AMO builds (vite build) get a clean
@@ -117,10 +114,10 @@ export async function bonRedditorsRenderReportsPage(): Promise<void> {
     versionEl.textContent = import.meta.env.DEV ? `${version} (dev)` : version;
   }
 
-  bonPageInstallDevBadge();
+  pageInstallDevBadge();
 
   const REGION_LABELS: Record<string, string> = Object.fromEntries(
-    Object.entries(BON_REGION_INFO).map(([code, info]) => [code, info.label])
+    Object.entries(REGION_INFO).map(([code, info]) => [code, info.label])
   );
 
   let allReports: ReportRow[] = [];
@@ -149,7 +146,7 @@ export async function bonRedditorsRenderReportsPage(): Promise<void> {
   // user-driven paging isn't yanked back.
   let pendingScrollToSelected = !!selectedUsername;
 
-  bonClientSubscribe((event) => {
+  clientSubscribe((event) => {
     if (event.type === "reports-changed") {
       // Route through the poll path so non-structural writes (notes, lazy
       // profile-stat fills) don't tear down whichever widget the operator
@@ -167,19 +164,19 @@ export async function bonRedditorsRenderReportsPage(): Promise<void> {
     }
 
     if (event.type === "api-key-changed") {
-      void bonSettingsRefreshApiKeyStatus();
+      void settingsRefreshApiKeyStatus();
     }
   });
 
-  bonPageInitConfirmModal({ onConfirm: load });
-  bonQueuePauseInit({
+  pageInitConfirmModal({ onConfirm: load });
+  queuePauseInit({
     pauseEl: queuePauseEl,
     onChange: () => render(),
   });
-  bonSettingsInit();
-  void bonPiiBlurInit();
+  settingsInit();
+  void piiBlurInit();
 
-  const commandBar: BonPageCommandBarHandle = bonPageInitCommandBar({
+  const commandBar: PageCommandBarHandle = pageInitCommandBar({
     searchInput,
     agentFilterEl,
     agentFilterLabelEl,
@@ -201,9 +198,9 @@ export async function bonRedditorsRenderReportsPage(): Promise<void> {
     },
   });
 
-  const tabs = bonPageInitTabs();
+  const tabs = pageInitTabs();
 
-  const polling = bonRedditorsInitPolling({
+  const polling = redditorsInitPolling({
     getReports: () => allReports,
     setReports: (next) => {
       allReports = next;
@@ -222,13 +219,13 @@ export async function bonRedditorsRenderReportsPage(): Promise<void> {
 
   initStickyShellMeasurement();
 
-  bonRenderSync(syncContainer);
+  renderSync(syncContainer);
 
   await load();
 
   async function load(): Promise<void> {
     try {
-      const { reports = {} } = await bonClientSend<{
+      const { reports = {} } = await clientSend<{
         reports?: Record<string, Report>;
       }>({ type: "get-all-reports" });
 
@@ -262,7 +259,7 @@ export async function bonRedditorsRenderReportsPage(): Promise<void> {
       (error as { message?: string })?.message ||
       String(error) ||
       "Unknown error";
-    const hint = bonRedditorsDiagnoseLoadError(rawMessage);
+    const hint = redditorsDiagnoseLoadError(rawMessage);
 
     const detail = document.createElement("p");
     detail.className = "bon-empty-text bon-empty-detail";
@@ -295,7 +292,7 @@ export async function bonRedditorsRenderReportsPage(): Promise<void> {
       return;
     }
 
-    bonRenderAnalytics(allReports, analyticsContainer);
+    renderAnalyticsTab(allReports, analyticsContainer);
   }
 
   function renderPersonas(): void {
@@ -303,13 +300,13 @@ export async function bonRedditorsRenderReportsPage(): Promise<void> {
       return;
     }
 
-    bonRenderPersonas(allReports, personasContainer, {
+    renderPersonasTab(allReports, personasContainer, {
       onSelectUser: navigateToUser,
     });
   }
 
   async function renderSubreddits(): Promise<void> {
-    await bonRenderSubreddits({
+    await renderSubredditsTab({
       listContainer: subredditsListEl,
       detailContainer: subredditsDetailEl,
       onSelectUser: navigateToUser,
@@ -329,11 +326,11 @@ export async function bonRedditorsRenderReportsPage(): Promise<void> {
       return;
     }
 
-    bonSettingsStrip(allReports, settingsStripContainer);
+    settingsStrip(allReports, settingsStripContainer);
   }
 
   function render(): void {
-    expectedDurationMs = bonExpectedDurationMs(allReports);
+    expectedDurationMs = computeExpectedDurationMs(allReports);
     commandBar.renderAgentFilterBanner();
 
     // URL deep-links from the inline-tag flyout's "open dossier" button pass
@@ -358,15 +355,11 @@ export async function bonRedditorsRenderReportsPage(): Promise<void> {
       ? allReports.filter((report) => agentFilter.has(report.username))
       : allReports;
 
-    const activeRows = filtered.filter(bonRedditorsIsActiveRow);
-    const doneRows = filtered.filter(
-      (report) => !bonRedditorsIsActiveRow(report)
-    );
+    const activeRows = filtered.filter(redditorsIsActiveRow);
+    const doneRows = filtered.filter((report) => !redditorsIsActiveRow(report));
 
-    activeRows.sort(bonRedditorsCompareActive);
-    doneRows.sort(
-      bonRedditorsCompareBy("investigatedAt", "desc", REGION_LABELS)
-    );
+    activeRows.sort(redditorsCompareActive);
+    doneRows.sort(redditorsCompareBy("investigatedAt", "desc", REGION_LABELS));
 
     activeTbody.replaceChildren();
     tbody.replaceChildren();
@@ -407,13 +400,13 @@ export async function bonRedditorsRenderReportsPage(): Promise<void> {
       );
 
       if (idx >= 0) {
-        currentPage = Math.floor(idx / BON_REDDITORS_PAGE_SIZE) + 1;
+        currentPage = Math.floor(idx / REDDITORS_PAGE_SIZE) + 1;
       }
     }
 
     const totalPages = Math.max(
       1,
-      Math.ceil(doneRows.length / BON_REDDITORS_PAGE_SIZE)
+      Math.ceil(doneRows.length / REDDITORS_PAGE_SIZE)
     );
 
     if (currentPage > totalPages) {
@@ -424,14 +417,14 @@ export async function bonRedditorsRenderReportsPage(): Promise<void> {
       currentPage = 1;
     }
 
-    const pageStart = (currentPage - 1) * BON_REDDITORS_PAGE_SIZE;
-    const pageEnd = pageStart + BON_REDDITORS_PAGE_SIZE;
+    const pageStart = (currentPage - 1) * REDDITORS_PAGE_SIZE;
+    const pageEnd = pageStart + REDDITORS_PAGE_SIZE;
     const pageRows = doneRows.slice(pageStart, pageEnd);
 
     for (const report of pageRows) {
-      const summary = bonRedditorsRow(report, {
+      const summary = redditorsRow(report, {
         selectedUsername,
-        queueAhead: bonRedditorsCountQueuedAhead(allReports, report),
+        queueAhead: redditorsCountQueuedAhead(allReports, report),
         onSelect: selectRow,
       });
       tbody.appendChild(summary);
@@ -454,11 +447,11 @@ export async function bonRedditorsRenderReportsPage(): Promise<void> {
 
     if (totalPages > 1) {
       paginationContainer.appendChild(
-        bonPagination({
+        pagination({
           currentPage,
           totalPages,
           totalItems: doneRows.length,
-          pageSize: BON_REDDITORS_PAGE_SIZE,
+          pageSize: REDDITORS_PAGE_SIZE,
           onPageChange: (next) => {
             currentPage = next;
             render();
@@ -482,7 +475,7 @@ export async function bonRedditorsRenderReportsPage(): Promise<void> {
   }
 
   function renderActiveSection(rows: ReportRow[]): void {
-    const paused = bonQueuePauseIsActive();
+    const paused = queuePauseIsActive();
 
     if (rows.length === 0 && !paused) {
       activeSection.hidden = true;
@@ -515,15 +508,15 @@ export async function bonRedditorsRenderReportsPage(): Promise<void> {
     // make the running-vs-queued status obvious.
     activeTitleEl.textContent =
       queued > 0
-        ? `In progress · ${running} running · ${queued} queued (cap ${BON_INVESTIGATION_CONCURRENCY})`
+        ? `In progress · ${running} running · ${queued} queued (cap ${INVESTIGATION_CONCURRENCY})`
         : `In progress · ${rows.length}`;
 
-    const visibleRows = rows.slice(0, BON_ACTIVE_TABLE_VISIBLE_MAX);
+    const visibleRows = rows.slice(0, ACTIVE_TABLE_VISIBLE_MAX);
 
     for (const report of visibleRows) {
-      const summary = bonRedditorsRow(report, {
+      const summary = redditorsRow(report, {
         selectedUsername,
-        queueAhead: bonRedditorsCountQueuedAhead(allReports, report),
+        queueAhead: redditorsCountQueuedAhead(allReports, report),
         onSelect: selectRow,
       });
       activeTbody.appendChild(summary);
@@ -568,7 +561,7 @@ export async function bonRedditorsRenderReportsPage(): Promise<void> {
 
   function readSelectedUsernameFromUrl(): string | null {
     const raw = new URLSearchParams(window.location.search).get(
-      BON_REDDITORS_URL_USER_PARAM
+      REDDITORS_URL_USER_PARAM
     );
     const trimmed = raw?.trim();
     return trimmed ? trimmed : null;
@@ -576,20 +569,20 @@ export async function bonRedditorsRenderReportsPage(): Promise<void> {
 
   function updateUrlForSelection(): void {
     const params = new URLSearchParams(window.location.search);
-    const current = params.get(BON_REDDITORS_URL_USER_PARAM);
+    const current = params.get(REDDITORS_URL_USER_PARAM);
 
     if (selectedUsername) {
       if (current === selectedUsername) {
         return;
       }
 
-      params.set(BON_REDDITORS_URL_USER_PARAM, selectedUsername);
+      params.set(REDDITORS_URL_USER_PARAM, selectedUsername);
     } else {
       if (current === null) {
         return;
       }
 
-      params.delete(BON_REDDITORS_URL_USER_PARAM);
+      params.delete(REDDITORS_URL_USER_PARAM);
     }
 
     const query = params.toString();
@@ -611,10 +604,10 @@ export async function bonRedditorsRenderReportsPage(): Promise<void> {
     }
 
     const queueAhead = report
-      ? bonRedditorsCountQueuedAhead(allReports, report)
+      ? redditorsCountQueuedAhead(allReports, report)
       : 0;
 
-    const fingerprint = bonRedditorsDetailFingerprint(
+    const fingerprint = redditorsDetailFingerprint(
       report,
       queueAhead,
       allReports.length > 0
@@ -630,7 +623,7 @@ export async function bonRedditorsRenderReportsPage(): Promise<void> {
 
     if (!report) {
       detailPane.appendChild(
-        bonRedditorsDetailEmpty(
+        redditorsDetailEmpty(
           allReports.length === 0
             ? "No reports yet. Flag a Reddit user from their profile to start tracking."
             : "Select a user from the list to see the dossier."
@@ -642,10 +635,10 @@ export async function bonRedditorsRenderReportsPage(): Promise<void> {
     }
 
     detailPane.appendChild(
-      bonRedditorsDetailPane(report, {
+      redditorsDetailPane(report, {
         expectedDurationMs,
         queueAhead,
-        onNoApiKey: bonSettingsOpen,
+        onNoApiKey: settingsOpen,
 
         // Bounce back to page 1 — the fixed investigatedAt-desc sort will
         // float the freshly-kicked row to the top once the storage write

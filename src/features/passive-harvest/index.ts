@@ -1,5 +1,5 @@
 // Content-script side of passive harvesting. On every MutationObserver
-// tick the orchestrator calls bonPassiveHarvestTick, which walks the
+// tick the orchestrator calls passiveHarvestTick, which walks the
 // freshly-rendered DOM for posts / comments authored by hidden-profile
 // users we've previously investigated. Hits accumulate in an in-memory
 // buffer and flush to the background after a quiet window so a
@@ -12,25 +12,25 @@
 // 2. Every shreddit-post / shreddit-comment / .thing we scan is marked
 //    with data-bon-harvested so subsequent ticks skip it — see scrape.ts.
 
-import { bonClientSend, bonClientSubscribe } from "../../client.ts";
-import type { BonPassiveHarvestFinding } from "./scrape.ts";
-import { bonPassiveHarvestScrape } from "./scrape.ts";
+import { clientSend, clientSubscribe } from "../../client.ts";
+import type { PassiveHarvestFinding } from "./scrape.ts";
+import { passiveHarvestScrape } from "./scrape.ts";
 
-const BON_FLUSH_DELAY_MS = 3000;
+const FLUSH_DELAY_MS = 3000;
 
 let hiddenUsernames = new Set<string>();
 let hiddenUsernamesLoaded = false;
 
 interface BufferedFinding {
   username: string;
-  item: BonPassiveHarvestFinding["item"];
+  item: PassiveHarvestFinding["item"];
 }
 
 const pending: BufferedFinding[] = [];
 let flushTimer: ReturnType<typeof setTimeout> | null = null;
 
 async function loadHiddenUsernames(): Promise<void> {
-  const response = await bonClientSend<{ usernames?: string[] }>({
+  const response = await clientSend<{ usernames?: string[] }>({
     type: "get-hidden-usernames",
   });
 
@@ -48,7 +48,7 @@ function scheduleFlush(): void {
   flushTimer = setTimeout(() => {
     flushTimer = null;
     void flush();
-  }, BON_FLUSH_DELAY_MS);
+  }, FLUSH_DELAY_MS);
 }
 
 async function flush(): Promise<void> {
@@ -59,7 +59,7 @@ async function flush(): Promise<void> {
   // Group by username so the background does one merge per user instead
   // of one per finding. On a thread where the same hidden user posted
   // many comments, this collapses N writes into one.
-  const byUser = new Map<string, BonPassiveHarvestFinding["item"][]>();
+  const byUser = new Map<string, PassiveHarvestFinding["item"][]>();
 
   for (const finding of pending.splice(0)) {
     const existing = byUser.get(finding.username);
@@ -71,7 +71,7 @@ async function flush(): Promise<void> {
   }
 
   for (const [username, items] of byUser) {
-    void bonClientSend({
+    void clientSend({
       type: "passive-harvest",
       username,
       items,
@@ -79,12 +79,12 @@ async function flush(): Promise<void> {
   }
 }
 
-export function bonPassiveHarvestTick(): void {
+export function passiveHarvestTick(): void {
   if (!hiddenUsernamesLoaded || hiddenUsernames.size === 0) {
     return;
   }
 
-  const findings = bonPassiveHarvestScrape(hiddenUsernames);
+  const findings = passiveHarvestScrape(hiddenUsernames);
   if (findings.length === 0) {
     return;
   }
@@ -96,10 +96,10 @@ export function bonPassiveHarvestTick(): void {
   scheduleFlush();
 }
 
-export function bonPassiveHarvestInit(): void {
+export function passiveHarvestInit(): void {
   void loadHiddenUsernames();
 
-  bonClientSubscribe((event) => {
+  clientSubscribe((event) => {
     if (event.type === "reports-changed") {
       void loadHiddenUsernames();
     }
@@ -119,7 +119,7 @@ export function bonPassiveHarvestInit(): void {
 }
 
 export {
-  bonPassiveHarvestGetHiddenUsernames,
-  bonPassiveHarvestRecord,
+  passiveHarvestGetHiddenUsernames,
+  passiveHarvestRecord,
 } from "./handlers.ts";
-export type { BonPassiveHarvestFinding } from "./scrape.ts";
+export type { PassiveHarvestFinding } from "./scrape.ts";

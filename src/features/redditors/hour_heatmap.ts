@@ -4,10 +4,10 @@
 // only about *when* the account posts, not *where* — region inference is
 // surfaced in the profile header as the flag badge next to the verdict.
 
-import { bonBucketLevel } from "../../utils/scoring.ts";
-import { BON_REDDITORS_DAY_NAMES } from "./data.ts";
+import { bucketLevel } from "../../utils/scoring.ts";
+import { REDDITORS_DAY_NAMES } from "./data.ts";
 import {
-  bonRedditorsInferTimezoneFromTimestamps,
+  redditorsInferTimezoneFromTimestamps,
   type TimezoneInference,
 } from "./region.ts";
 
@@ -46,7 +46,7 @@ function renderHourHeatmap(timestamps: number[]): HTMLDivElement {
 
   for (let i = 0; i < 7; i++) {
     const label = document.createElement("div");
-    label.textContent = BON_REDDITORS_DAY_NAMES[i];
+    label.textContent = REDDITORS_DAY_NAMES[i];
     dayLabels.appendChild(label);
   }
 
@@ -75,12 +75,12 @@ function renderHourHeatmap(timestamps: number[]): HTMLDivElement {
       cell.className = "bon-hour-cell";
 
       const count = counts[d * 24 + h];
-      const level = bonBucketLevel(count);
+      const level = bucketLevel(count);
       if (level > 0) {
         cell.classList.add(`bon-heatmap-cell--lvl${level}`);
       }
 
-      cell.title = `${BON_REDDITORS_DAY_NAMES[d]} ${String(h).padStart(2, "0")}:00 — ${count} item${count === 1 ? "" : "s"}`;
+      cell.title = `${REDDITORS_DAY_NAMES[d]} ${String(h).padStart(2, "0")}:00 — ${count} item${count === 1 ? "" : "s"}`;
       grid.appendChild(cell);
     }
   }
@@ -91,11 +91,11 @@ function renderHourHeatmap(timestamps: number[]): HTMLDivElement {
   return wrap;
 }
 
-export function bonRedditorsHourSection(timestamps: number[]): HTMLDivElement {
+export function redditorsHourSection(timestamps: number[]): HTMLDivElement {
   const outer = document.createElement("div");
   outer.style.marginTop = "0.75em";
 
-  const inferred = bonRedditorsInferTimezoneFromTimestamps(timestamps);
+  const inferred = redditorsInferTimezoneFromTimestamps(timestamps);
   const cycleNote = renderCycleNote(inferred);
   if (cycleNote) {
     const row = document.createElement("p");

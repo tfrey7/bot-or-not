@@ -13,13 +13,13 @@
 // ("new since last analysis") rather than naming the source.
 
 import type { GoogleHarvest, GoogleHarvestPost } from "../../types.ts";
-import { bonFormatDate } from "../../utils/format_time.ts";
-import { bonInvestigationResults } from "../../utils/history.ts";
+import { formatDate } from "../../utils/format_time.ts";
+import { investigationResults } from "../../utils/history.ts";
 import type { ReportRow } from "./logic.ts";
 
 const POST_LIMIT = 30;
 
-export function bonRedditorsGoogleDossierSection(
+export function redditorsGoogleDossierSection(
   report: ReportRow
 ): HTMLDivElement | null {
   const harvest = report.googleHarvest;
@@ -27,8 +27,8 @@ export function bonRedditorsGoogleDossierSection(
     return null;
   }
 
-  const lastRunAt = bonInvestigationResults(report.investigation)?.runAt ?? 0;
-  const freshPosts = bonRedditorsGoogleDossierCountFresh(harvest, lastRunAt);
+  const lastRunAt = investigationResults(report.investigation)?.runAt ?? 0;
+  const freshPosts = redditorsGoogleDossierCountFresh(harvest, lastRunAt);
 
   const wrap = document.createElement("div");
   wrap.className = "bon-detail-wrap bon-google-dossier";
@@ -49,7 +49,7 @@ export function bonRedditorsGoogleDossierSection(
 // lastRunAt == 0 (no investigation yet), everything counts as fresh.
 // Exported so the Investigate button can combine this with the passive
 // count without recomputing the definition independently.
-export function bonRedditorsGoogleDossierCountFresh(
+export function redditorsGoogleDossierCountFresh(
   harvest: GoogleHarvest | null,
   lastRunAt: number
 ): number {
@@ -117,14 +117,14 @@ function buildTitleRow(
   const searchCount = harvest.captureCount;
   const parts = [
     `${postCount} post${postCount === 1 ? "" : "s"}`,
-    `last ${bonFormatDate(harvest.lastCapturedAt)}`,
+    `last ${formatDate(harvest.lastCapturedAt)}`,
     `${searchCount} search${searchCount === 1 ? "" : "es"}`,
   ];
 
   meta.textContent = parts.join(" · ");
   meta.title =
-    `First captured ${bonFormatDate(harvest.firstCapturedAt)}, ` +
-    `last ${bonFormatDate(harvest.lastCapturedAt)}`;
+    `First captured ${formatDate(harvest.firstCapturedAt)}, ` +
+    `last ${formatDate(harvest.lastCapturedAt)}`;
   titleRow.appendChild(meta);
 
   return titleRow;
@@ -219,7 +219,7 @@ function buildPostItem(
   }
 
   metaLine.textContent = metaParts.join(" · ");
-  metaLine.title = `First seen ${bonFormatDate(post.firstSeenAt)}`;
+  metaLine.title = `First seen ${formatDate(post.firstSeenAt)}`;
   item.appendChild(metaLine);
 
   if (post.snippetText) {

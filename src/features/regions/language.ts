@@ -3,11 +3,11 @@
 // Spanish vs Italian — all Latin script). Picks up to a handful of distinct
 // sample matches per language for the UI to surface as evidence.
 
-import { BON_LANGUAGE_MARKERS } from "./data.ts";
+import { LANGUAGE_MARKERS } from "./data.ts";
 
 const LANGUAGE_SAMPLE_LIMIT = 4;
 
-export function bonRegionsDetectLanguageMarkers(text: string): {
+export function regionsDetectLanguageMarkers(text: string): {
   counts: Record<string, number>;
   samples: Record<string, string[]>;
 } {
@@ -18,7 +18,7 @@ export function bonRegionsDetectLanguageMarkers(text: string): {
   const counts: Record<string, number> = {};
   const samples: Record<string, string[]> = {};
 
-  for (const [name, marker] of Object.entries(BON_LANGUAGE_MARKERS)) {
+  for (const [name, marker] of Object.entries(LANGUAGE_MARKERS)) {
     const matches = text.match(marker.pattern);
     if (!matches || matches.length === 0) {
       continue;
@@ -60,7 +60,7 @@ export interface LanguageInference {
   }>;
 }
 
-export function bonInferRegionFromLanguage(
+export function inferRegionFromLanguage(
   languageCounts: Record<string, number> | null | undefined,
   languageSamples?: Record<string, string[]> | null | undefined
 ): LanguageInference | null {
@@ -76,7 +76,7 @@ export function bonInferRegionFromLanguage(
       continue;
     }
 
-    const marker = BON_LANGUAGE_MARKERS[name];
+    const marker = LANGUAGE_MARKERS[name];
     if (!marker) {
       continue;
     }

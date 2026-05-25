@@ -9,7 +9,7 @@
 // once the wrap element is no longer in the DOM, so a re-render of the host
 // (detail pane or flyout) doesn't leak intervals.
 
-import { bonExpectedDurationSec } from "./expected_duration.ts";
+import { expectedDurationSec } from "./expected_duration.ts";
 
 const SLIDES: ReadonlyArray<{ src: string; alt: string }> = [
   {
@@ -90,7 +90,7 @@ export interface InvestigationLoadingOpts {
   expectedDurationMs?: number | null;
 }
 
-export function bonInvestigationLoading(
+export function investigationLoading(
   startedAt: number | null | undefined,
   { compact = false, expectedDurationMs = null }: InvestigationLoadingOpts = {}
 ): HTMLDivElement {
@@ -182,7 +182,7 @@ export function bonInvestigationLoading(
         Math.round((Date.now() - startedAt) / 1000)
       );
       meta.textContent = expectedDurationMs
-        ? `${elapsedSec}s / ~${bonExpectedDurationSec(expectedDurationMs)}s`
+        ? `${elapsedSec}s / ~${expectedDurationSec(expectedDurationMs)}s`
         : `${elapsedSec}s`;
     };
 

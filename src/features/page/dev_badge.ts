@@ -17,7 +17,7 @@ const FALLBACK_PALETTE = [
   "#d3869b",
 ];
 
-export function bonPageInstallDevBadge(): void {
+export function pageInstallDevBadge(): void {
   if (!import.meta.env.DEV) {
     return;
   }
@@ -27,18 +27,17 @@ export function bonPageInstallDevBadge(): void {
     return;
   }
 
-  if (__BON_STRAND__) {
-    document.title = `[${__BON_STRAND__}] ${document.title}`;
+  if (__STRAND__) {
+    document.title = `[${__STRAND__}] ${document.title}`;
 
-    const background =
-      __BON_STRAND_COLOR__ ?? bonHashedPaletteColor(__BON_STRAND__);
+    const background = __STRAND_COLOR__ ?? hashedPaletteColor(__STRAND__);
 
     titlesEl.appendChild(
-      bonBuildBadge({
-        text: `STRAND · ${__BON_STRAND__.toUpperCase()}`,
-        title: `Dev build running from worktree: ${__BON_STRAND__}`,
+      buildBadge({
+        text: `STRAND · ${__STRAND__.toUpperCase()}`,
+        title: `Dev build running from worktree: ${__STRAND__}`,
         background,
-        foreground: bonReadableTextOn(background),
+        foreground: readableTextOn(background),
       })
     );
 
@@ -46,7 +45,7 @@ export function bonPageInstallDevBadge(): void {
   }
 
   titlesEl.appendChild(
-    bonBuildBadge({
+    buildBadge({
       text: "DEV · MAIN",
       title: "Dev build running from the main checkout",
       background: "#4d4538",
@@ -62,7 +61,7 @@ interface BadgeOptions {
   foreground: string;
 }
 
-function bonBuildBadge(options: BadgeOptions): HTMLSpanElement {
+function buildBadge(options: BadgeOptions): HTMLSpanElement {
   const badge = document.createElement("span");
   badge.className = "bon-dev-badge";
   badge.textContent = options.text;
@@ -83,7 +82,7 @@ function bonBuildBadge(options: BadgeOptions): HTMLSpanElement {
   return badge;
 }
 
-function bonHashedPaletteColor(slug: string): string {
+function hashedPaletteColor(slug: string): string {
   let hash = 0;
 
   for (const ch of slug) {
@@ -96,7 +95,7 @@ function bonHashedPaletteColor(slug: string): string {
 // Plugin colors span the whole luminance range (dark navy through bright
 // pastel), so the badge can't hard-code a text color. Relative luminance
 // per WCAG; threshold 0.5 is good enough for a one-off badge.
-function bonReadableTextOn(hex: string): string {
+function readableTextOn(hex: string): string {
   const normalized = hex.replace("#", "");
   const r = parseInt(normalized.slice(0, 2), 16) / 255;
   const g = parseInt(normalized.slice(2, 4), 16) / 255;

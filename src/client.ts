@@ -4,12 +4,12 @@
 // same interface could be implemented against HTTP fetch + WebSocket/SSE
 // to host the same UI code against a real server.
 
-export interface BonClientMessage {
+export interface ClientMessage {
   type: string;
   [key: string]: unknown;
 }
 
-export type BonClientEvent =
+export type ClientEvent =
   | { type: "reports-changed" }
   | { type: "subreddits-changed" }
   | { type: "api-key-changed" }
@@ -17,11 +17,11 @@ export type BonClientEvent =
   | { type: "hide-pii-changed" }
   | { type: "reddit-pause-changed" };
 
-export type BonClientListener = (event: BonClientEvent) => void;
+export type ClientListener = (event: ClientEvent) => void;
 
-export interface BonClient {
-  send<T = unknown>(message: BonClientMessage): Promise<T>;
-  subscribe(listener: BonClientListener): () => void;
+export interface ClientAdapter {
+  send<T = unknown>(message: ClientMessage): Promise<T>;
+  subscribe(listener: ClientListener): () => void;
 }
 
 // One investigation lifecycle fires ~5 separate storage writes (queued →
@@ -29,20 +29,20 @@ export interface BonClient {
 // coalescing, every subscriber re-renders for each write, and the reports
 // page slideshow + uplot canvases get rebuilt 5× per investigation step.
 // 250ms is short enough that user-driven actions still feel immediate.
-const BON_CLIENT_COALESCE_MS = 250;
+const CLIENT_COALESCE_MS = 250;
 
-class BonExtensionClient implements BonClient {
-  send<T = unknown>(message: BonClientMessage): Promise<T> {
+class ExtensionClient implements ClientAdapter {
+  send<T = unknown>(message: ClientMessage): Promise<T> {
     return browser.runtime.sendMessage(message) as Promise<T>;
   }
 
-  subscribe(listener: BonClientListener): () => void {
+  subscribe(listener: ClientListener): () => void {
     const pending = new Map<
-      BonClientEvent["type"],
+      ClientEvent["type"],
       ReturnType<typeof setTimeout>
     >();
 
-    const emit = (type: BonClientEvent["type"]): void => {
+    const emit = (type: ClientEvent["type"]): void => {
       const existing = pending.get(type);
       if (existing) {
         clearTimeout(existing);
@@ -50,8 +50,8 @@ class BonExtensionClient implements BonClient {
 
       const timer = setTimeout(() => {
         pending.delete(type);
-        listener({ type } as BonClientEvent);
-      }, BON_CLIENT_COALESCE_MS);
+        listener({ type } as ClientEvent);
+      }, CLIENT_COALESCE_MS);
       pending.set(type, timer);
     };
 
@@ -103,14 +103,12 @@ class BonExtensionClient implements BonClient {
   }
 }
 
-const bonClient: BonClient = new BonExtensionClient();
+const client: ClientAdapter = new ExtensionClient();
 
-export function bonClientSend<T = unknown>(
-  message: BonClientMessage
-): Promise<T> {
-  return bonClient.send<T>(message);
+export function clientSend<T = unknown>(message: ClientMessage): Promise<T> {
+  return client.send<T>(message);
 }
 
-export function bonClientSubscribe(listener: BonClientListener): () => void {
-  return bonClient.subscribe(listener);
+export function clientSubscribe(listener: ClientListener): () => void {
+  return client.subscribe(listener);
 }

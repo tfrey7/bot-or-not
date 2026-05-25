@@ -7,11 +7,11 @@
 //   - `subreddit_chart_data.ts` for the subreddit chart's bucket math
 
 import type { Investigation, Report } from "../../types.ts";
-import { bonExpectedDurationSec } from "../../utils/expected_duration.ts";
-import { bonInvestigationResults } from "../../utils/history.ts";
-import { bonIsInvestigationStale } from "../../verdict.ts";
-import { BON_REDDITORS_VERDICT_RANK } from "./data.ts";
-import { bonRedditorsComputeRegionForReport } from "./region.ts";
+import { expectedDurationSec } from "../../utils/expected_duration.ts";
+import { investigationResults } from "../../utils/history.ts";
+import { isInvestigationStale } from "../../verdict.ts";
+import { REDDITORS_VERDICT_RANK } from "./data.ts";
+import { redditorsComputeRegionForReport } from "./region.ts";
 
 export type ReportRow = Report & { username: string };
 
@@ -19,7 +19,7 @@ export type ReportRow = Report & { username: string };
 // queue. Everything else (done, errored, never investigated) sinks into the
 // main list. Stale running counts as active until the sweeper rewrites it
 // to "error"; that way an obviously-stuck row doesn't quietly disappear.
-export function bonRedditorsIsActiveRow(report: ReportRow): boolean {
+export function redditorsIsActiveRow(report: ReportRow): boolean {
   const status = report.investigation?.status;
   return status === "running" || status === "queued";
 }
@@ -27,7 +27,7 @@ export function bonRedditorsIsActiveRow(report: ReportRow): boolean {
 // Sort order for the active table: running before queued, newest-started
 // running first, oldest-queued first within the queue (FIFO matches the
 // background's pickup order).
-export function bonRedditorsCompareActive(a: ReportRow, b: ReportRow): number {
+export function redditorsCompareActive(a: ReportRow, b: ReportRow): number {
   const aStatus = a.investigation?.status;
   const bStatus = b.investigation?.status;
 
@@ -52,7 +52,7 @@ export function bonRedditorsCompareActive(a: ReportRow, b: ReportRow): number {
 
 // Number of queued investigations ahead of `target` in the FIFO queue —
 // older queuedAt values run first. Returns 0 if `target` isn't queued.
-export function bonRedditorsCountQueuedAhead(
+export function redditorsCountQueuedAhead(
   reports: ReportRow[],
   target: ReportRow
 ): number {
@@ -81,7 +81,7 @@ export function bonRedditorsCountQueuedAhead(
   return ahead;
 }
 
-export function bonRedditorsFormatRunningCellText(
+export function redditorsFormatRunningCellText(
   elapsedSec: number,
   expectedMs: number | null | undefined
 ): string {
@@ -89,10 +89,10 @@ export function bonRedditorsFormatRunningCellText(
     return `Running… ${elapsedSec}s`;
   }
 
-  return `Running… ${elapsedSec}s / ~${bonExpectedDurationSec(expectedMs)}s`;
+  return `Running… ${elapsedSec}s / ~${expectedDurationSec(expectedMs)}s`;
 }
 
-export function bonRedditorsFormatRunningTitle(
+export function redditorsFormatRunningTitle(
   elapsedSec: number,
   expectedMs: number | null | undefined
 ): string {
@@ -100,7 +100,7 @@ export function bonRedditorsFormatRunningTitle(
     return `Investigation running… ${elapsedSec}s elapsed (large accounts can take 60–90s)`;
   }
 
-  const expSec = bonExpectedDurationSec(expectedMs);
+  const expSec = expectedDurationSec(expectedMs);
   if (elapsedSec > expSec) {
     return `Running ${elapsedSec}s — longer than the typical ${expSec}s. Hang tight.`;
   }
@@ -109,7 +109,7 @@ export function bonRedditorsFormatRunningTitle(
   return `Running ${elapsedSec}s · ~${remaining}s left (typical ${expSec}s)`;
 }
 
-export function bonRedditorsDiagnoseLoadError(
+export function redditorsDiagnoseLoadError(
   message: string | null | undefined
 ): string {
   const normalized = (message || "").toLowerCase();
@@ -139,7 +139,7 @@ export function bonRedditorsDiagnoseLoadError(
 // without this check, the polaroid slideshow + elapsed timer in the loading
 // widget for the selected user get torn down and rebuilt every time any
 // sibling investigation completes.
-export function bonRedditorsDetailFingerprint(
+export function redditorsDetailFingerprint(
   report: ReportRow | null,
   queueAhead: number,
   hasAnyReports: boolean
@@ -172,14 +172,14 @@ function detailInvestigationSig(investigation: Investigation | null): string {
   }
 
   if (investigation.status === "running") {
-    const stale = bonIsInvestigationStale(investigation) ? "s" : "f";
+    const stale = isInvestigationStale(investigation) ? "s" : "f";
     return `inv:running:${investigation.startedAt ?? 0}:${stale}`;
   }
 
   return `inv:queued:${investigation.queuedAt ?? 0}:${investigation.notBefore ?? 0}`;
 }
 
-export function bonRedditorsHasStructuralChange(
+export function redditorsHasStructuralChange(
   prev: ReportRow[],
   next: ReportRow[]
 ): boolean {
@@ -209,9 +209,9 @@ export function bonRedditorsHasStructuralChange(
     }
 
     const prevVerdict =
-      bonInvestigationResults(prevReport.investigation)?.verdict ?? null;
+      investigationResults(prevReport.investigation)?.verdict ?? null;
     const nextVerdict =
-      bonInvestigationResults(report.investigation)?.verdict ?? null;
+      investigationResults(report.investigation)?.verdict ?? null;
 
     if (prevVerdict !== nextVerdict) {
       return true;
@@ -227,9 +227,9 @@ export function bonRedditorsHasStructuralChange(
 
     const prevStale =
       prevStatus === "running" &&
-      bonIsInvestigationStale(prevReport.investigation);
+      isInvestigationStale(prevReport.investigation);
     const nextStale =
-      nextStatus === "running" && bonIsInvestigationStale(report.investigation);
+      nextStatus === "running" && isInvestigationStale(report.investigation);
 
     if (prevStale !== nextStale) {
       return true;
@@ -250,7 +250,7 @@ export type SortDir = "asc" | "desc";
 
 type SortValue = string | number | null;
 
-export function bonRedditorsSortValue(
+export function redditorsSortValue(
   report: ReportRow,
   key: SortKey,
   regionLabels: Record<string, string>
@@ -264,10 +264,9 @@ export function bonRedditorsSortValue(
   }
 
   if (key === "verdict") {
-    const verdict =
-      bonInvestigationResults(report.investigation)?.verdict ?? null;
+    const verdict = investigationResults(report.investigation)?.verdict ?? null;
 
-    return verdict ? (BON_REDDITORS_VERDICT_RANK[verdict] ?? 5) : 5;
+    return verdict ? (REDDITORS_VERDICT_RANK[verdict] ?? 5) : 5;
   }
 
   if (key === "investigatedAt") {
@@ -297,7 +296,7 @@ export function bonRedditorsSortValue(
   if (key === "region") {
     // Sort by region label so same-country rows cluster; rows with no
     // inferred region sink to the bottom.
-    const region = bonRedditorsComputeRegionForReport(report);
+    const region = redditorsComputeRegionForReport(report);
     if (!region) {
       return "￿";
     }
@@ -312,7 +311,7 @@ export function bonRedditorsSortValue(
   return null;
 }
 
-export function bonRedditorsCompareBy(
+export function redditorsCompareBy(
   key: SortKey,
   dir: SortDir,
   regionLabels: Record<string, string>
@@ -320,8 +319,8 @@ export function bonRedditorsCompareBy(
   const multiplier = dir === "asc" ? 1 : -1;
 
   return (a, b) => {
-    const aValue = bonRedditorsSortValue(a, key, regionLabels);
-    const bValue = bonRedditorsSortValue(b, key, regionLabels);
+    const aValue = redditorsSortValue(a, key, regionLabels);
+    const bValue = redditorsSortValue(b, key, regionLabels);
 
     if (aValue == null && bValue == null) {
       return 0;

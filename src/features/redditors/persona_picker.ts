@@ -11,7 +11,7 @@
 // picker reports back on every toggle with the new array (in user pick
 // order, de-duped).
 
-import { BON_ARCHETYPES, BON_PERSONA_LABELS } from "../../factors.ts";
+import { ARCHETYPES, PERSONA_LABELS } from "../../factors.ts";
 import type { PersonaLabel } from "../../types.ts";
 
 export interface PersonaPickerOptions {
@@ -25,7 +25,7 @@ export interface PersonaPickerHandle {
 }
 
 const ARCHETYPE_LABEL_MAP: Record<string, string> = Object.fromEntries(
-  BON_ARCHETYPES.map((archetype) => [archetype.key, archetype.label])
+  ARCHETYPES.map((archetype) => [archetype.key, archetype.label])
 );
 
 const EXTRA_LABEL_MAP: Record<string, string> = {
@@ -37,7 +37,7 @@ function labelFor(value: PersonaLabel): string {
   return ARCHETYPE_LABEL_MAP[value] || EXTRA_LABEL_MAP[value] || value;
 }
 
-export function bonRedditorsPersonaPicker(
+export function redditorsPersonaPicker(
   opts: PersonaPickerOptions
 ): PersonaPickerHandle {
   const wrap = document.createElement("div");
@@ -70,7 +70,7 @@ export function bonRedditorsPersonaPicker(
 
   const items: { key: PersonaLabel; el: HTMLDivElement }[] = [];
 
-  for (const key of BON_PERSONA_LABELS) {
+  for (const key of PERSONA_LABELS) {
     const item = document.createElement("div");
     item.className = `bon-persona-picker__option bon-persona-picker__option--${key}`;
     item.setAttribute("role", "option");

@@ -3,22 +3,22 @@
 // land between their dominant anchors. Click a dot to jump to its dossier.
 
 import type { Report } from "../../types.ts";
-import { bonPersonasArchetypeGrid } from "./archetype_grid.ts";
+import { personasArchetypeGrid } from "./archetype_grid.ts";
 import {
-  bonPersonasCollect,
-  bonPersonasExemplars,
+  personasCollect,
+  personasExemplars,
   type PersonasRow,
 } from "./logic.ts";
-import { bonPersonasScatter } from "./scatter.ts";
+import { personasScatter } from "./scatter.ts";
 
-export interface BonRenderPersonasOptions {
+export interface RenderPersonasOptions {
   onSelectUser: (username: string) => void;
 }
 
-export function bonRenderPersonas(
+export function renderPersonasTab(
   reports: Array<Report & { username: string }>,
   container: HTMLElement | null,
-  options: BonRenderPersonasOptions
+  options: RenderPersonasOptions
 ): void {
   if (!container) {
     return;
@@ -30,13 +30,13 @@ export function bonRenderPersonas(
   section.className = "bon-personas";
   section.appendChild(buildHeader(reports));
 
-  const points = bonPersonasCollect(reports as PersonasRow[]);
-  const exemplars = bonPersonasExemplars(points);
+  const points = personasCollect(reports as PersonasRow[]);
+  const exemplars = personasExemplars(points);
 
   if (points.length === 0) {
     section.appendChild(buildEmptyState());
     section.appendChild(
-      bonPersonasArchetypeGrid({
+      personasArchetypeGrid({
         exemplars,
         onSelectUser: options.onSelectUser,
       })
@@ -62,7 +62,7 @@ export function bonRenderPersonas(
   const chart = document.createElement("div");
   chart.className = "bon-personas-chart";
   chart.appendChild(
-    bonPersonasScatter(points, {
+    personasScatter(points, {
       onSelect: options.onSelectUser,
       lookupReport,
     })
@@ -71,7 +71,7 @@ export function bonRenderPersonas(
 
   section.appendChild(buildFootnote());
   section.appendChild(
-    bonPersonasArchetypeGrid({
+    personasArchetypeGrid({
       exemplars,
       onSelectUser: options.onSelectUser,
     })
@@ -138,7 +138,7 @@ function buildFootnote(): HTMLElement {
   return para;
 }
 
-export { bonPersonasScatter } from "./scatter.ts";
-export type { BonPersonasScatterOptions } from "./scatter.ts";
-export { bonPersonasCollect } from "./logic.ts";
+export { personasScatter } from "./scatter.ts";
+export type { PersonasScatterOptions } from "./scatter.ts";
+export { personasCollect } from "./logic.ts";
 export type { PersonaPoint, PersonasRow } from "./logic.ts";

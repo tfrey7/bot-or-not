@@ -1,7 +1,7 @@
 // Pure transform: raw Reddit JSON → activity summary used by the analyzer
 // and the heatmap.
 
-import { bonScanTextSignals } from "../features/regions";
+import { scanTextSignals } from "../features/regions";
 import type { ActivityData, RedditActivityFetch } from "../types.ts";
 
 interface RedditPost {
@@ -18,7 +18,7 @@ interface RedditComment {
   body?: string;
 }
 
-export function bonExtractActivityData(
+export function extractActivityData(
   raw: RedditActivityFetch,
   fetchLimit: number = 100
 ): ActivityData {
@@ -76,7 +76,7 @@ export function bonExtractActivityData(
     ...posts.map((post) => `${post.title ?? ""}\n${post.selftext ?? ""}`),
     ...comments.map((comment) => comment.body ?? ""),
   ].join("\n");
-  const scanned = bonScanTextSignals(corpus);
+  const scanned = scanTextSignals(corpus);
 
   // moderated_subreddits.json: { "data": [{ "sr": "name", ... }, ...] } when
   // the user has the "show moderated subs publicly" setting on; otherwise it

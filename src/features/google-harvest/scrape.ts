@@ -6,7 +6,7 @@
 // already gold (subreddit + post slug embedded), so a missing snippet is
 // still a useful result.
 
-export interface BonGoogleResult {
+export interface GoogleResult {
   url: string;
   title: string;
   snippet: string;
@@ -41,14 +41,12 @@ function normalizeUrl(href: string): string {
   return href.split("#")[0].split("?")[0].replace(/\/$/, "");
 }
 
-export function bonGoogleHarvestScrape(
-  doc: Document = document
-): BonGoogleResult[] {
+export function googleHarvestScrape(doc: Document = document): GoogleResult[] {
   const anchors = Array.from(
     doc.querySelectorAll<HTMLAnchorElement>("a[href]")
   );
   const seen = new Set<string>();
-  const results: BonGoogleResult[] = [];
+  const results: GoogleResult[] = [];
 
   for (const anchor of anchors) {
     const rawHref = unwrapHref(anchor.href || "");

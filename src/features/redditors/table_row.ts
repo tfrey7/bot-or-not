@@ -3,8 +3,8 @@
 // orchestrator handles by rendering the user's full detail into the side
 // pane.
 
-import { bonRingChip } from "../../utils/ring_chip.ts";
-import { bonRedditorsVerdictBadge } from "./cell_verdict.ts";
+import { buildRingChip } from "../../utils/ring_chip.ts";
+import { redditorsVerdictBadge } from "./cell_verdict.ts";
 import type { ReportRow } from "./logic.ts";
 
 export interface RowOptions {
@@ -13,7 +13,7 @@ export interface RowOptions {
   onSelect: (username: string) => void;
 }
 
-export function bonRedditorsRow(
+export function redditorsRow(
   report: ReportRow,
   opts: RowOptions
 ): HTMLTableRowElement {
@@ -72,7 +72,7 @@ export function bonRedditorsRow(
   });
   linkRow.appendChild(link);
 
-  const ringChip = bonRingChip(ringId);
+  const ringChip = buildRingChip(ringId);
   if (ringChip) {
     linkRow.appendChild(ringChip);
   }
@@ -87,7 +87,7 @@ export function bonRedditorsRow(
   const tagsRow = document.createElement("div");
   tagsRow.className = "bon-tags-row";
 
-  const verdict = bonRedditorsVerdictBadge(investigation, !!ringId, queueAhead);
+  const verdict = redditorsVerdictBadge(investigation, !!ringId, queueAhead);
   if (verdict) {
     tagsRow.appendChild(verdict);
   }

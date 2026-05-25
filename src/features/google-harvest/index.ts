@@ -11,17 +11,17 @@
 // This index re-exports only — no top-level side effects, so it's safe
 // to import from any runtime context.
 
-export { bonGoogleAttributionDrain } from "./attribution.ts";
+export { googleAttributionDrain } from "./attribution.ts";
 
-export { bonGoogleHarvestMerge } from "./merge.ts";
-export type { BonHarvestMergeInput } from "./merge.ts";
+export { googleHarvestMerge } from "./merge.ts";
+export type { HarvestMergeInput } from "./merge.ts";
 
-export { bonGoogleHarvestParse } from "./parse.ts";
-export type { BonScrapedPost, BonParsedHarvest } from "./parse.ts";
+export { googleHarvestParse } from "./parse.ts";
+export type { ScrapedPost, ParsedHarvest } from "./parse.ts";
 
 export {
-  bonGoogleHarvestIsGranted,
-  bonGoogleHarvestRequest,
-  bonGoogleHarvestRevoke,
-  bonGoogleHarvestMatches,
+  googleHarvestIsGranted,
+  googleHarvestRequest,
+  googleHarvestRevoke,
+  googleHarvestMatches,
 } from "./permission.ts";

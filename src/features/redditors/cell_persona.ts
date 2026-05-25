@@ -5,17 +5,17 @@
 // tag strip silently omits it.
 
 import type { Persona } from "../../types.ts";
-import { bonPersonaHue } from "../../utils/persona_color.ts";
-import { bonPersonaTitle } from "../../utils/persona_title.ts";
+import { personaHue } from "../../utils/persona_color.ts";
+import { personaTitle } from "../../utils/persona_title.ts";
 
-export function bonRedditorsPersonaTag(
+export function redditorsPersonaTag(
   persona: Persona | null | undefined
 ): HTMLSpanElement | null {
   if (!persona || !persona.label) {
     return null;
   }
 
-  const title = bonPersonaTitle(persona);
+  const title = personaTitle(persona);
   if (!title) {
     return null;
   }
@@ -24,7 +24,7 @@ export function bonRedditorsPersonaTag(
   tag.className = `bon-persona-tag bon-persona-tag--${persona.label}`;
   tag.textContent = title;
 
-  const hue = bonPersonaHue(persona);
+  const hue = personaHue(persona);
   if (hue !== null) {
     tag.style.setProperty("--bon-persona-hue", String(Math.round(hue)));
   }

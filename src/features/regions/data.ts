@@ -20,7 +20,7 @@ export interface RegionInfo {
   diasporaAttracting?: boolean;
 }
 
-export const BON_REGION_INFO: Record<string, RegionInfo> = {
+export const REGION_INFO: Record<string, RegionInfo> = {
   IN: { flag: "🇮🇳", label: "India", utcOffsets: [5, 6] }, // IST is +5:30
   PK: { flag: "🇵🇰", label: "Pakistan", utcOffsets: [5] },
   BD: { flag: "🇧🇩", label: "Bangladesh", utcOffsets: [6] },
@@ -76,8 +76,8 @@ export const BON_REGION_INFO: Record<string, RegionInfo> = {
   ZA: { flag: "🇿🇦", label: "South Africa", utcOffsets: [2] },
 };
 
-// Lower-cased sub names (without "r/") -> region code from BON_REGION_INFO.
-export const BON_REGION_SUBS: Record<string, string> = {
+// Lower-cased sub names (without "r/") -> region code from REGION_INFO.
+export const REGION_SUBS: Record<string, string> = {
   // India
   india: "IN",
   indiaspeaks: "IN",
@@ -398,12 +398,12 @@ export const BON_REGION_SUBS: Record<string, string> = {
   johannesburg: "ZA",
 };
 
-// Regex fallbacks tried when a sub name has no entry in BON_REGION_SUBS. Used
+// Regex fallbacks tried when a sub name has no entry in REGION_SUBS. Used
 // to catch the long tail of country-coded subs (r/indian_academia, r/indianmed*,
 // r/pakistani_*) without enumerating every one. Patterns must be conservative —
 // the dominant false-positive risk for India is r/Indiana* (US state) and
 // r/IndianaJones, hence /^indian[^a]/ rather than /^indian/.
-export const BON_REGION_SUB_PATTERNS: Array<{
+export const REGION_SUB_PATTERNS: Array<{
   pattern: RegExp;
   region: string;
 }> = [
@@ -438,7 +438,7 @@ export interface ScriptRange {
   regions: string[];
 }
 
-export const BON_SCRIPT_RANGES: ScriptRange[] = [
+export const SCRIPT_RANGES: ScriptRange[] = [
   { name: "devanagari", range: [0x0900, 0x097f], regions: ["IN"] },
   { name: "bengali", range: [0x0980, 0x09ff], regions: ["IN", "BD"] },
   { name: "gurmukhi", range: [0x0a00, 0x0a7f], regions: ["IN"] }, // Punjabi
@@ -472,7 +472,7 @@ export interface LanguageMarker {
   pattern: RegExp;
 }
 
-export const BON_LANGUAGE_MARKERS: Record<string, LanguageMarker> = {
+export const LANGUAGE_MARKERS: Record<string, LanguageMarker> = {
   hinglish: {
     label: "Hinglish",
     regions: ["IN"],

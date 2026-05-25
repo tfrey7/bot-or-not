@@ -5,7 +5,7 @@
 // update message to the background — dedup state below keeps us from
 // re-sending the same observation per page load.
 
-import { bonClientSend } from "../../client.ts";
+import { clientSend } from "../../client.ts";
 
 let lastUserStatusReported: string | null = null;
 const reportedPostPermalinks = new Set<string>();
@@ -58,7 +58,7 @@ function detectUserStatus(): void {
   }
 
   lastUserStatusReported = key;
-  void bonClientSend({
+  void clientSend({
     type: "update-user-status",
     username,
     status,
@@ -78,7 +78,7 @@ function reportPostStatus(
   }
 
   reportedPostPermalinks.add(permalink);
-  void bonClientSend({
+  void clientSend({
     type: "update-post-status",
     permalink,
     status,
@@ -198,7 +198,7 @@ function detectBotBouncerStatuses(): void {
 
     reportedBotBouncerKeys.add(key);
 
-    void bonClientSend({
+    void clientSend({
       type: "update-botbouncer-status",
       username,
       status,
@@ -206,18 +206,18 @@ function detectBotBouncerStatuses(): void {
   });
 }
 
-export function bonStatusDetectionScan(): void {
+export function statusDetectionScan(): void {
   detectUserStatus();
   detectPostStatuses();
   detectStandalonePostStatus();
   detectBotBouncerStatuses();
 }
 
-export function bonStatusDetectionInit(): void {
-  bonStatusDetectionScan();
+export function statusDetectionInit(): void {
+  statusDetectionScan();
 }
 
-export function bonStatusDetectionResetNav(): void {
+export function statusDetectionResetNav(): void {
   lastUserStatusReported = null;
   reportedPostPermalinks.clear();
   reportedBotBouncerKeys.clear();

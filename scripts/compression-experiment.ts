@@ -21,18 +21,18 @@ import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
 
 import {
-  bonFetchBotBouncerStatus,
-  bonFetchRedditProfile,
+  fetchBotBouncerStatus,
+  fetchRedditProfile,
   RedditFetchError,
 } from "../src/features/investigation/fetch.ts";
 import {
-  bonExtractSnoovatarUrl,
-  bonSummarizeProfile,
+  extractSnoovatarUrl,
+  summarizeProfile,
 } from "../src/features/investigation/summarize.ts";
-import { bonExtractJson } from "../src/utils/json.ts";
-import { bonNormalizePersona } from "../src/utils/persona.ts";
-import { bonEstimateCostUsd } from "../src/llm/cost.ts";
-import { bonComputeVerdict } from "../src/verdict.ts";
+import { extractJson } from "../src/utils/json.ts";
+import { normalizePersona } from "../src/utils/persona.ts";
+import { estimateCostUsd } from "../src/llm/cost.ts";
+import { computeVerdict } from "../src/verdict.ts";
 import type {
   ClaudeUsage,
   Factor,
@@ -149,7 +149,7 @@ async function callClaude(opts: {
     .map((b) => b.text ?? "")
     .join("\n");
   const model = payload.model ?? opts.model;
-  const costUsd = bonEstimateCostUsd(payload.usage, model);
+  const costUsd = estimateCostUsd(payload.usage, model);
   return {
     rawText: text,
     usage: payload.usage ?? null,
@@ -250,8 +250,8 @@ interface UserExperiment {
 async function runUser(username: string): Promise<UserExperiment> {
   console.error(`[${username}] fetching reddit...`);
   const [profileSettled, botBouncerSettled] = await Promise.allSettled([
-    bonFetchRedditProfile(username),
-    bonFetchBotBouncerStatus(username),
+    fetchRedditProfile(username),
+    fetchBotBouncerStatus(username),
   ]);
 
   if (profileSettled.status === "rejected") {
@@ -272,7 +272,7 @@ async function runUser(username: string): Promise<UserExperiment> {
     `[${username}] posts=${postsFetched} comments=${commentsFetched} bb=${botBouncerStatus ?? "-"}`
   );
 
-  const fullSummary = bonSummarizeProfile(username, profile, {
+  const fullSummary = summarizeProfile(username, profile, {
     ...(botBouncerStatus
       ? { botBouncerStatus, botBouncerCheckedAt: Date.now() }
       : {}),
@@ -286,7 +286,7 @@ async function runUser(username: string): Promise<UserExperiment> {
     0,
     MAX_ITEMS_PER_KIND
   );
-  const avatarUrl = bonExtractSnoovatarUrl(profile);
+  const avatarUrl = extractSnoovatarUrl(profile);
 
   const uncompressedText = buildUserContentText(fullSummary, false);
   const compressedSummary = compressSummary(fullSummary);
@@ -308,7 +308,7 @@ async function runUser(username: string): Promise<UserExperiment> {
           userContentText: text,
           avatarUrl,
         });
-        const extracted = bonExtractJson(result.rawText);
+        const extracted = extractJson(result.rawText);
         if (!extracted || typeof extracted !== "object") {
           console.error(`  failed to parse JSON: ${result.rawText.slice(0, 200)}`);
           continue;
@@ -319,8 +319,8 @@ async function runUser(username: string): Promise<UserExperiment> {
           continue;
         }
         const factors = payload.factors as Factor[];
-        const persona = bonNormalizePersona(payload.persona);
-        const verdict = bonComputeVerdict(factors);
+        const persona = normalizePersona(payload.persona);
+        const verdict = computeVerdict(factors);
         const factorScores: Record<string, number> = {};
         for (const f of factors) {
           if (typeof f.score === "number") factorScores[f.key] = f.score;

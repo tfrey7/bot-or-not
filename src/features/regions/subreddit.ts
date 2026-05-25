@@ -3,13 +3,9 @@
 // from that country. Strong signal; multiple country subs only nudge the
 // score, not multiply it.
 
-import {
-  BON_REGION_INFO,
-  BON_REGION_SUB_PATTERNS,
-  BON_REGION_SUBS,
-} from "./data.ts";
+import { REGION_INFO, REGION_SUB_PATTERNS, REGION_SUBS } from "./data.ts";
 
-export function bonNormalizeSubName(name: string | null | undefined): string {
+export function normalizeSubName(name: string | null | undefined): string {
   return String(name || "")
     .toLowerCase()
     .replace(/^r\//, "")
@@ -20,17 +16,17 @@ export function bonNormalizeSubName(name: string | null | undefined): string {
 // curated table in data.ts is the canonical truth); falls back to regex
 // patterns for the long tail (r/indian_*, r/pakistani_*, …). Also used by
 // moderated.ts to score moderator-of-region signal.
-export function bonRegionsLookupSub(normalizedSub: string): string | undefined {
+export function regionsLookupSub(normalizedSub: string): string | undefined {
   if (!normalizedSub) {
     return undefined;
   }
 
-  const exact = BON_REGION_SUBS[normalizedSub];
+  const exact = REGION_SUBS[normalizedSub];
   if (exact) {
     return exact;
   }
 
-  for (const { pattern, region } of BON_REGION_SUB_PATTERNS) {
+  for (const { pattern, region } of REGION_SUB_PATTERNS) {
     if (pattern.test(normalizedSub)) {
       return region;
     }
@@ -62,7 +58,7 @@ export interface SubregionInference {
 // residency the way r/india does, and the operator's mental model of "country
 // sub → resident" should not be applied to them. Their hits are dropped from
 // the result entirely so the tooltip doesn't mention them.
-export function bonInferRegionFromSubreddits(
+export function inferRegionFromSubreddits(
   subredditCounts: Record<string, number> | null | undefined
 ): SubregionInference | null {
   if (!subredditCounts) {
@@ -78,12 +74,12 @@ export function bonInferRegionFromSubreddits(
       continue;
     }
 
-    const region = bonRegionsLookupSub(bonNormalizeSubName(sub));
+    const region = regionsLookupSub(normalizeSubName(sub));
     if (!region) {
       continue;
     }
 
-    if (BON_REGION_INFO[region]?.diasporaAttracting) {
+    if (REGION_INFO[region]?.diasporaAttracting) {
       continue;
     }
 

@@ -11,12 +11,12 @@
 // when this modal opens) so the agent treats follow-ups as continuations.
 
 import {
-  bonAiCommandFormatBlock,
+  aiCommandFormatBlock,
   type AiCommandProgressEvent,
   type AiCommandResult,
 } from "../ai-command";
-import { bonPageOpenConfirmModal } from "./confirm_modal.ts";
-import { bonFmtUsd } from "../../utils/format_number.ts";
+import { pageOpenConfirmModal } from "./confirm_modal.ts";
+import { fmtUsd } from "../../utils/format_number.ts";
 
 // Human-readable phrasing for each destructive tool the dispatcher gates
 // before executing. Pulled into the confirm modal verbatim so the operator
@@ -72,7 +72,7 @@ function describeAiConfirmRequest(
 // about to collapse back into the command bar. The caller renders the
 // agent's final summary as a status line under the command bar so the
 // operator can see what was done after the modal disappears.
-export interface BonCommandModalDeps {
+export interface CommandModalDeps {
   sourceEl: HTMLElement | null;
   onTurnSettled(result: AiCommandResult): Promise<void>;
   onAutoMinimize?(summaryHtml: string): void;
@@ -109,9 +109,9 @@ interface QueuedItem {
   cardEl: HTMLElement;
 }
 
-export function bonPageOpenCommandModal(
+export function pageOpenCommandModal(
   initialPrompt: string,
-  deps: BonCommandModalDeps
+  deps: CommandModalDeps
 ): void {
   // Fresh modal session = fresh conversation. Reset background-held history
   // so the agent starts from zero. This also handles the case where a prior
@@ -245,7 +245,7 @@ export function bonPageOpenCommandModal(
     }
 
     costEl.hidden = false;
-    costEl.textContent = bonFmtUsd(totalCostUsd);
+    costEl.textContent = fmtUsd(totalCostUsd);
   };
 
   const scrollConversationToBottom = (): void => {
@@ -556,7 +556,7 @@ export function bonPageOpenCommandModal(
     // so multi-paragraph answers don't collapse.
     if (result.summary) {
       turn.reasoningSection.hidden = false;
-      turn.reasoningTextEl.innerHTML = bonAiCommandFormatBlock(result.summary);
+      turn.reasoningTextEl.innerHTML = aiCommandFormatBlock(result.summary);
     }
 
     turn.reasoningEl.classList.remove("bon-cmd-turn-reasoning--streaming");
@@ -577,7 +577,7 @@ export function bonPageOpenCommandModal(
       // Show the turn's own cost share rather than the running total, so each
       // card carries its own price tag — the running total lives in the
       // header status bar.
-      const turnCost = result.costUsd > 0 ? bonFmtUsd(result.costUsd) : null;
+      const turnCost = result.costUsd > 0 ? fmtUsd(result.costUsd) : null;
       if (turnCost) {
         metaParts.push(turnCost);
       }
@@ -652,7 +652,7 @@ export function bonPageOpenCommandModal(
       deps.onAutoMinimize
     ) {
       const summaryHtml = result.summary
-        ? bonAiCommandFormatBlock(result.summary)
+        ? aiCommandFormatBlock(result.summary)
         : "Done.";
       scheduleAutoMinimize(summaryHtml);
     }
@@ -807,7 +807,7 @@ export function bonPageOpenCommandModal(
           }
         };
 
-        bonPageOpenConfirmModal({
+        pageOpenConfirmModal({
           text,
           confirmLabel,
           action: () => reply(true),

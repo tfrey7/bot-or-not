@@ -60,7 +60,7 @@ export interface Persona {
   archetypes: Record<ArchetypeKey, number> | null;
 }
 
-// AI-inferred region. `code` is a 2-letter ISO key from BON_REGION_INFO or
+// AI-inferred region. `code` is a 2-letter ISO key from REGION_INFO or
 // null when the model can't tell. Lives alongside the deterministic region
 // pipeline — the AI pick takes precedence when present and the deterministic
 // signals become supporting context / contradiction detection.
@@ -158,7 +158,7 @@ interface InvestigationLifecycle {
 
   // Count of runs we've started for this investigation (1 = first try in
   // progress, etc.). Bumped when the run transitions to "running". Caps
-  // out at BON_INVESTIGATION_MAX_ATTEMPTS — failures past that stay as
+  // out at INVESTIGATION_MAX_ATTEMPTS — failures past that stay as
   // "error" instead of getting re-queued.
   attempts: number;
   runs: RunSnapshot[];
@@ -170,7 +170,7 @@ interface InvestigationLifecycle {
 }
 
 // Investigation is stored as one struct that mutates through
-// "queued" → "running" → "done"/"error". bonNormalizeReport canonicalizes
+// "queued" → "running" → "done"/"error". normalizeReport canonicalizes
 // from unknown JSON and fills in defaults so every key is always present.
 // `status` discriminates the union — narrowing on it gives TypeScript
 // access to the populated `results` for "done", and forces consumers to
@@ -336,7 +336,7 @@ export interface PassiveHarvest {
   kinds: Record<PassiveHarvestItemKind, number>;
 }
 
-// Canonical Report shape produced by bonNormalizeReport. Every field is always
+// Canonical Report shape produced by normalizeReport. Every field is always
 // present; `null` (or 0 for timestamps) means "no signal." No two-way optionality.
 export interface Report {
   count: number;

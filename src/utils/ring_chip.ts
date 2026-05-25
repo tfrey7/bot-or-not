@@ -2,9 +2,9 @@
 // belongs to. Same component used in the reports table row, the inline tag
 // next to in-feed username links, and the profile panel header.
 
-import { bonRingHue } from "./ring_id.ts";
+import { ringHue } from "./ring_id.ts";
 
-export function bonRingChip(ringId: string | null): HTMLElement | null {
+export function buildRingChip(ringId: string | null): HTMLElement | null {
   if (!ringId) {
     return null;
   }
@@ -14,6 +14,6 @@ export function bonRingChip(ringId: string | null): HTMLElement | null {
   chip.textContent = `[${ringId}]`;
   chip.title = `Ring ${ringId}`;
   chip.dataset.bonRingId = ringId;
-  chip.style.setProperty("--bon-ring-hue", String(bonRingHue(ringId)));
+  chip.style.setProperty("--bon-ring-hue", String(ringHue(ringId)));
   return chip;
 }

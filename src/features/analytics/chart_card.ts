@@ -1,7 +1,7 @@
 // Card wrapper that surrounds each chart widget with a titled header.
 // Used by the orchestrator (index.js) to wrap chart SVGs.
 
-export function bonAnalyticsChartCard(
+export function analyticsChartCard(
   title: string,
   subtitle: string | null,
   contentEl: Node

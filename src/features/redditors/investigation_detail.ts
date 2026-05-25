@@ -3,17 +3,14 @@
 // run metadata.
 
 import type { Investigation } from "../../types.ts";
+import { isInvestigationStale, normalizeInvestigation } from "../../verdict.ts";
+import { linkifyReddit } from "../../utils/linkify_reddit.ts";
+import { topReasonsList } from "../../utils/top_reasons_list.ts";
+import { investigationLoading } from "../../utils/investigation_loading.ts";
+import { buildPersonaBlock } from "../persona-block";
 import {
-  bonIsInvestigationStale,
-  bonNormalizeInvestigation,
-} from "../../verdict.ts";
-import { bonLinkifyReddit } from "../../utils/linkify_reddit.ts";
-import { bonTopReasonsList } from "../../utils/top_reasons_list.ts";
-import { bonInvestigationLoading } from "../../utils/investigation_loading.ts";
-import { bonPersonaBlock } from "../persona-block";
-import {
-  bonRedditorsIsUserNotFoundError,
-  bonRedditorsUserNotFoundPanel,
+  redditorsIsUserNotFoundError,
+  redditorsUserNotFoundPanel,
 } from "./investigation_user_not_found.ts";
 
 export interface InvestigationDetailOpts {
@@ -21,7 +18,7 @@ export interface InvestigationDetailOpts {
   username?: string;
 }
 
-export function bonRedditorsInvestigationDetail(
+export function redditorsInvestigationDetail(
   rawInvestigation: Investigation | null | undefined,
   inRing = false,
   { expectedDurationMs = null, username }: InvestigationDetailOpts = {}
@@ -37,7 +34,7 @@ export function bonRedditorsInvestigationDetail(
     return wrap;
   }
 
-  const investigation = bonNormalizeInvestigation(rawInvestigation, inRing);
+  const investigation = normalizeInvestigation(rawInvestigation, inRing);
 
   if (investigation.status === "queued") {
     wrap.appendChild(buildQueuedPanel(investigation.notBefore ?? null));
@@ -45,7 +42,7 @@ export function bonRedditorsInvestigationDetail(
   }
 
   if (investigation.status === "running") {
-    const stale = bonIsInvestigationStale(investigation);
+    const stale = isInvestigationStale(investigation);
 
     if (stale) {
       const message = document.createElement("p");
@@ -58,15 +55,15 @@ export function bonRedditorsInvestigationDetail(
     }
 
     wrap.appendChild(
-      bonInvestigationLoading(investigation.startedAt, { expectedDurationMs })
+      investigationLoading(investigation.startedAt, { expectedDurationMs })
     );
 
     return wrap;
   }
 
   if (investigation.status === "error") {
-    if (username && bonRedditorsIsUserNotFoundError(investigation.error)) {
-      wrap.appendChild(bonRedditorsUserNotFoundPanel(username));
+    if (username && redditorsIsUserNotFoundError(investigation.error)) {
+      wrap.appendChild(redditorsUserNotFoundPanel(username));
       return wrap;
     }
 
@@ -79,9 +76,9 @@ export function bonRedditorsInvestigationDetail(
 
   const { factors, persona, summary } = investigation.results;
   const reasonsList =
-    factors.length > 0 ? bonTopReasonsList(factors, { perSide: 4 }) : null;
+    factors.length > 0 ? topReasonsList(factors, { perSide: 4 }) : null;
 
-  const personaBlock = bonPersonaBlock(persona, { summary });
+  const personaBlock = buildPersonaBlock(persona, { summary });
 
   if (personaBlock && reasonsList) {
     const row = document.createElement("div");
@@ -106,7 +103,7 @@ export function bonRedditorsInvestigationDetail(
   if (summary) {
     const summaryEl = document.createElement("p");
     summaryEl.className = "bon-verdict-summary";
-    summaryEl.appendChild(bonLinkifyReddit(summary));
+    summaryEl.appendChild(linkifyReddit(summary));
     wrap.appendChild(summaryEl);
   }
 

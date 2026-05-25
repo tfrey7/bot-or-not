@@ -5,6 +5,6 @@ declare module "*.md?raw" {
   export default content;
 }
 
-declare const __BON_DEV_CLAUDE_API_KEY__: string | null;
-declare const __BON_STRAND__: string | null;
-declare const __BON_STRAND_COLOR__: string | null;
+declare const __DEV_CLAUDE_API_KEY__: string | null;
+declare const __STRAND__: string | null;
+declare const __STRAND_COLOR__: string | null;

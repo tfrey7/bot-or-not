@@ -2,7 +2,7 @@
 // "showing X–Y of Z" caption. The caller decides when to render it
 // (typically hidden when only one page) and owns the current page state.
 
-export interface BonPaginationOpts {
+export interface PaginationOpts {
   currentPage: number;
   totalPages: number;
   totalItems: number;
@@ -10,7 +10,7 @@ export interface BonPaginationOpts {
   onPageChange: (page: number) => void;
 }
 
-export function bonPagination(opts: BonPaginationOpts): HTMLElement {
+export function pagination(opts: PaginationOpts): HTMLElement {
   const { currentPage, totalPages, totalItems, pageSize, onPageChange } = opts;
 
   const wrap = document.createElement("div");

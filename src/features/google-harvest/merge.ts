@@ -12,7 +12,7 @@ import type {
   GoogleHarvestPost,
   GoogleHarvestPostKind,
 } from "../../types.ts";
-import type { BonScrapedPost } from "./parse.ts";
+import type { ScrapedPost } from "./parse.ts";
 
 // Strips trailing slashes + tracking fragments so two surface forms of the
 // same Reddit post (e.g. `?context=3` or `?utm_…`) collapse to one entry.
@@ -22,7 +22,7 @@ function canonicalizeUrl(url: string): string {
 
 function mergePost(
   existing: GoogleHarvestPost | undefined,
-  incoming: BonScrapedPost,
+  incoming: ScrapedPost,
   now: number
 ): GoogleHarvestPost {
   if (existing) {
@@ -102,16 +102,14 @@ function computeAggregates(posts: GoogleHarvestPost[]): {
   return { subredditDistribution, authoredSubredditDistribution, kinds };
 }
 
-export interface BonHarvestMergeInput {
+export interface HarvestMergeInput {
   existing: GoogleHarvest | null;
-  incomingPosts: BonScrapedPost[];
+  incomingPosts: ScrapedPost[];
   query: string;
   now: number;
 }
 
-export function bonGoogleHarvestMerge(
-  input: BonHarvestMergeInput
-): GoogleHarvest {
+export function googleHarvestMerge(input: HarvestMergeInput): GoogleHarvest {
   const { existing, incomingPosts, query, now } = input;
 
   // Index existing posts by canonical URL so each incoming post finds its

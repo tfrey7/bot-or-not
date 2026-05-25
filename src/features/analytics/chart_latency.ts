@@ -4,32 +4,32 @@
 
 import uPlot from "uplot";
 
-import { bonFmtDuration } from "../../utils/format_time.ts";
-import { bonPercentile } from "../../utils/stats.ts";
+import { fmtDuration } from "../../utils/format_time.ts";
+import { percentile } from "../../utils/stats.ts";
 import type { AnalyticsEntry } from "./logic.ts";
 import { formatDayTick } from "./tick_helpers.ts";
 import {
-  bonAnalyticsAxes,
-  bonAnalyticsEmptyPanel,
-  bonAnalyticsPlaceTooltip,
-  bonAnalyticsUplotHost,
-  bonAnalyticsUplotPalette,
+  analyticsAxes,
+  analyticsEmptyPanel,
+  analyticsPlaceTooltip,
+  analyticsUplotHost,
+  analyticsUplotPalette,
   type UplotChartOptions,
 } from "./uplot_helpers.ts";
 
 const MS_PER_DAY = 86_400_000;
 
-export function bonAnalyticsLatencyChart(runs: AnalyticsEntry[]): HTMLElement {
+export function analyticsLatencyChart(runs: AnalyticsEntry[]): HTMLElement {
   const samples = runs.filter(
     (run): run is AnalyticsEntry & { runAt: number; durationMs: number } =>
       run.runAt != null && typeof run.durationMs === "number"
   );
 
   if (!samples.length) {
-    return bonAnalyticsEmptyPanel("No latency data yet.");
+    return analyticsEmptyPanel("No latency data yet.");
   }
 
-  return bonAnalyticsDailyLatencyChart(
+  return analyticsDailyLatencyChart(
     samples.map((run) => ({ runAt: run.runAt, durationMs: run.durationMs })),
     "request"
   );
@@ -42,7 +42,7 @@ interface LatencySample {
 
 // Shared body — used by both the LLM (per-investigation) and Reddit
 // (per-fetch) latency charts. `noun` controls the tooltip label.
-export function bonAnalyticsDailyLatencyChart(
+export function analyticsDailyLatencyChart(
   samples: LatencySample[],
   noun: string
 ): HTMLElement {
@@ -77,8 +77,8 @@ export function bonAnalyticsDailyLatencyChart(
 
     if (bucket && bucket.length) {
       const sorted = [...bucket].sort((a, b) => a - b);
-      p50[i] = bonPercentile(sorted, 0.5);
-      p95[i] = bonPercentile(sorted, 0.95);
+      p50[i] = percentile(sorted, 0.5);
+      p95[i] = percentile(sorted, 0.95);
       counts[i] = bucket.length;
     } else {
       p50[i] = null;
@@ -87,8 +87,8 @@ export function bonAnalyticsDailyLatencyChart(
     }
   }
 
-  const palette = bonAnalyticsUplotPalette();
-  const { host, tooltip, mount } = bonAnalyticsUplotHost();
+  const palette = analyticsUplotPalette();
+  const { host, tooltip, mount } = analyticsUplotHost();
 
   const data: uPlot.AlignedData = [xs, p50, p95];
 
@@ -118,11 +118,11 @@ export function bonAnalyticsDailyLatencyChart(
         spanGaps: false,
       },
     ],
-    axes: bonAnalyticsAxes(palette, {
+    axes: analyticsAxes(palette, {
       xIncrs: [86400],
       xValues: (_u, splits) => splits.map(formatDayTick),
       yValues: (_u, splits) =>
-        splits.map((value) => bonFmtDuration(Math.max(0, value))),
+        splits.map((value) => fmtDuration(Math.max(0, value))),
     }),
     hooks: {
       setCursor: [
@@ -156,16 +156,16 @@ export function bonAnalyticsDailyLatencyChart(
 
           const r50 = document.createElement("div");
           r50.className = "bon-analytics-uplot-tooltip__row";
-          r50.innerHTML = `<span>p50</span><span>${bonFmtDuration(p50[idx] as number)}</span>`;
+          r50.innerHTML = `<span>p50</span><span>${fmtDuration(p50[idx] as number)}</span>`;
           tooltip.appendChild(r50);
 
           const r95 = document.createElement("div");
           r95.className = "bon-analytics-uplot-tooltip__row";
-          r95.innerHTML = `<span>p95</span><span>${bonFmtDuration(p95[idx] as number)}</span>`;
+          r95.innerHTML = `<span>p95</span><span>${fmtDuration(p95[idx] as number)}</span>`;
           tooltip.appendChild(r95);
 
           tooltip.hidden = false;
-          bonAnalyticsPlaceTooltip(
+          analyticsPlaceTooltip(
             host,
             tooltip,
             u.over.offsetLeft,

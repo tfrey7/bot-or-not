@@ -5,9 +5,9 @@
 // in that format. Sends scraped posts to the background; the merge layer
 // there unions them into the user's existing harvest.
 
-import { bonClientSend } from "../../client.ts";
-import { bonGoogleHarvestParse } from "./parse.ts";
-import { bonGoogleHarvestScrape } from "./scrape.ts";
+import { clientSend } from "../../client.ts";
+import { googleHarvestParse } from "./parse.ts";
+import { googleHarvestScrape } from "./scrape.ts";
 
 // `"<word>" site:reddit.com` (or unquoted, for back-compat with old launcher
 // links and manual searches) — single token before `site:`, no embedded
@@ -33,14 +33,14 @@ if (username) {
   let settleTimer: ReturnType<typeof setTimeout> | null = null;
 
   const harvestIfGrown = (): void => {
-    const scraped = bonGoogleHarvestScrape();
+    const scraped = googleHarvestScrape();
     if (scraped.length <= lastCount) {
       return;
     }
 
     lastCount = scraped.length;
 
-    const parsed = bonGoogleHarvestParse(scraped);
+    const parsed = googleHarvestParse(scraped);
     if (parsed.posts.length === 0) {
       return;
     }
@@ -51,7 +51,7 @@ if (username) {
       { raw: scraped, parsed }
     );
 
-    void bonClientSend<unknown>({
+    void clientSend<unknown>({
       type: "google-harvest",
       username,
       query,

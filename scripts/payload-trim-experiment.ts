@@ -31,25 +31,25 @@ import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
 
 import {
-  bonFetchBotBouncerStatus,
-  bonFetchRedditProfile,
+  fetchBotBouncerStatus,
+  fetchRedditProfile,
   RedditFetchError,
 } from "../src/features/investigation/fetch.ts";
 import {
-  bonExtractSnoovatarUrl,
-  bonSummarizeProfile,
+  extractSnoovatarUrl,
+  summarizeProfile,
 } from "../src/features/investigation/summarize.ts";
-import { bonInvestigationCallLlm } from "../src/features/investigation/api.ts";
-import { bonAssemblePrompt } from "../src/features/investigation/assemble_prompt.ts";
+import { investigationCallLlm } from "../src/features/investigation/api.ts";
+import { assemblePrompt } from "../src/features/investigation/assemble_prompt.ts";
 import {
-  BON_DETERMINISTIC_FACTOR_KEYS,
-  bonScoreDeterministicFactors,
+  DETERMINISTIC_FACTOR_KEYS,
+  scoreDeterministicFactors,
 } from "../src/features/investigation/deterministic_factors.ts";
-import { bonMergeFactors } from "../src/features/investigation/merge_factors.ts";
-import { BON_FACTORS } from "../src/factors.ts";
-import { bonExtractJson } from "../src/utils/json.ts";
-import { bonNormalizePersona } from "../src/utils/persona.ts";
-import { bonComputeVerdict } from "../src/verdict.ts";
+import { mergeFactors } from "../src/features/investigation/merge_factors.ts";
+import { FACTORS } from "../src/factors.ts";
+import { extractJson } from "../src/utils/json.ts";
+import { normalizePersona } from "../src/utils/persona.ts";
+import { computeVerdict } from "../src/verdict.ts";
 import type { Factor, ProfileSummary } from "../src/types.ts";
 
 const DEFAULT_USERS = [
@@ -101,8 +101,8 @@ const PROMPT_RAW = readFileSync(
   resolve(REPO_ROOT, "src/features/investigation/prompt.md"),
   "utf8"
 );
-const LLM_FACTOR_KEYS = BON_FACTORS.map((f) => f.key).filter(
-  (k) => !(BON_DETERMINISTIC_FACTOR_KEYS as readonly string[]).includes(k)
+const LLM_FACTOR_KEYS = FACTORS.map((f) => f.key).filter(
+  (k) => !(DETERMINISTIC_FACTOR_KEYS as readonly string[]).includes(k)
 );
 
 // "Body has no usable content" — what Reddit emits when the item is
@@ -198,8 +198,8 @@ interface GatheredProfile {
 
 async function gatherProfile(username: string): Promise<GatheredProfile> {
   const [profileRes, bbRes] = await Promise.allSettled([
-    bonFetchRedditProfile(username),
-    bonFetchBotBouncerStatus(username),
+    fetchRedditProfile(username),
+    fetchBotBouncerStatus(username),
   ]);
   if (profileRes.status === "rejected") {
     const reason = profileRes.reason;
@@ -216,8 +216,8 @@ async function gatherProfile(username: string): Promise<GatheredProfile> {
     extra.botBouncerStatus = bbStatus;
     extra.botBouncerCheckedAt = Date.now();
   }
-  const summary = bonSummarizeProfile(username, profile, extra);
-  const avatarUrl = bonExtractSnoovatarUrl(profile);
+  const summary = summarizeProfile(username, profile, extra);
+  const avatarUrl = extractSnoovatarUrl(profile);
   return { summary, avatarUrl };
 }
 
@@ -231,7 +231,7 @@ async function runVariant(
 ): Promise<RunResult> {
   const t0 = Date.now();
   try {
-    const claude = await bonInvestigationCallLlm(
+    const claude = await investigationCallLlm(
       apiKey!,
       prompt,
       summary,
@@ -240,7 +240,7 @@ async function runVariant(
     );
 
     const durationMs = Date.now() - t0;
-    const extracted = bonExtractJson(claude.rawText) as Record<
+    const extracted = extractJson(claude.rawText) as Record<
       string,
       unknown
     > | null;
@@ -248,11 +248,11 @@ async function runVariant(
       ? (extracted!.factors as Factor[])
       : [];
 
-    const detFactors = bonScoreDeterministicFactors(summary);
-    const finalFactors = bonMergeFactors(llmFactors, detFactors);
+    const detFactors = scoreDeterministicFactors(summary);
+    const finalFactors = mergeFactors(llmFactors, detFactors);
 
-    const persona = bonNormalizePersona(extracted?.persona ?? null);
-    const verdict = bonComputeVerdict(finalFactors);
+    const persona = normalizePersona(extracted?.persona ?? null);
+    const verdict = computeVerdict(finalFactors);
     const regionRaw = (extracted?.region ?? null) as { code?: string } | null;
 
     const usage = claude.usage ?? ({} as Record<string, number>);
@@ -506,7 +506,7 @@ function printFactorDeltas(results: RunResult[]): void {
   }
 
   const variants: VariantLabel[] = ["trunc", "drop-empty", "trunc+drop"];
-  const factorOrder = BON_FACTORS.map((f) => f.key);
+  const factorOrder = FACTORS.map((f) => f.key);
 
   const header = [
     pad("factor", 28),
@@ -602,7 +602,7 @@ async function main(): Promise<void> {
         continue;
       }
       const variantSummary = applyVariant(g.summary, spec.label);
-      const prompt = bonAssemblePrompt(PROMPT_RAW, variantSummary, {
+      const prompt = assemblePrompt(PROMPT_RAW, variantSummary, {
         llmFactorKeys: LLM_FACTOR_KEYS,
         stripInputConditional: false,
       });

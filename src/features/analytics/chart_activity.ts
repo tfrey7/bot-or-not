@@ -3,27 +3,27 @@
 
 import uPlot from "uplot";
 
-import { bonFmtUsd } from "../../utils/format_number.ts";
+import { fmtUsd } from "../../utils/format_number.ts";
 import type { AnalyticsEntry } from "./logic.ts";
 import { formatDayTick } from "./tick_helpers.ts";
 import {
-  bonAnalyticsAxes,
-  bonAnalyticsEmptyPanel,
-  bonAnalyticsPlaceTooltip,
-  bonAnalyticsUplotHost,
-  bonAnalyticsUplotPalette,
+  analyticsAxes,
+  analyticsEmptyPanel,
+  analyticsPlaceTooltip,
+  analyticsUplotHost,
+  analyticsUplotPalette,
   type UplotChartOptions,
 } from "./uplot_helpers.ts";
 
 const MS_PER_DAY = 86_400_000;
 
-export function bonAnalyticsActivityChart(runs: AnalyticsEntry[]): HTMLElement {
+export function analyticsActivityChart(runs: AnalyticsEntry[]): HTMLElement {
   const runsWithTime = runs.filter(
     (run): run is AnalyticsEntry & { runAt: number } => run.runAt != null
   );
 
   if (!runsWithTime.length) {
-    return bonAnalyticsEmptyPanel("No timestamped runs to plot.");
+    return analyticsEmptyPanel("No timestamped runs to plot.");
   }
 
   const buckets = new Map<number, { count: number; cost: number }>();
@@ -59,8 +59,8 @@ export function bonAnalyticsActivityChart(runs: AnalyticsEntry[]): HTMLElement {
     costs[i] = bucket ? bucket.cost : 0;
   }
 
-  const palette = bonAnalyticsUplotPalette();
-  const { host, tooltip, mount } = bonAnalyticsUplotHost();
+  const palette = analyticsUplotPalette();
+  const { host, tooltip, mount } = analyticsUplotHost();
 
   const data: uPlot.AlignedData = [xs, counts];
 
@@ -95,7 +95,7 @@ export function bonAnalyticsActivityChart(runs: AnalyticsEntry[]): HTMLElement {
         points: { show: false },
       },
     ],
-    axes: bonAnalyticsAxes(palette, {
+    axes: analyticsAxes(palette, {
       xIncrs: [86400],
       xValues: (_u, splits) => splits.map(formatDayTick),
       yValues: (_u, splits) =>
@@ -136,11 +136,11 @@ export function bonAnalyticsActivityChart(runs: AnalyticsEntry[]): HTMLElement {
 
           const row2 = document.createElement("div");
           row2.className = "bon-analytics-uplot-tooltip__row";
-          row2.innerHTML = `<span>spend</span><span>${bonFmtUsd(costs[idx])}</span>`;
+          row2.innerHTML = `<span>spend</span><span>${fmtUsd(costs[idx])}</span>`;
           tooltip.appendChild(row2);
 
           tooltip.hidden = false;
-          bonAnalyticsPlaceTooltip(
+          analyticsPlaceTooltip(
             host,
             tooltip,
             u.over.offsetLeft,

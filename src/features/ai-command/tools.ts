@@ -6,13 +6,13 @@ import type { LlmTool } from "../../llm/index.ts";
 // adversarial Reddit content surfaced in the snapshot can't silently nuke
 // the operator's dossiers. Non-destructive tools (filter, navigate, read,
 // investigate, link_ring) skip the gate.
-export const BON_AI_COMMAND_DESTRUCTIVE_TOOLS: ReadonlySet<string> = new Set([
+export const AI_COMMAND_DESTRUCTIVE_TOOLS: ReadonlySet<string> = new Set([
   "delete_report",
   "unlink_ring",
   "set_user_status",
 ]);
 
-export const BON_AI_COMMAND_TOOLS: LlmTool[] = [
+export const AI_COMMAND_TOOLS: LlmTool[] = [
   {
     name: "list_users",
     description:

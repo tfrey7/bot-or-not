@@ -5,26 +5,26 @@
 // if the investigation has no persona data.
 
 import type { Persona } from "../../types.ts";
-import { bonLinkifyReddit } from "../../utils/linkify_reddit.ts";
-import { bonPersonaHue } from "../../utils/persona_color.ts";
-import { bonPersonaIcon } from "../../utils/persona_icon.ts";
+import { linkifyReddit } from "../../utils/linkify_reddit.ts";
+import { personaHue } from "../../utils/persona_color.ts";
+import { personaIcon } from "../../utils/persona_icon.ts";
 import {
-  bonHidePersonaLabel,
-  bonRevealPersonaLabel,
+  hidePersonaLabel,
+  revealPersonaLabel,
 } from "../../utils/persona_label_reveal.ts";
 import {
-  BON_PERSONA_RADAR_DURATION_MS,
-  bonPersonaRadar,
+  PERSONA_RADAR_DURATION_MS,
+  personaRadar,
 } from "../../utils/persona_radar.ts";
-import { bonPersonaTitle } from "../../utils/persona_title.ts";
+import { personaTitle } from "../../utils/persona_title.ts";
 
-export interface BonPersonaBlockOpts {
+export interface PersonaBlockOpts {
   summary?: string | null;
 }
 
-export function bonPersonaBlock(
+export function buildPersonaBlock(
   persona: Persona | null | undefined,
-  options: BonPersonaBlockOpts = {}
+  options: PersonaBlockOpts = {}
 ): HTMLElement | null {
   if (!persona || !persona.label) {
     return null;
@@ -33,25 +33,25 @@ export function bonPersonaBlock(
   const block = document.createElement("aside");
   block.className = `bon-persona bon-persona--${persona.label}`;
 
-  const hue = bonPersonaHue(persona);
+  const hue = personaHue(persona);
   if (hue !== null) {
     block.style.setProperty("--bon-persona-hue", String(Math.round(hue)));
   }
 
   const label = document.createElement("p");
   label.className = `bon-persona-label bon-persona-label--${persona.label}`;
-  label.textContent = bonPersonaTitle(persona);
+  label.textContent = personaTitle(persona);
 
   if (persona.archetypes) {
-    bonHidePersonaLabel(label);
-    const radar = bonPersonaRadar(persona.archetypes, {
-      iconUrl: bonPersonaIcon(persona),
+    hidePersonaLabel(label);
+    const radar = personaRadar(persona.archetypes, {
+      iconUrl: personaIcon(persona),
     });
 
     if (radar) {
       block.appendChild(label);
       block.appendChild(radar);
-      bonRevealPersonaLabel(label, BON_PERSONA_RADAR_DURATION_MS);
+      revealPersonaLabel(label, PERSONA_RADAR_DURATION_MS);
     } else {
       block.appendChild(label);
     }
@@ -63,7 +63,7 @@ export function bonPersonaBlock(
   if (summaryText) {
     const summary = document.createElement("p");
     summary.className = "bon-persona-summary";
-    summary.appendChild(bonLinkifyReddit(summaryText));
+    summary.appendChild(linkifyReddit(summaryText));
     block.appendChild(summary);
   }
 

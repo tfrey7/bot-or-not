@@ -1,26 +1,23 @@
 export {
-  bonRunAiCommand,
+  runAiCommand,
   type AiCommandAction,
   type AiCommandDispatch,
   type AiCommandMessage,
   type AiCommandProgress,
   type AiCommandProgressEvent,
   type AiCommandResult,
-  type BonRunAiCommandOptions,
+  type RunAiCommandOptions,
 } from "./agent.ts";
+export { aiCommandFormatBlock, aiCommandFormatSummary } from "./format.ts";
 export {
-  bonAiCommandFormatBlock,
-  bonAiCommandFormatSummary,
-} from "./format.ts";
-export {
-  bonAiCommandBuildSnapshot,
-  bonAiCommandBuildUserDetails,
+  aiCommandBuildSnapshot,
+  aiCommandBuildUserDetails,
   type AiCommandSnapshotEntry,
   type AiCommandUserDetails,
 } from "./snapshot.ts";
 export {
-  bonAiCommandHandle,
-  bonAiCommandReset,
-  type BonAiCommandConfirmRequest,
-  type BonAiCommandHandleOptions,
+  aiCommandHandle,
+  aiCommandReset,
+  type AiCommandConfirmRequest,
+  type AiCommandHandleOptions,
 } from "./handler.ts";

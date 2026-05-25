@@ -3,12 +3,12 @@
 
 import type { Report } from "../../types.ts";
 import {
-  bonDedupeHistory,
-  bonInvestigationResults,
-  bonNormalizeReport,
+  dedupeHistory,
+  investigationResults,
+  normalizeReport,
 } from "../../utils/history.ts";
 
-export const BON_SYNC_BACKUP_VERSION = 1;
+export const SYNC_BACKUP_VERSION = 1;
 
 export interface SyncBackupPayload {
   bonBackup: number;
@@ -22,19 +22,19 @@ export interface BuildBackupOptions {
   appVersion: string;
 }
 
-export function bonSyncBuildBackup({
+export function syncBuildBackup({
   reports,
   appVersion,
 }: BuildBackupOptions): SyncBackupPayload {
   return {
-    bonBackup: BON_SYNC_BACKUP_VERSION,
+    bonBackup: SYNC_BACKUP_VERSION,
     exportedAt: Date.now(),
     appVersion,
     reports,
   };
 }
 
-export function bonSyncBackupFilename(now: Date = new Date()): string {
+export function syncBackupFilename(now: Date = new Date()): string {
   const yyyy = now.getFullYear();
   const mm = String(now.getMonth() + 1).padStart(2, "0");
   const dd = String(now.getDate()).padStart(2, "0");
@@ -47,7 +47,7 @@ export type ParseResult =
   | { ok: true; payload: SyncBackupPayload }
   | { ok: false; error: string };
 
-export function bonSyncParseBackup(raw: string): ParseResult {
+export function syncParseBackup(raw: string): ParseResult {
   let value: unknown;
 
   try {
@@ -74,7 +74,7 @@ export function bonSyncParseBackup(raw: string): ParseResult {
     };
   }
 
-  if (record.bonBackup > BON_SYNC_BACKUP_VERSION) {
+  if (record.bonBackup > SYNC_BACKUP_VERSION) {
     return {
       ok: false,
       error: `Backup is from a newer version (v${record.bonBackup}). Upgrade Bot or Not first.`,
@@ -91,7 +91,7 @@ export function bonSyncParseBackup(raw: string): ParseResult {
   for (const [username, value] of Object.entries(
     rawReports as Record<string, unknown>
   )) {
-    reports[username] = bonNormalizeReport(value);
+    reports[username] = normalizeReport(value);
   }
 
   return {
@@ -122,7 +122,7 @@ export interface MergeResult {
 // for verdict/persona. History entries dedupe by permalink. Ring membership
 // stays whatever the local record had — ringIds are opaque local identifiers
 // and re-linking is a one-click operation if needed.
-export function bonSyncMergeReports(
+export function syncMergeReports(
   local: Record<string, Report>,
   incoming: Record<string, Report>
 ): MergeResult {
@@ -174,7 +174,7 @@ function findCaseInsensitiveKey(
 // Returns Required<Report> so adding a new field to Report — even an optional
 // one — forces a typecheck error here until a merge rule is chosen for it.
 function mergeOneReport(local: Report, incoming: Report): Required<Report> {
-  const history = bonDedupeHistory([...local.history, ...incoming.history]);
+  const history = dedupeHistory([...local.history, ...incoming.history]);
 
   const localStatusAt = local.userStatusCheckedAt;
   const incomingStatusAt = incoming.userStatusCheckedAt;
@@ -184,9 +184,9 @@ function mergeOneReport(local: Report, incoming: Report): Required<Report> {
   const incomingBouncerAt = incoming.botBouncerCheckedAt;
   const useIncomingBouncer = incomingBouncerAt > localBouncerAt;
 
-  const localRunAt = bonInvestigationResults(local.investigation)?.runAt ?? 0;
+  const localRunAt = investigationResults(local.investigation)?.runAt ?? 0;
   const incomingRunAt =
-    bonInvestigationResults(incoming.investigation)?.runAt ?? 0;
+    investigationResults(incoming.investigation)?.runAt ?? 0;
   const useIncomingInvestigation = incomingRunAt > localRunAt;
 
   const localNotesAt = local.userNotes?.updatedAt ?? 0;

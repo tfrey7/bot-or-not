@@ -5,11 +5,11 @@
 // below the seam in `src/llm/`.
 
 import type { ClaudeUsage, ProfileSummary } from "../../types.ts";
-import { bonCreateLlmProvider } from "../../llm/index.ts";
+import { createLlmProvider } from "../../llm/index.ts";
 import type { LlmContentPart, LlmVendor } from "../../llm/index.ts";
-import { bonSerializeProfileForClaude } from "./summarize.ts";
+import { serializeProfileForClaude } from "./summarize.ts";
 
-const BON_INVESTIGATION_MAX_TOKENS = 4096;
+const INVESTIGATION_MAX_TOKENS = 4096;
 
 export interface InvestigationLlmResult {
   rawText: string;
@@ -27,7 +27,7 @@ export interface InvestigationLlmResult {
 // `model` overrides the provider's default model for experimentation
 // (see scripts/investigate.ts --model flag).
 // `serialize` overrides the user-message serializer — by default we emit
-// the compact columnar shape via bonSerializeProfileForClaude; the
+// the compact columnar shape via serializeProfileForClaude; the
 // cost-experiment harness passes its own verbose serializer to A/B the
 // two formats against the same summary.
 export interface InvestigationLlmOptions {
@@ -37,21 +37,21 @@ export interface InvestigationLlmOptions {
   serialize?: (summary: ProfileSummary) => string;
 }
 
-export async function bonInvestigationCallLlm(
+export async function investigationCallLlm(
   apiKey: string,
   systemPrompt: string,
   profileSummary: ProfileSummary,
   label = "investigation 1D",
   options: InvestigationLlmOptions = {}
 ): Promise<InvestigationLlmResult> {
-  const provider = bonCreateLlmProvider(apiKey, options.vendor ?? null);
+  const provider = createLlmProvider(apiKey, options.vendor ?? null);
   const userContent: LlmContentPart[] = [];
 
   if (options.avatarUrl) {
     userContent.push({ kind: "image", url: options.avatarUrl });
   }
 
-  const serialize = options.serialize ?? bonSerializeProfileForClaude;
+  const serialize = options.serialize ?? serializeProfileForClaude;
   userContent.push({
     kind: "text",
     text:
@@ -63,7 +63,7 @@ export async function bonInvestigationCallLlm(
   const result = await provider.complete({
     systemPrompt,
     userContent,
-    maxTokens: BON_INVESTIGATION_MAX_TOKENS,
+    maxTokens: INVESTIGATION_MAX_TOKENS,
     label,
     ...(options.model ? { model: options.model } : {}),
   });

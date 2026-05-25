@@ -5,7 +5,7 @@
 
 import type { Report } from "../types.ts";
 
-export function bonExpectedDurationMs(
+export function computeExpectedDurationMs(
   reports: Iterable<Report>
 ): number | null {
   const durations: number[] = [];
@@ -38,6 +38,6 @@ export function bonExpectedDurationMs(
   return durations[Math.floor(durations.length / 2)]!;
 }
 
-export function bonExpectedDurationSec(expectedMs: number): number {
+export function expectedDurationSec(expectedMs: number): number {
   return Math.max(1, Math.round(expectedMs / 1000));
 }

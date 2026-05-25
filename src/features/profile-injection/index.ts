@@ -12,13 +12,13 @@
 // tabs/welcome message. Re-runs on every MutationObserver tick to survive
 // SPA reparenting.
 
-import { bonClientSend, bonClientSubscribe } from "../../client.ts";
+import { clientSend, clientSubscribe } from "../../client.ts";
 import type { Report } from "../../types.ts";
 
 // Cross-feature import: the Google dossier renderer is a shared
 // visualization, used by both the reports detail pane and this embed.
 // Kept in redditors/ for proximity to its only other caller.
-import { bonRedditorsGoogleDossierSection, type ReportRow } from "../redditors";
+import { redditorsGoogleDossierSection, type ReportRow } from "../redditors";
 
 const reportCache = new Map<string, Report | null>();
 
@@ -117,7 +117,7 @@ function buildContainer(username: string, report: Report | null): HTMLElement {
   container.appendChild(actions);
 
   if (report?.googleHarvest && report.googleHarvest.posts.length > 0) {
-    const dossier = bonRedditorsGoogleDossierSection({
+    const dossier = redditorsGoogleDossierSection({
       ...report,
       username,
     } as ReportRow);
@@ -164,7 +164,7 @@ function render(username: string, report: Report | null): void {
 
 async function fetchReport(username: string): Promise<Report | null> {
   try {
-    const response = await bonClientSend<{ report?: Report | null }>({
+    const response = await clientSend<{ report?: Report | null }>({
       type: "get-user-report",
       username,
     });
@@ -223,7 +223,7 @@ function ensureInjected(username: string): void {
   }
 }
 
-export function bonProfileInjectionTick(): void {
+export function profileInjectionTick(): void {
   const username = currentProfileUsername();
 
   if (!username) {
@@ -247,10 +247,10 @@ export function bonProfileInjectionTick(): void {
   ensureInjected(username);
 }
 
-export function bonProfileInjectionInit(): void {
-  bonProfileInjectionTick();
+export function profileInjectionInit(): void {
+  profileInjectionTick();
 
-  bonClientSubscribe((event) => {
+  clientSubscribe((event) => {
     if (event.type !== "reports-changed") {
       return;
     }

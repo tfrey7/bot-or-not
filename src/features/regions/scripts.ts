@@ -4,9 +4,9 @@
 // English corpus is decisive — organic English text doesn't contain
 // Devanagari.
 
-import { BON_SCRIPT_RANGES } from "./data.ts";
+import { SCRIPT_RANGES } from "./data.ts";
 
-export function bonRegionsDetectScripts(text: string): Record<string, number> {
+export function regionsDetectScripts(text: string): Record<string, number> {
   if (!text) {
     return {};
   }
@@ -17,7 +17,7 @@ export function bonRegionsDetectScripts(text: string): Record<string, number> {
     const codePoint = text.codePointAt(i)!;
     i += codePoint > 0xffff ? 2 : 1;
 
-    for (const range of BON_SCRIPT_RANGES) {
+    for (const range of SCRIPT_RANGES) {
       if (codePoint >= range.range[0] && codePoint <= range.range[1]) {
         counts[range.name] = (counts[range.name] || 0) + 1;
         break;
@@ -34,7 +34,7 @@ export interface ScriptInference {
   hits: Array<{ script: string; count: number; regions: string[] }>;
 }
 
-export function bonInferRegionFromScripts(
+export function inferRegionFromScripts(
   scriptCounts: Record<string, number> | null | undefined
 ): ScriptInference | null {
   if (!scriptCounts) {
@@ -49,7 +49,7 @@ export function bonInferRegionFromScripts(
       continue;
     }
 
-    const range = BON_SCRIPT_RANGES.find((entry) => entry.name === name);
+    const range = SCRIPT_RANGES.find((entry) => entry.name === name);
     if (!range) {
       continue;
     }

@@ -1,8 +1,8 @@
-import { bonReadReports, bonWriteReports } from "../storage.ts";
+import { readReports, writeReports } from "../storage.ts";
 
-export async function bonMigrateCrankToZealot(): Promise<void> {
+export async function migrateCrankToZealot(): Promise<void> {
   try {
-    const reports = await bonReadReports();
+    const reports = await readReports();
 
     let changed = false;
 
@@ -50,7 +50,7 @@ export async function bonMigrateCrankToZealot(): Promise<void> {
     }
 
     if (changed) {
-      await bonWriteReports(reports);
+      await writeReports(reports);
       console.log("[Bot or Not] migrated crank → zealot in stored personas");
     }
   } catch (error) {

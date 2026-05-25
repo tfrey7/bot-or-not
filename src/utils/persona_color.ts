@@ -4,12 +4,12 @@
 // and teal. Returns null for personas that don't map to an archetype (bot,
 // normal) — those fall back to a neutral CSS rule on the card.
 
-import { BON_ARCHETYPES } from "../factors.ts";
+import { ARCHETYPES } from "../factors.ts";
 import type { ArchetypeKey, Persona } from "../types.ts";
 import { COMBO_BALANCE_RATIO, COMBO_MIN_STRENGTH } from "./persona_title.ts";
 
 const ARCHETYPE_HUE = Object.fromEntries(
-  BON_ARCHETYPES.map((archetype) => [archetype.key, archetype.hue])
+  ARCHETYPES.map((archetype) => [archetype.key, archetype.hue])
 ) as Record<ArchetypeKey, number>;
 
 function interpolateHue(h1: number, h2: number, t: number): number {
@@ -26,7 +26,7 @@ function interpolateHue(h1: number, h2: number, t: number): number {
   return ((result % 360) + 360) % 360;
 }
 
-export function bonPersonaHue(persona: Persona): number | null {
+export function personaHue(persona: Persona): number | null {
   // `normal` and `bot` are label-only personas — they have no archetype hue
   // even if low archetype scores exist on the side. Callers that want a tint
   // for these (e.g. the persona stamp) handle it via a CSS class override.

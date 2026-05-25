@@ -1,6 +1,6 @@
 // Number/currency/percent formatters. Pure.
 
-export function bonFmtUsd(value: number | null | undefined): string {
+export function fmtUsd(value: number | null | undefined): string {
   if (value == null || !isFinite(value)) {
     return "—";
   }
@@ -32,7 +32,7 @@ export function bonFmtUsd(value: number | null | undefined): string {
   return `<$0.0001`;
 }
 
-export function bonFmtThousands(value: number | null | undefined): string {
+export function fmtThousands(value: number | null | undefined): string {
   if (value == null || !isFinite(value)) {
     return "—";
   }
@@ -52,10 +52,7 @@ export function bonFmtThousands(value: number | null | undefined): string {
   return String(Math.round(value));
 }
 
-export function bonFmtNum(
-  value: number | null | undefined,
-  digits = 0
-): string {
+export function fmtNum(value: number | null | undefined, digits = 0): string {
   if (value == null || !isFinite(value)) {
     return "—";
   }
@@ -63,7 +60,7 @@ export function bonFmtNum(
   return value.toFixed(digits);
 }
 
-export function bonFmtPercent(
+export function fmtPercent(
   value: number | null | undefined,
   digits = 0
 ): string {

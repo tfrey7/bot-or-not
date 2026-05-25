@@ -4,12 +4,12 @@
 // fetch if we don't have the cake day / karma yet.
 
 import type { ReportRow } from "./logic.ts";
-import { bonFetchAndStoreProfileStats } from "../../utils/fetch_profile_stats.ts";
-import { bonFmtUsd } from "../../utils/format_number.ts";
-import { bonFmtDuration } from "../../utils/format_time.ts";
-import { bonRedditorsDemographicsBadge } from "./cell_demographics.ts";
-import { bonRedditorsRegionBadge } from "./cell_region.ts";
-import { bonRedditorsVerdictBadge } from "./cell_verdict.ts";
+import { fetchAndStoreProfileStats } from "../../utils/fetch_profile_stats.ts";
+import { fmtUsd } from "../../utils/format_number.ts";
+import { fmtDuration } from "../../utils/format_time.ts";
+import { redditorsDemographicsBadge } from "./cell_demographics.ts";
+import { redditorsRegionBadge } from "./cell_region.ts";
+import { redditorsVerdictBadge } from "./cell_verdict.ts";
 
 function formatKarma(total: number): string {
   if (total >= 1_000_000) {
@@ -78,14 +78,14 @@ function appendMetaItem(meta: HTMLElement, content: Node | string): void {
   meta.appendChild(item);
 }
 
-export function bonRedditorsProfileSection(
+export function redditorsProfileSection(
   report: ReportRow,
   actions: HTMLElement[] = []
 ): HTMLDivElement {
   const { username, createdAt, totalKarma, ringId, investigation } = report;
 
   if (createdAt === null || totalKarma === null) {
-    void bonFetchAndStoreProfileStats(username);
+    void fetchAndStoreProfileStats(username);
   }
 
   const wrap = document.createElement("div");
@@ -109,17 +109,17 @@ export function bonRedditorsProfileSection(
   link.textContent = `u/${username}`;
   titleRow.appendChild(link);
 
-  const regionBadge = bonRedditorsRegionBadge(report);
+  const regionBadge = redditorsRegionBadge(report);
   if (regionBadge) {
     titleRow.appendChild(regionBadge);
   }
 
-  const demographicsBadge = bonRedditorsDemographicsBadge(report);
+  const demographicsBadge = redditorsDemographicsBadge(report);
   if (demographicsBadge) {
     titleRow.appendChild(demographicsBadge);
   }
 
-  const verdictBadge = bonRedditorsVerdictBadge(investigation, !!ringId);
+  const verdictBadge = redditorsVerdictBadge(investigation, !!ringId);
   if (verdictBadge) {
     titleRow.appendChild(verdictBadge);
   }
@@ -182,11 +182,11 @@ export function bonRedditorsProfileSection(
     const runMeta = document.createElement("div");
     runMeta.className = "bon-profile-info__meta bon-profile-info__meta--run";
 
-    const duration = bonFmtDuration(investigation.results.durationMs);
+    const duration = fmtDuration(investigation.results.durationMs);
     const cost = investigation.results.costUsd;
     runMeta.textContent =
       cost !== null
-        ? `Investigation took ${duration} and cost ${bonFmtUsd(cost)}`
+        ? `Investigation took ${duration} and cost ${fmtUsd(cost)}`
         : `Investigation took ${duration}`;
 
     identity.appendChild(runMeta);

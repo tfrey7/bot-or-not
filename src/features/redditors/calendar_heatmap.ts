@@ -4,8 +4,8 @@
 // in the older history we can't see.
 
 import type { ActivityData } from "../../types.ts";
-import { bonBucketLevel } from "../../utils/scoring.ts";
-import { BON_REDDITORS_DAY_NAMES, BON_REDDITORS_MONTH_NAMES } from "./data.ts";
+import { bucketLevel } from "../../utils/scoring.ts";
+import { REDDITORS_DAY_NAMES, REDDITORS_MONTH_NAMES } from "./data.ts";
 
 // Latest timestamp such that everything from this point forward is reliably
 // visible — anything older than the more-recent of the two API-cutoff
@@ -32,7 +32,7 @@ function computeEarliestFullyVisible(
   return Math.max(...bounds);
 }
 
-export function bonRedditorsCalendarHeatmap(
+export function redditorsCalendarHeatmap(
   timestamps: number[],
   activityData: ActivityData
 ): HTMLDivElement {
@@ -68,7 +68,7 @@ export function bonRedditorsCalendarHeatmap(
     const label = document.createElement("div");
 
     // Show every other day label to reduce clutter
-    label.textContent = i % 2 === 1 ? BON_REDDITORS_DAY_NAMES[i] : "";
+    label.textContent = i % 2 === 1 ? REDDITORS_DAY_NAMES[i] : "";
     dayLabels.appendChild(label);
   }
 
@@ -109,7 +109,7 @@ export function bonRedditorsCalendarHeatmap(
   for (let w = 0; w < 53; w++) {
     const span = document.createElement("span");
     if (monthLabelByWeek.has(w)) {
-      span.textContent = BON_REDDITORS_MONTH_NAMES[monthLabelByWeek.get(w)!];
+      span.textContent = REDDITORS_MONTH_NAMES[monthLabelByWeek.get(w)!];
     }
 
     months.appendChild(span);
@@ -132,7 +132,7 @@ export function bonRedditorsCalendarHeatmap(
         cell.classList.add("bon-cal-cell--future");
       } else {
         const count = counts.get(dayKey(date)) || 0;
-        const level = bonBucketLevel(count);
+        const level = bucketLevel(count);
         const inUnknownZone =
           earliestVisible && date.getTime() < earliestVisible && count === 0;
 

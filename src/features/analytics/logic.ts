@@ -9,8 +9,8 @@ import type {
   RunSnapshot,
   Verdict,
 } from "../../types.ts";
-import { bonSnapshotRun } from "../../utils/history.ts";
-import { bonEstimateCostUsd } from "../../llm/cost.ts";
+import { snapshotRun } from "../../utils/history.ts";
+import { estimateCostUsd } from "../../llm/cost.ts";
 
 export interface AnalyticsCall {
   kind: string;
@@ -36,7 +36,7 @@ export interface AnalyticsEntry {
   redditMetrics: RedditMetrics | null;
 }
 
-export function bonAnalyticsCollect(
+export function analyticsCollect(
   reports: Array<Report & { username: string }> | null | undefined
 ): AnalyticsEntry[] {
   const entries: AnalyticsEntry[] = [];
@@ -68,7 +68,7 @@ export function bonAnalyticsCollect(
       entries.push(
         buildAnalyticsEntry(
           report.username,
-          bonSnapshotRun(investigation, "done"),
+          snapshotRun(investigation, "done"),
           investigation.results.summary,
           investigation.results.persona?.label ?? null
         )
@@ -95,7 +95,7 @@ function buildAnalyticsEntry(
       costUsd:
         typeof run.costUsd === "number"
           ? run.costUsd
-          : bonEstimateCostUsd(run.usage, run.model),
+          : estimateCostUsd(run.usage, run.model),
     });
   }
 

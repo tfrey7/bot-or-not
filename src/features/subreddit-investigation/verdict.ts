@@ -24,20 +24,20 @@ import type {
   SubredditReport,
   Verdict,
 } from "../../types.ts";
-import { bonFindReportKey } from "../../utils/history.ts";
+import { findReportKey } from "../../utils/history.ts";
 
-const BON_BOT_LEANING_VERDICTS = new Set<Verdict>(["bot", "likely-bot"]);
-const BON_COMPROMISED_FRACTION = 0.5;
+const BOT_LEANING_VERDICTS = new Set<Verdict>(["bot", "likely-bot"]);
+const COMPROMISED_FRACTION = 0.5;
 
-export type BonSubredditSampleStatus = Investigation["status"] | "missing";
+export type SubredditSampleStatus = Investigation["status"] | "missing";
 
-export interface BonSubredditSample {
+export interface SubredditSample {
   username: string;
-  status: BonSubredditSampleStatus;
+  status: SubredditSampleStatus;
   verdict: Verdict | null;
 }
 
-export interface BonSubredditVerdict {
+export interface SubredditVerdict {
   ready: boolean;
   compromised: boolean;
   inconclusive: boolean;
@@ -46,21 +46,21 @@ export interface BonSubredditVerdict {
   pendingCount: number;
   botLeaningCount: number;
   total: number;
-  samples: BonSubredditSample[];
+  samples: SubredditSample[];
 }
 
-export function bonSubredditDeriveVerdict(
+export function subredditDeriveVerdict(
   record: Pick<SubredditReport, "sampledUsernames">,
   reports: Record<string, Report>
-): BonSubredditVerdict {
-  const samples: BonSubredditSample[] = [];
+): SubredditVerdict {
+  const samples: SubredditSample[] = [];
   let doneCount = 0;
   let errorCount = 0;
   let pendingCount = 0;
   let botLeaningCount = 0;
 
   for (const username of record.sampledUsernames) {
-    const key = bonFindReportKey(reports, username);
+    const key = findReportKey(reports, username);
     const report = key ? reports[key] : undefined;
     const investigation = report?.investigation ?? null;
 
@@ -73,7 +73,7 @@ export function bonSubredditDeriveVerdict(
     if (investigation.status === "done") {
       doneCount++;
       const verdict = investigation.results.verdict;
-      if (BON_BOT_LEANING_VERDICTS.has(verdict)) {
+      if (BOT_LEANING_VERDICTS.has(verdict)) {
         botLeaningCount++;
       }
 
@@ -99,7 +99,7 @@ export function bonSubredditDeriveVerdict(
   const ready = pendingCount === 0;
   const inconclusive = ready && doneCount === 0;
   const compromised =
-    doneCount > 0 && botLeaningCount / doneCount >= BON_COMPROMISED_FRACTION;
+    doneCount > 0 && botLeaningCount / doneCount >= COMPROMISED_FRACTION;
 
   return {
     ready,

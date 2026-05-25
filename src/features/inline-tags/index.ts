@@ -1,19 +1,19 @@
 // Inline username pills rendered next to every reddit /user/ link in feeds
 // and comments, plus a chip in the profile-page header that opens the same
-// flyout. `bonInlineTagsInit` does the first-time wiring (load tags, install
-// click + storage listeners); the orchestrator calls `bonInlineTagsMark` on
+// flyout. `inlineTagsInit` does the first-time wiring (load tags, install
+// click + storage listeners); the orchestrator calls `inlineTagsMark` on
 // every MutationObserver tick to tag freshly-rendered links and to keep the
 // profile-header chip in sync.
 
-import { bonClientSend, bonClientSubscribe } from "../../client.ts";
-import { bonCssEscape } from "../../utils/format_text.ts";
-import { bonRingChip } from "../../utils/ring_chip.ts";
-import { bonInlineTagsCloseFlyout, bonInlineTagsOpenFlyout } from "./flyout.ts";
+import { clientSend, clientSubscribe } from "../../client.ts";
+import { cssEscape } from "../../utils/format_text.ts";
+import { buildRingChip } from "../../utils/ring_chip.ts";
+import { inlineTagsCloseFlyout, inlineTagsOpenFlyout } from "./flyout.ts";
 import {
-  bonInlineTagIsAvatarLink,
-  bonInlineTagLabel,
-  bonInlineTagTitle,
-  bonInlineTagVariant,
+  inlineTagIsAvatarLink,
+  inlineTagLabel,
+  inlineTagTitle,
+  inlineTagVariant,
   type UserTagInfo,
 } from "./logic.ts";
 
@@ -28,7 +28,7 @@ let tagsLoaded = false;
 let lastProfileAutoInvestigate: string | null = null;
 
 async function loadUserTags(): Promise<void> {
-  const { tags = {} } = await bonClientSend<{
+  const { tags = {} } = await clientSend<{
     tags?: Record<string, UserTagInfo>;
   }>({
     type: "get-user-tags",
@@ -89,15 +89,15 @@ function sameTagInfo(a: UserTagInfo, b: UserTagInfo): boolean {
 }
 
 function buildUserTag(info: UserTagInfo): HTMLSpanElement {
-  const variant = bonInlineTagVariant(info);
+  const variant = inlineTagVariant(info);
   const tag = document.createElement("span");
 
   tag.className = `bon-user-tag bon-user-tag--${variant}`;
   tag.dataset.bonTagFor = info.username.toLowerCase();
   tag.setAttribute("role", "button");
   tag.setAttribute("tabindex", "0");
-  tag.title = bonInlineTagTitle(info, variant);
-  tag.textContent = bonInlineTagLabel(info, variant);
+  tag.title = inlineTagTitle(info, variant);
+  tag.textContent = inlineTagLabel(info, variant);
   return tag;
 }
 
@@ -220,8 +220,8 @@ function markProfileHeader(): void {
     userStatus: null,
   };
 
-  const variant = bonInlineTagVariant(info);
-  const label = bonInlineTagLabel(info, variant);
+  const variant = inlineTagVariant(info);
+  const label = inlineTagLabel(info, variant);
 
   const existing = document.getElementById(
     "bon-profile-chip"
@@ -244,14 +244,14 @@ function markProfileHeader(): void {
 
   if (lastProfileAutoInvestigate !== key) {
     lastProfileAutoInvestigate = key;
-    void bonClientSend({
+    void clientSend({
       type: "auto-investigate-on-view",
       username,
     });
   }
 }
 
-export function bonInlineTagsMark(): void {
+export function inlineTagsMark(): void {
   markProfileHeader();
 
   if (!tagsLoaded) {
@@ -302,7 +302,7 @@ export function bonInlineTagsMark(): void {
 
       anchor.dataset.bonMarked = "true";
 
-      if (bonInlineTagIsAvatarLink(anchor)) {
+      if (inlineTagIsAvatarLink(anchor)) {
         return;
       }
 
@@ -358,7 +358,7 @@ export function bonInlineTagsMark(): void {
 
       if (
         scope?.querySelector(
-          `.bon-user-tag[data-bon-tag-for="${bonCssEscape(key)}"]`
+          `.bon-user-tag[data-bon-tag-for="${cssEscape(key)}"]`
         )
       ) {
         return;
@@ -367,7 +367,7 @@ export function bonInlineTagsMark(): void {
       const tag = buildUserTag(info);
       insertAfter.insertAdjacentElement("afterend", tag);
 
-      const ringChip = bonRingChip(info.ringId ?? null);
+      const ringChip = buildRingChip(info.ringId ?? null);
       if (ringChip) {
         tag.insertAdjacentElement("afterend", ringChip);
       }
@@ -378,7 +378,7 @@ function refreshUserTag(username: string): void {
   const key = username.toLowerCase();
 
   document
-    .querySelectorAll(`.bon-user-tag[data-bon-tag-for="${bonCssEscape(key)}"]`)
+    .querySelectorAll(`.bon-user-tag[data-bon-tag-for="${cssEscape(key)}"]`)
     .forEach((tag) => {
       const next = tag.nextElementSibling;
       if (next?.classList.contains("bon-ring-chip")) {
@@ -404,7 +404,7 @@ function refreshUserTag(username: string): void {
       delete anchor.dataset.bonMarked;
     });
 
-  bonInlineTagsMark();
+  inlineTagsMark();
 }
 
 function resetAndMarkAll(): void {
@@ -413,13 +413,13 @@ function resetAndMarkAll(): void {
   document
     .querySelectorAll<HTMLAnchorElement>("a[data-bon-marked]")
     .forEach((anchor) => delete anchor.dataset.bonMarked);
-  bonInlineTagsMark();
+  inlineTagsMark();
 }
 
 // Optimistic bump used by the reporting feature: when the user submits a
 // report, we want the pill to update immediately without waiting for the
 // background to round-trip a fresh tag map.
-export function bonInlineTagsBumpReport(username: string): void {
+export function inlineTagsBumpReport(username: string): void {
   const key = username.toLowerCase();
   const existing = userTags.get(key);
 
@@ -439,11 +439,11 @@ export function bonInlineTagsBumpReport(username: string): void {
 // Called by the content-script orchestrator on SPA navigation. Closes any
 // open flyout so a stale assessment doesn't hover on screen after the
 // user moves to a different post or feed.
-export function bonInlineTagsResetNav(): void {
-  bonInlineTagsCloseFlyout();
+export function inlineTagsResetNav(): void {
+  inlineTagsCloseFlyout();
 }
 
-export function bonInlineTagsInit(): void {
+export function inlineTagsInit(): void {
   void loadUserTags();
 
   document.addEventListener(
@@ -462,12 +462,12 @@ export function bonInlineTagsInit(): void {
 
       event.preventDefault();
       event.stopPropagation();
-      bonInlineTagsOpenFlyout(username, tag);
+      inlineTagsOpenFlyout(username, tag);
     },
     true
   );
 
-  bonClientSubscribe((event) => {
+  clientSubscribe((event) => {
     if (event.type === "reports-changed") {
       void loadUserTags();
     }

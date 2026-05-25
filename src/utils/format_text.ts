@@ -1,7 +1,7 @@
 // String formatters / escapers. Pure.
 
 // Turns "likely-bot" into "Likely bot" for display.
-export function bonFormatVerdict(verdict: string | null | undefined): string {
+export function formatVerdict(verdict: string | null | undefined): string {
   if (!verdict) {
     return "";
   }
@@ -11,7 +11,7 @@ export function bonFormatVerdict(verdict: string | null | undefined): string {
 }
 
 // CSS.escape with a fallback for environments that lack it.
-export function bonCssEscape(value: string): string {
+export function cssEscape(value: string): string {
   if (typeof CSS !== "undefined" && typeof CSS.escape === "function") {
     return CSS.escape(value);
   }
@@ -20,7 +20,7 @@ export function bonCssEscape(value: string): string {
 }
 
 // Returns the pathname portion of a URL for compact logging.
-export function bonShortUrl(url: string): string {
+export function shortUrl(url: string): string {
   try {
     return new URL(url).pathname;
   } catch {

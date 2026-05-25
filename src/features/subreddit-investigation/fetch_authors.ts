@@ -1,6 +1,6 @@
 // Background-side fetch of post authors from a subreddit's `/new` feed.
 //
-// Used by bonSubredditAnalyze to source the per-sub author sample without
+// Used by subredditAnalyze to source the per-sub author sample without
 // depending on what the operator has scrolled into view. Goes through the
 // shared Reddit client so a 429 surfaces with retryAfterMs the same way
 // other Reddit fetches do — the caller's investigation queue then pauses
@@ -8,34 +8,34 @@
 //
 // Walks Reddit's `after=` cursor until we have `target` unique authors
 // (modulo excluded usernames like [deleted] / AutoModerator), or until
-// we run out of pages, or until we hit BON_MAX_AUTHOR_PAGES — whichever
+// we run out of pages, or until we hit MAX_AUTHOR_PAGES — whichever
 // comes first. Each page costs one Reddit hit, so the page cap matters
 // when a sub has unusually low author diversity per post (mostly the
 // same few accounts replying to themselves, or AutoMod posts dominating
 // /new).
 
-import { bonRedditFetchJson } from "../../reddit/client.ts";
+import { redditFetchJson } from "../../reddit/client.ts";
 import type { RedditListing } from "../../types.ts";
 
-const BON_AUTHOR_PAGE_LIMIT = 100;
-const BON_MAX_AUTHOR_PAGES = 5;
+const AUTHOR_PAGE_LIMIT = 100;
+const MAX_AUTHOR_PAGES = 5;
 
 // Authors that don't represent a real account on the post-author axis:
 // [deleted] is Reddit's tombstone for removed bylines, AutoModerator is
 // a subreddit's own mod bot. Either polluting the sample with consistent
 // "bot" verdicts would skew every sub toward compromised.
-const BON_EXCLUDED_AUTHORS = new Set(["[deleted]", "automoderator"]);
+const EXCLUDED_AUTHORS = new Set(["[deleted]", "automoderator"]);
 
-export interface BonSubredditAuthorFetchResult {
+export interface SubredditAuthorFetchResult {
   authors: string[];
   pagesFetched: number;
   postsScanned: number;
 }
 
-export async function bonSubredditFetchAuthors(
+export async function subredditFetchAuthors(
   name: string,
   target: number
-): Promise<BonSubredditAuthorFetchResult> {
+): Promise<SubredditAuthorFetchResult> {
   const encoded = encodeURIComponent(name);
   const seen = new Set<string>();
   const authors: string[] = [];
@@ -43,13 +43,13 @@ export async function bonSubredditFetchAuthors(
   let pagesFetched = 0;
   let postsScanned = 0;
 
-  while (authors.length < target && pagesFetched < BON_MAX_AUTHOR_PAGES) {
+  while (authors.length < target && pagesFetched < MAX_AUTHOR_PAGES) {
     const afterParam: string = cursor
       ? `&after=${encodeURIComponent(cursor)}`
       : "";
-    const url: string = `https://www.reddit.com/r/${encoded}/new.json?limit=${BON_AUTHOR_PAGE_LIMIT}${afterParam}&raw_json=1`;
+    const url: string = `https://www.reddit.com/r/${encoded}/new.json?limit=${AUTHOR_PAGE_LIMIT}${afterParam}&raw_json=1`;
 
-    const page: RedditListing = await bonRedditFetchJson<RedditListing>(url);
+    const page: RedditListing = await redditFetchJson<RedditListing>(url);
     pagesFetched += 1;
 
     const children = page.data?.children ?? [];
@@ -65,7 +65,7 @@ export async function bonSubredditFetchAuthors(
       }
 
       const lower = author.toLowerCase();
-      if (BON_EXCLUDED_AUTHORS.has(lower) || seen.has(lower)) {
+      if (EXCLUDED_AUTHORS.has(lower) || seen.has(lower)) {
         continue;
       }
 

@@ -1,23 +1,23 @@
 // Singleton floating card shown when the cursor enters a personas-scatter
 // dot. Mirrors the persona preview from the Reddit profile-page panel:
 // persona label + radar + summary on top, HUMAN/BOT signals list below.
-// Reuses bonPersonaBlock / bonTopReasonsList so the visual matches
+// Reuses buildPersonaBlock / topReasonsList so the visual matches
 // the reports detail pane exactly — no parallel CSS to keep in sync.
 //
 // The card is non-interactive (pointer-events: none) so it can render
 // anywhere without stealing the mouseleave that closes it.
 
 import type { Report } from "../../types.ts";
-import { bonPersonaBlock } from "../persona-block";
-import { bonTopReasonsList } from "../../utils/top_reasons_list.ts";
-import { bonNormalizeInvestigation } from "../../verdict.ts";
+import { buildPersonaBlock } from "../persona-block";
+import { topReasonsList } from "../../utils/top_reasons_list.ts";
+import { normalizeInvestigation } from "../../verdict.ts";
 
 let activeCard: HTMLElement | null = null;
 let activeUsername: string | null = null;
 
 const CARD_WIDTH = 360;
 
-export function bonPersonasShowHover(
+export function personasShowHover(
   username: string,
   report: Report | null,
   anchorRect: DOMRect
@@ -27,7 +27,7 @@ export function bonPersonasShowHover(
     return;
   }
 
-  bonPersonasHideHover();
+  personasHideHover();
 
   const card = buildCard(username, report);
   if (!card) {
@@ -41,7 +41,7 @@ export function bonPersonasShowHover(
   activeUsername = username;
 }
 
-export function bonPersonasHideHover(): void {
+export function personasHideHover(): void {
   if (!activeCard) {
     return;
   }
@@ -55,7 +55,7 @@ function buildCard(
   username: string,
   report: Report | null
 ): HTMLElement | null {
-  const investigation = bonNormalizeInvestigation(
+  const investigation = normalizeInvestigation(
     report?.investigation,
     !!report?.ringId
   );
@@ -75,7 +75,7 @@ function buildCard(
   card.appendChild(header);
 
   const personaBlock = persona?.label
-    ? bonPersonaBlock(persona, { summary })
+    ? buildPersonaBlock(persona, { summary })
     : null;
 
   if (personaBlock) {
@@ -83,7 +83,7 @@ function buildCard(
   }
 
   const reasonsList =
-    factors.length > 0 ? bonTopReasonsList(factors, { perSide: 2 }) : null;
+    factors.length > 0 ? topReasonsList(factors, { perSide: 2 }) : null;
 
   if (reasonsList) {
     card.appendChild(reasonsList);

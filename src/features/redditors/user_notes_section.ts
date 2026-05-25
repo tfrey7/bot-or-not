@@ -7,17 +7,15 @@
 // (debounced) and on `blur` (immediate). The status pill reflects state:
 // "Unsaved" → "Saving…" → "Saved <relative>".
 
-import { bonClientSend } from "../../client.ts";
+import { clientSend } from "../../client.ts";
 import type { PersonaLabel, UserNotes } from "../../types.ts";
-import { bonFormatDate } from "../../utils/format_time.ts";
+import { formatDate } from "../../utils/format_time.ts";
 import type { ReportRow } from "./logic.ts";
-import { bonRedditorsPersonaPicker } from "./persona_picker.ts";
+import { redditorsPersonaPicker } from "./persona_picker.ts";
 
 const SAVE_DEBOUNCE_MS = 600;
 
-export function bonRedditorsUserNotesSection(
-  report: ReportRow
-): HTMLDivElement {
+export function redditorsUserNotesSection(report: ReportRow): HTMLDivElement {
   const { username, userNotes } = report;
 
   const wrap = document.createElement("div");
@@ -49,7 +47,7 @@ export function bonRedditorsUserNotesSection(
   ratingWrap.appendChild(ratingLabel);
 
   let currentRatings: PersonaLabel[] = [...(userNotes?.ratings ?? [])];
-  const picker = bonRedditorsPersonaPicker({
+  const picker = redditorsPersonaPicker({
     values: currentRatings,
     onChange: (next) => {
       currentRatings = next;
@@ -112,7 +110,7 @@ export function bonRedditorsUserNotesSection(
     }
 
     if (saved && saved.updatedAt) {
-      status.textContent = `Saved ${bonFormatDate(saved.updatedAt)}`;
+      status.textContent = `Saved ${formatDate(saved.updatedAt)}`;
       status.classList.add("bon-user-notes__status--saved");
       status.classList.remove("bon-user-notes__status--dirty");
       return;
@@ -135,7 +133,7 @@ export function bonRedditorsUserNotesSection(
     renderStatus(userNotes ?? null);
 
     try {
-      const response = await bonClientSend<{
+      const response = await clientSend<{
         ok?: boolean;
         userNotes?: UserNotes | null;
       }>({

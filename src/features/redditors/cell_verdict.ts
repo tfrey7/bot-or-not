@@ -3,13 +3,10 @@
 // investigation is mid-flight or failed.
 
 import type { Investigation } from "../../types.ts";
-import { bonFormatVerdict } from "../../utils/format_text.ts";
-import {
-  bonIsInvestigationStale,
-  bonNormalizeInvestigation,
-} from "../../verdict.ts";
+import { formatVerdict } from "../../utils/format_text.ts";
+import { isInvestigationStale, normalizeInvestigation } from "../../verdict.ts";
 
-export function bonRedditorsVerdictBadge(
+export function redditorsVerdictBadge(
   rawInvestigation: Investigation | null | undefined,
   inRing = false,
   queueAhead = 0
@@ -41,7 +38,7 @@ export function bonRedditorsVerdictBadge(
   }
 
   if (rawInvestigation.status === "running") {
-    const stale = bonIsInvestigationStale(rawInvestigation);
+    const stale = isInvestigationStale(rawInvestigation);
 
     const span = document.createElement("span");
     span.className = `bon-verdict-badge bon-verdict-badge--${stale ? "error" : "running"}`;
@@ -61,7 +58,7 @@ export function bonRedditorsVerdictBadge(
     return span;
   }
 
-  const investigation = bonNormalizeInvestigation(rawInvestigation, inRing);
+  const investigation = normalizeInvestigation(rawInvestigation, inRing);
 
   if (investigation.status !== "done") {
     return null;
@@ -70,7 +67,7 @@ export function bonRedditorsVerdictBadge(
   const { verdict, summary } = investigation.results;
   const span = document.createElement("span");
   span.className = `bon-verdict-badge bon-verdict-badge--${verdict}`;
-  span.textContent = bonFormatVerdict(verdict);
+  span.textContent = formatVerdict(verdict);
   span.title = summary || verdict;
 
   return span;

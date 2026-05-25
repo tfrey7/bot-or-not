@@ -1,12 +1,12 @@
-import { bonReadReports, bonWriteReports } from "../storage.ts";
+import { readReports, writeReports } from "../storage.ts";
 
 // Rewrite legacy `userNotes.rating` (single label) into `userNotes.ratings`
 // (array) so the multi-pick picker has a consistent shape to read from.
 // The canonicalizer accepts either form, so this migration is about
 // keeping stored data clean — not about correctness at read time.
-export async function bonMigrateUserNotesRatings(): Promise<void> {
+export async function migrateUserNotesRatings(): Promise<void> {
   try {
-    const reports = await bonReadReports();
+    const reports = await readReports();
 
     let changed = false;
 
@@ -34,7 +34,7 @@ export async function bonMigrateUserNotesRatings(): Promise<void> {
     }
 
     if (changed) {
-      await bonWriteReports(reports);
+      await writeReports(reports);
       console.log("[Bot or Not] migrated userNotes.rating → ratings[]");
     }
   } catch (error) {

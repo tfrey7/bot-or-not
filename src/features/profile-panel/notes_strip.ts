@@ -3,13 +3,13 @@
 // browsing Reddit. Returns null when the operator has neither a rating nor
 // a note for this user — nothing to show, no chrome.
 
-import { BON_ARCHETYPES } from "../../factors.ts";
+import { ARCHETYPES } from "../../factors.ts";
 import type { PersonaLabel, UserNotes } from "../../types.ts";
-import { bonLinkifyReddit } from "../../utils/linkify_reddit.ts";
+import { linkifyReddit } from "../../utils/linkify_reddit.ts";
 
 const ARCHETYPE_META: Record<string, { label: string; hue: number }> =
   Object.fromEntries(
-    BON_ARCHETYPES.map((a) => [a.key, { label: a.label, hue: a.hue }])
+    ARCHETYPES.map((a) => [a.key, { label: a.label, hue: a.hue }])
   );
 
 const EXTRA_LABELS: Record<string, string> = {
@@ -17,15 +17,15 @@ const EXTRA_LABELS: Record<string, string> = {
   normal: "Normal",
 };
 
-function bonPanelNotesChipLabel(value: PersonaLabel): string {
+function panelNotesChipLabel(value: PersonaLabel): string {
   return ARCHETYPE_META[value]?.label || EXTRA_LABELS[value] || value;
 }
 
-function bonPanelNotesChipHue(value: PersonaLabel): number | null {
+function panelNotesChipHue(value: PersonaLabel): number | null {
   return ARCHETYPE_META[value]?.hue ?? null;
 }
 
-export function bonPanelBuildNotesStrip(
+export function panelBuildNotesStrip(
   userNotes: UserNotes | null | undefined
 ): HTMLElement | null {
   const ratings = userNotes?.ratings ?? [];
@@ -53,7 +53,7 @@ export function bonPanelBuildNotesStrip(
 
       const stripe = document.createElement("span");
       stripe.className = "bon-panel-notes__stripe";
-      const hue = bonPanelNotesChipHue(rating);
+      const hue = panelNotesChipHue(rating);
       if (hue !== null) {
         stripe.style.setProperty("--bon-persona-hue", String(hue));
       } else {
@@ -64,7 +64,7 @@ export function bonPanelBuildNotesStrip(
 
       const label = document.createElement("span");
       label.className = "bon-panel-notes__chip-label";
-      label.textContent = bonPanelNotesChipLabel(rating);
+      label.textContent = panelNotesChipLabel(rating);
       chip.appendChild(label);
 
       chips.appendChild(chip);
@@ -76,7 +76,7 @@ export function bonPanelBuildNotesStrip(
   if (note !== "") {
     const noteEl = document.createElement("p");
     noteEl.className = "bon-panel-notes__note";
-    noteEl.appendChild(bonLinkifyReddit(note));
+    noteEl.appendChild(linkifyReddit(note));
     wrap.appendChild(noteEl);
   }
 

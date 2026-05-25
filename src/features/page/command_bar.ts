@@ -5,10 +5,10 @@
 // agent-filter banner under the tabs, and the / and Esc keyboard hooks.
 
 import { type AiCommandAction, type AiCommandResult } from "../ai-command";
-import { bonPageOpenCommandModal } from "./command_modal.ts";
+import { pageOpenCommandModal } from "./command_modal.ts";
 import type { ReportRow } from "../redditors";
 
-export interface BonPageCommandBarDeps {
+export interface PageCommandBarDeps {
   searchInput: HTMLInputElement;
   agentFilterEl: HTMLElement;
   agentFilterLabelEl: HTMLElement;
@@ -19,7 +19,7 @@ export interface BonPageCommandBarDeps {
   onCommandReload(): Promise<void>;
 }
 
-export interface BonPageCommandBarHandle {
+export interface PageCommandBarHandle {
   getAgentFilter(): ReadonlySet<string> | null;
   renderAgentFilterBanner(): void;
 }
@@ -28,7 +28,7 @@ export interface BonPageCommandBarHandle {
 // crowding the bar with help text. Cycled every ~5s when the input is empty
 // and unfocused; pauses on focus so the operator isn't reading a moving
 // target while they type.
-const BON_CMD_PLACEHOLDERS = [
+const CMD_PLACEHOLDERS = [
   "Try: investigate u/alice",
   "Try: filter to doomer accounts",
   "Try: link alice + bob into a ring",
@@ -36,11 +36,11 @@ const BON_CMD_PLACEHOLDERS = [
   "Try: open the most recent dossier",
 ];
 
-const BON_CMD_PLACEHOLDER_INTERVAL_MS = 5000;
+const CMD_PLACEHOLDER_INTERVAL_MS = 5000;
 
-export function bonPageInitCommandBar(
-  deps: BonPageCommandBarDeps
-): BonPageCommandBarHandle {
+export function pageInitCommandBar(
+  deps: PageCommandBarDeps
+): PageCommandBarHandle {
   const {
     searchInput,
     agentFilterEl,
@@ -194,7 +194,7 @@ export function bonPageInitCommandBar(
     // area resets while the new modal grows.
     clearStatus();
 
-    bonPageOpenCommandModal(initialPrompt, {
+    pageOpenCommandModal(initialPrompt, {
       sourceEl: commandBarEl,
 
       // Fires once per agent turn that settles. Reload the table, then apply
@@ -299,11 +299,11 @@ function installPlaceholderRotation(input: HTMLInputElement): void {
       return;
     }
 
-    index = (index + 1) % BON_CMD_PLACEHOLDERS.length;
+    index = (index + 1) % CMD_PLACEHOLDERS.length;
     input.classList.add("bon-command-bar-input--swap");
 
     setTimeout(() => {
-      input.setAttribute("placeholder", BON_CMD_PLACEHOLDERS[index]);
+      input.setAttribute("placeholder", CMD_PLACEHOLDERS[index]);
       input.classList.remove("bon-command-bar-input--swap");
     }, 200);
   };
@@ -313,7 +313,7 @@ function installPlaceholderRotation(input: HTMLInputElement): void {
       return;
     }
 
-    timer = setInterval(cycle, BON_CMD_PLACEHOLDER_INTERVAL_MS);
+    timer = setInterval(cycle, CMD_PLACEHOLDER_INTERVAL_MS);
   };
 
   const stop = (): void => {
@@ -325,7 +325,7 @@ function installPlaceholderRotation(input: HTMLInputElement): void {
     timer = null;
   };
 
-  input.setAttribute("placeholder", BON_CMD_PLACEHOLDERS[0]);
+  input.setAttribute("placeholder", CMD_PLACEHOLDERS[0]);
   start();
   input.addEventListener("focus", stop);
   input.addEventListener("blur", () => {

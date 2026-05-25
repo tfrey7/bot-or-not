@@ -24,7 +24,7 @@ export default defineConfig(({ mode }) => {
     mode === "development" && env.CLAUDE_API_KEY ? env.CLAUDE_API_KEY : null;
 
   // Dev-only strand identity: when this build runs from inside a
-  // ../<repo>-strands/<slug>/ worktree, the slug becomes __BON_STRAND__ so
+  // ../<repo>-strands/<slug>/ worktree, the slug becomes __STRAND__ so
   // the reports page can label which strand's code is loaded. Null in
   // production and when running from the main checkout — the consuming
   // code tree-shakes out.
@@ -91,9 +91,9 @@ export default defineConfig(({ mode }) => {
       copyIcons(),
     ],
     define: {
-      __BON_DEV_CLAUDE_API_KEY__: JSON.stringify(devClaudeApiKey),
-      __BON_STRAND__: JSON.stringify(devStrand),
-      __BON_STRAND_COLOR__: JSON.stringify(devStrandColor),
+      __DEV_CLAUDE_API_KEY__: JSON.stringify(devClaudeApiKey),
+      __STRAND__: JSON.stringify(devStrand),
+      __STRAND_COLOR__: JSON.stringify(devStrandColor),
     },
     build: {
       outDir: "dist",

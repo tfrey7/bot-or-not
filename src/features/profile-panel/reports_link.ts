@@ -4,9 +4,9 @@
 // <button> that asks the background to focus-or-open the tab, not a native
 // <a href>.
 
-import { bonClientSend } from "../../client.ts";
+import { clientSend } from "../../client.ts";
 
-export function bonPanelBuildReportsLink(username: string): HTMLButtonElement {
+export function panelBuildReportsLink(username: string): HTMLButtonElement {
   const button = document.createElement("button");
   button.type = "button";
   button.className = "bon-panel-btn";
@@ -16,7 +16,7 @@ export function bonPanelBuildReportsLink(username: string): HTMLButtonElement {
 
   button.addEventListener("click", (event) => {
     event.stopPropagation();
-    void bonClientSend({
+    void clientSend({
       type: "open-reports-tab",
       username,
     });

@@ -5,7 +5,7 @@
 
 import type { ReportRow } from "../redditors";
 
-export function bonSettingsStrip(
+export function settingsStrip(
   reports: ReportRow[],
   container: HTMLElement
 ): void {

@@ -3,7 +3,7 @@
 // username doesn't exist. Sherlock Chromes with an empty dossier folder
 // reads as "case file is empty" without piling on red error text.
 
-export function bonRedditorsIsUserNotFoundError(
+export function redditorsIsUserNotFoundError(
   error: string | null | undefined
 ): boolean {
   return (
@@ -11,9 +11,7 @@ export function bonRedditorsIsUserNotFoundError(
   );
 }
 
-export function bonRedditorsUserNotFoundPanel(
-  username: string
-): HTMLDivElement {
+export function redditorsUserNotFoundPanel(username: string): HTMLDivElement {
   const wrap = document.createElement("div");
   wrap.className = "bon-user-not-found";
 

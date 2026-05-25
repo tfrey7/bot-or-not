@@ -6,51 +6,51 @@
 
 import type { Persona } from "../../types.ts";
 import {
-  bonLinkifyPanelOptions,
-  bonLinkifyReddit,
+  linkifyPanelOptions,
+  linkifyReddit,
 } from "../../utils/linkify_reddit.ts";
-import { bonPersonaHue } from "../../utils/persona_color.ts";
-import { bonPersonaIcon } from "../../utils/persona_icon.ts";
+import { personaHue } from "../../utils/persona_color.ts";
+import { personaIcon } from "../../utils/persona_icon.ts";
 import {
-  bonHidePersonaLabel,
-  bonRevealPersonaLabel,
+  hidePersonaLabel,
+  revealPersonaLabel,
 } from "../../utils/persona_label_reveal.ts";
 import {
-  BON_PERSONA_RADAR_DURATION_MS,
-  bonPersonaRadar,
+  PERSONA_RADAR_DURATION_MS,
+  personaRadar,
 } from "../../utils/persona_radar.ts";
-import { bonPersonaTitle } from "../../utils/persona_title.ts";
+import { personaTitle } from "../../utils/persona_title.ts";
 
-export interface BonPanelPersonaStripOpts {
+export interface PanelPersonaStripOpts {
   summary?: string | null;
 }
 
-export function bonPanelBuildPersonaStrip(
+export function panelBuildPersonaStrip(
   persona: Persona,
-  options: BonPanelPersonaStripOpts = {}
+  options: PanelPersonaStripOpts = {}
 ): HTMLElement {
   const wrap = document.createElement("aside");
   wrap.className = `bon-panel-persona bon-panel-persona--${persona.label}`;
 
-  const hue = bonPersonaHue(persona);
+  const hue = personaHue(persona);
   if (hue !== null) {
     wrap.style.setProperty("--bon-persona-hue", String(Math.round(hue)));
   }
 
   const label = document.createElement("p");
   label.className = "bon-panel-persona__label";
-  label.textContent = bonPersonaTitle(persona);
+  label.textContent = personaTitle(persona);
 
   if (persona.archetypes) {
-    bonHidePersonaLabel(label);
-    const radar = bonPersonaRadar(persona.archetypes, {
-      iconUrl: bonPersonaIcon(persona),
+    hidePersonaLabel(label);
+    const radar = personaRadar(persona.archetypes, {
+      iconUrl: personaIcon(persona),
     });
 
     if (radar) {
       wrap.appendChild(label);
       wrap.appendChild(radar);
-      bonRevealPersonaLabel(label, BON_PERSONA_RADAR_DURATION_MS);
+      revealPersonaLabel(label, PERSONA_RADAR_DURATION_MS);
     } else {
       wrap.appendChild(label);
     }
@@ -62,9 +62,7 @@ export function bonPanelBuildPersonaStrip(
   if (summaryText) {
     const summary = document.createElement("p");
     summary.className = "bon-panel-persona__summary";
-    summary.appendChild(
-      bonLinkifyReddit(summaryText, bonLinkifyPanelOptions())
-    );
+    summary.appendChild(linkifyReddit(summaryText, linkifyPanelOptions()));
     wrap.appendChild(summary);
   }
 

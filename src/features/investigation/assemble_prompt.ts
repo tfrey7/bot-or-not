@@ -16,7 +16,7 @@
 // this module from `llmFactorKeys` so the count word and numbering stay
 // consistent with what the LLM is asked to produce.
 
-import { BON_FACTORS } from "../../factors.ts";
+import { FACTORS } from "../../factors.ts";
 import type { ProfileSummary } from "../../types.ts";
 
 // `llmFactorKeys` is the set of factor keys the LLM should score. Factors
@@ -42,7 +42,7 @@ interface SectionConditions {
   avatar: boolean;
 }
 
-export function bonAssemblePrompt(
+export function assemblePrompt(
   rawPrompt: string,
   summary: ProfileSummary,
   options: PromptAssemblyOptions
@@ -175,7 +175,7 @@ function regenerateFactorList(
     throw new Error("Missing <!--:factor-list--> markers in prompt");
   }
 
-  const orderedKeys = BON_FACTORS.map((f) => f.key).filter((k) =>
+  const orderedKeys = FACTORS.map((f) => f.key).filter((k) =>
     llmFactorKeys.includes(k)
   );
   const count = orderedKeys.length;

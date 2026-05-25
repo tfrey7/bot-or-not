@@ -5,8 +5,8 @@
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
 
-import { bonFetchRedditProfile } from "../src/features/investigation/fetch.ts";
-import { bonSummarizeProfile } from "../src/features/investigation/summarize.ts";
+import { fetchRedditProfile } from "../src/features/investigation/fetch.ts";
+import { summarizeProfile } from "../src/features/investigation/summarize.ts";
 
 const _REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -40,8 +40,8 @@ function approxTokens(bytes: number): number {
 
 async function main(): Promise<void> {
   console.log(`[audit] fetching u/${username}...`);
-  const { profile } = await bonFetchRedditProfile(username);
-  const summary = bonSummarizeProfile(username, profile, {});
+  const { profile } = await fetchRedditProfile(username);
+  const summary = summarizeProfile(username, profile, {});
 
   const fullJson = JSON.stringify(summary, null, 2);
   const compactJson = JSON.stringify(summary);

@@ -18,7 +18,7 @@ export interface SubredditTimeline {
 // Buckets each visible post/comment into a per-subreddit timeline. Returns
 // null when the snapshot predates the parallel `postSubreddits` /
 // `commentSubreddits` arrays — the renderer surfaces a "refresh" prompt.
-export function bonRedditorsBuildSubredditTimelines(
+export function redditorsBuildSubredditTimelines(
   activityData: ActivityData
 ): SubredditTimeline[] | null {
   const postSubs = activityData.postSubreddits;
@@ -100,7 +100,7 @@ export interface SubredditChartSeries {
 // they line up on a shared X-axis. Posts and comments are merged into one
 // "contribution" stream — the per-line chart distinguishes by subreddit,
 // not by event kind.
-export function bonRedditorsBuildSubredditChartSeries(
+export function redditorsBuildSubredditChartSeries(
   timelines: SubredditTimeline[],
   rangeStart: number,
   rangeEnd: number,

@@ -5,21 +5,21 @@
 // respective stylesheets.
 
 import type { Factor } from "../types.ts";
-import { bonLinkifyReddit, type BonLinkifyOptions } from "./linkify_reddit.ts";
-import { bonScoreLeaning } from "./scoring.ts";
-import { bonTopReasonsSplit, type RankedFactor } from "../verdict.ts";
+import { linkifyReddit, type LinkifyOptions } from "./linkify_reddit.ts";
+import { scoreLeaning } from "./scoring.ts";
+import { topReasonsSplit, type RankedFactor } from "../verdict.ts";
 
-export interface BonTopReasonsOptions {
+export interface TopReasonsOptions {
   perSide?: number;
-  linkify?: BonLinkifyOptions;
+  linkify?: LinkifyOptions;
 }
 
-export function bonTopReasonsList(
+export function topReasonsList(
   factors: Factor[],
-  options: BonTopReasonsOptions = {}
+  options: TopReasonsOptions = {}
 ): HTMLElement | null {
   const perSide = options.perSide ?? 3;
-  const split = bonTopReasonsSplit(factors, perSide);
+  const split = topReasonsSplit(factors, perSide);
 
   if (!split.human.length && !split.bot.length) {
     return null;
@@ -46,7 +46,7 @@ export function bonTopReasonsList(
 function buildColumn(
   title: string,
   factors: RankedFactor[],
-  linkify: BonLinkifyOptions | undefined
+  linkify: LinkifyOptions | undefined
 ): HTMLDivElement {
   const column = document.createElement("div");
   column.className = "bon-top-reasons__column";
@@ -72,10 +72,10 @@ function buildColumn(
 
 function buildReason(
   factor: Factor,
-  linkify: BonLinkifyOptions | undefined
+  linkify: LinkifyOptions | undefined
 ): HTMLLIElement {
   const listItem = document.createElement("li");
-  const leaning = bonScoreLeaning(factor.score, factor.confidence);
+  const leaning = scoreLeaning(factor.score, factor.confidence);
   listItem.className = `bon-reason bon-reason--${leaning}`;
 
   const bullet = document.createElement("span");
@@ -87,7 +87,7 @@ function buildReason(
   text.className = "bon-reason__text";
 
   if (factor.reasoning) {
-    text.appendChild(bonLinkifyReddit(factor.reasoning, linkify));
+    text.appendChild(linkifyReddit(factor.reasoning, linkify));
   }
 
   listItem.appendChild(text);

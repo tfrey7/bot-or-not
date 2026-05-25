@@ -27,10 +27,10 @@ import type {
   SummaryPost,
   TopSubreddit,
 } from "../../types.ts";
-import { BON_REDDIT_FETCH_LIMIT } from "./fetch.ts";
+import { REDDIT_FETCH_LIMIT } from "./fetch.ts";
 
-const BON_MAX_ITEMS_TO_AI = 300; // per kind (posts + comments)
-const BON_MAX_BODY_CHARS = 200; // selftext / comment body excerpt cap
+const MAX_ITEMS_TO_AI = 300; // per kind (posts + comments)
+const MAX_BODY_CHARS = 200; // selftext / comment body excerpt cap
 
 interface RawPost {
   subreddit?: string;
@@ -63,7 +63,7 @@ interface RawModeratedEntry {
   url?: string;
 }
 
-// Optional inputs threaded in from bonGatherProfile. Absence is expressed
+// Optional inputs threaded in from gatherProfile. Absence is expressed
 // by omission — no `null` on optional fields.
 export interface SummarizeExtra {
   botBouncerStatus?: Exclude<BotBouncerStatus, null>;
@@ -72,7 +72,7 @@ export interface SummarizeExtra {
   passiveHarvest?: PassiveHarvest;
 }
 
-export function bonSummarizeProfile(
+export function summarizeProfile(
   username: string,
   raw: RedditProfile,
   extra: SummarizeExtra = {}
@@ -91,11 +91,11 @@ export function bonSummarizeProfile(
       : null;
 
   const trimmedPosts: SummaryPost[] = posts
-    .slice(0, BON_MAX_ITEMS_TO_AI)
+    .slice(0, MAX_ITEMS_TO_AI)
     .map(trimPost)
     .filter(hasPostContent);
   const trimmedComments: SummaryComment[] = comments
-    .slice(0, BON_MAX_ITEMS_TO_AI)
+    .slice(0, MAX_ITEMS_TO_AI)
     .map(trimComment)
     .filter(hasCommentContent);
 
@@ -103,7 +103,7 @@ export function bonSummarizeProfile(
   const postingRate = computePostingRate(posts, comments);
   const moderatedSubreddits = summarizeModerated(raw.moderated?.data);
   const topSubreddits = countTopSubreddits(posts, comments);
-  const avatarCustomized = bonHasCustomSnoovatar(aboutData.snoovatar_img);
+  const avatarCustomized = hasCustomSnoovatar(aboutData.snoovatar_img);
 
   return {
     username,
@@ -162,7 +162,7 @@ export function bonSummarizeProfile(
 // minute / timezone-band signal is preserved; sub-minute burst detection
 // is the only loss, and the prompt's burst rule still fires at minute
 // granularity (multiple items inside the same minute).
-export function bonSerializeProfileForClaude(summary: ProfileSummary): string {
+export function serializeProfileForClaude(summary: ProfileSummary): string {
   const subs: string[] = [];
   const subIndex = new Map<string, number>();
   const indexOf = (sub: string): number => {
@@ -245,13 +245,13 @@ function trimTrailingNulls(row: unknown[]): unknown[] {
 // here; default accounts return `""`. The companion `icon_img` field is
 // always populated (often with a generic snoo) so it can't tell us
 // whether the user actually chose anything.
-export function bonHasCustomSnoovatar(snoovatarImg?: string): boolean {
+export function hasCustomSnoovatar(snoovatarImg?: string): boolean {
   return typeof snoovatarImg === "string" && snoovatarImg.trim().length > 0;
 }
 
-export function bonExtractSnoovatarUrl(raw: RedditProfile): string | null {
+export function extractSnoovatarUrl(raw: RedditProfile): string | null {
   const url = raw.about.data?.snoovatar_img;
-  return bonHasCustomSnoovatar(url) ? (url as string) : null;
+  return hasCustomSnoovatar(url) ? (url as string) : null;
 }
 
 function extractChildren<T>(
@@ -280,7 +280,7 @@ function trimPost(post: RawPost): SummaryPost {
   return {
     subreddit: subredditLabel(post),
     title: post.title ?? null,
-    selftext_excerpt: (post.selftext ?? "").slice(0, BON_MAX_BODY_CHARS),
+    selftext_excerpt: (post.selftext ?? "").slice(0, MAX_BODY_CHARS),
     score: post.score ?? null,
     num_comments: post.num_comments ?? null,
     created_at: typeof post.created_utc === "number" ? post.created_utc : null,
@@ -291,7 +291,7 @@ function trimPost(post: RawPost): SummaryPost {
 function trimComment(comment: RawComment): SummaryComment {
   return {
     subreddit: subredditLabel(comment),
-    body_excerpt: (comment.body ?? "").slice(0, BON_MAX_BODY_CHARS),
+    body_excerpt: (comment.body ?? "").slice(0, MAX_BODY_CHARS),
     score: comment.score ?? null,
     created_at:
       typeof comment.created_utc === "number" ? comment.created_utc : null,
@@ -345,7 +345,7 @@ function countRemovals(
 }
 
 // Posting rate over the visible window. The fetched sample is capped at
-// BON_REDDIT_FETCH_LIMIT items per kind; the window between the oldest
+// REDDIT_FETCH_LIMIT items per kind; the window between the oldest
 // and newest item tells us how fast they accumulated. A heavy farmer can
 // hit 50+/day sustained — well above what a normal human (even a Stan) does.
 function computePostingRate(
@@ -375,8 +375,8 @@ function computePostingRate(
     ),
     sample_size: allTimestamps.length,
     sample_capped:
-      posts.length >= BON_REDDIT_FETCH_LIMIT ||
-      comments.length >= BON_REDDIT_FETCH_LIMIT,
+      posts.length >= REDDIT_FETCH_LIMIT ||
+      comments.length >= REDDIT_FETCH_LIMIT,
   };
 }
 

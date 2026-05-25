@@ -11,18 +11,18 @@
 // the pipeline uses). What's left here is page detection + masthead
 // anchoring for the click target.
 
-export const BON_SUBREDDIT_SAMPLE_SIZE = 100;
+export const SUBREDDIT_SAMPLE_SIZE = 100;
 
-const BON_SUBREDDIT_PATH_RE =
+const SUBREDDIT_PATH_RE =
   /^\/r\/([^/]+)\/?(?:(?:hot|new|top|rising|controversial)\/?)?$/i;
 
-export interface BonSubredditPageContext {
+export interface SubredditPageContext {
   name: string;
   nameKey: string;
 }
 
-export function bonSubredditCurrentPage(): BonSubredditPageContext | null {
-  const match = window.location.pathname.match(BON_SUBREDDIT_PATH_RE);
+export function subredditCurrentPage(): SubredditPageContext | null {
+  const match = window.location.pathname.match(SUBREDDIT_PATH_RE);
   if (!match) {
     return null;
   }
@@ -44,6 +44,6 @@ export function bonSubredditCurrentPage(): BonSubredditPageContext | null {
 // banner above and overflows the header's row; placing the widget
 // inside that row leaves it competing for vertical space with the
 // avatar. Sitting underneath the whole masthead sidesteps the problem.
-export function bonSubredditFindMasthead(): HTMLElement | null {
+export function subredditFindMasthead(): HTMLElement | null {
   return document.querySelector(".masthead") as HTMLElement | null;
 }

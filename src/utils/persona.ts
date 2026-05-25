@@ -1,6 +1,6 @@
 // Validation/normalization for the persona block Claude returns.
 
-import { BON_ARCHETYPE_KEYS, BON_PERSONA_LABELS } from "../factors.ts";
+import { ARCHETYPE_KEYS, PERSONA_LABELS } from "../factors.ts";
 import type { ArchetypeKey, Persona, PersonaLabel } from "../types.ts";
 
 // Validates the persona block from Claude's response. Returns null when the
@@ -10,7 +10,7 @@ import type { ArchetypeKey, Persona, PersonaLabel } from "../types.ts";
 // `archetypes` is the per-axis 0–1 score map that powers the radar chart.
 // Axis list is the canonical one in factors.js so reports.js can trust the
 // shape: every known axis present, clamped to [0,1], or null for legacy data.
-export function bonNormalizePersona(raw: unknown): Persona | null {
+export function normalizePersona(raw: unknown): Persona | null {
   if (!raw || typeof raw !== "object") {
     return null;
   }
@@ -20,7 +20,7 @@ export function bonNormalizePersona(raw: unknown): Persona | null {
     .toLowerCase()
     .trim();
 
-  if (!(BON_PERSONA_LABELS as readonly string[]).includes(label)) {
+  if (!(PERSONA_LABELS as readonly string[]).includes(label)) {
     return null;
   }
 
@@ -30,11 +30,11 @@ export function bonNormalizePersona(raw: unknown): Persona | null {
   return {
     label: label as PersonaLabel,
     reasoning,
-    archetypes: bonNormalizeArchetypes(record.archetypes),
+    archetypes: normalizeArchetypes(record.archetypes),
   };
 }
 
-export function bonNormalizeArchetypes(
+export function normalizeArchetypes(
   raw: unknown
 ): Record<ArchetypeKey, number> | null {
   const out = {} as Record<ArchetypeKey, number>;
@@ -44,7 +44,7 @@ export function bonNormalizeArchetypes(
   >;
   let anyPresent = false;
 
-  for (const axis of BON_ARCHETYPE_KEYS) {
+  for (const axis of ARCHETYPE_KEYS) {
     const value = source[axis];
     if (typeof value === "number" && Number.isFinite(value)) {
       out[axis] = Math.max(0, Math.min(1, value));

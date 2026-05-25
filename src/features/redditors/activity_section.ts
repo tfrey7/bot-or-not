@@ -3,12 +3,12 @@
 // in the same pipeline as the AI verdict; there is no separate Reddit
 // fetch from this surface.
 
-import { bonRedditorsCalendarHeatmap } from "./calendar_heatmap.ts";
-import { bonRedditorsHourSection } from "./hour_heatmap.ts";
-import { bonRedditorsSubredditChartOverlaid } from "./subreddit_chart_overlaid.ts";
+import { redditorsCalendarHeatmap } from "./calendar_heatmap.ts";
+import { redditorsHourSection } from "./hour_heatmap.ts";
+import { redditorsSubredditChartOverlaid } from "./subreddit_chart_overlaid.ts";
 import type { ReportRow } from "./logic.ts";
 
-export function bonRedditorsActivitySection(report: ReportRow): HTMLDivElement {
+export function redditorsActivitySection(report: ReportRow): HTMLDivElement {
   const wrap = document.createElement("div");
   wrap.className = "bon-detail-wrap";
 
@@ -69,10 +69,10 @@ export function bonRedditorsActivitySection(report: ReportRow): HTMLDivElement {
 
   wrap.appendChild(meta);
 
-  wrap.appendChild(bonRedditorsCalendarHeatmap(timestamps, activityData));
-  wrap.appendChild(bonRedditorsHourSection(timestamps));
+  wrap.appendChild(redditorsCalendarHeatmap(timestamps, activityData));
+  wrap.appendChild(redditorsHourSection(timestamps));
   wrap.appendChild(
-    bonRedditorsSubredditChartOverlaid(activityData, report.createdAt)
+    redditorsSubredditChartOverlaid(activityData, report.createdAt)
   );
 
   return wrap;

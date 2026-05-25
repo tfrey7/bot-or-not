@@ -16,7 +16,7 @@ function escapeHtml(input: string): string {
   return input.replace(/[&<>"']/g, (char) => HTML_ESCAPE[char]);
 }
 
-export function bonAiCommandFormatSummary(raw: string): string {
+export function aiCommandFormatSummary(raw: string): string {
   if (!raw) {
     return "";
   }
@@ -38,7 +38,7 @@ export function bonAiCommandFormatSummary(raw: string): string {
 // paragraphing (so multi-paragraph answers don't collapse) and applies inline
 // emphasis the same way as the status-line formatter. Caller renders with
 // innerHTML; CSS `white-space: pre-wrap` handles the line breaks.
-export function bonAiCommandFormatBlock(raw: string): string {
+export function aiCommandFormatBlock(raw: string): string {
   if (!raw) {
     return "";
   }

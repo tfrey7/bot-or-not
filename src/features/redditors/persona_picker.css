@@ -160,7 +160,7 @@
 /* Stripe element — 4px tall column in the menu rows; chip-scoped CSS above
    overrides size/shape when the same stripe class lives inside a trigger
    chip. Color comes from the ...--<key> modifier so the rules apply in
-   both places. Hues mirror BON_ARCHETYPES so the color matches the radar
+   both places. Hues mirror ARCHETYPES so the color matches the radar
    chart accent for the same archetype. */
 .bon-persona-picker__stripe {
   width: 4px;

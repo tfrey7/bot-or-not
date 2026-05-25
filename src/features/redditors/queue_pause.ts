@@ -5,9 +5,9 @@
 // src/reddit/client.ts) and the investigation queue stops promoting
 // queued records to running.
 
-import { bonClientSubscribe } from "../../client.ts";
+import { clientSubscribe } from "../../client.ts";
 
-interface BonQueuePauseDeps {
+interface QueuePauseDeps {
   pauseEl: HTMLElement;
   onChange: () => void;
 }
@@ -15,22 +15,22 @@ interface BonQueuePauseDeps {
 let currentPausedUntil: number | null = null;
 let countdownTimer: ReturnType<typeof setInterval> | null = null;
 
-export function bonQueuePauseIsActive(): boolean {
+export function queuePauseIsActive(): boolean {
   return currentPausedUntil !== null && currentPausedUntil > Date.now();
 }
 
-export function bonQueuePauseInit(deps: BonQueuePauseDeps): void {
+export function queuePauseInit(deps: QueuePauseDeps): void {
   void refresh(deps);
 
-  bonClientSubscribe((event) => {
+  clientSubscribe((event) => {
     if (event.type === "reddit-pause-changed") {
       void refresh(deps);
     }
   });
 }
 
-async function refresh(deps: BonQueuePauseDeps): Promise<void> {
-  const wasActive = bonQueuePauseIsActive();
+async function refresh(deps: QueuePauseDeps): Promise<void> {
+  const wasActive = queuePauseIsActive();
 
   try {
     const raw = (await browser.storage.local.get("redditPauseUntil")) as {
@@ -46,12 +46,12 @@ async function refresh(deps: BonQueuePauseDeps): Promise<void> {
 
   render(deps);
 
-  if (wasActive !== bonQueuePauseIsActive()) {
+  if (wasActive !== queuePauseIsActive()) {
     deps.onChange();
   }
 }
 
-function render(deps: BonQueuePauseDeps): void {
+function render(deps: QueuePauseDeps): void {
   const { pauseEl } = deps;
 
   const remainingMs =

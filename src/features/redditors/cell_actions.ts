@@ -2,15 +2,15 @@
 // investigate button's running state participates in the poll-tick's
 // in-place text updates via data-bon-running-btn.
 
-import { bonClientSend } from "../../client.ts";
+import { clientSend } from "../../client.ts";
 import type { Investigation } from "../../types.ts";
-import { bonInvestigationResults } from "../../utils/history.ts";
-import { bonIsInvestigationStale } from "../../verdict.ts";
+import { investigationResults } from "../../utils/history.ts";
+import { isInvestigationStale } from "../../verdict.ts";
 import {
-  bonRedditorsFormatRunningCellText,
-  bonRedditorsFormatRunningTitle,
+  redditorsFormatRunningCellText,
+  redditorsFormatRunningTitle,
 } from "./logic.ts";
-import { bonPageOpenConfirmModal } from "../page";
+import { pageOpenConfirmModal } from "../page";
 
 export interface InvestigateButtonOpts {
   expectedDurationMs: number | null;
@@ -48,7 +48,7 @@ function queuedLabel(ahead: number): string {
   return `Queued · ${ahead} ahead`;
 }
 
-export function bonRedditorsRenderInvestigateButton(
+export function redditorsRenderInvestigateButton(
   username: string,
   investigation: Investigation | null | undefined,
   {
@@ -65,8 +65,8 @@ export function bonRedditorsRenderInvestigateButton(
 
   const queued = investigation?.status === "queued";
   const running = investigation?.status === "running";
-  const stale = running && bonIsInvestigationStale(investigation);
-  const verdict = bonInvestigationResults(investigation)?.verdict ?? null;
+  const stale = running && isInvestigationStale(investigation);
+  const verdict = investigationResults(investigation)?.verdict ?? null;
 
   if (freshHarvestCount > 0 && !queued && !running) {
     button.classList.add("bon-btn--fresh-harvest");
@@ -88,14 +88,11 @@ export function bonRedditorsRenderInvestigateButton(
     button.dataset.bonRunningStartedAt = String(startedAt);
 
     const elapsedSec = Math.round(Math.max(0, Date.now() - startedAt) / 1000);
-    button.textContent = bonRedditorsFormatRunningCellText(
+    button.textContent = redditorsFormatRunningCellText(
       elapsedSec,
       expectedDurationMs
     );
-    button.title = bonRedditorsFormatRunningTitle(
-      elapsedSec,
-      expectedDurationMs
-    );
+    button.title = redditorsFormatRunningTitle(elapsedSec, expectedDurationMs);
   } else if (stale) {
     button.textContent = "Retry stalled";
     button.title = "Retry stalled investigation";
@@ -114,7 +111,7 @@ export function bonRedditorsRenderInvestigateButton(
     button.textContent = "Starting…";
     onInvestigate?.();
     try {
-      const response = await bonClientSend<{ ok?: boolean; error?: string }>({
+      const response = await clientSend<{ ok?: boolean; error?: string }>({
         type: "investigate-user",
         username,
       });
@@ -132,7 +129,7 @@ export function bonRedditorsRenderInvestigateButton(
   return button;
 }
 
-export function bonRedditorsRenderDeleteButton(
+export function redditorsRenderDeleteButton(
   username: string
 ): HTMLButtonElement {
   const button = document.createElement("button");
@@ -142,10 +139,10 @@ export function bonRedditorsRenderDeleteButton(
   button.title = `Delete report for u/${username}`;
 
   button.addEventListener("click", () => {
-    bonPageOpenConfirmModal({
+    pageOpenConfirmModal({
       text: `Delete the report for u/${username}? This can't be undone.`,
       confirmLabel: "Delete",
-      action: () => bonClientSend({ type: "delete-report", username }),
+      action: () => clientSend({ type: "delete-report", username }),
     });
   });
 

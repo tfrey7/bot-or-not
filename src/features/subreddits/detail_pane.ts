@@ -11,21 +11,21 @@
 // the viewport on a 768px-tall laptop screen.
 
 import {
-  bonPersonasScatter,
-  bonPersonasCollect,
+  personasScatter,
+  personasCollect,
   type PersonaPoint,
   type PersonasRow,
 } from "../personas";
-import { bonFormatDate } from "../../utils/format_time.ts";
+import { formatDate } from "../../utils/format_time.ts";
 import type { Report, Verdict } from "../../types.ts";
 import type {
-  BonSubredditListEntry,
-  BonSubredditSample,
-  BonSubredditVerdict,
+  SubredditListEntry,
+  SubredditSample,
+  SubredditVerdict,
 } from "../subreddit-investigation";
 
-export interface BonSubredditsDetailOptions {
-  entry: BonSubredditListEntry | null;
+export interface SubredditsDetailOptions {
+  entry: SubredditListEntry | null;
   reportsByUsername: Map<string, Report>;
   hasAnyEntries: boolean;
   onSelectUser: (username: string) => void;
@@ -45,7 +45,7 @@ interface SegmentDescriptor {
   badgeModifier: string;
 }
 
-const BON_SEGMENT_ORDER: SegmentKey[] = [
+const SEGMENT_ORDER: SegmentKey[] = [
   "bot",
   "likely-bot",
   "uncertain",
@@ -55,7 +55,7 @@ const BON_SEGMENT_ORDER: SegmentKey[] = [
   "pending",
 ];
 
-const BON_SEGMENT_INFO: Record<SegmentKey, SegmentDescriptor> = {
+const SEGMENT_INFO: Record<SegmentKey, SegmentDescriptor> = {
   bot: { label: "bot", badgeModifier: "bot" },
   "likely-bot": { label: "likely bot", badgeModifier: "likely-bot" },
   uncertain: { label: "uncertain", badgeModifier: "uncertain" },
@@ -71,8 +71,8 @@ interface VerdictDescriptor {
   blurb: string;
 }
 
-export function bonRenderSubredditsDetail(
-  options: BonSubredditsDetailOptions
+export function renderSubredditsDetail(
+  options: SubredditsDetailOptions
 ): DocumentFragment | HTMLElement {
   const { entry, hasAnyEntries } = options;
 
@@ -97,7 +97,7 @@ export function bonRenderSubredditsDetail(
   return fragment;
 }
 
-function buildProgress(verdict: BonSubredditVerdict): HTMLElement {
+function buildProgress(verdict: SubredditVerdict): HTMLElement {
   const settled = verdict.doneCount + verdict.errorCount;
   const total = verdict.total;
   const fraction = total > 0 ? settled / total : 0;
@@ -126,7 +126,7 @@ function buildProgress(verdict: BonSubredditVerdict): HTMLElement {
   return wrap;
 }
 
-function progressLabel(verdict: BonSubredditVerdict, percent: number): string {
+function progressLabel(verdict: SubredditVerdict, percent: number): string {
   const parts: string[] = [`${verdict.doneCount} complete`];
 
   if (verdict.errorCount > 0) {
@@ -156,7 +156,7 @@ function buildEmpty(hasAnyEntries: boolean): HTMLElement {
   return div;
 }
 
-function buildHeader(entry: BonSubredditListEntry): HTMLElement {
+function buildHeader(entry: SubredditListEntry): HTMLElement {
   const { record, verdict } = entry;
   const descriptor = describeVerdict(verdict);
 
@@ -183,8 +183,7 @@ function buildHeader(entry: BonSubredditListEntry): HTMLElement {
 
   const meta = document.createElement("p");
   meta.className = "bon-subreddits-detail-meta";
-  const analyzed =
-    record.analyzedAt > 0 ? bonFormatDate(record.analyzedAt) : "—";
+  const analyzed = record.analyzedAt > 0 ? formatDate(record.analyzedAt) : "—";
   meta.textContent = `Sampled ${record.sampledUsernames.length} authors · analyzed ${analyzed}`;
   header.appendChild(meta);
 
@@ -196,19 +195,19 @@ function buildHeader(entry: BonSubredditListEntry): HTMLElement {
   return header;
 }
 
-function buildMixStrip(verdict: BonSubredditVerdict): HTMLElement {
+function buildMixStrip(verdict: SubredditVerdict): HTMLElement {
   const counts = countSegments(verdict.samples);
 
   const strip = document.createElement("div");
   strip.className = "bon-subreddits-detail-mix";
 
-  for (const key of BON_SEGMENT_ORDER) {
+  for (const key of SEGMENT_ORDER) {
     const count = counts[key];
     if (count === 0) {
       continue;
     }
 
-    const info = BON_SEGMENT_INFO[key];
+    const info = SEGMENT_INFO[key];
     const badge = document.createElement("span");
     badge.className = `bon-verdict-badge bon-verdict-badge--${info.badgeModifier}`;
     badge.textContent = `${count} ${info.label}`;
@@ -226,8 +225,8 @@ function buildMixStrip(verdict: BonSubredditVerdict): HTMLElement {
 }
 
 function buildScatter(
-  entry: BonSubredditListEntry,
-  options: BonSubredditsDetailOptions
+  entry: SubredditListEntry,
+  options: SubredditsDetailOptions
 ): HTMLElement {
   const { reportsByUsername, onSelectUser } = options;
 
@@ -247,7 +246,7 @@ function buildScatter(
     sampleReports.push({ ...report, username });
   }
 
-  const points = bonPersonasCollect(sampleReports);
+  const points = personasCollect(sampleReports);
 
   const wrap = document.createElement("div");
   wrap.className = "bon-subreddits-detail-scatter";
@@ -263,7 +262,7 @@ function buildScatter(
   }
 
   wrap.appendChild(
-    bonPersonasScatter(points, {
+    personasScatter(points, {
       onSelect: onSelectUser,
       lookupReport: (username) =>
         reportsByUsername.get(username.toLowerCase()) ?? null,
@@ -280,7 +279,7 @@ function buildScatter(
 
 function personaCaption(
   points: PersonaPoint[],
-  verdict: BonSubredditVerdict
+  verdict: SubredditVerdict
 ): string {
   const plotted = points.length;
   const missing = verdict.total - plotted;
@@ -291,9 +290,7 @@ function personaCaption(
   return `${plotted} authors plotted · ${missing} pending or errored · click a dot for the dossier.`;
 }
 
-function countSegments(
-  samples: BonSubredditSample[]
-): Record<SegmentKey, number> {
+function countSegments(samples: SubredditSample[]): Record<SegmentKey, number> {
   const counts: Record<SegmentKey, number> = {
     bot: 0,
     "likely-bot": 0,
@@ -341,7 +338,7 @@ function verdictBucket(verdict: Verdict): SegmentKey {
   return "uncertain";
 }
 
-function describeVerdict(verdict: BonSubredditVerdict): VerdictDescriptor {
+function describeVerdict(verdict: SubredditVerdict): VerdictDescriptor {
   if (!verdict.ready) {
     return {
       badgeModifier: "queued",

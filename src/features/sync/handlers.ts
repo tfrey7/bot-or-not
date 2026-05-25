@@ -3,20 +3,20 @@
 // excluded from backups and never round-tripped through this code path.
 
 import type { Report } from "../../types.ts";
-import { bonReadReports, bonWriteReports } from "../../storage.ts";
+import { readReports, writeReports } from "../../storage.ts";
 import {
-  bonSyncBuildBackup,
-  bonSyncMergeReports,
+  syncBuildBackup,
+  syncMergeReports,
   type MergeStats,
   type SyncBackupPayload,
 } from "./logic.ts";
 
-export async function bonSyncExport(): Promise<{ payload: SyncBackupPayload }> {
-  const reports = await bonReadReports();
+export async function syncExport(): Promise<{ payload: SyncBackupPayload }> {
+  const reports = await readReports();
   const appVersion = browser.runtime.getManifest().version;
 
   return {
-    payload: bonSyncBuildBackup({ reports, appVersion }),
+    payload: syncBuildBackup({ reports, appVersion }),
   };
 }
 
@@ -24,12 +24,12 @@ export interface ImportRequest {
   reports: Record<string, Report>;
 }
 
-export async function bonSyncImport(
+export async function syncImport(
   request: ImportRequest
 ): Promise<{ ok: true; stats: MergeStats }> {
-  const local = await bonReadReports();
-  const { reports, stats } = bonSyncMergeReports(local, request.reports);
-  await bonWriteReports(reports);
+  const local = await readReports();
+  const { reports, stats } = syncMergeReports(local, request.reports);
+  await writeReports(reports);
 
   return { ok: true, stats };
 }

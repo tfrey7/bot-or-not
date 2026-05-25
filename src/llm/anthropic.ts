@@ -13,8 +13,8 @@
 // only the types in `provider.ts`.
 
 import type { ClaudeUsage } from "../types.ts";
-import { bonEstimateCostUsd } from "./cost.ts";
-import { bonEnrichLlmError } from "./provider.ts";
+import { estimateCostUsd } from "./cost.ts";
+import { enrichLlmError } from "./provider.ts";
 import type {
   LlmAction,
   LlmCompleteRequest,
@@ -30,16 +30,16 @@ import type {
   LlmVendor,
 } from "./provider.ts";
 
-const BON_ANTHROPIC_API_URL = "https://api.anthropic.com/v1/messages";
-const BON_ANTHROPIC_DEFAULT_MODEL = "claude-sonnet-4-6";
+const ANTHROPIC_API_URL = "https://api.anthropic.com/v1/messages";
+const ANTHROPIC_DEFAULT_MODEL = "claude-sonnet-4-6";
 
-const BON_ANTHROPIC_MODELS: readonly LlmModelOption[] = [
+const ANTHROPIC_MODELS: readonly LlmModelOption[] = [
   { id: "claude-opus-4-7", label: "Claude Opus 4.7" },
   { id: "claude-sonnet-4-6", label: "Claude Sonnet 4.6" },
   { id: "claude-haiku-4-5", label: "Claude Haiku 4.5" },
 ];
-const BON_ANTHROPIC_DEFAULT_COMPLETE_TIMEOUT_MS = 4 * 60 * 1000;
-const BON_ANTHROPIC_DEFAULT_TOOL_TURN_TIMEOUT_MS = 60_000;
+const ANTHROPIC_DEFAULT_COMPLETE_TIMEOUT_MS = 4 * 60 * 1000;
+const ANTHROPIC_DEFAULT_TOOL_TURN_TIMEOUT_MS = 60_000;
 
 interface AnthropicContentBlock {
   type: string;
@@ -131,8 +131,8 @@ function toAnthropicTool(tool: LlmTool): Record<string, unknown> {
 
 export class AnthropicProvider implements LlmProvider {
   readonly vendor: LlmVendor = "anthropic";
-  readonly defaultModel = BON_ANTHROPIC_DEFAULT_MODEL;
-  readonly availableModels = BON_ANTHROPIC_MODELS;
+  readonly defaultModel = ANTHROPIC_DEFAULT_MODEL;
+  readonly availableModels = ANTHROPIC_MODELS;
 
   constructor(private readonly apiKey: string) {}
 
@@ -143,7 +143,7 @@ export class AnthropicProvider implements LlmProvider {
       maxTokens,
       model = this.defaultModel,
       label = "anthropic",
-      timeoutMs = BON_ANTHROPIC_DEFAULT_COMPLETE_TIMEOUT_MS,
+      timeoutMs = ANTHROPIC_DEFAULT_COMPLETE_TIMEOUT_MS,
     } = request;
 
     const startedAt = performance.now();
@@ -171,7 +171,7 @@ export class AnthropicProvider implements LlmProvider {
 
     let response: Response;
     try {
-      response = await fetch(BON_ANTHROPIC_API_URL, {
+      response = await fetch(ANTHROPIC_API_URL, {
         method: "POST",
         headers: this.authHeaders(),
         body: JSON.stringify(body),
@@ -198,7 +198,7 @@ export class AnthropicProvider implements LlmProvider {
         `[Bot or Not] timing: ${label} ${elapsedMs}ms (${response.status})`
       );
       const errorText = await response.text().catch(() => "");
-      throw bonEnrichLlmError(
+      throw enrichLlmError(
         new Error(
           `Anthropic API ${response.status}: ${errorText.slice(0, 300)}`
         ),
@@ -217,7 +217,7 @@ export class AnthropicProvider implements LlmProvider {
     const inputTokens = payload.usage?.input_tokens ?? "?";
     const outputTokens = payload.usage?.output_tokens ?? "?";
     const resolvedModel = payload.model ?? model;
-    const costUsd = bonEstimateCostUsd(payload.usage, resolvedModel);
+    const costUsd = estimateCostUsd(payload.usage, resolvedModel);
     const costString = costUsd !== null ? ` $${costUsd.toFixed(4)}` : "";
 
     console.log(
@@ -244,7 +244,7 @@ export class AnthropicProvider implements LlmProvider {
       signal,
       model = this.defaultModel,
       label = "anthropic-tool-loop",
-      timeoutMs = BON_ANTHROPIC_DEFAULT_TOOL_TURN_TIMEOUT_MS,
+      timeoutMs = ANTHROPIC_DEFAULT_TOOL_TURN_TIMEOUT_MS,
     } = request;
 
     const startedAt = performance.now();
@@ -459,7 +459,7 @@ export class AnthropicProvider implements LlmProvider {
 
     let response: Response;
     try {
-      response = await fetch(BON_ANTHROPIC_API_URL, {
+      response = await fetch(ANTHROPIC_API_URL, {
         method: "POST",
         headers: this.authHeaders(),
         body: JSON.stringify(body),
@@ -483,7 +483,7 @@ export class AnthropicProvider implements LlmProvider {
     if (!response.ok) {
       cleanup();
       const errorText = await response.text().catch(() => "");
-      throw bonEnrichLlmError(
+      throw enrichLlmError(
         new Error(
           `Anthropic API ${response.status}: ${errorText.slice(0, 300)}`
         ),
@@ -656,7 +656,7 @@ export class AnthropicProvider implements LlmProvider {
       return { type: block.type };
     });
 
-    const costUsd = bonEstimateCostUsd(usage, streamModel);
+    const costUsd = estimateCostUsd(usage, streamModel);
 
     return { content, stopReason, costUsd, model: streamModel, usage };
   }

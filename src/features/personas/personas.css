@@ -159,7 +159,7 @@
 
 /* ---------- About the archetypes ----------
    3×2 grid below the scatter — one card per radar axis, medallion + label
-   + blurb. Order matches BON_ARCHETYPES so the cards read in the same
+   + blurb. Order matches ARCHETYPES so the cards read in the same
    clockwise sequence as the chart's spokes. */
 .bon-personas-archetypes {
   margin-top: 2em;

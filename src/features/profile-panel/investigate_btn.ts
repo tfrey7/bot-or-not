@@ -3,12 +3,12 @@
 // storage.onChanged drive the re-render; only handles its own transient
 // disabled state and the no-api-key alert.
 
-import { bonClientSend } from "../../client.ts";
+import { clientSend } from "../../client.ts";
 import type { Investigation } from "../../types.ts";
-import { bonInvestigationResults } from "../../utils/history.ts";
-import { bonIsInvestigationStale } from "../../verdict.ts";
+import { investigationResults } from "../../utils/history.ts";
+import { isInvestigationStale } from "../../verdict.ts";
 
-export function bonPanelBuildInvestigateBtn(
+export function panelBuildInvestigateBtn(
   username: string,
   investigation: Investigation | null | undefined
 ): HTMLButtonElement {
@@ -25,8 +25,8 @@ export function bonPanelBuildInvestigateBtn(
     ? Math.max(1, Math.ceil((investigation.notBefore! - Date.now()) / 1000))
     : null;
   const running = investigation?.status === "running";
-  const stale = running && bonIsInvestigationStale(investigation);
-  const verdict = bonInvestigationResults(investigation)?.verdict ?? null;
+  const stale = running && isInvestigationStale(investigation);
+  const verdict = investigationResults(investigation)?.verdict ?? null;
 
   const setState = (
     kind: "queued" | "investigating" | "retry" | "reinvestigate" | "investigate"
@@ -75,7 +75,7 @@ export function bonPanelBuildInvestigateBtn(
     setState("investigating");
 
     try {
-      const response = await bonClientSend<{ ok?: boolean; error?: string }>({
+      const response = await clientSend<{ ok?: boolean; error?: string }>({
         type: "investigate-user",
         username,
       });

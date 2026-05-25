@@ -8,18 +8,18 @@
 // don't bounce the user back to page 1.
 
 import type { Report } from "../../types.ts";
-import { bonAnalyticsActivityChart } from "./chart_activity.ts";
-import { bonAnalyticsChartCard } from "./chart_card.ts";
-import { bonAnalyticsCostChart } from "./chart_cost.ts";
-import { bonAnalyticsLatencyChart } from "./chart_latency.ts";
-import { bonAnalyticsRedditLatencyChart } from "./chart_reddit_latency.ts";
-import { bonAnalyticsRedditRequestsChart } from "./chart_reddit_requests.ts";
-import { bonAnalyticsCollect, type AnalyticsEntry } from "./logic.ts";
-import { bonAnalyticsRunLog } from "./table_run_log.ts";
+import { analyticsActivityChart } from "./chart_activity.ts";
+import { analyticsChartCard } from "./chart_card.ts";
+import { analyticsCostChart } from "./chart_cost.ts";
+import { analyticsLatencyChart } from "./chart_latency.ts";
+import { analyticsRedditLatencyChart } from "./chart_reddit_latency.ts";
+import { analyticsRedditRequestsChart } from "./chart_reddit_requests.ts";
+import { analyticsCollect, type AnalyticsEntry } from "./logic.ts";
+import { analyticsRunLog } from "./table_run_log.ts";
 
 let runLogPage = 1;
 
-export function bonRenderAnalytics(
+export function renderAnalyticsTab(
   reports: Array<Report & { username: string }>,
   container: HTMLElement | null
 ): void {
@@ -27,7 +27,7 @@ export function bonRenderAnalytics(
     return;
   }
 
-  const investigations = bonAnalyticsCollect(reports);
+  const investigations = analyticsCollect(reports);
   const runs = investigations.filter((entry) => entry.status === "done");
 
   // Reddit fetches are captured on errored runs too — rate-limit and
@@ -72,7 +72,7 @@ function renderInto(
     );
   } else {
     section.appendChild(
-      bonAnalyticsRunLog(llmRuns, {
+      analyticsRunLog(llmRuns, {
         currentPage: runLogPage,
         onPageChange: (next) => {
           runLogPage = next;
@@ -84,24 +84,20 @@ function renderInto(
     const llmCharts = document.createElement("div");
     llmCharts.className = "bon-analytics-charts";
     llmCharts.appendChild(
-      bonAnalyticsChartCard(
-        "Cumulative spend",
-        null,
-        bonAnalyticsCostChart(llmRuns)
-      )
+      analyticsChartCard("Cumulative spend", null, analyticsCostChart(llmRuns))
     );
     llmCharts.appendChild(
-      bonAnalyticsChartCard(
+      analyticsChartCard(
         "Requests per day",
         null,
-        bonAnalyticsActivityChart(llmRuns)
+        analyticsActivityChart(llmRuns)
       )
     );
     llmCharts.appendChild(
-      bonAnalyticsChartCard(
+      analyticsChartCard(
         "Request latency",
         "p50 (accent) · p95 (rust)",
-        bonAnalyticsLatencyChart(llmRuns)
+        analyticsLatencyChart(llmRuns)
       )
     );
     section.appendChild(llmCharts);
@@ -127,17 +123,17 @@ function renderInto(
     const redditCharts = document.createElement("div");
     redditCharts.className = "bon-analytics-charts";
     redditCharts.appendChild(
-      bonAnalyticsChartCard(
+      analyticsChartCard(
         "Requests per day",
         null,
-        bonAnalyticsRedditRequestsChart(redditRuns)
+        analyticsRedditRequestsChart(redditRuns)
       )
     );
     redditCharts.appendChild(
-      bonAnalyticsChartCard(
+      analyticsChartCard(
         "Request latency",
         "p50 (accent) · p95 (rust)",
-        bonAnalyticsRedditLatencyChart(redditRuns)
+        analyticsRedditLatencyChart(redditRuns)
       )
     );
     section.appendChild(redditCharts);

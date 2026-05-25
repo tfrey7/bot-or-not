@@ -27,7 +27,7 @@
   align-items: stretch;
   text-align: left;
   padding: 0.1em 0 0;
-  /* Hue comes from inline style set by index.ts (bonPersonaHue). The
+  /* Hue comes from inline style set by index.ts (personaHue). The
      archetype hues are spaced around the color wheel, so a blend interpolates
      to a hue between them — Affiliate Spam lands between farmer blue and
      hustler teal. bot/normal personas have no hue and the override below

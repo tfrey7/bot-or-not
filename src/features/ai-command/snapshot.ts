@@ -1,5 +1,5 @@
 import type { Factor, Report } from "../../types.ts";
-import { bonInvestigationResults } from "../../utils/history.ts";
+import { investigationResults } from "../../utils/history.ts";
 
 export interface AiCommandSnapshotEntry {
   username: string;
@@ -52,19 +52,17 @@ export interface AiCommandSnapshotEntry {
 // investigation details, history, and activity — Claude only needs the
 // identifier columns to resolve "alice and bob" or "everyone in ring abc-123"
 // into concrete usernames, plus the filterable attributes.
-export function bonAiCommandBuildSnapshot(
+export function aiCommandBuildSnapshot(
   reports: Record<string, Report>,
   regions: Record<string, string | null> = {}
 ): AiCommandSnapshotEntry[] {
   return Object.entries(reports).map(([username, report]) => {
     const investigation = report.investigation;
-    const results = bonInvestigationResults(investigation);
-    const factorScores = results
-      ? bonSnapshotFactorScores(results.factors)
-      : null;
+    const results = investigationResults(investigation);
+    const factorScores = results ? snapshotFactorScores(results.factors) : null;
 
     const archetypes = results?.persona?.archetypes
-      ? bonSnapshotArchetypeScores(results.persona.archetypes)
+      ? snapshotArchetypeScores(results.persona.archetypes)
       : null;
 
     return {
@@ -75,8 +73,8 @@ export function bonAiCommandBuildSnapshot(
 
       investigationStatus: investigation?.status ?? null,
       verdict: results?.verdict ?? null,
-      botProbability: bonRound2(results?.botProbability ?? null),
-      confidence: bonRound2(results?.confidence ?? null),
+      botProbability: round2(results?.botProbability ?? null),
+      confidence: round2(results?.confidence ?? null),
       persona: results?.persona?.label ?? null,
       archetypes,
       factorScores,
@@ -93,7 +91,7 @@ export function bonAiCommandBuildSnapshot(
   });
 }
 
-function bonSnapshotFactorScores(
+function snapshotFactorScores(
   factors: readonly Factor[]
 ): Record<string, number> | null {
   if (factors.length === 0) {
@@ -103,7 +101,7 @@ function bonSnapshotFactorScores(
   const out: Record<string, number> = {};
 
   for (const factor of factors) {
-    const rounded = bonRound2(factor.score);
+    const rounded = round2(factor.score);
     if (rounded !== null) {
       out[factor.key] = rounded;
     }
@@ -112,13 +110,13 @@ function bonSnapshotFactorScores(
   return Object.keys(out).length > 0 ? out : null;
 }
 
-function bonSnapshotArchetypeScores(
+function snapshotArchetypeScores(
   archetypes: Record<string, number>
 ): Record<string, number> | null {
   const out: Record<string, number> = {};
 
   for (const [key, value] of Object.entries(archetypes)) {
-    const rounded = bonRound2(value);
+    const rounded = round2(value);
     if (rounded !== null) {
       out[key] = rounded;
     }
@@ -127,7 +125,7 @@ function bonSnapshotArchetypeScores(
   return Object.keys(out).length > 0 ? out : null;
 }
 
-function bonRound2(value: number | null | undefined): number | null {
+function round2(value: number | null | undefined): number | null {
   if (typeof value !== "number" || !Number.isFinite(value)) {
     return null;
   }
@@ -180,9 +178,9 @@ export interface AiCommandUserDetails {
   }>;
 }
 
-const BON_RECENT_REPORT_LIMIT = 5;
+const RECENT_REPORT_LIMIT = 5;
 
-export function bonAiCommandBuildUserDetails(
+export function aiCommandBuildUserDetails(
   username: string,
   report: Report | undefined
 ): AiCommandUserDetails {
@@ -191,7 +189,7 @@ export function bonAiCommandBuildUserDetails(
   }
 
   const investigation = report.investigation;
-  const results = bonInvestigationResults(investigation);
+  const results = investigationResults(investigation);
 
   return {
     username,
@@ -226,7 +224,7 @@ export function bonAiCommandBuildUserDetails(
             score: factor.score,
             confidence: factor.confidence,
             reasoning: factor.reasoning,
-            evidence: bonNormalizeEvidence(factor),
+            evidence: normalizeEvidence(factor),
           })),
         }
       : null,
@@ -239,7 +237,7 @@ export function bonAiCommandBuildUserDetails(
     recentReports: report.history
       .slice()
       .sort((a, b) => (b.at ?? 0) - (a.at ?? 0))
-      .slice(0, BON_RECENT_REPORT_LIMIT)
+      .slice(0, RECENT_REPORT_LIMIT)
       .map((entry) => ({
         at: entry.at ? new Date(entry.at).toISOString() : "",
         subreddit: entry.subreddit ?? null,
@@ -249,7 +247,7 @@ export function bonAiCommandBuildUserDetails(
   };
 }
 
-function bonNormalizeEvidence(factor: Factor): string[] {
+function normalizeEvidence(factor: Factor): string[] {
   const value = factor.evidence;
   if (Array.isArray(value)) {
     return value.filter((entry): entry is string => typeof entry === "string");

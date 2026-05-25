@@ -4,11 +4,11 @@
 // modifier class is still derived from `persona.label` so the accent color
 // stays tied to the dominant archetype the LLM picked.
 
-import { BON_ARCHETYPES } from "../factors.ts";
+import { ARCHETYPES } from "../factors.ts";
 import type { ArchetypeKey, Persona } from "../types.ts";
 
 const ARCHETYPE_LABELS = Object.fromEntries(
-  BON_ARCHETYPES.map((archetype) => [archetype.key, archetype.label])
+  ARCHETYPES.map((archetype) => [archetype.key, archetype.label])
 ) as Record<ArchetypeKey, string>;
 
 // Keys are sorted-alphabetical "a+b" so lookup doesn't depend on which axis
@@ -54,7 +54,7 @@ function singleLabel(persona: Persona): string {
 // a blend (both top axes >= COMBO_MIN_STRENGTH AND runner-up is at least
 // COMBO_BALANCE_RATIO of the top), else null. Shared between the title and
 // the icon resolver so they always agree on what counts as a blend.
-export function bonPersonaComboKey(persona: Persona): string | null {
+export function personaComboKey(persona: Persona): string | null {
   if (!persona.archetypes) {
     return null;
   }
@@ -80,8 +80,8 @@ export function bonPersonaComboKey(persona: Persona): string | null {
   return [top[0], second[0]].sort().join("+");
 }
 
-export function bonPersonaTitle(persona: Persona): string {
-  const comboKey = bonPersonaComboKey(persona);
+export function personaTitle(persona: Persona): string {
+  const comboKey = personaComboKey(persona);
   if (comboKey) {
     return COMBO_TITLES[comboKey] || singleLabel(persona);
   }

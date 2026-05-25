@@ -6,7 +6,7 @@ import type { FactorLeaning } from "../types.ts";
 
 // Maps a per-factor (score, confidence) pair to a coarse leaning label used
 // for CSS classes on the per-factor cards.
-export function bonScoreLeaning(
+export function scoreLeaning(
   score: number | null | undefined,
   confidence: number | null | undefined
 ): FactorLeaning {
@@ -38,7 +38,7 @@ export function bonScoreLeaning(
 }
 
 // Bucket an activity count into one of 6 heatmap intensity levels (0–5).
-export function bonBucketLevel(count: number): number {
+export function bucketLevel(count: number): number {
   if (count <= 0) {
     return 0;
   }

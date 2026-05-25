@@ -2,7 +2,7 @@
 // overwhelmingly from that country. Strongest per-hit signal we have —
 // shares the sub→region lookup machinery with the subreddit inference.
 
-import { bonNormalizeSubName, bonRegionsLookupSub } from "./subreddit.ts";
+import { normalizeSubName, regionsLookupSub } from "./subreddit.ts";
 
 export interface ModeratedInference {
   region: string;
@@ -10,7 +10,7 @@ export interface ModeratedInference {
   hits: Array<{ sub: string; region: string }>;
 }
 
-export function bonInferRegionFromModerated(
+export function inferRegionFromModerated(
   moderatedSubs: string[] | null | undefined
 ): ModeratedInference | null {
   if (!Array.isArray(moderatedSubs) || moderatedSubs.length === 0) {
@@ -21,7 +21,7 @@ export function bonInferRegionFromModerated(
   const hits: ModeratedInference["hits"] = [];
 
   for (const sub of moderatedSubs) {
-    const region = bonRegionsLookupSub(bonNormalizeSubName(sub));
+    const region = regionsLookupSub(normalizeSubName(sub));
     if (!region) {
       continue;
     }

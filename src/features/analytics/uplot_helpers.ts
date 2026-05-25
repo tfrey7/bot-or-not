@@ -18,7 +18,7 @@ export interface UplotHost {
   mount(opts: UplotChartOptions, data: uPlot.AlignedData): uPlot;
 }
 
-export function bonAnalyticsUplotPalette(): {
+export function analyticsUplotPalette(): {
   accent: string;
   accentSoft: string;
   rust: string;
@@ -50,7 +50,7 @@ export function bonAnalyticsUplotPalette(): {
   };
 }
 
-export function bonAnalyticsUplotHost(): UplotHost {
+export function analyticsUplotHost(): UplotHost {
   const host = document.createElement("div");
   host.className = "bon-analytics-uplot";
 
@@ -92,8 +92,8 @@ export function bonAnalyticsUplotHost(): UplotHost {
 // xIncrs override: for daily-bucketed charts (one bar/dot per day), pass
 // `[86400]` so uplot picks day-boundary ticks instead of also drawing the
 // midday tick uplot's default time axis emits at narrow widths.
-export function bonAnalyticsAxes(
-  palette: ReturnType<typeof bonAnalyticsUplotPalette>,
+export function analyticsAxes(
+  palette: ReturnType<typeof analyticsUplotPalette>,
   overrides: {
     xValues?: uPlot.Axis.Values;
     xIncrs?: uPlot.Axis.Incrs;
@@ -124,7 +124,7 @@ export function bonAnalyticsAxes(
 
 // Empty-state placeholder. Keeps the chart card the same height as a populated
 // chart so the grid layout doesn't shuffle when one panel has no data.
-export function bonAnalyticsEmptyPanel(text: string): HTMLDivElement {
+export function analyticsEmptyPanel(text: string): HTMLDivElement {
   const wrap = document.createElement("div");
   wrap.className = "bon-analytics-uplot bon-analytics-uplot--empty";
 
@@ -137,7 +137,7 @@ export function bonAnalyticsEmptyPanel(text: string): HTMLDivElement {
 
 // Positions the tooltip div near the cursor without overflowing the host
 // rectangle. Reused by every chart so the hover behaviour matches.
-export function bonAnalyticsPlaceTooltip(
+export function analyticsPlaceTooltip(
   host: HTMLDivElement,
   tooltip: HTMLDivElement,
   overLeft: number,
@@ -166,4 +166,4 @@ export function bonAnalyticsPlaceTooltip(
   tooltip.style.top = `${Math.max(4, posY)}px`;
 }
 
-export const BON_ANALYTICS_CHART_HEIGHT = CHART_HEIGHT;
+export const ANALYTICS_CHART_HEIGHT = CHART_HEIGHT;

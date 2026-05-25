@@ -4,7 +4,7 @@
 // inferences Claude produces).
 
 import type { AgeBand } from "../../types.ts";
-import { bonInvestigationResults } from "../../utils/history.ts";
+import { investigationResults } from "../../utils/history.ts";
 import type { ReportRow } from "./logic.ts";
 
 const AGE_BAND_LABEL: Record<AgeBand, string> = {
@@ -21,11 +21,11 @@ const AGE_BAND_EMOJI: Record<AgeBand, string> = {
   older: "🧓",
 };
 
-export function bonRedditorsDemographicsBadge(
+export function redditorsDemographicsBadge(
   report: ReportRow
 ): HTMLSpanElement | null {
   const demographics =
-    bonInvestigationResults(report.investigation)?.demographics ?? null;
+    investigationResults(report.investigation)?.demographics ?? null;
 
   if (!demographics || !demographics.age_band) {
     return null;

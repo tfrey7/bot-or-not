@@ -16,7 +16,7 @@ import type {
   GoogleHarvestPost,
   GoogleHarvestPostKind,
 } from "../types.ts";
-import { bonReadReports, bonWriteReports } from "../storage.ts";
+import { readReports, writeReports } from "../storage.ts";
 
 interface MaybeLegacyPost {
   kind: GoogleHarvestPostKind;
@@ -64,9 +64,9 @@ function recomputeAuthoredDistribution(
   return out;
 }
 
-export async function bonMigrateGoogleHarvestAttribution(): Promise<void> {
+export async function migrateGoogleHarvestAttribution(): Promise<void> {
   try {
-    const reports = await bonReadReports();
+    const reports = await readReports();
     const now = Date.now();
 
     let changed = false;
@@ -109,7 +109,7 @@ export async function bonMigrateGoogleHarvestAttribution(): Promise<void> {
     }
 
     if (changed) {
-      await bonWriteReports(reports);
+      await writeReports(reports);
       console.log(
         "[Bot or Not] migrated google-harvest posts with attribution fields"
       );

@@ -36,7 +36,7 @@ export interface ConfirmModalOpts {
   skipPostConfirm?: boolean;
 }
 
-export function bonPageOpenConfirmModal({
+export function pageOpenConfirmModal({
   text,
   confirmLabel,
   action,
@@ -67,7 +67,7 @@ function closeConfirmModal(
   }
 }
 
-export function bonPageInitConfirmModal({
+export function pageInitConfirmModal({
   onConfirm,
 }: {
   onConfirm: () => Promise<void> | void;

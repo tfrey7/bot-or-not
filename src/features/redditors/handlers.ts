@@ -4,25 +4,25 @@
 // membership, last-seen statuses — so every read/write of those fields
 // lives in this file.
 
-import { BON_PERSONA_LABELS } from "../../factors.ts";
+import { PERSONA_LABELS } from "../../factors.ts";
 import type { PersonaLabel, Report, UserNotes } from "../../types.ts";
-import { bonGoogleHarvestMerge, type BonScrapedPost } from "../google-harvest";
-import { bonExpectedDurationMs } from "../../utils/expected_duration.ts";
+import { googleHarvestMerge, type ScrapedPost } from "../google-harvest";
+import { computeExpectedDurationMs } from "../../utils/expected_duration.ts";
 import {
-  bonReadReport,
-  bonReadReports,
-  bonUpdateReport,
-  bonWriteReports,
+  readReport,
+  readReports,
+  updateReport,
+  writeReports,
 } from "../../storage.ts";
 import {
-  bonDedupeHistory,
-  bonFindReportKey,
-  bonInvestigationResults,
-  bonNormalizeReport,
+  dedupeHistory,
+  findReportKey,
+  investigationResults,
+  normalizeReport,
 } from "../../utils/history.ts";
-import { bonGenerateRingId } from "../../utils/ring_id.ts";
-import { bonNormalizeInvestigation } from "../../verdict.ts";
-import { bonInvestigationMaybeAuto } from "../investigation";
+import { generateRingId } from "../../utils/ring_id.ts";
+import { normalizeInvestigation } from "../../verdict.ts";
+import { investigationMaybeAuto } from "../investigation";
 
 interface UserTag {
   username: string;
@@ -36,17 +36,17 @@ interface UserTag {
   ringId: string | null;
 }
 
-export async function bonRedditorsRecordReport(
+export async function redditorsRecordReport(
   username: string,
   context: Record<string, unknown>
 ): Promise<{ count: number }> {
   let count = 0;
 
-  await bonUpdateReport(username, (current) => {
-    const existing = current ?? bonNormalizeReport(undefined);
+  await updateReport(username, (current) => {
+    const existing = current ?? normalizeReport(undefined);
     const reportedAt = Date.now();
     const entry = { at: reportedAt, ...context };
-    const history = bonDedupeHistory([...existing.history, entry]);
+    const history = dedupeHistory([...existing.history, entry]);
     count = history.length;
 
     return {
@@ -57,24 +57,24 @@ export async function bonRedditorsRecordReport(
     };
   });
 
-  void bonInvestigationMaybeAuto(username);
+  void investigationMaybeAuto(username);
 
   return { count };
 }
 
-export async function bonRedditorsGetState(
+export async function redditorsGetState(
   username: string
 ): Promise<{ count: number; isBot: boolean }> {
-  const count = (await bonReadReport(username))?.count ?? 0;
+  const count = (await readReport(username))?.count ?? 0;
   return { count, isBot: count > 0 };
 }
 
-export async function bonRedditorsGetReport(
+export async function redditorsGetReport(
   username: string
 ): Promise<{ report: Report | null; expectedDurationMs: number | null }> {
-  const reports = await bonReadReports();
-  const expectedDurationMs = bonExpectedDurationMs(Object.values(reports));
-  const key = bonFindReportKey(reports, username);
+  const reports = await readReports();
+  const expectedDurationMs = computeExpectedDurationMs(Object.values(reports));
+  const key = findReportKey(reports, username);
 
   if (!key) {
     return { report: null, expectedDurationMs };
@@ -83,10 +83,10 @@ export async function bonRedditorsGetReport(
   return { report: reports[key]!, expectedDurationMs };
 }
 
-export async function bonRedditorsGetTags(): Promise<{
+export async function redditorsGetTags(): Promise<{
   tags: Record<string, UserTag>;
 }> {
-  const reports = await bonReadReports();
+  const reports = await readReports();
 
   const tags: Record<string, UserTag> = {};
 
@@ -101,11 +101,11 @@ export async function bonRedditorsGetTags(): Promise<{
 }
 
 function summarizeUserTag(username: string, report: Report): UserTag | null {
-  const investigation = bonNormalizeInvestigation(
+  const investigation = normalizeInvestigation(
     report.investigation,
     !!report.ringId
   );
-  const results = bonInvestigationResults(investigation);
+  const results = investigationResults(investigation);
   const verdict = results?.verdict ?? null;
   const investigationStatus = investigation?.status ?? null;
 
@@ -134,18 +134,18 @@ function summarizeUserTag(username: string, report: Report): UserTag | null {
   };
 }
 
-export async function bonRedditorsGetAll(): Promise<{
+export async function redditorsGetAll(): Promise<{
   reports: Record<string, Report>;
 }> {
-  return { reports: await bonReadReports() };
+  return { reports: await readReports() };
 }
 
-export async function bonRedditorsClearAll(): Promise<{ ok: boolean }> {
-  await bonWriteReports({});
+export async function redditorsClearAll(): Promise<{ ok: boolean }> {
+  await writeReports({});
   return { ok: true };
 }
 
-export async function bonRedditorsDelete(
+export async function redditorsDelete(
   username: string
 ): Promise<{ ok: boolean; removed?: boolean; error?: string }> {
   const trimmed = username.trim();
@@ -154,7 +154,7 @@ export async function bonRedditorsDelete(
   }
 
   let removed = false;
-  await bonUpdateReport(trimmed, (current) => {
+  await updateReport(trimmed, (current) => {
     if (current) {
       removed = true;
     }
@@ -165,11 +165,11 @@ export async function bonRedditorsDelete(
   return { ok: true, removed };
 }
 
-export async function bonRedditorsSetUserStatus(
+export async function redditorsSetUserStatus(
   username: string,
   status: Report["userStatus"]
 ): Promise<void> {
-  await bonUpdateReport(username, (current) => {
+  await updateReport(username, (current) => {
     if (!current) {
       return null;
     }
@@ -186,12 +186,12 @@ export async function bonRedditorsSetUserStatus(
   });
 }
 
-export async function bonRedditorsUpdateProfileStats(
+export async function redditorsUpdateProfileStats(
   username: string,
   createdAt: number | null,
   totalKarma: number | null
 ): Promise<void> {
-  await bonUpdateReport(username, (current) => {
+  await updateReport(username, (current) => {
     if (!current) {
       return null;
     }
@@ -216,11 +216,11 @@ export async function bonRedditorsUpdateProfileStats(
   });
 }
 
-export async function bonRedditorsUpdatePostStatus(
+export async function redditorsUpdatePostStatus(
   permalink: string,
   status: string
 ): Promise<void> {
-  const reports = await bonReadReports();
+  const reports = await readReports();
 
   let updated = false;
 
@@ -251,18 +251,18 @@ export async function bonRedditorsUpdatePostStatus(
   }
 
   if (updated) {
-    await bonWriteReports(reports);
+    await writeReports(reports);
   }
 }
 
-const PERSONA_LABEL_SET = new Set<string>(BON_PERSONA_LABELS);
+const PERSONA_LABEL_SET = new Set<string>(PERSONA_LABELS);
 
 // Editable note + persona picks per username. The picker is multi-select,
 // so `ratings` is an array (de-duped, preserves the user's pick order).
 // Saving an empty rating set AND an empty note clears the record entirely
 // so the detail pane returns to its "no notes yet" state instead of
 // holding onto an empty placeholder.
-export async function bonRedditorsSetUserNotes(
+export async function redditorsSetUserNotes(
   username: string,
   patch: { ratings: string[]; note: string }
 ): Promise<{ ok: boolean; userNotes: UserNotes | null }> {
@@ -291,7 +291,7 @@ export async function bonRedditorsSetUserNotes(
       : { ratings, note, updatedAt: Date.now() };
 
   let applied = false;
-  await bonUpdateReport(username, (current) => {
+  await updateReport(username, (current) => {
     if (!current) {
       return null;
     }
@@ -313,10 +313,10 @@ export async function bonRedditorsSetUserNotes(
 // it doesn't exist yet — clicking "Search Google" on an uninvestigated
 // user is a legitimate first-touch flow. Returns the merged envelope so
 // callers can see what's now on file.
-export async function bonRedditorsSetGoogleHarvest(
+export async function redditorsSetGoogleHarvest(
   username: string,
   query: string,
-  incomingPosts: BonScrapedPost[]
+  incomingPosts: ScrapedPost[]
 ): Promise<{ ok: boolean; postCount?: number }> {
   const trimmed = username.trim();
   if (!trimmed) {
@@ -324,9 +324,9 @@ export async function bonRedditorsSetGoogleHarvest(
   }
 
   let postCount = 0;
-  await bonUpdateReport(trimmed, (current) => {
-    const existing = current ?? bonNormalizeReport(undefined);
-    const merged = bonGoogleHarvestMerge({
+  await updateReport(trimmed, (current) => {
+    const existing = current ?? normalizeReport(undefined);
+    const merged = googleHarvestMerge({
       existing: existing.googleHarvest,
       incomingPosts,
       query,
@@ -340,11 +340,11 @@ export async function bonRedditorsSetGoogleHarvest(
   return { ok: true, postCount };
 }
 
-export async function bonRedditorsSetBotBouncerStatus(
+export async function redditorsSetBotBouncerStatus(
   username: string,
   status: Report["botBouncerStatus"]
 ): Promise<void> {
-  await bonUpdateReport(username, (current) => {
+  await updateReport(username, (current) => {
     if (!current) {
       return null;
     }
@@ -361,7 +361,7 @@ export async function bonRedditorsSetBotBouncerStatus(
   });
 }
 
-export async function bonRedditorsLinkRing(
+export async function redditorsLinkRing(
   usernames: string[]
 ): Promise<{ ok: boolean; ringId?: string; error?: string }> {
   const cleaned = usernames.filter(
@@ -372,11 +372,11 @@ export async function bonRedditorsLinkRing(
     return { ok: false, error: "need-at-least-two" };
   }
 
-  const reports = await bonReadReports();
+  const reports = await readReports();
   const keys: string[] = [];
 
   for (const username of cleaned) {
-    const key = bonFindReportKey(reports, username);
+    const key = findReportKey(reports, username);
     if (!key) {
       return { ok: false, error: `unknown-user:${username}` };
     }
@@ -400,7 +400,7 @@ export async function bonRedditorsLinkRing(
   const ringId =
     existingRingIds.size === 1
       ? [...existingRingIds][0]
-      : bonGenerateRingId(collectExistingRingIds(reports));
+      : generateRingId(collectExistingRingIds(reports));
 
   for (const key of keys) {
     if (reports[key].ringId === ringId) {
@@ -410,11 +410,11 @@ export async function bonRedditorsLinkRing(
     reports[key] = { ...reports[key], ringId };
   }
 
-  await bonWriteReports(reports);
+  await writeReports(reports);
   return { ok: true, ringId };
 }
 
-export async function bonRedditorsUnlinkRing(
+export async function redditorsUnlinkRing(
   usernames: string[]
 ): Promise<{ ok: boolean; error?: string }> {
   const cleaned = usernames.filter(
@@ -425,11 +425,11 @@ export async function bonRedditorsUnlinkRing(
     return { ok: false, error: "no-usernames" };
   }
 
-  const reports = await bonReadReports();
+  const reports = await readReports();
   let changed = false;
 
   for (const username of cleaned) {
-    const key = bonFindReportKey(reports, username);
+    const key = findReportKey(reports, username);
     if (!key) {
       continue;
     }
@@ -443,7 +443,7 @@ export async function bonRedditorsUnlinkRing(
   }
 
   if (changed) {
-    await bonWriteReports(reports);
+    await writeReports(reports);
   }
 
   return { ok: true };

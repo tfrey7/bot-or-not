@@ -4,29 +4,26 @@
 // Returns null when there's no investigation to preview so the panel can
 // fall back to a single bare toggle row.
 
-import {
-  bonIsInvestigationStale,
-  bonNormalizeInvestigation,
-} from "../../verdict.ts";
+import { isInvestigationStale, normalizeInvestigation } from "../../verdict.ts";
 import type { Report } from "../../types.ts";
-import { bonInvestigationLoading } from "../../utils/investigation_loading.ts";
+import { investigationLoading } from "../../utils/investigation_loading.ts";
 import {
-  bonLinkifyPanelOptions,
-  bonLinkifyReddit,
+  linkifyPanelOptions,
+  linkifyReddit,
 } from "../../utils/linkify_reddit.ts";
-import { bonTopReasonsList } from "../../utils/top_reasons_list.ts";
-import { bonPanelBuildPersonaStrip } from "./persona_strip.ts";
+import { topReasonsList } from "../../utils/top_reasons_list.ts";
+import { panelBuildPersonaStrip } from "./persona_strip.ts";
 
 export interface BuildPreviewOpts {
   expectedDurationMs?: number | null;
 }
 
-export function bonPanelBuildPreview(
+export function panelBuildPreview(
   _username: string,
   report: Report | null | undefined,
   { expectedDurationMs = null }: BuildPreviewOpts = {}
 ): HTMLDivElement | null {
-  const investigation = bonNormalizeInvestigation(
+  const investigation = normalizeInvestigation(
     report?.investigation,
     !!report?.ringId
   );
@@ -53,12 +50,12 @@ export function bonPanelBuildPreview(
 
   if (
     investigation?.status === "running" &&
-    !bonIsInvestigationStale(investigation)
+    !isInvestigationStale(investigation)
   ) {
     const preview = document.createElement("div");
     preview.className = "bon-profile-panel__preview";
     preview.appendChild(
-      bonInvestigationLoading(investigation.startedAt, {
+      investigationLoading(investigation.startedAt, {
         compact: true,
         expectedDurationMs,
       })
@@ -82,11 +79,11 @@ export function bonPanelBuildPreview(
   preview.className = "bon-profile-panel__preview";
 
   const personaBlock = persona?.label
-    ? bonPanelBuildPersonaStrip(persona, { summary })
+    ? panelBuildPersonaStrip(persona, { summary })
     : null;
 
   const reasonsList = hasFactors
-    ? bonTopReasonsList(factors, { linkify: bonLinkifyPanelOptions() })
+    ? topReasonsList(factors, { linkify: linkifyPanelOptions() })
     : null;
 
   if (personaBlock && reasonsList) {
@@ -106,7 +103,7 @@ export function bonPanelBuildPreview(
   if (summary) {
     const summaryEl = document.createElement("p");
     summaryEl.className = "bon-profile-panel__summary";
-    summaryEl.appendChild(bonLinkifyReddit(summary, bonLinkifyPanelOptions()));
+    summaryEl.appendChild(linkifyReddit(summary, linkifyPanelOptions()));
     preview.appendChild(summaryEl);
   }
 

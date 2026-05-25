@@ -2,11 +2,11 @@
 // cards — one per radar axis — each with a mini hexagon echoing the chart
 // above: the medallion artwork clipped to the same hexagonal silhouette as
 // the profile-radar widget, with the card's archetype vertex highlighted in
-// its hue. Order matches BON_ARCHETYPES so the grid reads in the same
+// its hue. Order matches ARCHETYPES so the grid reads in the same
 // sequence as the chart's spokes (clockwise from the top).
 
 import type { ArchetypeKey } from "../../types.ts";
-import { BON_ARCHETYPES } from "../../factors.ts";
+import { ARCHETYPES } from "../../factors.ts";
 import type { PersonaExemplars } from "./logic.ts";
 
 import medallionStan from "../../../assets/persona-icons/noir-medallion-stan.png";
@@ -18,7 +18,7 @@ import medallionZealot from "../../../assets/persona-icons/noir-medallion-zealot
 
 const SVG_NS = "http://www.w3.org/2000/svg";
 
-// Geometry mirrors bonPersonaRadar's RADAR_LAYOUT proportions
+// Geometry mirrors personaRadar's RADAR_LAYOUT proportions
 // (radius/center ≈ 0.69) so the card hex visually echoes the profile radar
 // at a smaller scale. iconScale=1.3 matches the radar too — pulls the
 // medallion past the polygon's flat edges so the corner vertices land
@@ -30,7 +30,7 @@ const HEX_ICON_SCALE = 1.3;
 
 // cam_model still uses the legacy "thirst" filename in assets/ — the
 // archetype was renamed, the medallion art wasn't.
-const BON_PERSONAS_MEDALLIONS: Record<ArchetypeKey, string> = {
+const PERSONAS_MEDALLIONS: Record<ArchetypeKey, string> = {
   stan: medallionStan,
   hustler: medallionHustler,
   farmer: medallionFarmer,
@@ -39,13 +39,13 @@ const BON_PERSONAS_MEDALLIONS: Record<ArchetypeKey, string> = {
   zealot: medallionZealot,
 };
 
-export interface BonPersonasArchetypeGridOptions {
+export interface PersonasArchetypeGridOptions {
   exemplars: PersonaExemplars;
   onSelectUser: (username: string) => void;
 }
 
-export function bonPersonasArchetypeGrid(
-  options: BonPersonasArchetypeGridOptions
+export function personasArchetypeGrid(
+  options: PersonasArchetypeGridOptions
 ): HTMLElement {
   const section = document.createElement("section");
   section.className = "bon-personas-archetypes";
@@ -58,7 +58,7 @@ export function bonPersonasArchetypeGrid(
   const grid = document.createElement("ul");
   grid.className = "bon-personas-archetypes-grid";
 
-  for (const archetype of BON_ARCHETYPES) {
+  for (const archetype of ARCHETYPES) {
     grid.appendChild(buildCard(archetype.key, options));
   }
 
@@ -69,9 +69,9 @@ export function bonPersonasArchetypeGrid(
 
 function buildCard(
   key: ArchetypeKey,
-  options: BonPersonasArchetypeGridOptions
+  options: PersonasArchetypeGridOptions
 ): HTMLElement {
-  const archetype = BON_ARCHETYPES.find((a) => a.key === key);
+  const archetype = ARCHETYPES.find((a) => a.key === key);
 
   if (!archetype) {
     throw new Error(`Unknown archetype key: ${key}`);
@@ -137,7 +137,7 @@ function buildExemplarsList(
 }
 
 // Mini hexagon: medallion image rendered as a <pattern> fill on a <polygon>
-// whose geometry IS the clip — same technique as bonPersonaRadar's
+// whose geometry IS the clip — same technique as personaRadar's
 // .bon-radar-bg, just without the radar's grid/data/animation layers. The
 // vertex matching `highlight` is enlarged and filled in its archetype hue.
 function buildMiniHexagon(highlight: ArchetypeKey): SVGSVGElement {
@@ -146,8 +146,8 @@ function buildMiniHexagon(highlight: ArchetypeKey): SVGSVGElement {
   svg.setAttribute("class", "bon-personas-archetype-hex");
   svg.setAttribute("aria-hidden", "true");
 
-  const vertices = BON_ARCHETYPES.map((archetype, i) => {
-    const step = (Math.PI * 2) / BON_ARCHETYPES.length;
+  const vertices = ARCHETYPES.map((archetype, i) => {
+    const step = (Math.PI * 2) / ARCHETYPES.length;
     const theta = -Math.PI / 2 + i * step;
     return {
       key: archetype.key,
@@ -172,7 +172,7 @@ function buildMiniHexagon(highlight: ArchetypeKey): SVGSVGElement {
   pattern.setAttribute("height", String(iconSize));
 
   const image = document.createElementNS(SVG_NS, "image");
-  image.setAttribute("href", BON_PERSONAS_MEDALLIONS[highlight]);
+  image.setAttribute("href", PERSONAS_MEDALLIONS[highlight]);
   image.setAttribute("x", "0");
   image.setAttribute("y", "0");
   image.setAttribute("width", String(iconSize));

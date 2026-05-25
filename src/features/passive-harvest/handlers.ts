@@ -3,18 +3,18 @@
 // also drops the storage writes — the message dispatch in
 // background.ts is the only other touchpoint.
 
-import { bonReadReports, bonUpdateReport } from "../../storage.ts";
-import { bonPassiveHarvestMerge } from "./merge.ts";
-import type { BonPassiveHarvestFinding } from "./scrape.ts";
+import { readReports, updateReport } from "../../storage.ts";
+import { passiveHarvestMerge } from "./merge.ts";
+import type { PassiveHarvestFinding } from "./scrape.ts";
 
 // Returns the lowercase usernames whose report.profileHidden is true,
 // for the passive-harvest content script to scope its DOM scan by. Sent
 // fresh on content-script load and again on every storage.onChanged for
 // the `reports` key.
-export async function bonPassiveHarvestGetHiddenUsernames(): Promise<{
+export async function passiveHarvestGetHiddenUsernames(): Promise<{
   usernames: string[];
 }> {
-  const reports = await bonReadReports();
+  const reports = await readReports();
   const usernames: string[] = [];
 
   for (const [username, report] of Object.entries(reports)) {
@@ -31,9 +31,9 @@ export async function bonPassiveHarvestGetHiddenUsernames(): Promise<{
 // harvest does — a content-script tick that surfaces a hidden user we
 // don't have on file means our hidden-usernames set went out of sync
 // (typically: report just got deleted). Silently drop.
-export async function bonPassiveHarvestRecord(
+export async function passiveHarvestRecord(
   username: string,
-  items: BonPassiveHarvestFinding["item"][]
+  items: PassiveHarvestFinding["item"][]
 ): Promise<{ ok: boolean; itemCount?: number }> {
   const trimmed = username.trim();
   if (!trimmed || items.length === 0) {
@@ -42,12 +42,12 @@ export async function bonPassiveHarvestRecord(
 
   let mergedItemCount: number | null = null;
 
-  await bonUpdateReport(trimmed, (current) => {
+  await updateReport(trimmed, (current) => {
     if (!current?.profileHidden) {
       return current;
     }
 
-    const merged = bonPassiveHarvestMerge({
+    const merged = passiveHarvestMerge({
       existing: current.passiveHarvest,
       incoming: items,
       now: Date.now(),

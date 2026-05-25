@@ -5,7 +5,7 @@
 // `bon-hide-pii` class. This module wires the class to the persisted
 // setting and keeps it in sync across surfaces.
 
-import { bonClientSend, bonClientSubscribe } from "../client.ts";
+import { clientSend, clientSubscribe } from "../client.ts";
 
 const BODY_CLASS = "bon-hide-pii";
 
@@ -15,7 +15,7 @@ function apply(hidePii: boolean): void {
 
 async function read(): Promise<boolean> {
   try {
-    const { hidePii } = await bonClientSend<{ hidePii: boolean }>({
+    const { hidePii } = await clientSend<{ hidePii: boolean }>({
       type: "get-hide-pii",
     });
 
@@ -25,10 +25,10 @@ async function read(): Promise<boolean> {
   }
 }
 
-export async function bonPiiBlurInit(): Promise<void> {
+export async function piiBlurInit(): Promise<void> {
   apply(await read());
 
-  bonClientSubscribe((event) => {
+  clientSubscribe((event) => {
     if (event.type !== "hide-pii-changed") {
       return;
     }

@@ -5,14 +5,9 @@
 
 import type { AgeBand, Demographics } from "../types.ts";
 
-const BON_AGE_BANDS: readonly AgeBand[] = [
-  "teen",
-  "young-adult",
-  "adult",
-  "older",
-];
+const AGE_BANDS: readonly AgeBand[] = ["teen", "young-adult", "adult", "older"];
 
-export function bonNormalizeDemographics(raw: unknown): Demographics | null {
+export function normalizeDemographics(raw: unknown): Demographics | null {
   if (!raw || typeof raw !== "object") {
     return null;
   }
@@ -20,7 +15,7 @@ export function bonNormalizeDemographics(raw: unknown): Demographics | null {
   const record = raw as Record<string, unknown>;
   const rawBand =
     typeof record.age_band === "string" ? record.age_band.trim() : "";
-  const age_band = (BON_AGE_BANDS as readonly string[]).includes(rawBand)
+  const age_band = (AGE_BANDS as readonly string[]).includes(rawBand)
     ? (rawBand as AgeBand)
     : null;
 

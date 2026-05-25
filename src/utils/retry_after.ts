@@ -5,10 +5,10 @@
 // Floor for the global Reddit pause. When upstream returns 429 (or 5xx)
 // without a Retry-After header, a 1s pause just lets us hammer the same
 // failing endpoint a second later — 30s gives the budget time to refill.
-const BON_RETRY_AFTER_MIN_MS = 30_000;
-const BON_RETRY_AFTER_MAX_MS = 15 * 60 * 1_000;
+const RETRY_AFTER_MIN_MS = 30_000;
+const RETRY_AFTER_MAX_MS = 15 * 60 * 1_000;
 
-export function bonParseRetryAfter(header: string | null): number | null {
+export function parseRetryAfter(header: string | null): number | null {
   if (!header) {
     return null;
   }
@@ -31,10 +31,10 @@ export function bonParseRetryAfter(header: string | null): number | null {
   return Math.max(0, date - Date.now());
 }
 
-export function bonClampRetryAfter(ms: number): number {
+export function clampRetryAfter(ms: number): number {
   if (!Number.isFinite(ms) || ms <= 0) {
-    return BON_RETRY_AFTER_MIN_MS;
+    return RETRY_AFTER_MIN_MS;
   }
 
-  return Math.min(BON_RETRY_AFTER_MAX_MS, Math.max(BON_RETRY_AFTER_MIN_MS, ms));
+  return Math.min(RETRY_AFTER_MAX_MS, Math.max(RETRY_AFTER_MIN_MS, ms));
 }

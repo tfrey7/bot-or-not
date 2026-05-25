@@ -13,7 +13,7 @@ export interface ModelPricing {
   cacheWrite1h: number;
 }
 
-export const BON_MODEL_PRICING: Record<string, ModelPricing> = {
+export const MODEL_PRICING: Record<string, ModelPricing> = {
   "claude-opus-4-7": {
     input: 15,
     output: 75,
@@ -71,20 +71,20 @@ export const BON_MODEL_PRICING: Record<string, ModelPricing> = {
 
 // Look up a pricing row by the model id the API echoed back. The API often
 // returns a dated suffix (e.g. "claude-sonnet-4-6-20251022"); match by prefix.
-export function bonLookupPricing(
+export function lookupPricing(
   model: string | null | undefined
 ): ModelPricing | null {
   if (!model) {
     return null;
   }
 
-  if (BON_MODEL_PRICING[model]) {
-    return BON_MODEL_PRICING[model];
+  if (MODEL_PRICING[model]) {
+    return MODEL_PRICING[model];
   }
 
-  for (const key of Object.keys(BON_MODEL_PRICING)) {
+  for (const key of Object.keys(MODEL_PRICING)) {
     if (model.startsWith(key)) {
-      return BON_MODEL_PRICING[key];
+      return MODEL_PRICING[key];
     }
   }
 
@@ -93,11 +93,11 @@ export function bonLookupPricing(
 
 // Compute USD cost for one LLM call. Returns null if the model is unknown
 // so callers can distinguish "free" from "unpriced".
-export function bonEstimateCostUsd(
+export function estimateCostUsd(
   usage: ClaudeUsage | null | undefined,
   model: string | null | undefined
 ): number | null {
-  const pricing = bonLookupPricing(model);
+  const pricing = lookupPricing(model);
   if (!pricing || !usage) {
     return null;
   }
@@ -125,7 +125,7 @@ export function bonEstimateCostUsd(
 
 // Sum cost of runs in the last N days. `runs` is an array of records with a
 // numeric `runAt` timestamp and `totalCost` field (as built in analytics.js).
-export function bonRecentCost(
+export function recentCost(
   runs: Array<{ runAt?: number | null; totalCost?: number | null }>,
   days: number
 ): number {

@@ -5,7 +5,7 @@
 // subredditDistribution / kinds are recomputed each call so they can't
 // drift from the items they're summarizing.
 //
-// Capped at BON_PASSIVE_HARVEST_CAP items per user. When the cap is hit,
+// Capped at PASSIVE_HARVEST_CAP items per user. When the cap is hit,
 // the items with the oldest firstSeenAt are evicted first — they're the
 // least likely to still be reachable from the operator's current
 // browsing, and dropping them first keeps the dossier biased toward
@@ -16,9 +16,9 @@ import type {
   PassiveHarvestItem,
   PassiveHarvestItemKind,
 } from "../../types.ts";
-import type { BonPassiveHarvestFinding } from "./scrape.ts";
+import type { PassiveHarvestFinding } from "./scrape.ts";
 
-export const BON_PASSIVE_HARVEST_CAP = 100;
+export const PASSIVE_HARVEST_CAP = 100;
 
 function canonicalizePermalink(permalink: string): string {
   return permalink.split("#")[0].split("?")[0].replace(/\/$/, "");
@@ -26,7 +26,7 @@ function canonicalizePermalink(permalink: string): string {
 
 function mergeItem(
   existing: PassiveHarvestItem | undefined,
-  incoming: BonPassiveHarvestFinding["item"],
+  incoming: PassiveHarvestFinding["item"],
   now: number
 ): PassiveHarvestItem {
   if (existing) {
@@ -70,14 +70,14 @@ function computeAggregates(items: PassiveHarvestItem[]): {
   return { subredditDistribution, kinds };
 }
 
-export interface BonPassiveHarvestMergeInput {
+export interface PassiveHarvestMergeInput {
   existing: PassiveHarvest | null;
-  incoming: BonPassiveHarvestFinding["item"][];
+  incoming: PassiveHarvestFinding["item"][];
   now: number;
 }
 
-export function bonPassiveHarvestMerge(
-  input: BonPassiveHarvestMergeInput
+export function passiveHarvestMerge(
+  input: PassiveHarvestMergeInput
 ): PassiveHarvest {
   const { existing, incoming, now } = input;
 
@@ -94,10 +94,10 @@ export function bonPassiveHarvestMerge(
 
   let items = Array.from(byPermalink.values());
 
-  if (items.length > BON_PASSIVE_HARVEST_CAP) {
+  if (items.length > PASSIVE_HARVEST_CAP) {
     items = items
       .sort((a, b) => b.firstSeenAt - a.firstSeenAt)
-      .slice(0, BON_PASSIVE_HARVEST_CAP);
+      .slice(0, PASSIVE_HARVEST_CAP);
   }
 
   const aggregates = computeAggregates(items);

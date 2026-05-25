@@ -2,7 +2,7 @@
 // object to the variant CSS modifier, the visible label, and the hover
 // tooltip. No DOM.
 
-import { bonFormatVerdict } from "../../utils/format_text.ts";
+import { formatVerdict } from "../../utils/format_text.ts";
 
 export interface UserTagInfo {
   username: string;
@@ -18,7 +18,7 @@ export interface UserTagInfo {
 
 export type TagVariant = string;
 
-export function bonInlineTagVariant(info: UserTagInfo): TagVariant {
+export function inlineTagVariant(info: UserTagInfo): TagVariant {
   if (info.verdict) {
     return info.verdict;
   }
@@ -44,10 +44,7 @@ export function bonInlineTagVariant(info: UserTagInfo): TagVariant {
   return "idle";
 }
 
-export function bonInlineTagLabel(
-  info: UserTagInfo,
-  variant: TagVariant
-): string {
+export function inlineTagLabel(info: UserTagInfo, variant: TagVariant): string {
   if (variant === "running") {
     return "Investigating";
   }
@@ -62,13 +59,10 @@ export function bonInlineTagLabel(
       : "Flagged";
   }
 
-  return bonFormatVerdict(variant);
+  return formatVerdict(variant);
 }
 
-export function bonInlineTagTitle(
-  info: UserTagInfo,
-  variant: TagVariant
-): string {
+export function inlineTagTitle(info: UserTagInfo, variant: TagVariant): string {
   const parts = [`@${info.username}`];
 
   if (info.verdict) {
@@ -76,9 +70,7 @@ export function bonInlineTagTitle(
       typeof info.confidence === "number"
         ? ` (${Math.round(info.confidence * 100)}% confidence)`
         : "";
-    parts.push(
-      `AI verdict: ${bonFormatVerdict(info.verdict)}${confidenceText}`
-    );
+    parts.push(`AI verdict: ${formatVerdict(info.verdict)}${confidenceText}`);
   } else if (variant === "running") {
     parts.push("AI investigation in progress");
   } else if (variant === "idle") {
@@ -109,7 +101,7 @@ export function bonInlineTagTitle(
 // Avatar-wrapping anchors have no visible text. Tagging them puts the pill
 // in the wrong layout slot (often a column flex container), so it wraps to
 // its own line below the username row.
-export function bonInlineTagIsAvatarLink(element: Element): boolean {
+export function inlineTagIsAvatarLink(element: Element): boolean {
   if (element.textContent && element.textContent.trim()) {
     return false;
   }

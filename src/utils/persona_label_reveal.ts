@@ -7,7 +7,7 @@
 
 const DEFAULT_REVEAL_DURATION_MS = 1000;
 
-export function bonRevealPersonaLabel(
+export function revealPersonaLabel(
   label: HTMLElement,
   durationMs: number = DEFAULT_REVEAL_DURATION_MS
 ): void {
@@ -49,7 +49,7 @@ export function bonRevealPersonaLabel(
 
 // Sets the initial hidden state inline so the label is invisible the
 // instant it's appended, before any animation kicks off.
-export function bonHidePersonaLabel(label: HTMLElement): void {
+export function hidePersonaLabel(label: HTMLElement): void {
   const reduceMotion =
     typeof window !== "undefined" &&
     typeof window.matchMedia === "function" &&

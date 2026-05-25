@@ -12,22 +12,22 @@
 // so the badge refreshes as individual investigations land via
 // reports-changed.
 
-import { bonClientSend, bonClientSubscribe } from "../../client.ts";
+import { clientSend, clientSubscribe } from "../../client.ts";
 import type { SubredditReport } from "../../types.ts";
 import {
-  BON_SUBREDDIT_SAMPLE_SIZE,
-  bonSubredditCurrentPage,
-  bonSubredditFindMasthead,
-  type BonSubredditPageContext,
+  SUBREDDIT_SAMPLE_SIZE,
+  subredditCurrentPage,
+  subredditFindMasthead,
+  type SubredditPageContext,
 } from "./data.ts";
-import type { BonSubredditVerdict } from "./verdict.ts";
+import type { SubredditVerdict } from "./verdict.ts";
 
 const CONTAINER_ID = "bon-subreddit-investigation";
 
 interface State {
-  context: BonSubredditPageContext;
+  context: SubredditPageContext;
   record: SubredditReport | null;
-  verdict: BonSubredditVerdict | null;
+  verdict: SubredditVerdict | null;
   busy: boolean;
 }
 
@@ -40,7 +40,7 @@ function isMisplaced(container: HTMLElement): boolean {
 
 function renderStatusText(state: State): string {
   if (state.busy) {
-    return `Sampling ${BON_SUBREDDIT_SAMPLE_SIZE} recent authors…`;
+    return `Sampling ${SUBREDDIT_SAMPLE_SIZE} recent authors…`;
   }
 
   if (state.record && state.verdict) {
@@ -63,7 +63,7 @@ function renderStatusText(state: State): string {
       : `Healthy — ${summary}.`;
   }
 
-  return `No analysis yet — sample ${BON_SUBREDDIT_SAMPLE_SIZE} recent post-authors.`;
+  return `No analysis yet — sample ${SUBREDDIT_SAMPLE_SIZE} recent post-authors.`;
 }
 
 function statusModifier(state: State): string {
@@ -89,7 +89,7 @@ function buttonLabel(state: State): string {
 
   return state.record
     ? "Re-analyze"
-    : `Analyze ${BON_SUBREDDIT_SAMPLE_SIZE} recent authors`;
+    : `Analyze ${SUBREDDIT_SAMPLE_SIZE} recent authors`;
 }
 
 function buildContainer(state: State): HTMLElement {
@@ -130,7 +130,7 @@ function buildContainer(state: State): HTMLElement {
 }
 
 function render(state: State): void {
-  const masthead = bonSubredditFindMasthead();
+  const masthead = subredditFindMasthead();
   if (!masthead) {
     return;
   }
@@ -160,13 +160,13 @@ function render(state: State): void {
 
 async function fetchSubredditReport(nameKey: string): Promise<{
   record: SubredditReport | null;
-  verdict: BonSubredditVerdict | null;
+  verdict: SubredditVerdict | null;
 }> {
   try {
-    const response = await bonClientSend<{
+    const response = await clientSend<{
       ok?: boolean;
       record?: SubredditReport | null;
-      verdict?: BonSubredditVerdict | null;
+      verdict?: SubredditVerdict | null;
     }>({
       type: "get-subreddit-report",
       name: nameKey,
@@ -187,7 +187,7 @@ async function fetchSubredditReport(nameKey: string): Promise<{
 }
 
 async function refresh(): Promise<void> {
-  const context = bonSubredditCurrentPage();
+  const context = subredditCurrentPage();
   if (!context) {
     currentState = null;
     document.getElementById(CONTAINER_ID)?.remove();
@@ -204,7 +204,7 @@ async function refresh(): Promise<void> {
     const { record, verdict } = await fetchSubredditReport(context.nameKey);
 
     // If the user navigated away mid-fetch, drop the result.
-    const liveContext = bonSubredditCurrentPage();
+    const liveContext = subredditCurrentPage();
     if (!liveContext || liveContext.nameKey !== context.nameKey) {
       return;
     }
@@ -231,7 +231,7 @@ async function handleAnalyzeClick(): Promise<void> {
   render(currentState);
 
   try {
-    await bonClientSend({
+    await clientSend({
       type: "analyze-subreddit",
       name: currentState.context.name,
     });
@@ -249,8 +249,8 @@ async function handleAnalyzeClick(): Promise<void> {
   }
 }
 
-export function bonSubredditInvestigationTick(): void {
-  const context = bonSubredditCurrentPage();
+export function subredditInvestigationTick(): void {
+  const context = subredditCurrentPage();
 
   if (!context) {
     if (currentState) {
@@ -261,7 +261,7 @@ export function bonSubredditInvestigationTick(): void {
     return;
   }
 
-  if (!bonSubredditFindMasthead()) {
+  if (!subredditFindMasthead()) {
     return;
   }
 
@@ -285,10 +285,10 @@ export function bonSubredditInvestigationTick(): void {
   }
 }
 
-export function bonSubredditInvestigationInit(): void {
-  bonSubredditInvestigationTick();
+export function subredditInvestigationInit(): void {
+  subredditInvestigationTick();
 
-  bonClientSubscribe((event) => {
+  clientSubscribe((event) => {
     if (
       event.type !== "reports-changed" &&
       event.type !== "subreddits-changed"
@@ -296,7 +296,7 @@ export function bonSubredditInvestigationInit(): void {
       return;
     }
 
-    if (!bonSubredditCurrentPage()) {
+    if (!subredditCurrentPage()) {
       return;
     }
 
@@ -305,19 +305,19 @@ export function bonSubredditInvestigationInit(): void {
 }
 
 export {
-  bonSubredditAnalyze,
-  bonSubredditList,
-  bonSubredditGetReport,
+  subredditAnalyze,
+  subredditList,
+  subredditGetReport,
 } from "./handlers.ts";
 export type {
-  BonSubredditAnalyzeResult,
-  BonSubredditGetReportResult,
-  BonSubredditListEntry,
-  BonSubredditListResult,
+  SubredditAnalyzeResult,
+  SubredditGetReportResult,
+  SubredditListEntry,
+  SubredditListResult,
 } from "./handlers.ts";
-export { bonSubredditDeriveVerdict } from "./verdict.ts";
+export { subredditDeriveVerdict } from "./verdict.ts";
 export type {
-  BonSubredditSample,
-  BonSubredditSampleStatus,
-  BonSubredditVerdict,
+  SubredditSample,
+  SubredditSampleStatus,
+  SubredditVerdict,
 } from "./verdict.ts";

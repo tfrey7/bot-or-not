@@ -1,8 +1,8 @@
 // Background-side dispatch for the subreddit-compromise feature.
 //
-// One-click analysis flow (bonSubredditAnalyze):
-//   1. Fetch up to BON_SUBREDDIT_SAMPLE_SIZE post-authors from
-//      /r/<sub>/new.json via bonSubredditFetchAuthors. Background-only —
+// One-click analysis flow (subredditAnalyze):
+//   1. Fetch up to SUBREDDIT_SAMPLE_SIZE post-authors from
+//      /r/<sub>/new.json via subredditFetchAuthors. Background-only —
 //      we don't depend on the operator having scrolled the feed, and a
 //      Reddit 429 bubbles up the same way it does for any other Reddit
 //      fetch.
@@ -14,26 +14,19 @@
 //      the existing per-user queue — the sub-level verdict materializes
 //      as those drain.
 //
-// Read flow (bonSubredditGetReport):
+// Read flow (subredditGetReport):
 //   Returns the stored record alongside the live-derived verdict, so the
 //   content-script badge can paint without needing two round trips.
 
-import {
-  bonReadReports,
-  bonReadSubreddits,
-  bonWriteSubreddits,
-} from "../../storage.ts";
+import { readReports, readSubreddits, writeSubreddits } from "../../storage.ts";
 import type { SubredditReport } from "../../types.ts";
-import { bonFindReportKey } from "../../utils/history.ts";
-import { bonInvestigationStartBatch } from "../investigation";
-import { BON_SUBREDDIT_SAMPLE_SIZE } from "./data.ts";
-import { bonSubredditFetchAuthors } from "./fetch_authors.ts";
-import {
-  bonSubredditDeriveVerdict,
-  type BonSubredditVerdict,
-} from "./verdict.ts";
+import { findReportKey } from "../../utils/history.ts";
+import { investigationStartBatch } from "../investigation";
+import { SUBREDDIT_SAMPLE_SIZE } from "./data.ts";
+import { subredditFetchAuthors } from "./fetch_authors.ts";
+import { subredditDeriveVerdict, type SubredditVerdict } from "./verdict.ts";
 
-export interface BonSubredditAnalyzeResult {
+export interface SubredditAnalyzeResult {
   ok: boolean;
   error?: string;
   record?: SubredditReport;
@@ -41,25 +34,25 @@ export interface BonSubredditAnalyzeResult {
   reusedUsernames?: string[];
 }
 
-export interface BonSubredditGetReportResult {
+export interface SubredditGetReportResult {
   ok: boolean;
   record: SubredditReport | null;
-  verdict: BonSubredditVerdict | null;
+  verdict: SubredditVerdict | null;
 }
 
-export interface BonSubredditListEntry {
+export interface SubredditListEntry {
   record: SubredditReport;
-  verdict: BonSubredditVerdict;
+  verdict: SubredditVerdict;
 }
 
-export interface BonSubredditListResult {
+export interface SubredditListResult {
   ok: boolean;
-  entries: BonSubredditListEntry[];
+  entries: SubredditListEntry[];
 }
 
-export async function bonSubredditAnalyze(
+export async function subredditAnalyze(
   name: string
-): Promise<BonSubredditAnalyzeResult> {
+): Promise<SubredditAnalyzeResult> {
   const trimmedName = (name || "").trim();
   if (!trimmedName) {
     return { ok: false, error: "missing-subreddit-name" };
@@ -67,10 +60,7 @@ export async function bonSubredditAnalyze(
 
   let fetched: { authors: string[] };
   try {
-    fetched = await bonSubredditFetchAuthors(
-      trimmedName,
-      BON_SUBREDDIT_SAMPLE_SIZE
-    );
+    fetched = await subredditFetchAuthors(trimmedName, SUBREDDIT_SAMPLE_SIZE);
   } catch (error) {
     console.error(
       `[Bot or Not] subreddit-investigation: author fetch failed for r/${trimmedName}`,
@@ -92,17 +82,17 @@ export async function bonSubredditAnalyze(
   };
 
   const nameKey = trimmedName.toLowerCase();
-  const all = await bonReadSubreddits();
+  const all = await readSubreddits();
   all[nameKey] = record;
-  await bonWriteSubreddits(all);
+  await writeSubreddits(all);
 
   // Reuse existing "done" investigations; only enqueue for the rest.
-  const reports = await bonReadReports();
+  const reports = await readReports();
   const enqueuedUsernames: string[] = [];
   const reusedUsernames: string[] = [];
 
   for (const username of sampledUsernames) {
-    const key = bonFindReportKey(reports, username);
+    const key = findReportKey(reports, username);
     const investigation = key ? reports[key]?.investigation : null;
 
     if (investigation?.status === "done") {
@@ -117,7 +107,7 @@ export async function bonSubredditAnalyze(
   // alternative would emit ~3 storage ops × 100 users per analyze click,
   // which pegs the background SW and stalls the reports page until the
   // burst settles.
-  await bonInvestigationStartBatch(enqueuedUsernames);
+  await investigationStartBatch(enqueuedUsernames);
 
   return {
     ok: true,
@@ -131,15 +121,12 @@ export async function bonSubredditAnalyze(
 // verdict, sorted most-recently-analyzed first. The Reports page's
 // Subreddits tab consumes this — one round trip instead of fanning out a
 // get-subreddit-report per entry.
-export async function bonSubredditList(): Promise<BonSubredditListResult> {
-  const [all, reports] = await Promise.all([
-    bonReadSubreddits(),
-    bonReadReports(),
-  ]);
+export async function subredditList(): Promise<SubredditListResult> {
+  const [all, reports] = await Promise.all([readSubreddits(), readReports()]);
 
-  const entries: BonSubredditListEntry[] = Object.values(all).map((record) => ({
+  const entries: SubredditListEntry[] = Object.values(all).map((record) => ({
     record,
-    verdict: bonSubredditDeriveVerdict(record, reports),
+    verdict: subredditDeriveVerdict(record, reports),
   }));
 
   entries.sort((a, b) => b.record.analyzedAt - a.record.analyzedAt);
@@ -147,23 +134,23 @@ export async function bonSubredditList(): Promise<BonSubredditListResult> {
   return { ok: true, entries };
 }
 
-export async function bonSubredditGetReport(
+export async function subredditGetReport(
   name: string
-): Promise<BonSubredditGetReportResult> {
+): Promise<SubredditGetReportResult> {
   const nameKey = (name || "").trim().toLowerCase();
   if (!nameKey) {
     return { ok: false, record: null, verdict: null };
   }
 
-  const all = await bonReadSubreddits();
+  const all = await readSubreddits();
   const record = all[nameKey] ?? null;
 
   if (!record) {
     return { ok: true, record: null, verdict: null };
   }
 
-  const reports = await bonReadReports();
-  const verdict = bonSubredditDeriveVerdict(record, reports);
+  const reports = await readReports();
+  const verdict = subredditDeriveVerdict(record, reports);
 
   return { ok: true, record, verdict };
 }

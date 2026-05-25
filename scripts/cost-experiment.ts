@@ -32,19 +32,19 @@ import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
 
 import {
-  bonFetchBotBouncerStatus,
-  bonFetchRedditProfile,
+  fetchBotBouncerStatus,
+  fetchRedditProfile,
   RedditFetchError,
 } from "../src/features/investigation/fetch.ts";
 import {
-  bonExtractSnoovatarUrl,
-  bonSerializeProfileForClaude,
-  bonSummarizeProfile,
+  extractSnoovatarUrl,
+  serializeProfileForClaude,
+  summarizeProfile,
 } from "../src/features/investigation/summarize.ts";
-import { bonInvestigationCallLlm } from "../src/features/investigation/api.ts";
-import { bonExtractJson } from "../src/utils/json.ts";
-import { bonNormalizePersona } from "../src/utils/persona.ts";
-import { bonComputeVerdict } from "../src/verdict.ts";
+import { investigationCallLlm } from "../src/features/investigation/api.ts";
+import { extractJson } from "../src/utils/json.ts";
+import { normalizePersona } from "../src/utils/persona.ts";
+import { computeVerdict } from "../src/verdict.ts";
 import type { Factor, ProfileSummary } from "../src/types.ts";
 
 const username = process.argv[2] ?? "Ask4MD";
@@ -97,7 +97,7 @@ function withLimit(summary: ProfileSummary, n: number): ProfileSummary {
 // pass it explicitly via InvestigationLlmOptions for the baseline / exp1-4 /
 // combo variants so they remain apples-to-apples comparisons against the
 // original production state. Variants tagged "compact" omit this and let
-// bonInvestigationCallLlm default to bonSerializeProfileForClaude.
+// investigationCallLlm default to serializeProfileForClaude.
 function verboseSerialize(summary: ProfileSummary): string {
   return JSON.stringify(summary);
 }
@@ -146,10 +146,10 @@ async function runOnce(
   summary: ProfileSummary,
   model: string,
   avatarUrl: string | null,
-  serialize: (s: ProfileSummary) => string = bonSerializeProfileForClaude
+  serialize: (s: ProfileSummary) => string = serializeProfileForClaude
 ): Promise<VariantResult> {
   const t0 = Date.now();
-  const claude = await bonInvestigationCallLlm(
+  const claude = await investigationCallLlm(
     apiKey!,
     PROMPT,
     summary,
@@ -158,15 +158,15 @@ async function runOnce(
   );
   const durationMs = Date.now() - t0;
 
-  const extracted = bonExtractJson(claude.rawText) as Record<
+  const extracted = extractJson(claude.rawText) as Record<
     string,
     unknown
   > | null;
   const factors = Array.isArray(extracted?.factors)
     ? (extracted!.factors as Factor[])
     : [];
-  const persona = bonNormalizePersona(extracted?.persona ?? null);
-  const verdict = bonComputeVerdict(factors);
+  const persona = normalizePersona(extracted?.persona ?? null);
+  const verdict = computeVerdict(factors);
 
   const usage = claude.usage ?? {};
   return {
@@ -200,7 +200,7 @@ async function runCascade(
   summary: ProfileSummary,
   avatarUrl: string | null,
   haikuPrior: VariantResult | null,
-  serialize: (s: ProfileSummary) => string = bonSerializeProfileForClaude
+  serialize: (s: ProfileSummary) => string = serializeProfileForClaude
 ): Promise<VariantResult> {
   const haiku =
     haikuPrior ??
@@ -314,8 +314,8 @@ function printFactorDeltas(results: VariantResult[]): void {
 async function main(): Promise<void> {
   console.log(`Fetching reddit data for u/${username}...`);
   const [profileRes, bbRes] = await Promise.allSettled([
-    bonFetchRedditProfile(username),
-    bonFetchBotBouncerStatus(username),
+    fetchRedditProfile(username),
+    fetchBotBouncerStatus(username),
   ]);
   if (profileRes.status === "rejected") {
     const reason = profileRes.reason;
@@ -334,8 +334,8 @@ async function main(): Promise<void> {
     extra.botBouncerStatus = bbStatus;
     extra.botBouncerCheckedAt = Date.now();
   }
-  const baseSummary = bonSummarizeProfile(username, profile, extra);
-  const avatarUrl = bonExtractSnoovatarUrl(profile);
+  const baseSummary = summarizeProfile(username, profile, extra);
+  const avatarUrl = extractSnoovatarUrl(profile);
   console.log(
     `Fetched: posts=${baseSummary.recent_posts.length}, comments=${baseSummary.recent_comments.length}`
   );

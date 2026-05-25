@@ -4,7 +4,7 @@
 
 import type { Verdict } from "../../types.ts";
 
-export const BON_REDDITORS_VERDICT_RANK: Record<Verdict, number> = {
+export const REDDITORS_VERDICT_RANK: Record<Verdict, number> = {
   bot: 0,
   "likely-bot": 1,
   uncertain: 2,
@@ -12,7 +12,7 @@ export const BON_REDDITORS_VERDICT_RANK: Record<Verdict, number> = {
   human: 4,
 };
 
-export const BON_REDDITORS_MONTH_NAMES = [
+export const REDDITORS_MONTH_NAMES = [
   "Jan",
   "Feb",
   "Mar",
@@ -27,7 +27,7 @@ export const BON_REDDITORS_MONTH_NAMES = [
   "Dec",
 ];
 
-export const BON_REDDITORS_DAY_NAMES = [
+export const REDDITORS_DAY_NAMES = [
   "Sun",
   "Mon",
   "Tue",

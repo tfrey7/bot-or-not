@@ -4,17 +4,17 @@
 // Reports + an optional Claude API key serialize to a JSON file the user can
 // carry between machines; import merges the file back in per-username.
 
-import { bonClientSend } from "../../client.ts";
+import { clientSend } from "../../client.ts";
 import {
-  BON_SYNC_BACKUP_VERSION,
-  bonSyncBackupFilename,
-  bonSyncParseBackup,
+  SYNC_BACKUP_VERSION,
+  syncBackupFilename,
+  syncParseBackup,
   type MergeStats,
   type ParseResult,
   type SyncBackupPayload,
 } from "./logic.ts";
 
-export function bonRenderSync(container: HTMLElement | null): void {
+export function renderSync(container: HTMLElement | null): void {
   if (!container) {
     return;
   }
@@ -61,7 +61,7 @@ function buildExportBlock(): HTMLElement {
   status.className = "bon-sync-status";
 
   async function fetchBackup(): Promise<SyncBackupPayload> {
-    const response = await bonClientSend<{ payload: SyncBackupPayload }>({
+    const response = await clientSend<{ payload: SyncBackupPayload }>({
       type: "sync-export",
     });
 
@@ -82,7 +82,7 @@ function buildExportBlock(): HTMLElement {
 
       const link = document.createElement("a");
       link.href = url;
-      link.download = bonSyncBackupFilename();
+      link.download = syncBackupFilename();
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -143,7 +143,7 @@ function buildImportBlock(): HTMLElement {
 
   const desc = document.createElement("p");
   desc.className = "bon-sync-block-desc";
-  desc.textContent = `Backup format v${BON_SYNC_BACKUP_VERSION}. Pick a file or paste a backup payload directly. Per-user merge: histories combine and the newer investigation wins.`;
+  desc.textContent = `Backup format v${SYNC_BACKUP_VERSION}. Pick a file or paste a backup payload directly. Per-user merge: histories combine and the newer investigation wins.`;
   block.appendChild(desc);
 
   const fileInput = document.createElement("input");
@@ -217,7 +217,7 @@ function buildImportBlock(): HTMLElement {
     }
 
     clearImportState();
-    const result: ParseResult = bonSyncParseBackup(trimmed);
+    const result: ParseResult = syncParseBackup(trimmed);
 
     if (!result.ok) {
       status.textContent = result.error;
@@ -351,7 +351,7 @@ async function runImport(
   status.className = "bon-sync-status";
 
   try {
-    const response = await bonClientSend<{ ok: true; stats: MergeStats }>({
+    const response = await clientSend<{ ok: true; stats: MergeStats }>({
       type: "sync-import",
       reports: payload.reports,
     });
@@ -385,5 +385,5 @@ function formatImportResult(
   return `Imported · ${parts.join(" · ")}`;
 }
 
-export { bonSyncExport, bonSyncImport } from "./handlers.ts";
+export { syncExport, syncImport } from "./handlers.ts";
 export type { ImportRequest } from "./handlers.ts";

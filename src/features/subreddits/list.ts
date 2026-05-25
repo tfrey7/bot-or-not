@@ -5,11 +5,11 @@
 // scannable to click through.
 
 import type {
-  BonSubredditListEntry,
-  BonSubredditVerdict,
+  SubredditListEntry,
+  SubredditVerdict,
 } from "../subreddit-investigation";
 
-interface BonSubredditsListOptions {
+interface SubredditsListOptions {
   selectedNameKey: string | null;
   onSelect: (nameKey: string) => void;
 }
@@ -19,9 +19,9 @@ interface VerdictDescriptor {
   label: string;
 }
 
-export function bonRenderSubredditsList(
-  entries: BonSubredditListEntry[],
-  options: BonSubredditsListOptions
+export function renderSubredditsList(
+  entries: SubredditListEntry[],
+  options: SubredditsListOptions
 ): HTMLElement {
   if (entries.length === 0) {
     return buildEmptyState();
@@ -40,8 +40,8 @@ function buildEmptyState(): HTMLElement {
 }
 
 function buildTable(
-  entries: BonSubredditListEntry[],
-  options: BonSubredditsListOptions
+  entries: SubredditListEntry[],
+  options: SubredditsListOptions
 ): HTMLElement {
   const wrap = document.createElement("div");
   wrap.className = "bon-subreddits-list-wrap";
@@ -61,8 +61,8 @@ function buildTable(
 }
 
 function buildRow(
-  entry: BonSubredditListEntry,
-  options: BonSubredditsListOptions
+  entry: SubredditListEntry,
+  options: SubredditsListOptions
 ): HTMLTableRowElement {
   const { record, verdict } = entry;
   const nameKey = record.name.toLowerCase();
@@ -117,7 +117,7 @@ function buildRow(
   return row;
 }
 
-function describeVerdict(verdict: BonSubredditVerdict): VerdictDescriptor {
+function describeVerdict(verdict: SubredditVerdict): VerdictDescriptor {
   if (!verdict.ready) {
     return { badgeModifier: "queued", label: "Pending" };
   }
@@ -133,7 +133,7 @@ function describeVerdict(verdict: BonSubredditVerdict): VerdictDescriptor {
   return { badgeModifier: "human", label: "Healthy" };
 }
 
-function buildProgress(verdict: BonSubredditVerdict): HTMLElement {
+function buildProgress(verdict: SubredditVerdict): HTMLElement {
   const settled = verdict.doneCount + verdict.errorCount;
   const total = verdict.total;
   const percent = total > 0 ? Math.round((settled / total) * 100) : 0;

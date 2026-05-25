@@ -355,7 +355,7 @@ body.bon-hide-pii .bon-pii-name:not(:hover):not(:focus):not(:focus-within)::befo
   align-items: stretch;
   text-align: left;
   padding: 0;
-  /* Hue comes from inline style set by persona_strip.ts (bonPersonaHue).
+  /* Hue comes from inline style set by persona_strip.ts (personaHue).
      Same HSL pair as the reports detail pane so the radar polygon renders
      the identical color on both surfaces — see features/redditors/redditors.css.
      bot/normal personas have no hue and the overrides below swap the accent
@@ -391,7 +391,7 @@ body.bon-hide-pii .bon-pii-name:not(:hover):not(:focus):not(:focus-within)::befo
   --bon-persona-accent: rgba(160, 160, 160, 0.85);
 }
 
-/* Radar widget — shared with reports detail pane via bonPersonaRadar.
+/* Radar widget — shared with reports detail pane via personaRadar.
    Keep these rules in sync with .bon-radar-* in features/redditors/redditors.css;
    both surfaces consume --bon-persona-accent so a given persona renders the
    identical polygon color on either page. */

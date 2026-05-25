@@ -14,7 +14,7 @@ import type {
   PassiveHarvestItemKind,
 } from "../../types.ts";
 
-export interface BonPassiveHarvestFinding {
+export interface PassiveHarvestFinding {
   username: string;
 
   // Pre-merge item shape — same as PassiveHarvestItem minus the
@@ -24,7 +24,7 @@ export interface BonPassiveHarvestFinding {
   item: Omit<PassiveHarvestItem, "firstSeenAt" | "lastSeenAt">;
 }
 
-const BON_BODY_EXCERPT_MAX = 500;
+const BODY_EXCERPT_MAX = 500;
 
 function readCreatedAt(el: HTMLElement): number | null {
   const isoAttr =
@@ -62,12 +62,12 @@ function readCreatedAt(el: HTMLElement): number | null {
 }
 
 function clip(text: string): string {
-  return text.replace(/\s+/g, " ").trim().slice(0, BON_BODY_EXCERPT_MAX);
+  return text.replace(/\s+/g, " ").trim().slice(0, BODY_EXCERPT_MAX);
 }
 
 function extractShreddit(
   el: HTMLElement
-): BonPassiveHarvestFinding["item"] | null {
+): PassiveHarvestFinding["item"] | null {
   const permalink = el.getAttribute("permalink");
   if (!permalink) {
     return null;
@@ -107,7 +107,7 @@ function extractShreddit(
 
 function extractOldReddit(
   el: HTMLElement
-): BonPassiveHarvestFinding["item"] | null {
+): PassiveHarvestFinding["item"] | null {
   const permalink = el.getAttribute("data-permalink");
   if (!permalink) {
     return null;
@@ -148,15 +148,15 @@ function extractOldReddit(
 // `hiddenUsernames` is the lowercased set of usernames the caller cares
 // about. The caller is responsible for keeping it in sync with
 // background storage (via `storage.onChanged` on the `reports` key).
-export function bonPassiveHarvestScrape(
+export function passiveHarvestScrape(
   hiddenUsernames: Set<string>,
   doc: Document = document
-): BonPassiveHarvestFinding[] {
+): PassiveHarvestFinding[] {
   if (hiddenUsernames.size === 0) {
     return [];
   }
 
-  const found: BonPassiveHarvestFinding[] = [];
+  const found: PassiveHarvestFinding[] = [];
 
   const shredditNodes = doc.querySelectorAll<HTMLElement>(
     "shreddit-post[author]:not([data-bon-harvested]), shreddit-comment[author]:not([data-bon-harvested])"

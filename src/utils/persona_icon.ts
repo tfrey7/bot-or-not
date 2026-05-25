@@ -5,7 +5,7 @@
 // render without a background gracefully.
 
 import type { Persona } from "../types.ts";
-import { bonPersonaComboKey } from "./persona_title.ts";
+import { personaComboKey } from "./persona_title.ts";
 
 const KNOWN_PRIMARIES = new Set<string>([
   "stan",
@@ -36,14 +36,14 @@ const KNOWN_BLENDS = new Set<string>([
   "stan+zealot",
 ]);
 
-export function bonPersonaIcon(
+export function personaIcon(
   persona: Persona | null | undefined
 ): string | null {
   if (!persona || !persona.label) {
     return null;
   }
 
-  const comboKey = bonPersonaComboKey(persona);
+  const comboKey = personaComboKey(persona);
   if (comboKey && KNOWN_BLENDS.has(comboKey)) {
     const fileSlug = comboKey.replace("+", "_");
     return browser.runtime.getURL(`icons/persona/${fileSlug}.png`);

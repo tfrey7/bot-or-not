@@ -9,7 +9,7 @@
 // Strategy: if `claudeApiKey` exists and `apiKeys.anthropic` doesn't,
 // move the value across, then drop the old slot. Idempotent.
 
-export async function bonMigrateApiKeysPerVendor(): Promise<void> {
+export async function migrateApiKeysPerVendor(): Promise<void> {
   try {
     const raw = (await browser.storage.local.get([
       "claudeApiKey",

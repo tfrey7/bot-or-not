@@ -4,37 +4,37 @@
 // built lazily by the `list_users` tool dispatch — off-topic or social
 // queries never pay to load it.
 
-import { bonInvestigationStart } from "../investigation";
+import { investigationStart } from "../investigation";
 import {
-  bonRedditorsComputeRegionForReport,
-  bonRedditorsDelete,
-  bonRedditorsLinkRing,
-  bonRedditorsSetUserStatus,
-  bonRedditorsUnlinkRing,
+  redditorsComputeRegionForReport,
+  redditorsDelete,
+  redditorsLinkRing,
+  redditorsSetUserStatus,
+  redditorsUnlinkRing,
 } from "../redditors";
 import type { Report } from "../../types.ts";
 import {
-  bonReadApiKey,
-  bonReadLlmSelection,
-  bonReadReports,
-  bonWriteHidePii,
+  readApiKey,
+  readLlmSelection,
+  readReports,
+  writeHidePii,
 } from "../../storage.ts";
-import { bonFindReportKey } from "../../utils/history.ts";
+import { findReportKey } from "../../utils/history.ts";
 import {
-  bonAiCommandBuildSnapshot,
-  bonAiCommandBuildUserDetails,
-  bonRunAiCommand,
+  aiCommandBuildSnapshot,
+  aiCommandBuildUserDetails,
+  runAiCommand,
   type AiCommandDispatch,
   type AiCommandMessage,
   type AiCommandProgress,
   type AiCommandResult,
 } from "./index.ts";
-import { BON_AI_COMMAND_DESTRUCTIVE_TOOLS } from "./tools.ts";
+import { AI_COMMAND_DESTRUCTIVE_TOOLS } from "./tools.ts";
 
 // Reaches up from the dispatcher into the UI to ask the operator to approve
 // a destructive tool call. Resolves to `true` on approve, `false` on deny or
 // when the AI command modal is dismissed before the operator answers.
-export type BonAiCommandConfirmRequest = (request: {
+export type AiCommandConfirmRequest = (request: {
   tool: string;
   input: Record<string, unknown>;
 }) => Promise<boolean>;
@@ -42,37 +42,37 @@ export type BonAiCommandConfirmRequest = (request: {
 // In-memory conversation history. Persists across `ai-command` calls but
 // resets on service-worker eviction or extension reload — a hard cap on
 // conversation length. The operator can also reset explicitly via
-// bonAiCommandReset.
+// aiCommandReset.
 let history: AiCommandMessage[] = [];
 
-export function bonAiCommandReset(): void {
+export function aiCommandReset(): void {
   history = [];
 }
 
-export interface BonAiCommandHandleOptions {
+export interface AiCommandHandleOptions {
   onProgress?: AiCommandProgress;
   signal?: AbortSignal;
-  requestConfirm?: BonAiCommandConfirmRequest;
+  requestConfirm?: AiCommandConfirmRequest;
 }
 
-export async function bonAiCommandHandle(
+export async function aiCommandHandle(
   input: string,
-  options: BonAiCommandHandleOptions = {}
+  options: AiCommandHandleOptions = {}
 ): Promise<AiCommandResult | { ok: false; error: string }> {
   const trimmed = input.trim();
   if (!trimmed) {
     return { ok: false, error: "empty-input" };
   }
 
-  const selection = await bonReadLlmSelection();
+  const selection = await readLlmSelection();
   const vendor = selection.vendor ?? "anthropic";
-  const apiKey = await bonReadApiKey(vendor);
+  const apiKey = await readApiKey(vendor);
 
   if (!apiKey) {
     return { ok: false, error: "no-api-key" };
   }
 
-  const result = await bonRunAiCommand(
+  const result = await runAiCommand(
     apiKey,
     trimmed,
     makeDispatchTool(options.requestConfirm),
@@ -92,10 +92,10 @@ export async function bonAiCommandHandle(
 }
 
 function makeDispatchTool(
-  requestConfirm: BonAiCommandConfirmRequest | undefined
+  requestConfirm: AiCommandConfirmRequest | undefined
 ): AiCommandDispatch {
   return async (tool, args) => {
-    if (BON_AI_COMMAND_DESTRUCTIVE_TOOLS.has(tool)) {
+    if (AI_COMMAND_DESTRUCTIVE_TOOLS.has(tool)) {
       // Without a confirm channel, refuse destructive calls outright rather
       // than executing silently. The reports-page port always supplies one;
       // callers running headless (CLI, tests) would need to opt in explicitly.
@@ -121,11 +121,11 @@ const dispatch: AiCommandDispatch = async (tool, args) => {
     // Build the snapshot on demand. Region inference per user is CPU-bound
     // but cheap (~ms for hundreds of reports) — skipping it on off-topic
     // queries is still a real win.
-    const latest = await bonReadReports();
+    const latest = await readReports();
     const regions: Record<string, string | null> = {};
 
     for (const [username, report] of Object.entries(latest)) {
-      const result = bonRedditorsComputeRegionForReport({
+      const result = redditorsComputeRegionForReport({
         username,
         ...report,
       });
@@ -135,32 +135,32 @@ const dispatch: AiCommandDispatch = async (tool, args) => {
           : null;
     }
 
-    const snapshot = bonAiCommandBuildSnapshot(latest, regions);
+    const snapshot = aiCommandBuildSnapshot(latest, regions);
     return { ok: true, count: snapshot.length, users: snapshot };
   }
 
   if (tool === "link_ring") {
-    return bonRedditorsLinkRing(args.usernames as string[]);
+    return redditorsLinkRing(args.usernames as string[]);
   }
 
   if (tool === "unlink_ring") {
-    return bonRedditorsUnlinkRing(args.usernames as string[]);
+    return redditorsUnlinkRing(args.usernames as string[]);
   }
 
   if (tool === "delete_report") {
-    return bonRedditorsDelete(args.username as string);
+    return redditorsDelete(args.username as string);
   }
 
   if (tool === "investigate_user") {
     // Don't block the agent loop on a full ~60s investigation — fire it off
     // and report back immediately. The reports page polls and the row flips
     // to "running" on its own.
-    void bonInvestigationStart(args.username as string);
+    void investigationStart(args.username as string);
     return { ok: true, started: true };
   }
 
   if (tool === "set_user_status") {
-    await bonRedditorsSetUserStatus(
+    await redditorsSetUserStatus(
       args.username as string,
       args.status as Report["userStatus"]
     );
@@ -169,7 +169,7 @@ const dispatch: AiCommandDispatch = async (tool, args) => {
   }
 
   if (tool === "set_pii_blur") {
-    await bonWriteHidePii(!!args.enabled);
+    await writeHidePii(!!args.enabled);
     return { ok: true, enabled: !!args.enabled };
   }
 
@@ -188,15 +188,15 @@ const dispatch: AiCommandDispatch = async (tool, args) => {
       ? (args.usernames as string[])
       : [];
 
-    const latest = await bonReadReports();
+    const latest = await readReports();
     const users = requested.map((name) => {
       const trimmed = (name ?? "").trim();
-      const key = bonFindReportKey(latest, trimmed);
+      const key = findReportKey(latest, trimmed);
       if (!key) {
-        return bonAiCommandBuildUserDetails(trimmed, undefined);
+        return aiCommandBuildUserDetails(trimmed, undefined);
       }
 
-      return bonAiCommandBuildUserDetails(key, latest[key]);
+      return aiCommandBuildUserDetails(key, latest[key]);
     });
 
     return { ok: true, users };
@@ -210,9 +210,9 @@ const dispatch: AiCommandDispatch = async (tool, args) => {
     // lands somewhere reasonable if Claude passed the operator's phrasing
     // through without resolving it against the snapshot.
     const requested = ((args.username as string) ?? "").trim();
-    const latest = await bonReadReports();
+    const latest = await readReports();
 
-    let key = bonFindReportKey(latest, requested);
+    let key = findReportKey(latest, requested);
 
     if (!key && requested) {
       const needle = requested.toLowerCase();

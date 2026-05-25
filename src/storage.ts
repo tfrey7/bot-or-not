@@ -4,32 +4,32 @@
 // the same code as a website with a real backend.
 //
 // All sanctioned reads/writes go through the module-level functions below.
-// `bonStorage` is the live implementation; swapping it for a different class
+// `storage` is the live implementation; swapping it for a different class
 // is the only change needed to retarget the backend.
 
 import type { LlmVendor } from "./llm/index.ts";
 import type { Report, SubredditReport } from "./types.ts";
-import { bonFindReportKey, bonNormalizeReport } from "./utils/history.ts";
+import { findReportKey, normalizeReport } from "./utils/history.ts";
 
 // Persisted LLM selection. Both fields nullable — `null` means "use the
 // provider's built-in default," so a fresh install (and any user who's
 // never opened the settings tab) behaves exactly like before.
-export interface BonLlmSelection {
+export interface LlmSelection {
   vendor: LlmVendor | null;
   model: string | null;
 }
 
 // One key per vendor. Missing entries = no key on file for that vendor.
-export type BonApiKeyMap = Partial<Record<LlmVendor, string>>;
+export type ApiKeyMap = Partial<Record<LlmVendor, string>>;
 
-// Updater for bonUpdateReport. Receives the current Report (or null if no
+// Updater for updateReport. Receives the current Report (or null if no
 // record exists for this username) and returns the next one. Return null to
 // delete the record; return the current value untouched to no-op the write.
-export type BonReportUpdater = (
+export type ReportUpdater = (
   current: Report | null
 ) => Report | null | Promise<Report | null>;
 
-export interface BonStorage {
+export interface StorageAdapter {
   readReports(): Promise<Record<string, Report>>;
   writeReports(reports: Record<string, Report>): Promise<void>;
 
@@ -42,25 +42,25 @@ export interface BonStorage {
   // calls for the same username run strictly in order; calls for different
   // usernames run independently. Bulk writers via writeReports() are not
   // coordinated with this lock — they remain the danger-zone path.
-  updateReport(username: string, updater: BonReportUpdater): Promise<void>;
+  updateReport(username: string, updater: ReportUpdater): Promise<void>;
 
   readSubreddits(): Promise<Record<string, SubredditReport>>;
   writeSubreddits(subreddits: Record<string, SubredditReport>): Promise<void>;
 
   readApiKey(vendor: LlmVendor): Promise<string>;
-  readAllApiKeys(): Promise<BonApiKeyMap>;
+  readAllApiKeys(): Promise<ApiKeyMap>;
   writeApiKey(vendor: LlmVendor, key: string): Promise<void>;
   clearApiKey(vendor: LlmVendor): Promise<void>;
   clearAllApiKeys(): Promise<void>;
 
-  readLlmSelection(): Promise<BonLlmSelection>;
-  writeLlmSelection(selection: BonLlmSelection): Promise<void>;
+  readLlmSelection(): Promise<LlmSelection>;
+  writeLlmSelection(selection: LlmSelection): Promise<void>;
 
   readHidePii(): Promise<boolean>;
   writeHidePii(value: boolean): Promise<void>;
 }
 
-class BonExtensionStorage implements BonStorage {
+class ExtensionStorage implements StorageAdapter {
   async readReports(): Promise<Record<string, Report>> {
     const raw = (await browser.storage.local.get("reports")) as {
       reports?: Record<string, unknown>;
@@ -68,7 +68,7 @@ class BonExtensionStorage implements BonStorage {
     const out: Record<string, Report> = {};
 
     for (const [username, value] of Object.entries(raw.reports ?? {})) {
-      out[username] = bonNormalizeReport(value);
+      out[username] = normalizeReport(value);
     }
 
     return out;
@@ -86,14 +86,11 @@ class BonExtensionStorage implements BonStorage {
 
   async readReport(username: string): Promise<Report | null> {
     const reports = await this.readReports();
-    const key = bonFindReportKey(reports, username);
+    const key = findReportKey(reports, username);
     return key ? reports[key] : null;
   }
 
-  async updateReport(
-    username: string,
-    updater: BonReportUpdater
-  ): Promise<void> {
+  async updateReport(username: string, updater: ReportUpdater): Promise<void> {
     const lockKey = username.toLowerCase();
     const previous = this.reportUpdateChains.get(lockKey) ?? Promise.resolve();
 
@@ -117,10 +114,10 @@ class BonExtensionStorage implements BonStorage {
 
   private async applyReportUpdate(
     username: string,
-    updater: BonReportUpdater
+    updater: ReportUpdater
   ): Promise<void> {
     const reports = await this.readReports();
-    const existingKey = bonFindReportKey(reports, username) ?? username;
+    const existingKey = findReportKey(reports, username) ?? username;
     const current = reports[existingKey] ?? null;
     const updated = await updater(current);
 
@@ -168,7 +165,7 @@ class BonExtensionStorage implements BonStorage {
     return map[vendor] ?? "";
   }
 
-  async readAllApiKeys(): Promise<BonApiKeyMap> {
+  async readAllApiKeys(): Promise<ApiKeyMap> {
     const raw = (await browser.storage.local.get("apiKeys")) as {
       apiKeys?: unknown;
     };
@@ -177,7 +174,7 @@ class BonExtensionStorage implements BonStorage {
       return {};
     }
 
-    const out: BonApiKeyMap = {};
+    const out: ApiKeyMap = {};
     const entries = raw.apiKeys as Record<string, unknown>;
 
     for (const [vendor, value] of Object.entries(entries)) {
@@ -209,7 +206,7 @@ class BonExtensionStorage implements BonStorage {
     await browser.storage.local.remove("apiKeys");
   }
 
-  async readLlmSelection(): Promise<BonLlmSelection> {
+  async readLlmSelection(): Promise<LlmSelection> {
     const raw = (await browser.storage.local.get([
       "llmVendor",
       "llmModel",
@@ -238,7 +235,7 @@ class BonExtensionStorage implements BonStorage {
     }
   }
 
-  async writeLlmSelection(selection: BonLlmSelection): Promise<void> {
+  async writeLlmSelection(selection: LlmSelection): Promise<void> {
     const toRemove: string[] = [];
     const toSet: Record<string, string> = {};
 
@@ -293,78 +290,74 @@ function normalizeSubredditReport(
   return { name, analyzedAt, sampledUsernames };
 }
 
-const bonStorage: BonStorage = new BonExtensionStorage();
+const storage: StorageAdapter = new ExtensionStorage();
 
 // Module-level function wrappers — the public API everywhere else in the
 // codebase consumes. Function-style is consistent with the rest of the
 // project's exports and keeps callsites stable if the singleton ever
 // becomes injected.
 
-export function bonReadReports(): Promise<Record<string, Report>> {
-  return bonStorage.readReports();
+export function readReports(): Promise<Record<string, Report>> {
+  return storage.readReports();
 }
 
-export function bonWriteReports(
-  reports: Record<string, Report>
-): Promise<void> {
-  return bonStorage.writeReports(reports);
+export function writeReports(reports: Record<string, Report>): Promise<void> {
+  return storage.writeReports(reports);
 }
 
-export function bonReadReport(username: string): Promise<Report | null> {
-  return bonStorage.readReport(username);
+export function readReport(username: string): Promise<Report | null> {
+  return storage.readReport(username);
 }
 
-export function bonUpdateReport(
+export function updateReport(
   username: string,
-  updater: BonReportUpdater
+  updater: ReportUpdater
 ): Promise<void> {
-  return bonStorage.updateReport(username, updater);
+  return storage.updateReport(username, updater);
 }
 
-export function bonReadSubreddits(): Promise<Record<string, SubredditReport>> {
-  return bonStorage.readSubreddits();
+export function readSubreddits(): Promise<Record<string, SubredditReport>> {
+  return storage.readSubreddits();
 }
 
-export function bonWriteSubreddits(
+export function writeSubreddits(
   subreddits: Record<string, SubredditReport>
 ): Promise<void> {
-  return bonStorage.writeSubreddits(subreddits);
+  return storage.writeSubreddits(subreddits);
 }
 
-export function bonReadApiKey(vendor: LlmVendor): Promise<string> {
-  return bonStorage.readApiKey(vendor);
+export function readApiKey(vendor: LlmVendor): Promise<string> {
+  return storage.readApiKey(vendor);
 }
 
-export function bonReadAllApiKeys(): Promise<BonApiKeyMap> {
-  return bonStorage.readAllApiKeys();
+export function readAllApiKeys(): Promise<ApiKeyMap> {
+  return storage.readAllApiKeys();
 }
 
-export function bonWriteApiKey(vendor: LlmVendor, key: string): Promise<void> {
-  return bonStorage.writeApiKey(vendor, key);
+export function writeApiKey(vendor: LlmVendor, key: string): Promise<void> {
+  return storage.writeApiKey(vendor, key);
 }
 
-export function bonClearApiKey(vendor: LlmVendor): Promise<void> {
-  return bonStorage.clearApiKey(vendor);
+export function clearApiKey(vendor: LlmVendor): Promise<void> {
+  return storage.clearApiKey(vendor);
 }
 
-export function bonClearAllApiKeys(): Promise<void> {
-  return bonStorage.clearAllApiKeys();
+export function clearAllApiKeys(): Promise<void> {
+  return storage.clearAllApiKeys();
 }
 
-export function bonReadLlmSelection(): Promise<BonLlmSelection> {
-  return bonStorage.readLlmSelection();
+export function readLlmSelection(): Promise<LlmSelection> {
+  return storage.readLlmSelection();
 }
 
-export function bonWriteLlmSelection(
-  selection: BonLlmSelection
-): Promise<void> {
-  return bonStorage.writeLlmSelection(selection);
+export function writeLlmSelection(selection: LlmSelection): Promise<void> {
+  return storage.writeLlmSelection(selection);
 }
 
-export function bonReadHidePii(): Promise<boolean> {
-  return bonStorage.readHidePii();
+export function readHidePii(): Promise<boolean> {
+  return storage.readHidePii();
 }
 
-export function bonWriteHidePii(value: boolean): Promise<void> {
-  return bonStorage.writeHidePii(value);
+export function writeHidePii(value: boolean): Promise<void> {
+  return storage.writeHidePii(value);
 }

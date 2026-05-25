@@ -15,10 +15,10 @@
 //   verdict bands map botProbability to one of the 5 labels
 //   confidence = how far the probability is from a coin flip, in the verdict's direction
 
-const BON_BOT_EVIDENCE_WEIGHT = 1.5;
-const BON_RED_FLAG_SCORE_THRESHOLD = -0.6;
-const BON_RED_FLAG_CONFIDENCE_THRESHOLD = 0.6;
-const BON_RING_BOT_PROBABILITY_FLOOR = 0.85;
+const BOT_EVIDENCE_WEIGHT = 1.5;
+const RED_FLAG_SCORE_THRESHOLD = -0.6;
+const RED_FLAG_CONFIDENCE_THRESHOLD = 0.6;
+const RING_BOT_PROBABILITY_FLOOR = 0.85;
 
 import type { Factor, Investigation, Verdict } from "./types.ts";
 
@@ -27,9 +27,9 @@ import type { Factor, Investigation, Verdict } from "./types.ts";
 // the UI re-enables the retry button. Needs to outlast a legit slow Claude
 // call so healthy runs on heavy accounts don't flip to "stalled" while still
 // in flight.
-export const BON_STALE_INVESTIGATION_MS = 5 * 60 * 1000;
+export const STALE_INVESTIGATION_MS = 5 * 60 * 1000;
 
-export function bonIsInvestigationStale(
+export function isInvestigationStale(
   investigation: Investigation | null | undefined
 ): boolean {
   if (!investigation || investigation.status !== "running") {
@@ -40,7 +40,7 @@ export function bonIsInvestigationStale(
     return true;
   }
 
-  return Date.now() - investigation.startedAt > BON_STALE_INVESTIGATION_MS;
+  return Date.now() - investigation.startedAt > STALE_INVESTIGATION_MS;
 }
 
 export interface VerdictResult {
@@ -50,7 +50,7 @@ export interface VerdictResult {
   evidenceSum: number;
 }
 
-export function bonComputeVerdict(
+export function computeVerdict(
   factors: Factor[],
   inRing = false
 ): VerdictResult {
@@ -72,11 +72,11 @@ export function bonComputeVerdict(
       typeof factor?.confidence === "number" ? factor.confidence : 0;
     const contribution = -score * confidence;
     evidenceSum +=
-      contribution > 0 ? contribution * BON_BOT_EVIDENCE_WEIGHT : contribution;
+      contribution > 0 ? contribution * BOT_EVIDENCE_WEIGHT : contribution;
 
     if (
-      score <= BON_RED_FLAG_SCORE_THRESHOLD &&
-      confidence >= BON_RED_FLAG_CONFIDENCE_THRESHOLD
+      score <= RED_FLAG_SCORE_THRESHOLD &&
+      confidence >= RED_FLAG_CONFIDENCE_THRESHOLD
     ) {
       redFlagCount += 1;
     }
@@ -91,7 +91,7 @@ export function bonComputeVerdict(
   }
 
   if (inRing) {
-    botProbability = Math.max(botProbability, BON_RING_BOT_PROBABILITY_FLOOR);
+    botProbability = Math.max(botProbability, RING_BOT_PROBABILITY_FLOOR);
   }
 
   let verdict: Verdict;
@@ -114,7 +114,7 @@ export function bonComputeVerdict(
 // Returns a shallow copy of `investigation` with verdict/confidence overridden
 // from the factor math. Only "done" investigations get re-derived — other
 // statuses don't have a `results` to recompute.
-export function bonNormalizeInvestigation<
+export function normalizeInvestigation<
   T extends Investigation | null | undefined,
 >(investigation: T, inRing = false): T {
   if (!investigation || investigation.status !== "done") {
@@ -125,7 +125,7 @@ export function bonNormalizeInvestigation<
     return investigation;
   }
 
-  const derived = bonComputeVerdict(investigation.results.factors, inRing);
+  const derived = computeVerdict(investigation.results.factors, inRing);
   return {
     ...investigation,
     results: {
@@ -147,11 +147,11 @@ export interface TopReasonsSplit {
 }
 
 // Ranks factors by decisiveness (|score| × confidence — the same weight
-// bonComputeVerdict uses for the overall verdict) and splits them by sign
+// computeVerdict uses for the overall verdict) and splits them by sign
 // so the UI can show human-leaning and bot-leaning signals side by side.
 // Neutrals and low-confidence factors are filtered out so the columns
 // don't include "no signal" filler.
-export function bonTopReasonsSplit(
+export function topReasonsSplit(
   factors: Factor[],
   perSide = 3
 ): TopReasonsSplit {

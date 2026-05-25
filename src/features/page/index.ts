@@ -2,20 +2,16 @@
 // than any one tab: the tab bar, the AI command bar + chat modal, the
 // shared confirm modal, and the dev-mode badge.
 
-export { bonPageInstallDevBadge } from "./dev_badge.ts";
+export { pageInstallDevBadge } from "./dev_badge.ts";
 export {
-  bonPageInitCommandBar,
-  type BonPageCommandBarDeps,
-  type BonPageCommandBarHandle,
+  pageInitCommandBar,
+  type PageCommandBarDeps,
+  type PageCommandBarHandle,
 } from "./command_bar.ts";
-export { bonPageOpenCommandModal } from "./command_modal.ts";
+export { pageOpenCommandModal } from "./command_modal.ts";
 export {
-  bonPageInitConfirmModal,
-  bonPageOpenConfirmModal,
+  pageInitConfirmModal,
+  pageOpenConfirmModal,
   type ConfirmModalOpts,
 } from "./confirm_modal.ts";
-export {
-  bonPageInitTabs,
-  type BonPageTab,
-  type BonPageTabsHandle,
-} from "./tabs.ts";
+export { pageInitTabs, type PageTab, type PageTabsHandle } from "./tabs.ts";

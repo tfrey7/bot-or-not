@@ -10,7 +10,7 @@
 // failure. The metrics ride alongside the data so the analytics page can
 // chart Reddit-side performance the same way it does the Claude call.
 
-import { bonRedditFetchJson, RedditRequestError } from "../../reddit/client.ts";
+import { redditFetchJson, RedditRequestError } from "../../reddit/client.ts";
 import type {
   BotBouncerStatus,
   RedditAboutEnvelope,
@@ -25,7 +25,7 @@ import type {
 // Reddit's per-request listing cap. The API silently clamps anything
 // higher to 100, so we paginate via `after=` cursors to reach the
 // configured target.
-export const BON_REDDIT_PAGE_LIMIT = 100;
+export const REDDIT_PAGE_LIMIT = 100;
 
 // Target item count per listing (submitted / comments). The investigation
 // fetch paginates to this depth so the heatmap, calendar, region inference,
@@ -36,7 +36,7 @@ export const BON_REDDIT_PAGE_LIMIT = 100;
 // throttled us out fast. 500 keeps enough variety for prolific-poster
 // signals (visible_window_days, timezone, region) while halving Reddit
 // pressure when a sub kicks off 100 fresh investigations at once.
-export const BON_REDDIT_FETCH_LIMIT = 500;
+export const REDDIT_FETCH_LIMIT = 500;
 
 export class RedditFetchError extends Error {
   metrics: RedditMetrics;
@@ -96,7 +96,7 @@ async function measureFetch<T>(
   const start = performance.now();
 
   try {
-    const data = await bonRedditFetchJson<T>(url);
+    const data = await redditFetchJson<T>(url);
     return {
       data,
       retryAfterMs: null,
@@ -151,7 +151,7 @@ async function measureFetchListingPaginated(
 
   while (allChildren.length < targetCount) {
     const remaining = targetCount - allChildren.length;
-    const pageLimit = Math.min(BON_REDDIT_PAGE_LIMIT, remaining);
+    const pageLimit = Math.min(REDDIT_PAGE_LIMIT, remaining);
     const afterParam: string = cursor
       ? `&after=${encodeURIComponent(cursor)}`
       : "";
@@ -205,7 +205,7 @@ export interface BotBouncerFetchResult {
   metric: RedditFetchMetric;
 }
 
-export async function bonFetchBotBouncerStatus(
+export async function fetchBotBouncerStatus(
   username: string
 ): Promise<BotBouncerFetchResult> {
   const query = encodeURIComponent(`Overview for ${username}`);
@@ -248,7 +248,7 @@ export interface RedditProfileResult {
   fetches: RedditFetchMetric[];
 }
 
-export async function bonFetchRedditProfile(
+export async function fetchRedditProfile(
   username: string
 ): Promise<RedditProfileResult> {
   const encodedUsername = encodeURIComponent(username);
@@ -260,12 +260,12 @@ export async function bonFetchRedditProfile(
     measureFetchListingPaginated(
       "submitted",
       `https://www.reddit.com/user/${encodedUsername}/submitted.json`,
-      BON_REDDIT_FETCH_LIMIT
+      REDDIT_FETCH_LIMIT
     ),
     measureFetchListingPaginated(
       "comments",
       `https://www.reddit.com/user/${encodedUsername}/comments.json`,
-      BON_REDDIT_FETCH_LIMIT
+      REDDIT_FETCH_LIMIT
     ),
     measureFetch<RedditModeratedList>(
       "moderated",

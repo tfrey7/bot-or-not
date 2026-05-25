@@ -7,7 +7,7 @@
 // `list_users` tool when it needs it, so off-topic input never pays the
 // snapshot cost. See `handler.ts` for the dispatch side.
 
-import { bonCreateLlmProvider } from "../../llm/index.ts";
+import { createLlmProvider } from "../../llm/index.ts";
 import type {
   LlmAction,
   LlmMessage,
@@ -15,15 +15,15 @@ import type {
   LlmToolDispatch,
   LlmVendor,
 } from "../../llm/index.ts";
-import BON_AI_COMMAND_PROMPT from "./prompt.md?raw";
-import { BON_AI_COMMAND_TOOLS } from "./tools.ts";
+import AI_COMMAND_PROMPT from "./prompt.md?raw";
+import { AI_COMMAND_TOOLS } from "./tools.ts";
 
-const BON_AI_COMMAND_MAX_TURNS = 8;
-const BON_AI_COMMAND_MAX_TOKENS = 2048;
-const BON_AI_COMMAND_TIMEOUT_MS = 60_000;
+const AI_COMMAND_MAX_TURNS = 8;
+const AI_COMMAND_MAX_TOKENS = 2048;
+const AI_COMMAND_TIMEOUT_MS = 60_000;
 
 // The conversation history shape is opaque to the rest of the
-// extension. Callers store it between `bonRunAiCommand` calls and hand
+// extension. Callers store it between `runAiCommand` calls and hand
 // it back next turn — the underlying provider owns the schema.
 export type AiCommandMessage = LlmMessage;
 
@@ -45,7 +45,7 @@ export interface AiCommandResult {
   error?: string;
 }
 
-export interface BonRunAiCommandOptions {
+export interface RunAiCommandOptions {
   history?: AiCommandMessage[];
   onProgress?: AiCommandProgress;
   signal?: AbortSignal;
@@ -53,11 +53,11 @@ export interface BonRunAiCommandOptions {
   model?: string | null;
 }
 
-export async function bonRunAiCommand(
+export async function runAiCommand(
   apiKey: string,
   input: string,
   dispatch: AiCommandDispatch,
-  options: BonRunAiCommandOptions = {}
+  options: RunAiCommandOptions = {}
 ): Promise<AiCommandResult> {
   const { history = [], onProgress, signal, vendor, model } = options;
 
@@ -66,16 +66,16 @@ export async function bonRunAiCommand(
     { role: "user", content: [{ kind: "text", text: input }] },
   ];
 
-  const provider = bonCreateLlmProvider(apiKey, vendor ?? null);
+  const provider = createLlmProvider(apiKey, vendor ?? null);
 
   const loop = await provider.runToolLoop({
-    systemPrompt: BON_AI_COMMAND_PROMPT,
-    tools: BON_AI_COMMAND_TOOLS,
+    systemPrompt: AI_COMMAND_PROMPT,
+    tools: AI_COMMAND_TOOLS,
     messages,
     dispatch,
-    maxTokens: BON_AI_COMMAND_MAX_TOKENS,
-    maxTurns: BON_AI_COMMAND_MAX_TURNS,
-    timeoutMs: BON_AI_COMMAND_TIMEOUT_MS,
+    maxTokens: AI_COMMAND_MAX_TOKENS,
+    maxTurns: AI_COMMAND_MAX_TURNS,
+    timeoutMs: AI_COMMAND_TIMEOUT_MS,
     label: "ai-command",
     ...(onProgress ? { onProgress } : {}),
     ...(signal ? { signal } : {}),

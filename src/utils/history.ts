@@ -1,12 +1,12 @@
 // Canonical-shape helpers for Report records.
 //
-// bonNormalizeReport is the source of trust: every Report field always
+// normalizeReport is the source of trust: every Report field always
 // present, Investigation canonicalized so consumers can drop defensive
 // `Array.isArray` / `typeof === "number"` / `?? null` checks. The storage
 // adapter (`src/storage.ts`) runs every read through it; sync's import
 // parser does the same on incoming backups.
 
-import { BON_PERSONA_LABELS } from "../factors.ts";
+import { PERSONA_LABELS } from "../factors.ts";
 import type {
   Factor,
   GoogleHarvest,
@@ -22,10 +22,10 @@ import type {
   UserNotes,
   Verdict,
 } from "../types.ts";
-import { bonNormalizeDemographics } from "./demographics.ts";
-import { bonNormalizeRegionInference } from "./region_inference.ts";
+import { normalizeDemographics } from "./demographics.ts";
+import { normalizeRegionInference } from "./region_inference.ts";
 
-export function bonMergeHistoryEntries(
+export function mergeHistoryEntries(
   a: HistoryEntry,
   b: HistoryEntry
 ): HistoryEntry {
@@ -40,7 +40,7 @@ export function bonMergeHistoryEntries(
   };
 }
 
-export function bonDedupeHistory(history: HistoryEntry[]): HistoryEntry[] {
+export function dedupeHistory(history: HistoryEntry[]): HistoryEntry[] {
   const seen = new Map<string, number>();
   const out: HistoryEntry[] = [];
 
@@ -48,7 +48,7 @@ export function bonDedupeHistory(history: HistoryEntry[]): HistoryEntry[] {
     const key = entry?.permalink;
     if (key && seen.has(key)) {
       const index = seen.get(key)!;
-      out[index] = bonMergeHistoryEntries(out[index], entry);
+      out[index] = mergeHistoryEntries(out[index], entry);
     } else {
       if (key) {
         seen.set(key, out.length);
@@ -63,7 +63,7 @@ export function bonDedupeHistory(history: HistoryEntry[]): HistoryEntry[] {
 
 // Coerces a legacy (count-only) or modern report record into the canonical
 // shape, defaulting missing fields. Idempotent.
-export function bonNormalizeReport(value: unknown): Report {
+export function normalizeReport(value: unknown): Report {
   if (typeof value === "number") {
     return {
       count: value,
@@ -89,7 +89,7 @@ export function bonNormalizeReport(value: unknown): Report {
     string,
     unknown
   >;
-  const history = bonDedupeHistory(
+  const history = dedupeHistory(
     Array.isArray(record.history) ? (record.history as HistoryEntry[]) : []
   );
   const rawCount = typeof record.count === "number" ? record.count : 0;
@@ -144,7 +144,7 @@ function canonicalizeGoogleHarvest(value: unknown): GoogleHarvest | null {
   return value as GoogleHarvest;
 }
 
-const PERSONA_LABEL_SET = new Set<string>(BON_PERSONA_LABELS);
+const PERSONA_LABEL_SET = new Set<string>(PERSONA_LABELS);
 
 function canonicalizeUserNotes(value: unknown): UserNotes | null {
   if (!value || typeof value !== "object") {
@@ -269,8 +269,8 @@ function canonicalizeInvestigation(value: unknown): Investigation | null {
       ? (resultsSource.factors as unknown[]).map(canonicalizeFactor)
       : [],
     persona: (resultsSource.persona as Persona | null) ?? null,
-    region: bonNormalizeRegionInference(resultsSource.region),
-    demographics: bonNormalizeDemographics(resultsSource.demographics),
+    region: normalizeRegionInference(resultsSource.region),
+    demographics: normalizeDemographics(resultsSource.demographics),
     summary:
       typeof resultsSource.summary === "string" ? resultsSource.summary : "",
     model: typeof resultsSource.model === "string" ? resultsSource.model : "",
@@ -405,7 +405,7 @@ function canonicalizeRunSnapshot(value: unknown): RunSnapshot {
 
 // Case-insensitive username lookup — Reddit's routing is case-insensitive but
 // our storage keys preserve whatever casing was first seen.
-export function bonFindReportKey(
+export function findReportKey(
   reports: Record<string, unknown>,
   username: string
 ): string | null {
@@ -428,23 +428,23 @@ export function bonFindReportKey(
 // the inline `inv?.status === "done" ? inv.results : null` repeated at
 // every consumer site.
 
-export function bonIsInvestigationDone(
+export function isInvestigationDone(
   investigation: Investigation | null | undefined
 ): investigation is Extract<Investigation, { status: "done" }> {
   return investigation?.status === "done";
 }
 
-export function bonInvestigationResults(
+export function investigationResults(
   investigation: Investigation | null | undefined
 ): InvestigationResults | null {
-  return bonIsInvestigationDone(investigation) ? investigation.results : null;
+  return isInvestigationDone(investigation) ? investigation.results : null;
 }
 
 // Extracts a runs[] snapshot from a terminated investigation so historical
 // timing/cost data survives across re-runs. Reads result fields when the
 // investigation is "done"; for "error" snapshots the result fields stay
 // null since the run never produced them.
-export function bonSnapshotRun(
+export function snapshotRun(
   investigation: Investigation,
   status: RunSnapshot["status"]
 ): RunSnapshot {

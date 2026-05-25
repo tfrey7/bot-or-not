@@ -4,9 +4,9 @@
 // follows confidence so a low-confidence factor reads as a narrower bar
 // even when the score is decisive.
 
-import { bonScoreLeaning } from "../../utils/scoring.ts";
+import { scoreLeaning } from "../../utils/scoring.ts";
 
-export function bonRedditorsScoreBar(
+export function redditorsScoreBar(
   score: number,
   confidence: number | null | undefined
 ): HTMLDivElement {
@@ -19,7 +19,7 @@ export function bonRedditorsScoreBar(
   bar.className = "bon-factor-bar";
 
   const fill = document.createElement("div");
-  const leaning = bonScoreLeaning(clamped, confidence);
+  const leaning = scoreLeaning(clamped, confidence);
 
   const fillClass =
     leaning === "likely-bot"

@@ -15,16 +15,13 @@ import type {
   GoogleHarvestPost,
   GoogleHarvestPostKind,
 } from "../../types.ts";
-import type { BonGoogleResult } from "./scrape.ts";
+import type { GoogleResult } from "./scrape.ts";
 
 // Pre-merge post shape. Identical to GoogleHarvestPost minus the
 // firstSeenAt/lastSeenAt timestamps — the parser is pure and doesn't know
 // about clock time. Those timestamps are stamped by the persistence-side
-// merge in bonGoogleHarvestMerge.
-export type BonScrapedPost = Omit<
-  GoogleHarvestPost,
-  "firstSeenAt" | "lastSeenAt"
->;
+// merge in googleHarvestMerge.
+export type ScrapedPost = Omit<GoogleHarvestPost, "firstSeenAt" | "lastSeenAt">;
 
 // profile-root / profile-post URLs embed the username — those are
 // self-attributing without a Reddit fetch. Everything else has to go
@@ -42,8 +39,8 @@ function initialAttribution(
 
 // Returns the harvest minus the envelope timestamps + query — those are
 // added by the content script entry / merge layer.
-export interface BonParsedHarvest {
-  posts: BonScrapedPost[];
+export interface ParsedHarvest {
+  posts: ScrapedPost[];
   subredditDistribution: Record<string, number>;
   kinds: Record<GoogleHarvestPostKind, number>;
 }
@@ -137,10 +134,8 @@ function extractCommentCount(snippet: string): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
-export function bonGoogleHarvestParse(
-  results: BonGoogleResult[]
-): BonParsedHarvest {
-  const posts: BonScrapedPost[] = results.map((result) => {
+export function googleHarvestParse(results: GoogleResult[]): ParsedHarvest {
+  const posts: ScrapedPost[] = results.map((result) => {
     const classification = classify(result.url);
 
     return {

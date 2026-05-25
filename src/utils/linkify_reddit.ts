@@ -12,7 +12,7 @@
 const REDDIT_REF_RE =
   /(?<![A-Za-z0-9_/])\/?(r\/[A-Za-z0-9_]{2,21}|u\/[A-Za-z0-9_-]{2,21})/gi;
 
-export interface BonLinkifyOptions {
+export interface LinkifyOptions {
   userHref?: (username: string) => string;
   userLinkTarget?: string;
 }
@@ -24,7 +24,7 @@ function defaultUserHref(username: string): string {
 // Options for content scripts injecting linkified text into Reddit pages.
 // A relative `?user=` href would resolve against the Reddit URL, so the
 // reports page URL has to be absolute and the click has to open a new tab.
-export function bonLinkifyPanelOptions(): BonLinkifyOptions {
+export function linkifyPanelOptions(): LinkifyOptions {
   const reportsUrl = browser.runtime.getURL("src/reports.html");
   return {
     userHref: (username) =>
@@ -33,9 +33,9 @@ export function bonLinkifyPanelOptions(): BonLinkifyOptions {
   };
 }
 
-export function bonLinkifyReddit(
+export function linkifyReddit(
   text: string,
-  options: BonLinkifyOptions = {}
+  options: LinkifyOptions = {}
 ): DocumentFragment {
   const fragment = document.createDocumentFragment();
   if (!text) {

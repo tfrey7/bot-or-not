@@ -8,30 +8,30 @@
 // harvesting data would just be clutter. We stay dormant until the key
 // arrives, then bring the features up live (no Reddit-tab reload needed).
 
-import { bonClientSend, bonClientSubscribe } from "./client.ts";
+import { clientSend, clientSubscribe } from "./client.ts";
 import {
-  bonInlineTagsInit,
-  bonInlineTagsMark,
-  bonInlineTagsResetNav,
+  inlineTagsInit,
+  inlineTagsMark,
+  inlineTagsResetNav,
 } from "./features/inline-tags";
-import { bonPiiBlurInit } from "./utils/pii_blur.ts";
+import { piiBlurInit } from "./utils/pii_blur.ts";
 import {
-  bonPassiveHarvestInit,
-  bonPassiveHarvestTick,
+  passiveHarvestInit,
+  passiveHarvestTick,
 } from "./features/passive-harvest";
 import {
-  bonProfileInjectionInit,
-  bonProfileInjectionTick,
+  profileInjectionInit,
+  profileInjectionTick,
 } from "./features/profile-injection";
-import { bonReportingInit, bonReportingResetNav } from "./features/reporting";
+import { reportingInit, reportingResetNav } from "./features/reporting";
 import {
-  bonStatusDetectionInit,
-  bonStatusDetectionResetNav,
-  bonStatusDetectionScan,
+  statusDetectionInit,
+  statusDetectionResetNav,
+  statusDetectionScan,
 } from "./features/status-detection";
 import {
-  bonSubredditInvestigationInit,
-  bonSubredditInvestigationTick,
+  subredditInvestigationInit,
+  subredditInvestigationTick,
 } from "./features/subreddit-investigation";
 
 const { version } = browser.runtime.getManifest();
@@ -49,11 +49,11 @@ function scheduleScan(): void {
   scanScheduled = true;
   requestAnimationFrame(() => {
     scanScheduled = false;
-    bonInlineTagsMark();
-    bonPassiveHarvestTick();
-    bonProfileInjectionTick();
-    bonStatusDetectionScan();
-    bonSubredditInvestigationTick();
+    inlineTagsMark();
+    passiveHarvestTick();
+    profileInjectionTick();
+    statusDetectionScan();
+    subredditInvestigationTick();
   });
 }
 
@@ -64,12 +64,12 @@ function startFeatures(): void {
 
   featuresStarted = true;
 
-  bonInlineTagsInit();
-  bonPassiveHarvestInit();
-  bonProfileInjectionInit();
-  bonReportingInit();
-  bonStatusDetectionInit();
-  bonSubredditInvestigationInit();
+  inlineTagsInit();
+  passiveHarvestInit();
+  profileInjectionInit();
+  reportingInit();
+  statusDetectionInit();
+  subredditInvestigationInit();
 
   // Coalesce scan work to one execution per animation frame. Reddit's SPA
   // can fire hundreds of mutations per second while mounting big comment
@@ -78,9 +78,9 @@ function startFeatures(): void {
   const observer = new MutationObserver(() => {
     if (window.location.href !== lastUrl) {
       lastUrl = window.location.href;
-      bonReportingResetNav();
-      bonStatusDetectionResetNav();
-      bonInlineTagsResetNav();
+      reportingResetNav();
+      statusDetectionResetNav();
+      inlineTagsResetNav();
     }
 
     scheduleScan();
@@ -94,7 +94,7 @@ async function hasAnyApiKey(): Promise<boolean> {
   // between vendor selection and the available key surface in the
   // background-side investigation/AI-command paths.
   try {
-    const { hasKey } = await bonClientSend<{
+    const { hasKey } = await clientSend<{
       hasKey: Record<string, boolean>;
     }>({
       type: "get-api-keys",
@@ -111,7 +111,7 @@ async function bootstrap(): Promise<void> {
   // PII blur is independent of feature state — it should work even on a
   // dormant install (the operator may have configured privacy before
   // pasting their API key).
-  void bonPiiBlurInit();
+  void piiBlurInit();
 
   if (await hasAnyApiKey()) {
     startFeatures();
@@ -124,7 +124,7 @@ async function bootstrap(): Promise<void> {
 
   // Wake up the moment the key shows up. We don't tear down on removal
   // (rare, deliberate action) — a Reddit-tab reload will clear chips.
-  bonClientSubscribe((event) => {
+  clientSubscribe((event) => {
     if (event.type !== "api-key-changed" || featuresStarted) {
       return;
     }

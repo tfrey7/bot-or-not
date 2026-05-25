@@ -5,19 +5,19 @@
 // reachable via the reports-link in the header.
 
 import type { Report } from "../../types.ts";
-import { bonRingChip } from "../../utils/ring_chip.ts";
-import { bonNormalizeInvestigation } from "../../verdict.ts";
-import { bonPanelBuildInvestigateBtn } from "./investigate_btn.ts";
-import { bonPanelBuildNotesStrip } from "./notes_strip.ts";
-import { bonPanelBuildPreview } from "./preview.ts";
-import { bonPanelBuildReportsLink } from "./reports_link.ts";
+import { buildRingChip } from "../../utils/ring_chip.ts";
+import { normalizeInvestigation } from "../../verdict.ts";
+import { panelBuildInvestigateBtn } from "./investigate_btn.ts";
+import { panelBuildNotesStrip } from "./notes_strip.ts";
+import { panelBuildPreview } from "./preview.ts";
+import { panelBuildReportsLink } from "./reports_link.ts";
 
 export interface BuildPanelOpts {
   id?: string;
   expectedDurationMs?: number | null;
 }
 
-export function bonPanelBuildProfilePanel(
+export function panelBuildProfilePanel(
   username: string,
   report: Report | null | undefined,
   { id = "bon-profile-panel", expectedDurationMs = null }: BuildPanelOpts = {}
@@ -27,7 +27,7 @@ export function bonPanelBuildProfilePanel(
   panel.className = "bon-profile-panel";
   panel.dataset.username = username;
 
-  const investigation = bonNormalizeInvestigation(
+  const investigation = normalizeInvestigation(
     report?.investigation,
     !!report?.ringId
   );
@@ -40,15 +40,15 @@ export function bonPanelBuildProfilePanel(
   title.textContent = "Bot or Not";
   header.appendChild(title);
 
-  const ringChip = bonRingChip(report?.ringId ?? null);
+  const ringChip = buildRingChip(report?.ringId ?? null);
   if (ringChip) {
     header.appendChild(ringChip);
   }
 
-  header.appendChild(bonPanelBuildReportsLink(username));
-  header.appendChild(bonPanelBuildInvestigateBtn(username, investigation));
+  header.appendChild(panelBuildReportsLink(username));
+  header.appendChild(panelBuildInvestigateBtn(username, investigation));
 
-  const preview = bonPanelBuildPreview(username, report, {
+  const preview = panelBuildPreview(username, report, {
     expectedDurationMs,
   });
 
@@ -58,7 +58,7 @@ export function bonPanelBuildProfilePanel(
     panel.appendChild(preview);
   }
 
-  const notes = bonPanelBuildNotesStrip(report?.userNotes);
+  const notes = panelBuildNotesStrip(report?.userNotes);
   if (notes) {
     panel.appendChild(notes);
   }

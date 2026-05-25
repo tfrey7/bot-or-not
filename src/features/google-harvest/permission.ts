@@ -16,19 +16,19 @@ function permissionRequest(): browser.permissions.Permissions {
   return { origins: [GOOGLE_ORIGIN] };
 }
 
-export function bonGoogleHarvestIsGranted(): Promise<boolean> {
+export function googleHarvestIsGranted(): Promise<boolean> {
   return browser.permissions.contains(permissionRequest());
 }
 
-export function bonGoogleHarvestRequest(): Promise<boolean> {
+export function googleHarvestRequest(): Promise<boolean> {
   return browser.permissions.request(permissionRequest());
 }
 
-export function bonGoogleHarvestRevoke(): Promise<boolean> {
+export function googleHarvestRevoke(): Promise<boolean> {
   return browser.permissions.remove(permissionRequest());
 }
 
-export function bonGoogleHarvestMatches(
+export function googleHarvestMatches(
   permissions: browser.permissions.Permissions
 ): boolean {
   return (permissions.origins ?? []).includes(GOOGLE_ORIGIN);

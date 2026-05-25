@@ -4,10 +4,10 @@
 // logic.ts.
 
 import type { Report } from "../../types.ts";
-import { BON_ARCHETYPES } from "../../factors.ts";
-import { bonPersonasHideHover, bonPersonasShowHover } from "./hover_card.ts";
+import { ARCHETYPES } from "../../factors.ts";
+import { personasHideHover, personasShowHover } from "./hover_card.ts";
 import {
-  BON_PERSONAS_ANCHORS,
+  PERSONAS_ANCHORS,
   type ArchetypeAnchor,
   type PersonaPoint,
 } from "./logic.ts";
@@ -22,14 +22,14 @@ const CENTER = VIEWBOX / 2;
 const PLOT_RADIUS = 220;
 const LABEL_PAD = 38;
 
-export interface BonPersonasScatterOptions {
+export interface PersonasScatterOptions {
   onSelect: (username: string) => void;
   lookupReport: (username: string) => Report | null;
 }
 
-export function bonPersonasScatter(
+export function personasScatter(
   points: PersonaPoint[],
-  options: BonPersonasScatterOptions
+  options: PersonasScatterOptions
 ): SVGSVGElement {
   const svg = document.createElementNS(SVG_NS, "svg");
   svg.setAttribute("viewBox", `0 0 ${VIEWBOX} ${VIEWBOX}`);
@@ -37,7 +37,7 @@ export function bonPersonasScatter(
   svg.setAttribute("role", "img");
   svg.setAttribute(
     "aria-label",
-    `Persona space: ${points.length} accounts plotted across ${BON_ARCHETYPES.length} persona axes`
+    `Persona space: ${points.length} accounts plotted across ${ARCHETYPES.length} persona axes`
   );
 
   svg.appendChild(buildBackdrop());
@@ -51,7 +51,7 @@ export function bonPersonasScatter(
     svg.appendChild(buildDot(point, options));
   }
 
-  for (const anchor of BON_PERSONAS_ANCHORS) {
+  for (const anchor of PERSONAS_ANCHORS) {
     svg.appendChild(buildAnchorLabel(anchor));
   }
 
@@ -85,7 +85,7 @@ function buildAxes(): SVGGElement {
   const group = document.createElementNS(SVG_NS, "g");
   group.setAttribute("class", "bon-personas-axes");
 
-  for (const anchor of BON_PERSONAS_ANCHORS) {
+  for (const anchor of PERSONAS_ANCHORS) {
     const line = document.createElementNS(SVG_NS, "line");
     line.setAttribute("x1", String(CENTER));
     line.setAttribute("y1", String(CENTER));
@@ -139,7 +139,7 @@ function buildAnchorLabel(anchor: ArchetypeAnchor): SVGGElement {
 
 function buildDot(
   point: PersonaPoint,
-  options: BonPersonasScatterOptions
+  options: PersonasScatterOptions
 ): SVGGElement {
   const group = document.createElementNS(SVG_NS, "g");
   group.setAttribute("class", "bon-personas-dot");
@@ -186,7 +186,7 @@ function buildDot(
   const openHover = (): void => {
     const report = options.lookupReport(point.username);
     const rect = group.getBoundingClientRect();
-    bonPersonasShowHover(point.username, report, rect);
+    personasShowHover(point.username, report, rect);
   };
 
   group.addEventListener("click", () => options.onSelect(point.username));
@@ -197,9 +197,9 @@ function buildDot(
     }
   });
   group.addEventListener("mouseenter", openHover);
-  group.addEventListener("mouseleave", bonPersonasHideHover);
+  group.addEventListener("mouseleave", personasHideHover);
   group.addEventListener("focus", openHover);
-  group.addEventListener("blur", bonPersonasHideHover);
+  group.addEventListener("blur", personasHideHover);
 
   group.setAttribute("tabindex", "0");
   group.setAttribute("role", "button");
@@ -213,7 +213,7 @@ function buildDot(
 
 function formatTooltip(point: PersonaPoint): string {
   const label =
-    BON_ARCHETYPES.find((archetype) => archetype.key === point.topArchetype)
+    ARCHETYPES.find((archetype) => archetype.key === point.topArchetype)
       ?.label ?? point.topArchetype;
   const pct = Math.round(point.topScore * 100);
   const ratedSuffix = point.isUserRated ? " · hand-rated" : "";

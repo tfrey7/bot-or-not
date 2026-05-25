@@ -12,7 +12,7 @@ export interface FactorMeta {
   label: string;
 }
 
-export const BON_FACTORS: readonly FactorMeta[] = [
+export const FACTORS: readonly FactorMeta[] = [
   { key: "account_age_vs_activity", label: "Account age vs activity" },
   { key: "dormant_account_revival", label: "Dormant account revival" },
   { key: "karma_farming_subs", label: "Karma-farming subreddits" },
@@ -31,12 +31,12 @@ export const BON_FACTORS: readonly FactorMeta[] = [
   { key: "avatar_style", label: "Avatar style" },
 ];
 
-export const BON_FACTOR_KEYS: readonly string[] = BON_FACTORS.map(
+export const FACTOR_KEYS: readonly string[] = FACTORS.map(
   (factor) => factor.key
 );
 
-export const BON_FACTOR_LABELS: Record<string, string> = Object.fromEntries(
-  BON_FACTORS.map((factor) => [factor.key, factor.label])
+export const FACTOR_LABELS: Record<string, string> = Object.fromEntries(
+  FACTORS.map((factor) => [factor.key, factor.label])
 );
 
 export interface ArchetypeMeta {
@@ -71,7 +71,7 @@ export interface ArchetypeMeta {
 // hues (yellow → teal → blue → purple → magenta → red → back to yellow).
 // Blended combo colors then interpolate to something visually between the
 // two anchors, instead of leaping across the wheel.
-export const BON_ARCHETYPES: readonly ArchetypeMeta[] = [
+export const ARCHETYPES: readonly ArchetypeMeta[] = [
   {
     key: "stan",
     label: "Stan",
@@ -116,15 +116,15 @@ export const BON_ARCHETYPES: readonly ArchetypeMeta[] = [
   },
 ];
 
-export const BON_ARCHETYPE_KEYS: readonly ArchetypeKey[] = BON_ARCHETYPES.map(
+export const ARCHETYPE_KEYS: readonly ArchetypeKey[] = ARCHETYPES.map(
   (archetype) => archetype.key
 );
 
 // `bot` and `normal` are valid persona labels but not radar axes — the chart
 // only plots human-flavor archetypes. `bot` = automated; `normal` = a genuine,
 // low-key human with no strong pull toward any of the named archetypes.
-export const BON_PERSONA_LABELS: readonly PersonaLabel[] = [
-  ...BON_ARCHETYPE_KEYS,
+export const PERSONA_LABELS: readonly PersonaLabel[] = [
+  ...ARCHETYPE_KEYS,
   "bot",
   "normal",
 ];

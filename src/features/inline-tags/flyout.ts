@@ -4,13 +4,10 @@
 // storage changes while open so the panel re-renders mid-investigation,
 // dismisses on Escape / click-outside / location change.
 
-import { bonClientSend, bonClientSubscribe } from "../../client.ts";
+import { clientSend, clientSubscribe } from "../../client.ts";
 import type { Report } from "../../types.ts";
-import {
-  bonIsInvestigationStale,
-  bonNormalizeInvestigation,
-} from "../../verdict.ts";
-import { bonPanelBuildProfilePanel } from "../profile-panel";
+import { isInvestigationStale, normalizeInvestigation } from "../../verdict.ts";
+import { panelBuildProfilePanel } from "../profile-panel";
 
 interface FlyoutState {
   username: string;
@@ -59,7 +56,7 @@ function renderInto(
   report: Report | null,
   expectedDurationMs: number | null
 ): void {
-  const panel = bonPanelBuildProfilePanel(username, report, {
+  const panel = panelBuildProfilePanel(username, report, {
     id: "bon-inline-flyout-panel",
     expectedDurationMs,
   });
@@ -80,7 +77,7 @@ interface LoadedReport {
 
 async function loadReport(username: string): Promise<LoadedReport> {
   try {
-    const response = await bonClientSend<{
+    const response = await clientSend<{
       report?: Report | null;
       expectedDurationMs?: number | null;
     }>({
@@ -98,7 +95,7 @@ async function loadReport(username: string): Promise<LoadedReport> {
   }
 }
 
-export function bonInlineTagsCloseFlyout(): void {
+export function inlineTagsCloseFlyout(): void {
   if (!active) {
     return;
   }
@@ -109,17 +106,17 @@ export function bonInlineTagsCloseFlyout(): void {
   active = null;
 }
 
-export function bonInlineTagsOpenFlyout(
+export function inlineTagsOpenFlyout(
   username: string,
   anchor: HTMLElement
 ): void {
   // Toggle: clicking the same tag closes the flyout.
   if (active && active.anchor === anchor) {
-    bonInlineTagsCloseFlyout();
+    inlineTagsCloseFlyout();
     return;
   }
 
-  bonInlineTagsCloseFlyout();
+  inlineTagsCloseFlyout();
 
   const container = document.createElement("div");
   container.className = "bon-inline-flyout";
@@ -128,13 +125,13 @@ export function bonInlineTagsOpenFlyout(
 
   // Initial loading shell — replaced once the report fetch resolves. We
   // append before measuring so positionFlyout can read offsetWidth/Height.
-  const loading = bonPanelBuildProfilePanel(username, null, {
+  const loading = panelBuildProfilePanel(username, null, {
     id: "bon-inline-flyout-panel",
   });
   container.appendChild(loading);
   document.body.appendChild(container);
 
-  const unsubscribe = bonClientSubscribe((event) => {
+  const unsubscribe = clientSubscribe((event) => {
     if (event.type !== "reports-changed" || !active) {
       return;
     }
@@ -164,12 +161,12 @@ export function bonInlineTagsOpenFlyout(
       return;
     }
 
-    bonInlineTagsCloseFlyout();
+    inlineTagsCloseFlyout();
   };
 
   const onKey = (event: KeyboardEvent): void => {
     if (event.key === "Escape") {
-      bonInlineTagsCloseFlyout();
+      inlineTagsCloseFlyout();
     }
   };
 
@@ -213,13 +210,13 @@ export function bonInlineTagsOpenFlyout(
 // click the 🤖 button to do. The storage listener picks up the resulting
 // "running" state and re-renders the panel into the loading slideshow.
 function maybeAutoInvestigate(username: string, report: Report | null): void {
-  const investigation = bonNormalizeInvestigation(
+  const investigation = normalizeInvestigation(
     report?.investigation,
     !!report?.ringId
   );
 
   const running = investigation?.status === "running";
-  if (running && !bonIsInvestigationStale(investigation)) {
+  if (running && !isInvestigationStale(investigation)) {
     return;
   }
 

@@ -12,18 +12,18 @@ import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
 
 import {
-  bonFetchBotBouncerStatus,
-  bonFetchRedditProfile,
+  fetchBotBouncerStatus,
+  fetchRedditProfile,
   RedditFetchError,
 } from "../src/features/investigation/fetch.ts";
 import {
-  bonExtractSnoovatarUrl,
-  bonSummarizeProfile,
+  extractSnoovatarUrl,
+  summarizeProfile,
 } from "../src/features/investigation/summarize.ts";
-import { bonInvestigationCallLlm } from "../src/features/investigation/api.ts";
-import { bonExtractJson } from "../src/utils/json.ts";
-import { bonNormalizePersona } from "../src/utils/persona.ts";
-import { bonComputeVerdict } from "../src/verdict.ts";
+import { investigationCallLlm } from "../src/features/investigation/api.ts";
+import { extractJson } from "../src/utils/json.ts";
+import { normalizePersona } from "../src/utils/persona.ts";
+import { computeVerdict } from "../src/verdict.ts";
 import type { Factor } from "../src/types.ts";
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -106,8 +106,8 @@ interface UserResult {
 async function investigateUser(username: string): Promise<UserResult> {
   console.error(`[${username}] fetching reddit...`);
   const [profileSettled, botBouncerSettled] = await Promise.allSettled([
-    bonFetchRedditProfile(username),
-    bonFetchBotBouncerStatus(username),
+    fetchRedditProfile(username),
+    fetchBotBouncerStatus(username),
   ]);
 
   if (profileSettled.status === "rejected") {
@@ -130,7 +130,7 @@ async function investigateUser(username: string): Promise<UserResult> {
     `[${username}] posts=${postCount} comments=${commentCount} bb=${botBouncerStatus ?? "none"}`
   );
 
-  const summary = bonSummarizeProfile(username, profile, {
+  const summary = summarizeProfile(username, profile, {
     ...(botBouncerStatus
       ? { botBouncerStatus, botBouncerCheckedAt: Date.now() }
       : {}),
@@ -144,13 +144,13 @@ async function investigateUser(username: string): Promise<UserResult> {
       `[${username}] downsampled posts ${beforeP}->${summary.recent_posts.length}, comments ${beforeC}->${summary.recent_comments.length}`
     );
   }
-  const avatarUrl = bonExtractSnoovatarUrl(profile);
+  const avatarUrl = extractSnoovatarUrl(profile);
 
   const runs: ModelRun[] = [];
   for (const model of MODELS) {
     console.error(`[${username}] calling ${model}...`);
     const start = performance.now();
-    const result = await bonInvestigationCallLlm(
+    const result = await investigationCallLlm(
       apiKey!,
       PROMPT,
       summary,
@@ -159,7 +159,7 @@ async function investigateUser(username: string): Promise<UserResult> {
     );
     const latencyMs = Math.round(performance.now() - start);
 
-    const extracted = bonExtractJson(result.rawText);
+    const extracted = extractJson(result.rawText);
     if (!extracted || typeof extracted !== "object") {
       console.error(`[${username}] ${model}: failed to parse JSON`);
       console.error(result.rawText.slice(0, 500));
@@ -172,8 +172,8 @@ async function investigateUser(username: string): Promise<UserResult> {
     }
 
     const factors = payload.factors as Factor[];
-    const persona = bonNormalizePersona(payload.persona);
-    const verdict = bonComputeVerdict(factors);
+    const persona = normalizePersona(payload.persona);
+    const verdict = computeVerdict(factors);
     const claudeSummary =
       typeof payload.summary === "string" ? payload.summary : "";
 

@@ -2,42 +2,42 @@
 // plus all background-context handlers that own storage I/O for Report
 // records. Two consumer contexts share the same public surface:
 //
-//   - src/reports.ts calls bonRedditorsRenderReportsPage() to mount the UI.
-//   - src/background.ts wires the bonRedditors* handlers into the
+//   - src/reports.ts calls redditorsRenderReportsPage() to mount the UI.
+//   - src/background.ts wires the redditors* handlers into the
 //     message dispatcher.
 //
 // This index re-exports only; it has no top-level side effects so it's
 // safe to import from any runtime context (service worker included).
 
-export { bonRedditorsRenderReportsPage } from "./page.ts";
+export { redditorsRenderReportsPage } from "./page.ts";
 
 export {
-  bonRedditorsRecordReport,
-  bonRedditorsGetState,
-  bonRedditorsGetReport,
-  bonRedditorsGetTags,
-  bonRedditorsGetAll,
-  bonRedditorsClearAll,
-  bonRedditorsDelete,
-  bonRedditorsSetUserStatus,
-  bonRedditorsUpdateProfileStats,
-  bonRedditorsUpdatePostStatus,
-  bonRedditorsSetUserNotes,
-  bonRedditorsSetGoogleHarvest,
-  bonRedditorsSetBotBouncerStatus,
-  bonRedditorsLinkRing,
-  bonRedditorsUnlinkRing,
+  redditorsRecordReport,
+  redditorsGetState,
+  redditorsGetReport,
+  redditorsGetTags,
+  redditorsGetAll,
+  redditorsClearAll,
+  redditorsDelete,
+  redditorsSetUserStatus,
+  redditorsUpdateProfileStats,
+  redditorsUpdatePostStatus,
+  redditorsSetUserNotes,
+  redditorsSetGoogleHarvest,
+  redditorsSetBotBouncerStatus,
+  redditorsLinkRing,
+  redditorsUnlinkRing,
 } from "./handlers.ts";
 
 export {
-  bonRedditorsComputeRegionForReport,
-  bonRedditorsInferTimezoneFromTimestamps,
+  redditorsComputeRegionForReport,
+  redditorsInferTimezoneFromTimestamps,
 } from "./region.ts";
 export type { TimezoneInference } from "./region.ts";
 
 export {
-  bonRedditorsGoogleDossierSection,
-  bonRedditorsGoogleDossierCountFresh,
+  redditorsGoogleDossierSection,
+  redditorsGoogleDossierCountFresh,
 } from "./google_dossier_section.ts";
 
 export type { ReportRow } from "./logic.ts";

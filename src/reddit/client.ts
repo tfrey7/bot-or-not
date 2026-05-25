@@ -7,7 +7,7 @@
 //
 // Rate-limit defense:
 //   1. Proactive floor-trip off Reddit's `x-ratelimit-*` response headers.
-//      When `remaining` drops to BON_REDDIT_BUDGET_FLOOR, pause the queue
+//      When `remaining` drops to REDDIT_BUDGET_FLOOR, pause the queue
 //      until the bucket resets — preempts the 429 we'd otherwise eat.
 //   2. Reactive pause on 429 / 5xx — `queue.pause()` halts dispatch until
 //      the cooldown elapses, then `queue.start()` resumes. State is
@@ -16,28 +16,25 @@
 
 import PQueue from "p-queue";
 
-import { bonShortUrl } from "../utils/format_text.ts";
-import {
-  bonClampRetryAfter,
-  bonParseRetryAfter,
-} from "../utils/retry_after.ts";
+import { shortUrl } from "../utils/format_text.ts";
+import { clampRetryAfter, parseRetryAfter } from "../utils/retry_after.ts";
 
-const BON_REDDIT_CONCURRENCY = 4;
+const REDDIT_CONCURRENCY = 4;
 
 // Reddit usually answers in well under a second. A 30s ceiling means a
 // hung connection releases its slot instead of stalling the queue.
-const BON_REDDIT_FETCH_TIMEOUT_MS = 30_000;
+const REDDIT_FETCH_TIMEOUT_MS = 30_000;
 
-const BON_REDDIT_BUDGET_FLOOR = 3;
+const REDDIT_BUDGET_FLOOR = 3;
 
-interface BonRedditBudget {
+interface RedditBudget {
   remaining: number;
   resetAt: number;
 }
 
-const queue = new PQueue({ concurrency: BON_REDDIT_CONCURRENCY });
+const queue = new PQueue({ concurrency: REDDIT_CONCURRENCY });
 
-let latestBudget: BonRedditBudget | null = null;
+let latestBudget: RedditBudget | null = null;
 let pausedUntil: number | null = null;
 let pauseClearTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -65,7 +62,7 @@ function clearPause(): void {
 }
 
 function notePause(retryAfterMs: number | null, reason: string): void {
-  const delay = bonClampRetryAfter(retryAfterMs ?? 0);
+  const delay = clampRetryAfter(retryAfterMs ?? 0);
   const newPausedUntil = Date.now() + delay;
 
   if (pausedUntil !== null && pausedUntil >= newPausedUntil) {
@@ -87,7 +84,7 @@ function notePause(retryAfterMs: number | null, reason: string): void {
   void publishPauseState();
 }
 
-export function bonRedditGetPausedUntil(): number | null {
+export function redditGetPausedUntil(): number | null {
   if (pausedUntil !== null && pausedUntil <= Date.now()) {
     clearPause();
   }
@@ -95,7 +92,7 @@ export function bonRedditGetPausedUntil(): number | null {
   return pausedUntil;
 }
 
-export function bonRedditGetBudget(): BonRedditBudget | null {
+export function redditGetBudget(): RedditBudget | null {
   if (latestBudget === null) {
     return null;
   }
@@ -108,7 +105,7 @@ export function bonRedditGetBudget(): BonRedditBudget | null {
   return latestBudget;
 }
 
-function parseBudget(headers: Headers): BonRedditBudget | null {
+function parseBudget(headers: Headers): RedditBudget | null {
   const remainingRaw = headers.get("x-ratelimit-remaining");
   const resetRaw = headers.get("x-ratelimit-reset");
   if (remainingRaw === null || resetRaw === null) {
@@ -135,7 +132,7 @@ function noteBudget(headers: Headers): void {
 
   latestBudget = budget;
 
-  if (budget.remaining <= BON_REDDIT_BUDGET_FLOOR) {
+  if (budget.remaining <= REDDIT_BUDGET_FLOOR) {
     const resetMs = Math.max(0, budget.resetAt - Date.now());
     notePause(resetMs, `budget at ${budget.remaining} remaining`);
   }
@@ -185,7 +182,7 @@ async function bootstrapPauseState(): Promise<void> {
 
 void bootstrapPauseState();
 
-export async function bonRedditFetchJson<T = unknown>(url: string): Promise<T> {
+export async function redditFetchJson<T = unknown>(url: string): Promise<T> {
   return await queue.add(async () => {
     const startedAt = performance.now();
     let succeeded = false;
@@ -194,13 +191,13 @@ export async function bonRedditFetchJson<T = unknown>(url: string): Promise<T> {
       const response = await fetch(url, {
         headers: { Accept: "application/json" },
         credentials: "include",
-        signal: AbortSignal.timeout(BON_REDDIT_FETCH_TIMEOUT_MS),
+        signal: AbortSignal.timeout(REDDIT_FETCH_TIMEOUT_MS),
       });
 
       noteBudget(response.headers);
 
       if (!response.ok) {
-        const retryAfterMs = bonParseRetryAfter(
+        const retryAfterMs = parseRetryAfter(
           response.headers.get("Retry-After")
         );
 
@@ -224,7 +221,7 @@ export async function bonRedditFetchJson<T = unknown>(url: string): Promise<T> {
       const elapsedMs = Math.round(performance.now() - startedAt);
       const suffix = succeeded ? "" : " (failed)";
       console.log(
-        `[Bot or Not] timing: fetch ${bonShortUrl(url)} ${elapsedMs}ms${suffix}`
+        `[Bot or Not] timing: fetch ${shortUrl(url)} ${elapsedMs}ms${suffix}`
       );
     }
   });

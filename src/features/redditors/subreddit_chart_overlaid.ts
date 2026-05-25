@@ -2,8 +2,8 @@ import uPlot from "uplot";
 import "uplot/dist/uPlot.min.css";
 
 import {
-  bonRedditorsBuildSubredditChartSeries,
-  bonRedditorsBuildSubredditTimelines,
+  redditorsBuildSubredditChartSeries,
+  redditorsBuildSubredditTimelines,
   type SubredditChartSeries,
 } from "./subreddit_chart_data.ts";
 import type { ActivityData } from "../../types.ts";
@@ -24,13 +24,13 @@ const SERIES_COLOR_VARS = [
 ];
 const OTHER_COLOR_VAR = "--bon-stamp-charcoal";
 
-function bonReadCssVar(name: string): string {
+function readCssVar(name: string): string {
   return getComputedStyle(document.documentElement)
     .getPropertyValue(name)
     .trim();
 }
 
-function bonFormatTearTooltip(
+function formatTearTooltip(
   accountCreatedAt: number,
   visibleStart: number
 ): string {
@@ -39,7 +39,7 @@ function bonFormatTearTooltip(
   return `Account created ${created} — earlier history not available from the Reddit API. Visible activity starts ${visible}.`;
 }
 
-export function bonRedditorsSubredditChartOverlaid(
+export function redditorsSubredditChartOverlaid(
   activityData: ActivityData,
   accountCreatedAt: number | null
 ): HTMLDivElement {
@@ -51,7 +51,7 @@ export function bonRedditorsSubredditChartOverlaid(
   title.textContent = "Subreddit contributions";
   wrap.appendChild(title);
 
-  const timelines = bonRedditorsBuildSubredditTimelines(activityData);
+  const timelines = redditorsBuildSubredditTimelines(activityData);
 
   if (!timelines) {
     const empty = document.createElement("p");
@@ -83,7 +83,7 @@ export function bonRedditorsSubredditChartOverlaid(
       ? accountCreatedAt
       : null;
 
-  const series = bonRedditorsBuildSubredditChartSeries(
+  const series = redditorsBuildSubredditChartSeries(
     timelines,
     rangeStart,
     rangeEnd,
@@ -97,14 +97,14 @@ export function bonRedditorsSubredditChartOverlaid(
 
   for (const entry of series) {
     if (entry.isOther) {
-      ordered.push({ entry, color: bonReadCssVar(OTHER_COLOR_VAR) });
+      ordered.push({ entry, color: readCssVar(OTHER_COLOR_VAR) });
     }
   }
 
   series.forEach((entry, index) => {
     if (!entry.isOther) {
       const varName = SERIES_COLOR_VARS[index % SERIES_COLOR_VARS.length];
-      ordered.push({ entry, color: bonReadCssVar(varName) });
+      ordered.push({ entry, color: readCssVar(varName) });
     }
   });
 
@@ -120,8 +120,8 @@ export function bonRedditorsSubredditChartOverlaid(
     ...ordered.map((item) => item.entry.bucketCounts),
   ];
 
-  const mutedColor = bonReadCssVar("--bon-muted");
-  const borderColor = bonReadCssVar("--bon-border");
+  const mutedColor = readCssVar("--bon-muted");
+  const borderColor = readCssVar("--bon-border");
 
   const uplotSeries: uPlot.Series[] = [
     {},
@@ -337,14 +337,14 @@ export function bonRedditorsSubredditChartOverlaid(
   ro.observe(host);
 
   if (truncatedStart != null) {
-    host.title = bonFormatTearTooltip(truncatedStart, earliestEvent);
+    host.title = formatTearTooltip(truncatedStart, earliestEvent);
   }
 
-  wrap.appendChild(bonBuildLegend(ordered));
+  wrap.appendChild(buildLegend(ordered));
   return wrap;
 }
 
-function bonBuildLegend(
+function buildLegend(
   ordered: { entry: SubredditChartSeries; color: string }[]
 ): HTMLUListElement {
   const legend = document.createElement("ul");

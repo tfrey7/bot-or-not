@@ -8,14 +8,14 @@
 // costs money); the badge is the prompt to do it.
 
 import type { PassiveHarvest, PassiveHarvestItem } from "../../types.ts";
-import { bonFormatDate } from "../../utils/format_time.ts";
-import { bonInvestigationResults } from "../../utils/history.ts";
+import { formatDate } from "../../utils/format_time.ts";
+import { investigationResults } from "../../utils/history.ts";
 import type { ReportRow } from "./logic.ts";
 
 const ITEM_LIMIT = 30;
 const BODY_CLIP = 280;
 
-export function bonRedditorsPassiveHarvestSection(
+export function redditorsPassiveHarvestSection(
   report: ReportRow
 ): HTMLDivElement | null {
   const harvest = report.passiveHarvest;
@@ -23,8 +23,8 @@ export function bonRedditorsPassiveHarvestSection(
     return null;
   }
 
-  const lastRunAt = bonInvestigationResults(report.investigation)?.runAt ?? 0;
-  const freshItems = bonRedditorsPassiveHarvestCountFresh(harvest, lastRunAt);
+  const lastRunAt = investigationResults(report.investigation)?.runAt ?? 0;
+  const freshItems = redditorsPassiveHarvestCountFresh(harvest, lastRunAt);
 
   const wrap = document.createElement("div");
   wrap.className = "bon-detail-wrap bon-passive-harvest";
@@ -45,7 +45,7 @@ export function bonRedditorsPassiveHarvestSection(
 // lastRunAt == 0 (no investigation yet), everything counts as fresh.
 // Exported so the Investigate button can show the same number as the
 // section's stale-badge without recomputing the definition independently.
-export function bonRedditorsPassiveHarvestCountFresh(
+export function redditorsPassiveHarvestCountFresh(
   harvest: PassiveHarvest | null,
   lastRunAt: number
 ): number {
@@ -91,13 +91,13 @@ function buildTitleRow(
   const itemCount = harvest.items.length;
   const parts = [
     `${itemCount} item${itemCount === 1 ? "" : "s"}`,
-    `last ${bonFormatDate(harvest.lastSeenAt)}`,
+    `last ${formatDate(harvest.lastSeenAt)}`,
   ];
 
   meta.textContent = parts.join(" · ");
   meta.title =
-    `First captured ${bonFormatDate(harvest.firstSeenAt)}, ` +
-    `last ${bonFormatDate(harvest.lastSeenAt)}`;
+    `First captured ${formatDate(harvest.firstSeenAt)}, ` +
+    `last ${formatDate(harvest.lastSeenAt)}`;
   titleRow.appendChild(meta);
 
   return titleRow;
@@ -207,11 +207,11 @@ function buildItem(item: PassiveHarvestItem, lastRunAt: number): HTMLLIElement {
   metaParts.push(item.kind);
 
   if (item.createdAt) {
-    metaParts.push(bonFormatDate(item.createdAt));
+    metaParts.push(formatDate(item.createdAt));
   }
 
   metaLine.textContent = metaParts.join(" · ");
-  metaLine.title = `First seen ${bonFormatDate(item.firstSeenAt)}`;
+  metaLine.title = `First seen ${formatDate(item.firstSeenAt)}`;
   li.appendChild(metaLine);
 
   // For posts we show the title above; the body excerpt is the

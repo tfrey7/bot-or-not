@@ -6,10 +6,10 @@
 // passive-harvest content script (which gates its DOM scan on the same
 // flag) can't drift from the prompt's definition.
 
-const BON_HIDDEN_MAX_VISIBLE_ITEMS = 5;
-const BON_HIDDEN_MIN_KARMA = 1000;
+const HIDDEN_MAX_VISIBLE_ITEMS = 5;
+const HIDDEN_MIN_KARMA = 1000;
 
-export function bonIsProfileHidden(args: {
+export function isProfileHidden(args: {
   postsFetched: number;
   commentsFetched: number;
   totalKarma: number | null;
@@ -17,8 +17,5 @@ export function bonIsProfileHidden(args: {
   const visibleItems = args.postsFetched + args.commentsFetched;
   const karma = args.totalKarma ?? 0;
 
-  return (
-    visibleItems <= BON_HIDDEN_MAX_VISIBLE_ITEMS &&
-    karma >= BON_HIDDEN_MIN_KARMA
-  );
+  return visibleItems <= HIDDEN_MAX_VISIBLE_ITEMS && karma >= HIDDEN_MIN_KARMA;
 }

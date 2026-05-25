@@ -1,57 +1,53 @@
-import { bonAiCommandHandle, bonAiCommandReset } from "./features/ai-command";
-import { bonGoogleAttributionDrain } from "./features/google-harvest";
-import type { BonScrapedPost } from "./features/google-harvest";
+import { aiCommandHandle, aiCommandReset } from "./features/ai-command";
+import { googleAttributionDrain } from "./features/google-harvest";
+import type { ScrapedPost } from "./features/google-harvest";
 import {
-  bonInvestigationAutoOnView,
-  bonInvestigationStart,
-  bonInvestigationSweepOrphans,
+  investigationAutoOnView,
+  investigationStart,
+  investigationSweepOrphans,
 } from "./features/investigation";
 import {
-  bonPassiveHarvestGetHiddenUsernames,
-  bonPassiveHarvestRecord,
+  passiveHarvestGetHiddenUsernames,
+  passiveHarvestRecord,
 } from "./features/passive-harvest";
-import type { BonPassiveHarvestFinding } from "./features/passive-harvest";
+import type { PassiveHarvestFinding } from "./features/passive-harvest";
 import {
-  bonRedditorsClearAll,
-  bonRedditorsDelete,
-  bonRedditorsGetAll,
-  bonRedditorsGetReport,
-  bonRedditorsGetState,
-  bonRedditorsGetTags,
-  bonRedditorsLinkRing,
-  bonRedditorsRecordReport,
-  bonRedditorsSetBotBouncerStatus,
-  bonRedditorsSetGoogleHarvest,
-  bonRedditorsSetUserNotes,
-  bonRedditorsSetUserStatus,
-  bonRedditorsUnlinkRing,
-  bonRedditorsUpdatePostStatus,
-  bonRedditorsUpdateProfileStats,
+  redditorsClearAll,
+  redditorsDelete,
+  redditorsGetAll,
+  redditorsGetReport,
+  redditorsGetState,
+  redditorsGetTags,
+  redditorsLinkRing,
+  redditorsRecordReport,
+  redditorsSetBotBouncerStatus,
+  redditorsSetGoogleHarvest,
+  redditorsSetUserNotes,
+  redditorsSetUserStatus,
+  redditorsUnlinkRing,
+  redditorsUpdatePostStatus,
+  redditorsUpdateProfileStats,
 } from "./features/redditors";
 import {
-  bonSubredditAnalyze,
-  bonSubredditGetReport,
-  bonSubredditList,
+  subredditAnalyze,
+  subredditGetReport,
+  subredditList,
 } from "./features/subreddit-investigation";
-import { bonSyncExport, bonSyncImport } from "./features/sync";
-import { bonRunMigrations } from "./migrations";
+import { syncExport, syncImport } from "./features/sync";
+import { runMigrations } from "./migrations";
 import type { Report } from "./types.ts";
 import {
-  bonClearAllApiKeys,
-  bonReadAllApiKeys,
-  bonReadApiKey,
-  bonReadHidePii,
-  bonReadLlmSelection,
-  bonWriteApiKey,
-  bonWriteHidePii,
-  bonWriteLlmSelection,
-  type BonApiKeyMap,
+  clearAllApiKeys,
+  readAllApiKeys,
+  readApiKey,
+  readHidePii,
+  readLlmSelection,
+  writeApiKey,
+  writeHidePii,
+  writeLlmSelection,
+  type ApiKeyMap,
 } from "./storage.ts";
-import {
-  BON_LLM_VENDORS,
-  bonSniffVendor,
-  type LlmVendor,
-} from "./llm/index.ts";
+import { LLM_VENDORS, sniffVendor, type LlmVendor } from "./llm/index.ts";
 import { AnthropicProvider } from "./llm/anthropic.ts";
 import { OpenAIProvider } from "./llm/openai.ts";
 
@@ -61,22 +57,22 @@ void bootstrapDevClaudeApiKey();
 
 void bootstrapDevReportsTab();
 
-void bonInvestigationSweepOrphans();
+void investigationSweepOrphans();
 
-void bonRunMigrations().then(() => {
+void runMigrations().then(() => {
   // After migrations finish (legacy harvest posts may have just gained
   // their attribution fields), kick the worker so any pending sub-post /
   // comment URLs start trickling toward resolution.
-  bonGoogleAttributionDrain();
+  googleAttributionDrain();
 });
 
 // In dev builds running from a strand worktree, Firefox is the human-facing
 // test surface — and the reports page is almost always what we want in
 // front of us. Have the background open (or refocus) that tab on each
 // launch so we don't have to navigate to the moz-extension:// URL by hand.
-// Production builds (__BON_STRAND__ is null) tree-shake out.
+// Production builds (__STRAND__ is null) tree-shake out.
 async function bootstrapDevReportsTab(): Promise<void> {
-  if (!__BON_STRAND__) {
+  if (!__STRAND__) {
     return;
   }
 
@@ -100,7 +96,7 @@ async function bootstrapDevReportsTab(): Promise<void> {
 }
 
 async function bootstrapDevClaudeApiKey(): Promise<void> {
-  if (!__BON_DEV_CLAUDE_API_KEY__) {
+  if (!__DEV_CLAUDE_API_KEY__) {
     return;
   }
 
@@ -108,13 +104,13 @@ async function bootstrapDevClaudeApiKey(): Promise<void> {
     // Dev key seeding is Anthropic-only by convention (the .env slot is
     // named for Claude). If we ever need an OpenAI dev slot it'd be a
     // second env var + a second branch here.
-    const existing = await bonReadApiKey("anthropic");
+    const existing = await readApiKey("anthropic");
 
     if (existing) {
       return;
     }
 
-    await bonWriteApiKey("anthropic", __BON_DEV_CLAUDE_API_KEY__);
+    await writeApiKey("anthropic", __DEV_CLAUDE_API_KEY__);
     console.log("[Bot or Not] dev: seeded Anthropic API key from .env");
   } catch (error) {
     console.error(
@@ -134,37 +130,37 @@ interface BaseMessage {
 // handler. Domain logic lives in the feature modules, not here.
 browser.runtime.onMessage.addListener((message: BaseMessage) => {
   if (message.type === "report-user") {
-    return bonRedditorsRecordReport(
+    return redditorsRecordReport(
       message.username as string,
       (message.context as Record<string, unknown>) ?? {}
     );
   }
 
   if (message.type === "get-user-state") {
-    return bonRedditorsGetState(message.username as string);
+    return redditorsGetState(message.username as string);
   }
 
   if (message.type === "get-user-report") {
-    return bonRedditorsGetReport(message.username as string);
+    return redditorsGetReport(message.username as string);
   }
 
   if (message.type === "get-user-tags") {
-    return bonRedditorsGetTags();
+    return redditorsGetTags();
   }
 
   if (message.type === "get-all-reports") {
-    return bonRedditorsGetAll();
+    return redditorsGetAll();
   }
 
   if (message.type === "update-user-status") {
-    return bonRedditorsSetUserStatus(
+    return redditorsSetUserStatus(
       message.username as string,
       message.status as Report["userStatus"]
     );
   }
 
   if (message.type === "update-user-profile-stats") {
-    return bonRedditorsUpdateProfileStats(
+    return redditorsUpdateProfileStats(
       message.username as string,
       message.createdAt as number | null,
       message.totalKarma as number | null
@@ -172,14 +168,14 @@ browser.runtime.onMessage.addListener((message: BaseMessage) => {
   }
 
   if (message.type === "update-post-status") {
-    return bonRedditorsUpdatePostStatus(
+    return redditorsUpdatePostStatus(
       message.permalink as string,
       message.status as string
     );
   }
 
   if (message.type === "set-user-notes") {
-    return bonRedditorsSetUserNotes(message.username as string, {
+    return redditorsSetUserNotes(message.username as string, {
       ratings: Array.isArray(message.ratings)
         ? (message.ratings as string[])
         : [],
@@ -188,18 +184,18 @@ browser.runtime.onMessage.addListener((message: BaseMessage) => {
   }
 
   if (message.type === "update-botbouncer-status") {
-    return bonRedditorsSetBotBouncerStatus(
+    return redditorsSetBotBouncerStatus(
       message.username as string,
       message.status as Report["botBouncerStatus"]
     );
   }
 
   if (message.type === "clear-all-reports") {
-    return bonRedditorsClearAll();
+    return redditorsClearAll();
   }
 
   if (message.type === "delete-report") {
-    return bonRedditorsDelete(message.username as string);
+    return redditorsDelete(message.username as string);
   }
 
   if (message.type === "open-popup") {
@@ -216,23 +212,23 @@ browser.runtime.onMessage.addListener((message: BaseMessage) => {
   }
 
   if (message.type === "investigate-user") {
-    return bonInvestigationStart(message.username as string);
+    return investigationStart(message.username as string);
   }
 
   if (message.type === "auto-investigate-on-view") {
-    return bonInvestigationAutoOnView(message.username as string);
+    return investigationAutoOnView(message.username as string);
   }
 
   if (message.type === "analyze-subreddit") {
-    return bonSubredditAnalyze(message.name as string);
+    return subredditAnalyze(message.name as string);
   }
 
   if (message.type === "get-subreddit-report") {
-    return bonSubredditGetReport(message.name as string);
+    return subredditGetReport(message.name as string);
   }
 
   if (message.type === "list-subreddit-reports") {
-    return bonSubredditList();
+    return subredditList();
   }
 
   if (message.type === "get-api-keys") {
@@ -262,58 +258,58 @@ browser.runtime.onMessage.addListener((message: BaseMessage) => {
   }
 
   if (message.type === "get-hide-pii") {
-    return bonReadHidePii().then((hidePii) => ({ hidePii }));
+    return readHidePii().then((hidePii) => ({ hidePii }));
   }
 
   if (message.type === "set-hide-pii") {
-    return bonWriteHidePii(!!message.value).then(() => ({ ok: true }));
+    return writeHidePii(!!message.value).then(() => ({ ok: true }));
   }
 
   if (message.type === "link-ring") {
-    return bonRedditorsLinkRing(
+    return redditorsLinkRing(
       Array.isArray(message.usernames) ? (message.usernames as string[]) : []
     );
   }
 
   if (message.type === "unlink-ring") {
-    return bonRedditorsUnlinkRing(
+    return redditorsUnlinkRing(
       Array.isArray(message.usernames) ? (message.usernames as string[]) : []
     );
   }
 
   if (message.type === "ai-command-reset") {
-    bonAiCommandReset();
+    aiCommandReset();
     return Promise.resolve({ ok: true });
   }
 
   if (message.type === "sync-export") {
-    return bonSyncExport();
+    return syncExport();
   }
 
   if (message.type === "sync-import") {
-    return bonSyncImport({
+    return syncImport({
       reports: (message.reports as Record<string, Report>) ?? {},
     });
   }
 
   if (message.type === "get-hidden-usernames") {
-    return bonPassiveHarvestGetHiddenUsernames();
+    return passiveHarvestGetHiddenUsernames();
   }
 
   if (message.type === "passive-harvest") {
     const username = (message.username as string) || "";
     const items = Array.isArray(message.items)
-      ? (message.items as BonPassiveHarvestFinding["item"][])
+      ? (message.items as PassiveHarvestFinding["item"][])
       : [];
 
-    return bonPassiveHarvestRecord(username, items);
+    return passiveHarvestRecord(username, items);
   }
 
   if (message.type === "google-harvest") {
     const username = (message.username as string) || "";
     const query = (message.query as string) || "";
     const incomingPosts = Array.isArray(message.posts)
-      ? (message.posts as BonScrapedPost[])
+      ? (message.posts as ScrapedPost[])
       : [];
 
     if (!username || incomingPosts.length === 0) {
@@ -324,12 +320,12 @@ browser.runtime.onMessage.addListener((message: BaseMessage) => {
       `[Bot or Not] google-harvest: u/${username} — incoming ${incomingPosts.length} post(s) for "${query}"`
     );
 
-    return bonRedditorsSetGoogleHarvest(username, query, incomingPosts).then(
+    return redditorsSetGoogleHarvest(username, query, incomingPosts).then(
       (result) => {
         // Trickle attribution checks against Reddit for any newly-added
         // sub-post / comment URLs. Independent of investigation runs —
         // the dossier just keeps refining itself in the background.
-        bonGoogleAttributionDrain();
+        googleAttributionDrain();
         return result;
       }
     );
@@ -410,7 +406,7 @@ browser.runtime.onConnect.addListener((port) => {
 
       started = true;
 
-      void bonAiCommandHandle(message.input ?? "", {
+      void aiCommandHandle(message.input ?? "", {
         onProgress: (event) => safePost({ kind: "progress", event }),
         signal: controller.signal,
         requestConfirm: ({ tool, input }) =>
@@ -500,7 +496,7 @@ async function openReportsTab(username?: string): Promise<void> {
 async function handleGetApiKeys(): Promise<{
   hasKey: Record<LlmVendor, boolean>;
 }> {
-  const map = await bonReadAllApiKeys();
+  const map = await readAllApiKeys();
   return { hasKey: toHasKeyMap(map) };
 }
 
@@ -524,12 +520,12 @@ async function handleSetApiKey(
   // separate, explicit message.
   if (!key) {
     if (hintedVendor) {
-      const map = await bonReadAllApiKeys();
+      const map = await readAllApiKeys();
       delete map[hintedVendor];
       await browser.storage.local.set({ apiKeys: map });
     }
 
-    const map = await bonReadAllApiKeys();
+    const map = await readAllApiKeys();
     return {
       ok: true,
       vendor: hintedVendor ?? "anthropic",
@@ -537,9 +533,9 @@ async function handleSetApiKey(
     };
   }
 
-  const vendor = bonSniffVendor(key);
-  await bonWriteApiKey(vendor, key);
-  const map = await bonReadAllApiKeys();
+  const vendor = sniffVendor(key);
+  await writeApiKey(vendor, key);
+  const map = await readAllApiKeys();
   return { ok: true, vendor, hasKey: toHasKeyMap(map) };
 }
 
@@ -547,14 +543,14 @@ async function handleClearApiKeys(): Promise<{
   ok: true;
   hasKey: Record<LlmVendor, boolean>;
 }> {
-  await bonClearAllApiKeys();
+  await clearAllApiKeys();
   return { ok: true, hasKey: toHasKeyMap({}) };
 }
 
-function toHasKeyMap(map: BonApiKeyMap): Record<LlmVendor, boolean> {
+function toHasKeyMap(map: ApiKeyMap): Record<LlmVendor, boolean> {
   const out = {} as Record<LlmVendor, boolean>;
 
-  for (const { id } of BON_LLM_VENDORS) {
+  for (const { id } of LLM_VENDORS) {
     out[id] = !!map[id];
   }
 
@@ -575,7 +571,7 @@ async function handleGetLlmSelection(): Promise<{
     }
   >;
 }> {
-  const stored = await bonReadLlmSelection();
+  const stored = await readLlmSelection();
 
   const anthropic = new AnthropicProvider("");
   const openai = new OpenAIProvider("");
@@ -583,7 +579,7 @@ async function handleGetLlmSelection(): Promise<{
   return {
     vendor: stored.vendor,
     model: stored.model,
-    vendors: BON_LLM_VENDORS.map(({ id, label }) => ({ id, label })),
+    vendors: LLM_VENDORS.map(({ id, label }) => ({ id, label })),
     modelsByVendor: {
       anthropic: {
         defaultModel: anthropic.defaultModel,
@@ -607,6 +603,6 @@ async function handleSetLlmSelection(
   vendor: LlmVendor | null,
   model: string | null
 ): Promise<{ ok: true; vendor: LlmVendor | null; model: string | null }> {
-  await bonWriteLlmSelection({ vendor, model });
+  await writeLlmSelection({ vendor, model });
   return { ok: true, vendor, model };
 }

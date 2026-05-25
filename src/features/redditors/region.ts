@@ -3,8 +3,8 @@
 // AI's region pick, and exposes the timezone-from-timestamps helper that
 // feeds both the deterministic pipeline and the hour heatmap.
 
-import { bonInferRegion, type RegionInferenceResult } from "../regions";
-import { bonInvestigationResults } from "../../utils/history.ts";
+import { inferRegion, type RegionInferenceResult } from "../regions";
+import { investigationResults } from "../../utils/history.ts";
 import type { ReportRow } from "./logic.ts";
 
 export type TimezoneInference =
@@ -22,7 +22,7 @@ export type TimezoneInference =
 // Infer the profile user's timezone from when they post. Humans have a
 // daily sleep window; finding the 6-hour low in UTC posting activity and
 // assuming its midpoint is ~03:00 local gives a rough offset.
-export function bonRedditorsInferTimezoneFromTimestamps(
+export function redditorsInferTimezoneFromTimestamps(
   timestamps: number[] | null | undefined
 ): TimezoneInference {
   if (!timestamps || timestamps.length < 20) {
@@ -88,7 +88,7 @@ export function bonRedditorsInferTimezoneFromTimestamps(
   };
 }
 
-export function bonRedditorsComputeRegionForReport(
+export function redditorsComputeRegionForReport(
   report: ReportRow
 ): RegionInferenceResult {
   const activityData = report.activityData;
@@ -97,11 +97,10 @@ export function bonRedditorsComputeRegionForReport(
     ...(activityData?.commentTimestamps || []),
   ];
 
-  const timezone = bonRedditorsInferTimezoneFromTimestamps(timestamps);
-  const deterministic = bonInferRegion(activityData, timezone);
+  const timezone = redditorsInferTimezoneFromTimestamps(timestamps);
+  const deterministic = inferRegion(activityData, timezone);
 
-  const aiRegion =
-    bonInvestigationResults(report.investigation)?.region ?? null;
+  const aiRegion = investigationResults(report.investigation)?.region ?? null;
 
   if (aiRegion?.code) {
     return {

@@ -9,7 +9,7 @@
 //
 // Requires CLAUDE_API_KEY in env.
 //
-// We intentionally bypass `bonInvestigateUser` from
+// We intentionally bypass `investigateUser` from
 // src/features/investigation/index.ts because that module pulls the
 // prompt via Vite's `?raw` import suffix, which tsx/Node don't
 // understand. Instead we read the prompt off disk and call the same
@@ -22,22 +22,22 @@ import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
 
 import {
-  bonFetchBotBouncerStatus,
-  bonFetchRedditProfile,
-  BON_REDDIT_FETCH_LIMIT,
+  fetchBotBouncerStatus,
+  fetchRedditProfile,
+  REDDIT_FETCH_LIMIT,
   RedditFetchError,
 } from "../src/features/investigation/fetch.ts";
 import {
-  bonExtractSnoovatarUrl,
-  bonSummarizeProfile,
+  extractSnoovatarUrl,
+  summarizeProfile,
 } from "../src/features/investigation/summarize.ts";
-import { bonInvestigationCallLlm } from "../src/features/investigation/api.ts";
-import { bonExtractJson } from "../src/utils/json.ts";
-import { bonNormalizePersona } from "../src/utils/persona.ts";
-import { bonExtractActivityData } from "../src/utils/reddit_activity.ts";
-import { bonComputeVerdict } from "../src/verdict.ts";
-import { bonInferRegion } from "../src/features/regions/index.ts";
-import { bonReportsInferTimezoneFromTimestamps } from "../src/features/reports/region.ts";
+import { investigationCallLlm } from "../src/features/investigation/api.ts";
+import { extractJson } from "../src/utils/json.ts";
+import { normalizePersona } from "../src/utils/persona.ts";
+import { extractActivityData } from "../src/utils/reddit_activity.ts";
+import { computeVerdict } from "../src/verdict.ts";
+import { inferRegion } from "../src/features/regions/index.ts";
+import { reportsInferTimezoneFromTimestamps } from "../src/features/reports/region.ts";
 import type { Factor } from "../src/types.ts";
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -109,8 +109,8 @@ function log(...parts: unknown[]): void {
 }
 
 function formatRegion(
-  region: ReturnType<typeof bonInferRegion>,
-  timezone: ReturnType<typeof bonReportsInferTimezoneFromTimestamps>
+  region: ReturnType<typeof inferRegion>,
+  timezone: ReturnType<typeof reportsInferTimezoneFromTimestamps>
 ): string {
   if (region && region.kind === "deterministic") {
     const sources: string[] = [];
@@ -143,8 +143,8 @@ async function main(): Promise<void> {
   log(`[investigate] fetching reddit data for u/${username}...`);
 
   const [profileSettled, botBouncerSettled] = await Promise.allSettled([
-    bonFetchRedditProfile(username),
-    bonFetchBotBouncerStatus(username),
+    fetchRedditProfile(username),
+    fetchBotBouncerStatus(username),
   ]);
 
   if (profileSettled.status === "rejected") {
@@ -169,7 +169,7 @@ async function main(): Promise<void> {
     `[investigate] fetched posts=${postCount} comments=${commentCount} botbouncer=${botBouncerStatus ?? "none"}`
   );
 
-  const summary = bonSummarizeProfile(username, profile, {
+  const summary = summarizeProfile(username, profile, {
     ...(botBouncerStatus
       ? { botBouncerStatus, botBouncerCheckedAt: Date.now() }
       : {}),
@@ -177,8 +177,8 @@ async function main(): Promise<void> {
 
   log(`[investigate] calling Claude...`);
 
-  const avatarUrl = bonExtractSnoovatarUrl(profile);
-  const claudeResult = await bonInvestigationCallLlm(
+  const avatarUrl = extractSnoovatarUrl(profile);
+  const claudeResult = await investigationCallLlm(
     apiKey!,
     PROMPT,
     summary,
@@ -186,7 +186,7 @@ async function main(): Promise<void> {
     { avatarUrl, ...(modelOverride ? { model: modelOverride } : {}) }
   );
 
-  const extracted = bonExtractJson(claudeResult.rawText);
+  const extracted = extractJson(claudeResult.rawText);
   if (!extracted || typeof extracted !== "object") {
     console.error("Could not parse Claude response. Raw text:");
     console.error(claudeResult.rawText);
@@ -201,22 +201,22 @@ async function main(): Promise<void> {
   }
 
   const factors = payload.factors as Factor[];
-  const persona = bonNormalizePersona(payload.persona);
+  const persona = normalizePersona(payload.persona);
   const claudeSummary =
     typeof payload.summary === "string" ? payload.summary : "";
-  const verdict = bonComputeVerdict(factors);
+  const verdict = computeVerdict(factors);
 
-  const activityData = bonExtractActivityData(
+  const activityData = extractActivityData(
     profile,
-    BON_REDDIT_FETCH_LIMIT
+    REDDIT_FETCH_LIMIT
   );
 
   const timestamps = [
     ...(activityData.postTimestamps || []),
     ...(activityData.commentTimestamps || []),
   ];
-  const timezone = bonReportsInferTimezoneFromTimestamps(timestamps);
-  const region = bonInferRegion(activityData, timezone);
+  const timezone = reportsInferTimezoneFromTimestamps(timestamps);
+  const region = inferRegion(activityData, timezone);
 
   const fullResult = {
     username,

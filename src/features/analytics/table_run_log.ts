@@ -2,23 +2,19 @@
 // over the full history; the orchestrator owns the current page index
 // and re-renders this widget when it changes.
 
-import {
-  bonFmtPercent,
-  bonFmtThousands,
-  bonFmtUsd,
-} from "../../utils/format_number.ts";
-import { bonFmtDuration, bonFmtTimestamp } from "../../utils/format_time.ts";
-import { bonPagination } from "../../utils/pagination.ts";
+import { fmtPercent, fmtThousands, fmtUsd } from "../../utils/format_number.ts";
+import { fmtDuration, fmtTimestamp } from "../../utils/format_time.ts";
+import { pagination } from "../../utils/pagination.ts";
 import type { AnalyticsEntry } from "./logic.ts";
 
-export const BON_ANALYTICS_RUN_LOG_PAGE_SIZE = 25;
+export const ANALYTICS_RUN_LOG_PAGE_SIZE = 25;
 
 export interface RunLogOpts {
   currentPage: number;
   onPageChange: (page: number) => void;
 }
 
-export function bonAnalyticsRunLog(
+export function analyticsRunLog(
   runs: AnalyticsEntry[],
   opts: RunLogOpts
 ): HTMLDivElement {
@@ -42,11 +38,11 @@ export function bonAnalyticsRunLog(
 
   const totalPages = Math.max(
     1,
-    Math.ceil(sorted.length / BON_ANALYTICS_RUN_LOG_PAGE_SIZE)
+    Math.ceil(sorted.length / ANALYTICS_RUN_LOG_PAGE_SIZE)
   );
   const currentPage = Math.min(Math.max(1, opts.currentPage), totalPages);
-  const pageStart = (currentPage - 1) * BON_ANALYTICS_RUN_LOG_PAGE_SIZE;
-  const pageEnd = pageStart + BON_ANALYTICS_RUN_LOG_PAGE_SIZE;
+  const pageStart = (currentPage - 1) * ANALYTICS_RUN_LOG_PAGE_SIZE;
+  const pageEnd = pageStart + ANALYTICS_RUN_LOG_PAGE_SIZE;
   const rows = sorted.slice(pageStart, pageEnd);
 
   const table = document.createElement("table");
@@ -70,7 +66,7 @@ export function bonAnalyticsRunLog(
     const tr = document.createElement("tr");
 
     const tdWhen = document.createElement("td");
-    tdWhen.textContent = run.runAt ? bonFmtTimestamp(run.runAt) : "—";
+    tdWhen.textContent = run.runAt ? fmtTimestamp(run.runAt) : "—";
     tr.appendChild(tdWhen);
 
     const tdUser = document.createElement("td");
@@ -99,16 +95,16 @@ export function bonAnalyticsRunLog(
     tr.appendChild(tdModel);
 
     const tdDuration = document.createElement("td");
-    tdDuration.textContent = bonFmtDuration(run.durationMs);
+    tdDuration.textContent = fmtDuration(run.durationMs);
     tr.appendChild(tdDuration);
 
     const tdTokens = document.createElement("td");
     const tokenTotal = sumRunTokens(run);
-    tdTokens.textContent = tokenTotal > 0 ? bonFmtThousands(tokenTotal) : "—";
+    tdTokens.textContent = tokenTotal > 0 ? fmtThousands(tokenTotal) : "—";
     tr.appendChild(tdTokens);
 
     const tdCost = document.createElement("td");
-    tdCost.textContent = bonFmtUsd(run.totalCost);
+    tdCost.textContent = fmtUsd(run.totalCost);
     tr.appendChild(tdCost);
 
     if (run.summary) {
@@ -127,11 +123,11 @@ export function bonAnalyticsRunLog(
 
   if (totalPages > 1) {
     wrap.appendChild(
-      bonPagination({
+      pagination({
         currentPage,
         totalPages,
         totalItems: sorted.length,
-        pageSize: BON_ANALYTICS_RUN_LOG_PAGE_SIZE,
+        pageSize: ANALYTICS_RUN_LOG_PAGE_SIZE,
         onPageChange: opts.onPageChange,
       })
     );
@@ -163,11 +159,11 @@ function formatVerdictCell(run: AnalyticsEntry): string {
   const label = run.verdict.replace(/-/g, " ");
 
   if (typeof run.botProbability === "number") {
-    return `${label} · ${bonFmtPercent(run.botProbability)} bot`;
+    return `${label} · ${fmtPercent(run.botProbability)} bot`;
   }
 
   if (typeof run.confidence === "number") {
-    return `${label} · ${bonFmtPercent(run.confidence)} conf`;
+    return `${label} · ${fmtPercent(run.confidence)} conf`;
   }
 
   return label;

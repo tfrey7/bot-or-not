@@ -7,8 +7,8 @@
 // scores cancels symmetrically toward the origin. "How far from center"
 // reads as "how concentrated this account is on one persona flavor."
 
-import { BON_ARCHETYPES, BON_ARCHETYPE_KEYS } from "../../factors.ts";
-import { bonPersonaHue } from "../../utils/persona_color.ts";
+import { ARCHETYPES, ARCHETYPE_KEYS } from "../../factors.ts";
+import { personaHue } from "../../utils/persona_color.ts";
 import type { ArchetypeKey, Persona, Report } from "../../types.ts";
 
 // Below this, the archetype score is incidental noise — Claude routinely
@@ -52,9 +52,9 @@ export interface ArchetypeAnchor {
   y: number;
 }
 
-export const BON_PERSONAS_ANCHORS: readonly ArchetypeAnchor[] =
-  BON_ARCHETYPES.map((archetype, i) => {
-    const step = (Math.PI * 2) / BON_ARCHETYPES.length;
+export const PERSONAS_ANCHORS: readonly ArchetypeAnchor[] = ARCHETYPES.map(
+  (archetype, i) => {
+    const step = (Math.PI * 2) / ARCHETYPES.length;
     const theta = -Math.PI / 2 + i * step;
     return {
       key: archetype.key,
@@ -63,11 +63,12 @@ export const BON_PERSONAS_ANCHORS: readonly ArchetypeAnchor[] =
       x: Math.cos(theta),
       y: Math.sin(theta),
     };
-  });
+  }
+);
 
 export type PersonasRow = Report & { username: string };
 
-export function bonPersonasCollect(reports: PersonasRow[]): PersonaPoint[] {
+export function personasCollect(reports: PersonasRow[]): PersonaPoint[] {
   const points: PersonaPoint[] = [];
 
   for (const report of reports) {
@@ -85,10 +86,10 @@ export function bonPersonasCollect(reports: PersonasRow[]): PersonaPoint[] {
 
     let sumX = 0;
     let sumY = 0;
-    let topKey: ArchetypeKey = BON_PERSONAS_ANCHORS[0].key;
+    let topKey: ArchetypeKey = PERSONAS_ANCHORS[0].key;
     let topScore = 0;
 
-    for (const anchor of BON_PERSONAS_ANCHORS) {
+    for (const anchor of PERSONAS_ANCHORS) {
       const score = Math.max(0, Math.min(1, archetypes[anchor.key] || 0));
       sumX += score * anchor.x;
       sumY += score * anchor.y;
@@ -120,7 +121,7 @@ export function bonPersonasCollect(reports: PersonasRow[]): PersonaPoint[] {
       magnitude,
       topArchetype: topKey,
       topScore,
-      hue: bonPersonaHue(persona),
+      hue: personaHue(persona),
       isUserRated: (report.userNotes?.ratings.length ?? 0) > 0,
       persona,
       investigatedAt: investigation.results.runAt,
@@ -141,14 +142,14 @@ export type PersonaExemplars = Record<ArchetypeKey, PersonaExemplar[]>;
 // on *that specific axis* (not by top-archetype). A user with 0.7 stan AND
 // 0.65 hustler is a legitimate exemplar of both lists — the radar plots
 // independent axes, so the exemplars do too.
-export function bonPersonasExemplars(points: PersonaPoint[]): PersonaExemplars {
+export function personasExemplars(points: PersonaPoint[]): PersonaExemplars {
   const buckets = {} as PersonaExemplars;
 
-  for (const key of BON_ARCHETYPE_KEYS) {
+  for (const key of ARCHETYPE_KEYS) {
     buckets[key] = [];
   }
 
-  for (const archetype of BON_ARCHETYPES) {
+  for (const archetype of ARCHETYPES) {
     const ranked: PersonaExemplar[] = [];
 
     for (const point of points) {

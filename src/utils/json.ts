@@ -2,7 +2,7 @@
 // {...} block. Used to parse Claude's verdict output, which may include
 // surrounding narration.
 
-export function bonExtractJson(text: string | null | undefined): unknown {
+export function extractJson(text: string | null | undefined): unknown {
   if (!text) {
     return null;
   }

@@ -3,10 +3,10 @@
 // wall-clock per-investigation total).
 
 import type { AnalyticsEntry } from "./logic.ts";
-import { bonAnalyticsDailyLatencyChart } from "./chart_latency.ts";
-import { bonAnalyticsEmptyPanel } from "./uplot_helpers.ts";
+import { analyticsDailyLatencyChart } from "./chart_latency.ts";
+import { analyticsEmptyPanel } from "./uplot_helpers.ts";
 
-export function bonAnalyticsRedditLatencyChart(
+export function analyticsRedditLatencyChart(
   runs: AnalyticsEntry[]
 ): HTMLElement {
   const samples: Array<{ runAt: number; durationMs: number }> = [];
@@ -22,8 +22,8 @@ export function bonAnalyticsRedditLatencyChart(
   }
 
   if (!samples.length) {
-    return bonAnalyticsEmptyPanel("No Reddit fetch timing data yet.");
+    return analyticsEmptyPanel("No Reddit fetch timing data yet.");
   }
 
-  return bonAnalyticsDailyLatencyChart(samples, "fetch");
+  return analyticsDailyLatencyChart(samples, "fetch");
 }

@@ -21,7 +21,7 @@
 //
 // Idempotent — checks for old keys before touching anything.
 
-import { bonReadReports, bonWriteReports } from "../storage.ts";
+import { readReports, writeReports } from "../storage.ts";
 import type {
   ArchetypeKey,
   Persona,
@@ -32,9 +32,9 @@ import type {
 const HUSTLER_THRESHOLD_FOR_CAM_MODEL = 0.4;
 const LABEL_DEMOTION_THRESHOLD = 0.4;
 
-export async function bonMigratePersonaSimplification(): Promise<void> {
+export async function migratePersonaSimplification(): Promise<void> {
   try {
-    const reports = await bonReadReports();
+    const reports = await readReports();
     let changed = false;
 
     for (const [username, report] of Object.entries(reports)) {
@@ -76,7 +76,7 @@ export async function bonMigratePersonaSimplification(): Promise<void> {
     }
 
     if (changed) {
-      await bonWriteReports(reports);
+      await writeReports(reports);
       console.log(
         "[Bot or Not] migrated personas: dropped teen, narrowed thirst → cam_model"
       );

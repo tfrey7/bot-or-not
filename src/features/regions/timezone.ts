@@ -16,7 +16,7 @@ export interface TimezoneOnlyRegionInference {
 
 // Coarse UTC-offset → region-band label for the inferred-timezone strip.
 // Returns "" for offsets outside the commonly-populated bands.
-export function bonRegionForOffset(offset: number): string {
+export function regionForOffset(offset: number): string {
   if (offset === 0) {
     return "UK, Portugal, West Africa";
   }

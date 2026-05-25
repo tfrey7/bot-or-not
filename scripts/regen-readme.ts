@@ -6,7 +6,7 @@ import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
-import { BON_ARCHETYPES, BON_FACTORS } from "../src/factors.ts";
+import { ARCHETYPES, FACTORS } from "../src/factors.ts";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repoRoot = join(here, "..");
@@ -21,8 +21,8 @@ const template = readFileSync(
 
 const today = new Date().toISOString().slice(0, 10);
 
-const factorList = BON_FACTORS.map((factor) => `- ${factor.label}`).join("\n");
-const archetypeList = BON_ARCHETYPES.map(
+const factorList = FACTORS.map((factor) => `- ${factor.label}`).join("\n");
+const archetypeList = ARCHETYPES.map(
   (archetype) => `- **${archetype.label}** — ${archetype.blurb}`,
 ).join("\n");
 
@@ -57,7 +57,7 @@ if (presentScreenshots.length === 0) {
 const rendered = template
   .replaceAll("{{version}}", manifest.version)
   .replaceAll("{{date}}", today)
-  .replaceAll("{{factor_count}}", String(BON_FACTORS.length))
+  .replaceAll("{{factor_count}}", String(FACTORS.length))
   .replaceAll("{{factor_list}}", factorList)
   .replaceAll("{{archetype_list}}", archetypeList)
   .replaceAll("{{screenshots_section}}", screenshotsSection);

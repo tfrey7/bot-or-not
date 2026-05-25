@@ -12,8 +12,8 @@
 // only the types in `provider.ts`.
 
 import type { ClaudeUsage } from "../types.ts";
-import { bonEstimateCostUsd } from "./cost.ts";
-import { bonEnrichLlmError } from "./provider.ts";
+import { estimateCostUsd } from "./cost.ts";
+import { enrichLlmError } from "./provider.ts";
 import type {
   LlmAction,
   LlmCompleteRequest,
@@ -29,12 +29,12 @@ import type {
   LlmVendor,
 } from "./provider.ts";
 
-const BON_OPENAI_API_URL = "https://api.openai.com/v1/chat/completions";
-const BON_OPENAI_DEFAULT_MODEL = "gpt-4o-mini";
-const BON_OPENAI_DEFAULT_COMPLETE_TIMEOUT_MS = 4 * 60 * 1000;
-const BON_OPENAI_DEFAULT_TOOL_TURN_TIMEOUT_MS = 60_000;
+const OPENAI_API_URL = "https://api.openai.com/v1/chat/completions";
+const OPENAI_DEFAULT_MODEL = "gpt-4o-mini";
+const OPENAI_DEFAULT_COMPLETE_TIMEOUT_MS = 4 * 60 * 1000;
+const OPENAI_DEFAULT_TOOL_TURN_TIMEOUT_MS = 60_000;
 
-const BON_OPENAI_MODELS: readonly LlmModelOption[] = [
+const OPENAI_MODELS: readonly LlmModelOption[] = [
   { id: "gpt-4o", label: "GPT-4o" },
   { id: "gpt-4o-mini", label: "GPT-4o mini" },
   { id: "gpt-4.1", label: "GPT-4.1" },
@@ -221,8 +221,8 @@ function toClaudeUsage(usage: OpenAIUsage | undefined): ClaudeUsage | null {
 
 export class OpenAIProvider implements LlmProvider {
   readonly vendor: LlmVendor = "openai";
-  readonly defaultModel = BON_OPENAI_DEFAULT_MODEL;
-  readonly availableModels = BON_OPENAI_MODELS;
+  readonly defaultModel = OPENAI_DEFAULT_MODEL;
+  readonly availableModels = OPENAI_MODELS;
 
   constructor(private readonly apiKey: string) {}
 
@@ -233,7 +233,7 @@ export class OpenAIProvider implements LlmProvider {
       maxTokens,
       model = this.defaultModel,
       label = "openai",
-      timeoutMs = BON_OPENAI_DEFAULT_COMPLETE_TIMEOUT_MS,
+      timeoutMs = OPENAI_DEFAULT_COMPLETE_TIMEOUT_MS,
     } = request;
 
     const startedAt = performance.now();
@@ -252,7 +252,7 @@ export class OpenAIProvider implements LlmProvider {
 
     let response: Response;
     try {
-      response = await fetch(BON_OPENAI_API_URL, {
+      response = await fetch(OPENAI_API_URL, {
         method: "POST",
         headers: this.authHeaders(),
         body: JSON.stringify(body),
@@ -279,7 +279,7 @@ export class OpenAIProvider implements LlmProvider {
         `[Bot or Not] timing: ${label} ${elapsedMs}ms (${response.status})`
       );
       const errorText = await response.text().catch(() => "");
-      throw bonEnrichLlmError(
+      throw enrichLlmError(
         new Error(`OpenAI API ${response.status}: ${errorText.slice(0, 300)}`),
         response
       );
@@ -290,7 +290,7 @@ export class OpenAIProvider implements LlmProvider {
 
     const usage = toClaudeUsage(payload.usage);
     const resolvedModel = payload.model ?? model;
-    const costUsd = bonEstimateCostUsd(usage, resolvedModel);
+    const costUsd = estimateCostUsd(usage, resolvedModel);
 
     const elapsedMs = Math.round(performance.now() - startedAt);
     const inputTokens = payload.usage?.prompt_tokens ?? "?";
@@ -321,7 +321,7 @@ export class OpenAIProvider implements LlmProvider {
       signal,
       model = this.defaultModel,
       label = "openai-tool-loop",
-      timeoutMs = BON_OPENAI_DEFAULT_TOOL_TURN_TIMEOUT_MS,
+      timeoutMs = OPENAI_DEFAULT_TOOL_TURN_TIMEOUT_MS,
     } = request;
 
     const startedAt = performance.now();
@@ -571,7 +571,7 @@ export class OpenAIProvider implements LlmProvider {
 
     let response: Response;
     try {
-      response = await fetch(BON_OPENAI_API_URL, {
+      response = await fetch(OPENAI_API_URL, {
         method: "POST",
         headers: this.authHeaders(),
         body: JSON.stringify(body),
@@ -595,7 +595,7 @@ export class OpenAIProvider implements LlmProvider {
     if (!response.ok) {
       cleanup();
       const errorText = await response.text().catch(() => "");
-      throw bonEnrichLlmError(
+      throw enrichLlmError(
         new Error(`OpenAI API ${response.status}: ${errorText.slice(0, 300)}`),
         response
       );
@@ -746,7 +746,7 @@ export class OpenAIProvider implements LlmProvider {
     }
 
     const claudeUsage = toClaudeUsage(usage);
-    const costUsd = bonEstimateCostUsd(claudeUsage, streamModel);
+    const costUsd = estimateCostUsd(claudeUsage, streamModel);
 
     const sortedToolCalls = Array.from(toolCalls.entries())
       .sort(([a], [b]) => a - b)

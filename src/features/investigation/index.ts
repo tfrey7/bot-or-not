@@ -1,6 +1,6 @@
 // Investigation pipeline orchestrator. Two public entry points:
-//   bonInvestigateUser — full Reddit fetch → Claude → structured verdict
-//   bonGatherProfile   — just the fetch + summarize step (shared by the
+//   investigateUser — full Reddit fetch → Claude → structured verdict
+//   gatherProfile   — just the fetch + summarize step (shared by the
 //                        background's two-step "set running, then call AI"
 //                        flow that needs the inputs object to persist
 //                        botBouncerStatus + activityData independently)
@@ -8,7 +8,7 @@
 // `prompt.md` is the system prompt — Vite inlines it as a string at
 // build time so there's no runtime fetch.
 
-import BON_ANALYSIS_PROMPT from "./prompt.md?raw";
+import ANALYSIS_PROMPT from "./prompt.md?raw";
 import type { LlmVendor } from "../../llm/index.ts";
 import type {
   ActivityData,
@@ -26,36 +26,34 @@ import type {
   RegionInferenceAi,
   Verdict,
 } from "../../types.ts";
-import { BON_FACTORS } from "../../factors.ts";
-import { bonNormalizeDemographics } from "../../utils/demographics.ts";
-import { bonExtractJson } from "../../utils/json.ts";
-import { bonNormalizePersona } from "../../utils/persona.ts";
-import { bonExtractActivityData } from "../../utils/reddit_activity.ts";
-import { bonNormalizeRegionInference } from "../../utils/region_inference.ts";
-import { bonComputeVerdict } from "../../verdict.ts";
-import { bonInvestigationCallLlm } from "./api.ts";
-import { bonAssemblePrompt } from "./assemble_prompt.ts";
+import { FACTORS } from "../../factors.ts";
+import { normalizeDemographics } from "../../utils/demographics.ts";
+import { extractJson } from "../../utils/json.ts";
+import { normalizePersona } from "../../utils/persona.ts";
+import { extractActivityData } from "../../utils/reddit_activity.ts";
+import { normalizeRegionInference } from "../../utils/region_inference.ts";
+import { computeVerdict } from "../../verdict.ts";
+import { investigationCallLlm } from "./api.ts";
+import { assemblePrompt } from "./assemble_prompt.ts";
 import {
-  BON_DETERMINISTIC_FACTOR_KEYS,
-  bonScoreDeterministicFactors,
+  DETERMINISTIC_FACTOR_KEYS,
+  scoreDeterministicFactors,
 } from "./deterministic_factors.ts";
 import {
-  bonFetchBotBouncerStatus,
-  BON_REDDIT_FETCH_LIMIT,
-  bonFetchRedditProfile,
+  fetchBotBouncerStatus,
+  REDDIT_FETCH_LIMIT,
+  fetchRedditProfile,
   RedditFetchError,
 } from "./fetch.ts";
-import { bonMergeFactors } from "./merge_factors.ts";
-import { bonExtractSnoovatarUrl, bonSummarizeProfile } from "./summarize.ts";
+import { mergeFactors } from "./merge_factors.ts";
+import { extractSnoovatarUrl, summarizeProfile } from "./summarize.ts";
 
 // Factor keys the LLM is asked to score. The six factors in
-// BON_DETERMINISTIC_FACTOR_KEYS are scored in TS instead — see
+// DETERMINISTIC_FACTOR_KEYS are scored in TS instead — see
 // `deterministic_factors.ts`. Keeping these out of the LLM's prompt
 // trims ~16% of input tokens AND ~27% of output tokens per call.
-const BON_LLM_FACTOR_KEYS: readonly string[] = BON_FACTORS.map(
-  (f) => f.key
-).filter(
-  (k) => !(BON_DETERMINISTIC_FACTOR_KEYS as readonly string[]).includes(k)
+const LLM_FACTOR_KEYS: readonly string[] = FACTORS.map((f) => f.key).filter(
+  (k) => !(DETERMINISTIC_FACTOR_KEYS as readonly string[]).includes(k)
 );
 
 // Caller-supplied context for an investigation. Both keys are independently
@@ -95,15 +93,15 @@ export interface OneDAnalysisResult {
 // Fetch + summarize the account once so the analyzer works from a
 // single Reddit fetch per investigation. Reddit profile and BotBouncer
 // lookup run in parallel so the wall time is max() not sum().
-export async function bonGatherProfile(
+export async function gatherProfile(
   username: string,
   extra: GatherProfileExtra = {}
 ): Promise<GatheredProfile> {
   const wallStart = performance.now();
 
   const [profileSettled, botBouncerSettled] = await Promise.allSettled([
-    bonFetchRedditProfile(username),
-    bonFetchBotBouncerStatus(username),
+    fetchRedditProfile(username),
+    fetchBotBouncerStatus(username),
   ]);
 
   const botBouncerResult =
@@ -146,13 +144,13 @@ export async function bonGatherProfile(
     ? Date.now()
     : (extra.botBouncerCheckedAt ?? null);
 
-  const summary = bonSummarizeProfile(username, profile, {
+  const summary = summarizeProfile(username, profile, {
     ...(botBouncerStatus ? { botBouncerStatus } : {}),
     ...(botBouncerCheckedAt != null ? { botBouncerCheckedAt } : {}),
     ...(extra.googleHarvest ? { googleHarvest: extra.googleHarvest } : {}),
     ...(extra.passiveHarvest ? { passiveHarvest: extra.passiveHarvest } : {}),
   });
-  const activityData = bonExtractActivityData(profile, BON_REDDIT_FETCH_LIMIT);
+  const activityData = extractActivityData(profile, REDDIT_FETCH_LIMIT);
 
   return {
     summary,
@@ -167,7 +165,7 @@ export async function bonGatherProfile(
 // Shape of the JSON object Claude returns. The prompt mandates every field;
 // parseClaudeVerdict throws if anything is missing. Downstream code can trust
 // the shape — no defensive `?? ""` / `Array.isArray()` checks anywhere else.
-// `persona` stays `unknown` because bonNormalizePersona owns its validation.
+// `persona` stays `unknown` because normalizePersona owns its validation.
 interface ClaudeVerdictPayload {
   factors: Factor[];
   summary: string;
@@ -177,7 +175,7 @@ interface ClaudeVerdictPayload {
 }
 
 function parseClaudeVerdict(rawText: string): ClaudeVerdictPayload {
-  const extracted = bonExtractJson(rawText);
+  const extracted = extractJson(rawText);
   if (!extracted || typeof extracted !== "object") {
     throw new Error("Could not parse verdict JSON from Claude response");
   }
@@ -203,7 +201,7 @@ function parseClaudeVerdict(rawText: string): ClaudeVerdictPayload {
 
 // Caller-supplied LLM selection. Both fields nullable — null on either
 // means "let the provider/factory decide" (default backend, default model).
-export interface BonInvestigationLlmSelection {
+export interface InvestigationLlmSelection {
   vendor?: LlmVendor | null;
   model?: string | null;
 }
@@ -215,19 +213,19 @@ export interface BonInvestigationLlmSelection {
 // are kept always-included so the assembled prompt is byte-identical
 // across users — that keeps the Anthropic prompt cache hit rate at
 // baseline levels instead of fragmenting per user.
-export async function bonRunOneDAnalysis(
+export async function runOneDAnalysis(
   apiKey: string,
   profileSummary: ProfileSummary,
   avatarUrl: string | null = null,
-  selection: BonInvestigationLlmSelection = {}
+  selection: InvestigationLlmSelection = {}
 ): Promise<OneDAnalysisResult> {
-  const systemPrompt = bonAssemblePrompt(BON_ANALYSIS_PROMPT, profileSummary, {
-    llmFactorKeys: BON_LLM_FACTOR_KEYS,
+  const systemPrompt = assemblePrompt(ANALYSIS_PROMPT, profileSummary, {
+    llmFactorKeys: LLM_FACTOR_KEYS,
     stripInputConditional: false,
   });
-  const deterministicFactors = bonScoreDeterministicFactors(profileSummary);
+  const deterministicFactors = scoreDeterministicFactors(profileSummary);
 
-  const { rawText, usage, model, costUsd } = await bonInvestigationCallLlm(
+  const { rawText, usage, model, costUsd } = await investigationCallLlm(
     apiKey,
     systemPrompt,
     profileSummary,
@@ -240,17 +238,17 @@ export async function bonRunOneDAnalysis(
   );
 
   const parsed = parseClaudeVerdict(rawText);
-  const factors = bonMergeFactors(parsed.factors, deterministicFactors);
-  const derived = bonComputeVerdict(factors);
+  const factors = mergeFactors(parsed.factors, deterministicFactors);
+  const derived = computeVerdict(factors);
 
   return {
     verdict: derived.verdict,
     confidence: derived.confidence,
     botProbability: derived.botProbability,
     summary: parsed.summary,
-    persona: bonNormalizePersona(parsed.persona),
-    region: bonNormalizeRegionInference(parsed.region),
-    demographics: bonNormalizeDemographics(parsed.demographics),
+    persona: normalizePersona(parsed.persona),
+    region: normalizeRegionInference(parsed.region),
+    demographics: normalizeDemographics(parsed.demographics),
     factors,
     runAt: Date.now(),
     model,
@@ -272,15 +270,15 @@ export interface InvestigateUserResult extends OneDAnalysisResult {
 
 // Single-call entry point: fetch the profile, run the 1D analyzer,
 // return the combined investigation object.
-export async function bonInvestigateUser(
+export async function investigateUser(
   username: string,
   apiKey: string,
   extra: GatherProfileExtra = {},
-  selection: BonInvestigationLlmSelection = {}
+  selection: InvestigationLlmSelection = {}
 ): Promise<InvestigateUserResult> {
-  const gathered = await bonGatherProfile(username, extra);
-  const avatarUrl = bonExtractSnoovatarUrl(gathered.raw);
-  const analysisResult = await bonRunOneDAnalysis(
+  const gathered = await gatherProfile(username, extra);
+  const avatarUrl = extractSnoovatarUrl(gathered.raw);
+  const analysisResult = await runOneDAnalysis(
     apiKey,
     gathered.summary,
     avatarUrl,
@@ -301,13 +299,13 @@ export async function bonInvestigateUser(
 }
 
 export { RedditFetchError };
-export { bonExtractSnoovatarUrl };
+export { extractSnoovatarUrl };
 
 export {
-  BON_INVESTIGATION_CONCURRENCY,
-  bonInvestigationSweepOrphans,
-  bonInvestigationStart,
-  bonInvestigationStartBatch,
-  bonInvestigationAutoOnView,
-  bonInvestigationMaybeAuto,
+  INVESTIGATION_CONCURRENCY,
+  investigationSweepOrphans,
+  investigationStart,
+  investigationStartBatch,
+  investigationAutoOnView,
+  investigationMaybeAuto,
 } from "./handlers.ts";

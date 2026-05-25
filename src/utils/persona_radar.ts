@@ -1,11 +1,11 @@
 // Shared radar widget rendering the seven archetype strengths.
 // Both the reports detail pane and the Reddit profile panel call this
 // so the chart is visually identical across surfaces. Vertices start at
-// 12 o'clock and walk clockwise through BON_ARCHETYPES — the chart grows
+// 12 o'clock and walk clockwise through ARCHETYPES — the chart grows
 // automatically if an archetype is added. Fill/stroke pull from
 // --bon-persona-accent set on an ancestor.
 
-import { BON_ARCHETYPES } from "../factors.ts";
+import { ARCHETYPES } from "../factors.ts";
 import type { ArchetypeKey } from "../types.ts";
 
 const RADAR_LAYOUT = {
@@ -38,20 +38,20 @@ const BG_FADE_FINAL_OPACITY = 0.45;
 // radar's total runtime — bg fade, spider race-out, and label glow all
 // start and end on the same beat. Derived from the archetype count so
 // it auto-tracks if axes are added.
-export const BON_PERSONA_RADAR_DURATION_MS =
-  (BON_ARCHETYPES.length - 1) * ANIM_STAGGER_MS + ANIM_VERTEX_MS;
+export const PERSONA_RADAR_DURATION_MS =
+  (ARCHETYPES.length - 1) * ANIM_STAGGER_MS + ANIM_VERTEX_MS;
 
-export interface BonPersonaRadarOptions {
+export interface PersonaRadarOptions {
   iconUrl?: string | null;
 }
 
-export function bonPersonaRadar(
+export function personaRadar(
   archetypes: Record<ArchetypeKey, number>,
-  options: BonPersonaRadarOptions = {}
+  options: PersonaRadarOptions = {}
 ): HTMLDivElement | null {
   const svgns = "http://www.w3.org/2000/svg";
   const layout = RADAR_LAYOUT;
-  const axes = BON_ARCHETYPES;
+  const axes = ARCHETYPES;
   const N = axes.length;
 
   if (N < 3) {
@@ -227,7 +227,7 @@ export function bonPersonaRadar(
     typeof window !== "undefined" &&
     typeof window.requestAnimationFrame === "function"
   ) {
-    const totalDuration = BON_PERSONA_RADAR_DURATION_MS;
+    const totalDuration = PERSONA_RADAR_DURATION_MS;
     let startTime: number | null = null;
 
     const tick = (now: number): void => {

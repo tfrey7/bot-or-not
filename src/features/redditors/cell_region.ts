@@ -6,13 +6,13 @@
 // audit the pick.
 
 import {
-  BON_REGION_INFO,
+  REGION_INFO,
   type RegionInfo,
   type AiRegionInference,
   type DeterministicRegionInference,
 } from "../regions";
 import type { ReportRow } from "./logic.ts";
-import { bonRedditorsComputeRegionForReport } from "./region.ts";
+import { redditorsComputeRegionForReport } from "./region.ts";
 
 function formatRegionTooltip(
   region: DeterministicRegionInference,
@@ -74,7 +74,7 @@ function formatRegionTooltip(
   }
 
   if (region.runnerUp) {
-    const runnerInfo = BON_REGION_INFO[region.runnerUp.region];
+    const runnerInfo = REGION_INFO[region.runnerUp.region];
     lines.push(
       `(runner-up: ${runnerInfo?.label || region.runnerUp.region} with score ${region.runnerUp.score.toFixed(1)})`
     );
@@ -84,7 +84,7 @@ function formatRegionTooltip(
 }
 
 function buildAiBadge(region: AiRegionInference): HTMLSpanElement {
-  const info: RegionInfo = BON_REGION_INFO[region.region] || {
+  const info: RegionInfo = REGION_INFO[region.region] || {
     flag: "🏳",
     label: region.region,
     utcOffsets: [],
@@ -115,7 +115,7 @@ function buildAiBadge(region: AiRegionInference): HTMLSpanElement {
   lines.push(`• Confidence ${Math.round(region.confidence * 100)}%`);
 
   if (deterministicMismatch && region.deterministic?.kind === "deterministic") {
-    const otherInfo = BON_REGION_INFO[region.deterministic.region];
+    const otherInfo = REGION_INFO[region.deterministic.region];
     lines.push(
       `⚠ Deterministic signals point to ${otherInfo?.label || region.deterministic.region} (subreddit/script/language activity) — possible mismatch worth a look`
     );
@@ -125,10 +125,10 @@ function buildAiBadge(region: AiRegionInference): HTMLSpanElement {
   return badge;
 }
 
-export function bonRedditorsRegionBadge(
+export function redditorsRegionBadge(
   report: ReportRow
 ): HTMLSpanElement | null {
-  const region = bonRedditorsComputeRegionForReport(report);
+  const region = redditorsComputeRegionForReport(report);
 
   if (!region) {
     // No region inferred — leave the slot empty rather than rendering a
@@ -143,7 +143,7 @@ export function bonRedditorsRegionBadge(
   }
 
   if (region.kind === "deterministic") {
-    const info: RegionInfo = BON_REGION_INFO[region.region] || {
+    const info: RegionInfo = REGION_INFO[region.region] || {
       flag: "🏳",
       label: region.region,
       utcOffsets: [],

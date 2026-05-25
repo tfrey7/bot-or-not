@@ -5,8 +5,8 @@
 // chance to grab them. The actual Submit click then dispatches the stored
 // context to the background.
 
-import { bonClientSend } from "../../client.ts";
-import { bonInlineTagsBumpReport } from "../inline-tags";
+import { clientSend } from "../../client.ts";
+import { inlineTagsBumpReport } from "../inline-tags";
 
 interface ReportContext {
   kind: "post" | "comment";
@@ -68,7 +68,7 @@ function buildReportContext(event: Event): PendingReport | null {
   return { username, context };
 }
 
-export function bonReportingInit(): void {
+export function reportingInit(): void {
   document.addEventListener(
     "click",
     async function (event) {
@@ -88,12 +88,12 @@ export function bonReportingInit(): void {
 
       if (reportSpan && pendingReport) {
         const { username, context } = pendingReport;
-        await bonClientSend({
+        await clientSend({
           type: "report-user",
           username,
           context,
         });
-        bonInlineTagsBumpReport(username);
+        inlineTagsBumpReport(username);
         pendingReport = null;
       }
     },
@@ -103,6 +103,6 @@ export function bonReportingInit(): void {
 
 // Called by the orchestrator on SPA navigation so a half-captured report
 // context from the previous page doesn't bleed into the next one.
-export function bonReportingResetNav(): void {
+export function reportingResetNav(): void {
   pendingReport = null;
 }

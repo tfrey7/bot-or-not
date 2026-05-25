@@ -4,45 +4,45 @@
 // persona scatter of just that sub's sampled users.
 //
 // Selection state lives in this module — the redditors orchestrator
-// calls bonRenderSubreddits whenever data could have changed
+// calls renderSubredditsTab whenever data could have changed
 // (`reports-changed`, `subreddits-changed`, initial load), and we
 // preserve the operator's selection across re-renders unless the
 // selected sub is no longer in the list.
 
-import { bonClientSend } from "../../client.ts";
+import { clientSend } from "../../client.ts";
 import type { Report } from "../../types.ts";
 import type {
-  BonSubredditListEntry,
-  BonSubredditListResult,
+  SubredditListEntry,
+  SubredditListResult,
 } from "../subreddit-investigation";
-import { bonRenderSubredditsDetail } from "./detail_pane.ts";
-import { bonRenderSubredditsList } from "./list.ts";
+import { renderSubredditsDetail } from "./detail_pane.ts";
+import { renderSubredditsList } from "./list.ts";
 
-export interface BonRenderSubredditsOptions {
+export interface RenderSubredditsOptions {
   listContainer: HTMLElement | null;
   detailContainer: HTMLElement | null;
   onSelectUser: (username: string) => void;
 }
 
 let selectedNameKey: string | null = null;
-let lastEntries: BonSubredditListEntry[] = [];
+let lastEntries: SubredditListEntry[] = [];
 let lastReportsByUsername: Map<string, Report> = new Map();
 
-export async function bonRenderSubreddits(
-  options: BonRenderSubredditsOptions
+export async function renderSubredditsTab(
+  options: RenderSubredditsOptions
 ): Promise<void> {
   const { listContainer, detailContainer, onSelectUser } = options;
   if (!listContainer || !detailContainer) {
     return;
   }
 
-  let entries: BonSubredditListEntry[] = [];
+  let entries: SubredditListEntry[] = [];
   let reportsByUsername = new Map<string, Report>();
 
   try {
     const [subsResponse, reportsResponse] = await Promise.all([
-      bonClientSend<BonSubredditListResult>({ type: "list-subreddit-reports" }),
-      bonClientSend<{ reports?: Record<string, Report> }>({
+      clientSend<SubredditListResult>({ type: "list-subreddit-reports" }),
+      clientSend<{ reports?: Record<string, Report> }>({
         type: "get-all-reports",
       }),
     ]);
@@ -79,7 +79,7 @@ export async function bonRenderSubreddits(
   renderDetail(detailContainer, onSelectUser);
 }
 
-function nameKeyOf(entry: BonSubredditListEntry): string {
+function nameKeyOf(entry: SubredditListEntry): string {
   return entry.record.name.toLowerCase();
 }
 
@@ -88,7 +88,7 @@ function renderList(
   onSelectUser: (username: string) => void
 ): void {
   container.replaceChildren(
-    bonRenderSubredditsList(lastEntries, {
+    renderSubredditsList(lastEntries, {
       selectedNameKey,
       onSelect: (nameKey) => {
         if (selectedNameKey === nameKey) {
@@ -116,7 +116,7 @@ function renderDetail(
     : null;
 
   container.replaceChildren(
-    bonRenderSubredditsDetail({
+    renderSubredditsDetail({
       entry: selected,
       reportsByUsername: lastReportsByUsername,
       hasAnyEntries: lastEntries.length > 0,

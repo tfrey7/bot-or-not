@@ -5,15 +5,15 @@
 
 import uPlot from "uplot";
 
-import { bonFmtUsd } from "../../utils/format_number.ts";
+import { fmtUsd } from "../../utils/format_number.ts";
 import type { AnalyticsEntry } from "./logic.ts";
 import { formatDayTick } from "./tick_helpers.ts";
 import {
-  bonAnalyticsAxes,
-  bonAnalyticsEmptyPanel,
-  bonAnalyticsPlaceTooltip,
-  bonAnalyticsUplotHost,
-  bonAnalyticsUplotPalette,
+  analyticsAxes,
+  analyticsEmptyPanel,
+  analyticsPlaceTooltip,
+  analyticsUplotHost,
+  analyticsUplotPalette,
   type UplotChartOptions,
 } from "./uplot_helpers.ts";
 
@@ -24,7 +24,7 @@ interface CostPoint {
   username: string;
 }
 
-export function bonAnalyticsCostChart(runs: AnalyticsEntry[]): HTMLElement {
+export function analyticsCostChart(runs: AnalyticsEntry[]): HTMLElement {
   const sorted = runs
     .filter(
       (run): run is AnalyticsEntry & { runAt: number } => run.runAt != null
@@ -32,7 +32,7 @@ export function bonAnalyticsCostChart(runs: AnalyticsEntry[]): HTMLElement {
     .sort((a, b) => a.runAt - b.runAt);
 
   if (!sorted.length) {
-    return bonAnalyticsEmptyPanel("No timestamped runs to plot.");
+    return analyticsEmptyPanel("No timestamped runs to plot.");
   }
 
   const points: CostPoint[] = [];
@@ -57,8 +57,8 @@ export function bonAnalyticsCostChart(runs: AnalyticsEntry[]): HTMLElement {
     }
   }
 
-  const palette = bonAnalyticsUplotPalette();
-  const { host, tooltip, mount } = bonAnalyticsUplotHost();
+  const palette = analyticsUplotPalette();
+  const { host, tooltip, mount } = analyticsUplotHost();
 
   const xs = points.map((point) => point.ts);
   const ys = points.map((point) => point.cumulative);
@@ -94,10 +94,10 @@ export function bonAnalyticsCostChart(runs: AnalyticsEntry[]): HTMLElement {
         points: { show: false },
       },
     ],
-    axes: bonAnalyticsAxes(palette, {
+    axes: analyticsAxes(palette, {
       xIncrs: [86400],
       xValues: (_u, splits) => splits.map(formatDayTick),
-      yValues: (_u, splits) => splits.map((value) => bonFmtUsd(value)),
+      yValues: (_u, splits) => splits.map((value) => fmtUsd(value)),
     }),
     hooks: {
       draw: [
@@ -159,12 +159,12 @@ export function bonAnalyticsCostChart(runs: AnalyticsEntry[]): HTMLElement {
 
           const thisRun = document.createElement("div");
           thisRun.className = "bon-analytics-uplot-tooltip__row";
-          thisRun.innerHTML = `<span>this run</span><span>${bonFmtUsd(point.cost)}</span>`;
+          thisRun.innerHTML = `<span>this run</span><span>${fmtUsd(point.cost)}</span>`;
           tooltip.appendChild(thisRun);
 
           const cum = document.createElement("div");
           cum.className = "bon-analytics-uplot-tooltip__row";
-          cum.innerHTML = `<span>cumulative</span><span>${bonFmtUsd(point.cumulative)}</span>`;
+          cum.innerHTML = `<span>cumulative</span><span>${fmtUsd(point.cumulative)}</span>`;
           tooltip.appendChild(cum);
 
           if (sourceIdx === maxIndex) {
@@ -175,7 +175,7 @@ export function bonAnalyticsCostChart(runs: AnalyticsEntry[]): HTMLElement {
           }
 
           tooltip.hidden = false;
-          bonAnalyticsPlaceTooltip(
+          analyticsPlaceTooltip(
             host,
             tooltip,
             u.over.offsetLeft,

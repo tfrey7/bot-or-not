@@ -3,18 +3,18 @@
 // rather than a modal; activating the tab uses the shared tab handler,
 // so this module only owns the inputs and buttons.
 
-import { bonClientSend } from "../../client.ts";
+import { clientSend } from "../../client.ts";
 import type { LlmVendor } from "../../llm/index.ts";
 import {
-  bonGoogleHarvestIsGranted,
-  bonGoogleHarvestMatches,
-  bonGoogleHarvestRequest,
-  bonGoogleHarvestRevoke,
+  googleHarvestIsGranted,
+  googleHarvestMatches,
+  googleHarvestRequest,
+  googleHarvestRevoke,
 } from "../google-harvest";
-import { bonPageOpenConfirmModal } from "../page";
-export { bonSettingsStrip } from "./strip.ts";
+import { pageOpenConfirmModal } from "../page";
+export { settingsStrip } from "./strip.ts";
 
-// DOM refs deferred to bonSettingsInit so this module is safe to import
+// DOM refs deferred to settingsInit so this module is safe to import
 // from any context (the boundary lint rule forces redditors/index.ts to
 // barrel-re-export ./page.ts, which transitively pulls this module into
 // the background bundle even though the UI never runs there).
@@ -120,7 +120,7 @@ function renderLlmSelection(): void {
 
 async function loadLlmSelection(): Promise<void> {
   try {
-    llmSelectionState = await bonClientSend<LlmSelectionPayload>({
+    llmSelectionState = await clientSend<LlmSelectionPayload>({
       type: "get-llm-selection",
     });
     renderLlmSelection();
@@ -130,9 +130,9 @@ async function loadLlmSelection(): Promise<void> {
   }
 }
 
-export async function bonSettingsRefreshApiKeyStatus(): Promise<void> {
+export async function settingsRefreshApiKeyStatus(): Promise<void> {
   try {
-    apiKeysState = await bonClientSend<ApiKeysPayload>({
+    apiKeysState = await clientSend<ApiKeysPayload>({
       type: "get-api-keys",
     });
     renderApiKeyStatus();
@@ -142,7 +142,7 @@ export async function bonSettingsRefreshApiKeyStatus(): Promise<void> {
   }
 }
 
-export function bonSettingsOpen(): void {
+export function settingsOpen(): void {
   settingsTab.click();
   apiKeyInput.focus();
 }
@@ -169,7 +169,7 @@ async function saveSettings(): Promise<void> {
 
   try {
     if (keyValue) {
-      const result = await bonClientSend<{
+      const result = await clientSend<{
         ok: true;
         vendor: LlmVendor;
         hasKey: Record<LlmVendor, boolean>;
@@ -196,7 +196,7 @@ async function saveSettings(): Promise<void> {
       }
     }
 
-    await bonClientSend({
+    await clientSend({
       type: "set-llm-selection",
       vendor,
       model,
@@ -250,7 +250,7 @@ function renderHidePiiState(enabled: boolean): void {
 
 async function refreshHidePiiState(): Promise<void> {
   try {
-    const { hidePii } = await bonClientSend<{ hidePii: boolean }>({
+    const { hidePii } = await clientSend<{ hidePii: boolean }>({
       type: "get-hide-pii",
     });
     renderHidePiiState(!!hidePii);
@@ -265,7 +265,7 @@ async function toggleHidePii(): Promise<void> {
 
   try {
     const next = hidePiiToggle.textContent !== "Disable";
-    await bonClientSend({ type: "set-hide-pii", value: next });
+    await clientSend({ type: "set-hide-pii", value: next });
     renderHidePiiState(next);
   } finally {
     hidePiiToggle.disabled = false;
@@ -274,7 +274,7 @@ async function toggleHidePii(): Promise<void> {
 
 async function refreshGooglePermissionState(): Promise<void> {
   try {
-    const granted = await bonGoogleHarvestIsGranted();
+    const granted = await googleHarvestIsGranted();
     renderGooglePermissionState(granted);
   } catch {
     googlePermissionStatus.textContent = "Failed to read permission state.";
@@ -294,9 +294,9 @@ async function toggleGooglePermission(): Promise<void> {
     const currentlyEnabled = googlePermissionToggle.textContent === "Disable";
 
     if (currentlyEnabled) {
-      await bonGoogleHarvestRevoke();
+      await googleHarvestRevoke();
     } else {
-      await bonGoogleHarvestRequest();
+      await googleHarvestRequest();
     }
 
     await refreshGooglePermissionState();
@@ -305,7 +305,7 @@ async function toggleGooglePermission(): Promise<void> {
   }
 }
 
-export function bonSettingsInit(): void {
+export function settingsInit(): void {
   settingsTab = document.getElementById(
     "bon-tab-settings"
   ) as HTMLButtonElement;
@@ -337,7 +337,7 @@ export function bonSettingsInit(): void {
   apiKeyStatus.textContent = "Loading...";
   apiKeyStatus.className = "bon-settings-status";
 
-  void loadLlmSelection().then(() => bonSettingsRefreshApiKeyStatus());
+  void loadLlmSelection().then(() => settingsRefreshApiKeyStatus());
   void refreshGooglePermissionState();
   void refreshHidePiiState();
 
@@ -381,25 +381,25 @@ export function bonSettingsInit(): void {
   // about:addons lets users revoke optional permissions out-of-band; mirror
   // that change into the UI so the toggle label doesn't lie.
   browser.permissions.onAdded.addListener((permissions) => {
-    if (bonGoogleHarvestMatches(permissions)) {
+    if (googleHarvestMatches(permissions)) {
       renderGooglePermissionState(true);
     }
   });
 
   browser.permissions.onRemoved.addListener((permissions) => {
-    if (bonGoogleHarvestMatches(permissions)) {
+    if (googleHarvestMatches(permissions)) {
       renderGooglePermissionState(false);
     }
   });
 
   clearAllBtn.addEventListener("click", () => {
-    bonPageOpenConfirmModal({
+    pageOpenConfirmModal({
       text: "Clear all reported users and your saved API keys? This can't be undone.",
       confirmLabel: "Clear all",
       action: async () => {
-        await bonClientSend({ type: "clear-all-reports" });
-        await bonClientSend({ type: "clear-api-keys" });
-        await bonSettingsRefreshApiKeyStatus();
+        await clientSend({ type: "clear-all-reports" });
+        await clientSend({ type: "clear-api-keys" });
+        await settingsRefreshApiKeyStatus();
       },
     });
   });

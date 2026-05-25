@@ -7,10 +7,10 @@
 //   - Storage holds per-post state (`attribution`, `attributionCheckedAt`,
 //     `attributionAttempts`). A post is "pending" iff attribution is
 //     "unknown" AND checkedAt is null AND attempts < MAX.
-//   - PQueue caps concurrent Reddit fetches at BON_ATTRIBUTION_CONCURRENCY.
+//   - PQueue caps concurrent Reddit fetches at ATTRIBUTION_CONCURRENCY.
 //     p-retry handles transient classification failures inside a single
 //     dispatch — no more re-drain-on-failure loop.
-//   - bonGoogleAttributionDrain is the public idempotent entry point. It
+//   - googleAttributionDrain is the public idempotent entry point. It
 //     scans storage and enqueues anything pending that isn't already in
 //     the queue.
 //
@@ -21,18 +21,14 @@
 import PQueue from "p-queue";
 import pRetry from "p-retry";
 
-import { bonRedditFetchJson, RedditRequestError } from "../../reddit/client.ts";
-import {
-  bonReadReport,
-  bonReadReports,
-  bonUpdateReport,
-} from "../../storage.ts";
+import { redditFetchJson, RedditRequestError } from "../../reddit/client.ts";
+import { readReport, readReports, updateReport } from "../../storage.ts";
 import type { GoogleHarvest, GoogleHarvestPost, Report } from "../../types.ts";
 
-const BON_ATTRIBUTION_CONCURRENCY = 3;
-const BON_ATTRIBUTION_MAX_ATTEMPTS = 3;
+const ATTRIBUTION_CONCURRENCY = 3;
+const ATTRIBUTION_MAX_ATTEMPTS = 3;
 
-const queue = new PQueue({ concurrency: BON_ATTRIBUTION_CONCURRENCY });
+const queue = new PQueue({ concurrency: ATTRIBUTION_CONCURRENCY });
 
 // Dedup: keys (`<reportKey>@<url>`) currently enqueued or running. Lets
 // rapid-fire drain calls avoid double-enqueueing the same post.
@@ -130,7 +126,7 @@ async function classifyPost(
 
   let body: unknown;
   try {
-    body = await bonRedditFetchJson<unknown>(jsonUrl);
+    body = await redditFetchJson<unknown>(jsonUrl);
   } catch (error) {
     if (error instanceof RedditRequestError) {
       // 404 / 403: the post is gone or we can't see it (deleted, private
@@ -223,7 +219,7 @@ async function persistAttribution(
   attempts: number,
   now: number
 ): Promise<void> {
-  await bonUpdateReport(reportKey, (current) => {
+  await updateReport(reportKey, (current) => {
     if (!current?.googleHarvest) {
       return current;
     }
@@ -274,7 +270,7 @@ function collectPending(reports: Record<string, Report>): PendingItem[] {
         continue;
       }
 
-      if (post.attributionAttempts >= BON_ATTRIBUTION_MAX_ATTEMPTS) {
+      if (post.attributionAttempts >= ATTRIBUTION_MAX_ATTEMPTS) {
         continue;
       }
 
@@ -310,7 +306,7 @@ async function processOne(item: PendingItem): Promise<void> {
         // Re-read just before classifying so a concurrent harvest write
         // didn't quietly drop or replace the post.
         const post = (
-          await bonReadReport(item.reportKey)
+          await readReport(item.reportKey)
         )?.googleHarvest?.posts.find((p) => p.url === item.url);
 
         if (!post) {
@@ -331,7 +327,7 @@ async function processOne(item: PendingItem): Promise<void> {
         );
       },
       {
-        retries: BON_ATTRIBUTION_MAX_ATTEMPTS - 1,
+        retries: ATTRIBUTION_MAX_ATTEMPTS - 1,
         minTimeout: 1_000,
         factor: 2,
       }
@@ -357,7 +353,7 @@ async function processOne(item: PendingItem): Promise<void> {
 // Public entry point. Idempotent — callers can fire-and-forget. Coalesces
 // rapid calls so a burst of harvest writes triggers at most one storage
 // scan per tick.
-export function bonGoogleAttributionDrain(): void {
+export function googleAttributionDrain(): void {
   if (scanScheduled) {
     return;
   }
@@ -368,7 +364,7 @@ export function bonGoogleAttributionDrain(): void {
     scanScheduled = false;
 
     try {
-      const reports = await bonReadReports();
+      const reports = await readReports();
       const pending = collectPending(reports);
 
       for (const item of pending) {

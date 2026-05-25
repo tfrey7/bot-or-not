@@ -2,14 +2,14 @@
 // proposal. Three variants per user against Sonnet:
 //
 //   A. baseline      — full prompt.md, all 16 factors from the LLM
-//   B. stripped      — `bonAssemblePrompt` strips input-conditional sections
+//   B. stripped      — `assemblePrompt` strips input-conditional sections
 //                      (google_harvest/passive_harvest/hidden/avatar)
 //                      that don't apply to this profile. LLM still scores
 //                      all 16 factors.
 //   C. stripped+det  — also strips the six deterministic-factor sections
 //                      and asks the LLM for only the ten soft factors. The
 //                      missing factors are filled in by
-//                      `bonScoreDeterministicFactors`.
+//                      `scoreDeterministicFactors`.
 //
 // Sequential per (user, variant) so the prompt cache state is
 // predictable: the FIRST user of each variant pays the cache write; the
@@ -32,25 +32,25 @@ import { DOMParser as LinkedomDOMParser } from "linkedom";
   LinkedomDOMParser;
 
 import {
-  bonFetchBotBouncerStatus,
-  bonFetchRedditProfile,
+  fetchBotBouncerStatus,
+  fetchRedditProfile,
   RedditFetchError,
 } from "../src/features/investigation/fetch.ts";
 import {
-  bonExtractSnoovatarUrl,
-  bonSummarizeProfile,
+  extractSnoovatarUrl,
+  summarizeProfile,
 } from "../src/features/investigation/summarize.ts";
-import { bonInvestigationCallLlm } from "../src/features/investigation/api.ts";
-import { bonAssemblePrompt } from "../src/features/investigation/assemble_prompt.ts";
+import { investigationCallLlm } from "../src/features/investigation/api.ts";
+import { assemblePrompt } from "../src/features/investigation/assemble_prompt.ts";
 import {
-  BON_DETERMINISTIC_FACTOR_KEYS,
-  bonScoreDeterministicFactors,
+  DETERMINISTIC_FACTOR_KEYS,
+  scoreDeterministicFactors,
 } from "../src/features/investigation/deterministic_factors.ts";
-import { bonMergeFactors } from "../src/features/investigation/merge_factors.ts";
-import { BON_FACTORS } from "../src/factors.ts";
-import { bonExtractJson } from "../src/utils/json.ts";
-import { bonNormalizePersona } from "../src/utils/persona.ts";
-import { bonComputeVerdict } from "../src/verdict.ts";
+import { mergeFactors } from "../src/features/investigation/merge_factors.ts";
+import { FACTORS } from "../src/factors.ts";
+import { extractJson } from "../src/utils/json.ts";
+import { normalizePersona } from "../src/utils/persona.ts";
+import { computeVerdict } from "../src/verdict.ts";
 import type { Factor, ProfileSummary } from "../src/types.ts";
 
 const DEFAULT_USERS = [
@@ -98,9 +98,9 @@ const PROMPT_RAW = readFileSync(
   resolve(REPO_ROOT, "src/features/investigation/prompt.md"),
   "utf8"
 );
-const ALL_FACTOR_KEYS = BON_FACTORS.map((f) => f.key);
+const ALL_FACTOR_KEYS = FACTORS.map((f) => f.key);
 const SOFT_FACTOR_KEYS = ALL_FACTOR_KEYS.filter(
-  (k) => !(BON_DETERMINISTIC_FACTOR_KEYS as readonly string[]).includes(k)
+  (k) => !(DETERMINISTIC_FACTOR_KEYS as readonly string[]).includes(k)
 );
 
 interface RunResult {
@@ -130,8 +130,8 @@ interface GatheredProfile {
 
 async function gatherProfile(username: string): Promise<GatheredProfile> {
   const [profileRes, bbRes] = await Promise.allSettled([
-    bonFetchRedditProfile(username),
-    bonFetchBotBouncerStatus(username),
+    fetchRedditProfile(username),
+    fetchBotBouncerStatus(username),
   ]);
   if (profileRes.status === "rejected") {
     const reason = profileRes.reason;
@@ -148,8 +148,8 @@ async function gatherProfile(username: string): Promise<GatheredProfile> {
     extra.botBouncerStatus = bbStatus;
     extra.botBouncerCheckedAt = Date.now();
   }
-  const summary = bonSummarizeProfile(username, profile, extra);
-  const avatarUrl = bonExtractSnoovatarUrl(profile);
+  const summary = summarizeProfile(username, profile, extra);
+  const avatarUrl = extractSnoovatarUrl(profile);
   return { summary, avatarUrl };
 }
 
@@ -164,7 +164,7 @@ async function runVariant(
 ): Promise<RunResult> {
   const t0 = Date.now();
   try {
-    const claude = await bonInvestigationCallLlm(
+    const claude = await investigationCallLlm(
       apiKey!,
       prompt,
       summary,
@@ -173,7 +173,7 @@ async function runVariant(
     );
 
     const durationMs = Date.now() - t0;
-    const extracted = bonExtractJson(claude.rawText) as Record<
+    const extracted = extractJson(claude.rawText) as Record<
       string,
       unknown
     > | null;
@@ -185,14 +185,14 @@ async function runVariant(
     // deterministic scoring + merge into canonical order.
     let finalFactors: Factor[];
     if (variant === "C" || variant === "D") {
-      const detFactors = bonScoreDeterministicFactors(summary);
-      finalFactors = bonMergeFactors(llmFactors, detFactors);
+      const detFactors = scoreDeterministicFactors(summary);
+      finalFactors = mergeFactors(llmFactors, detFactors);
     } else {
-      finalFactors = bonMergeFactors(llmFactors, []);
+      finalFactors = mergeFactors(llmFactors, []);
     }
 
-    const persona = bonNormalizePersona(extracted?.persona ?? null);
-    const verdict = bonComputeVerdict(finalFactors);
+    const persona = normalizePersona(extracted?.persona ?? null);
+    const verdict = computeVerdict(finalFactors);
     const regionRaw = (extracted?.region ?? null) as { code?: string } | null;
 
     const usage = claude.usage ?? ({} as Record<string, number>);
@@ -432,21 +432,21 @@ async function main(): Promise<void> {
       variant: "B",
       label: "stripped",
       buildPrompt: (s) =>
-        bonAssemblePrompt(PROMPT_RAW, s, { llmFactorKeys: ALL_FACTOR_KEYS }),
+        assemblePrompt(PROMPT_RAW, s, { llmFactorKeys: ALL_FACTOR_KEYS }),
       llmFactorKeys: ALL_FACTOR_KEYS,
     },
     {
       variant: "C",
       label: "strip+det",
       buildPrompt: (s) =>
-        bonAssemblePrompt(PROMPT_RAW, s, { llmFactorKeys: SOFT_FACTOR_KEYS }),
+        assemblePrompt(PROMPT_RAW, s, { llmFactorKeys: SOFT_FACTOR_KEYS }),
       llmFactorKeys: SOFT_FACTOR_KEYS,
     },
     {
       variant: "D",
       label: "det-only",
       buildPrompt: (s) =>
-        bonAssemblePrompt(PROMPT_RAW, s, {
+        assemblePrompt(PROMPT_RAW, s, {
           llmFactorKeys: SOFT_FACTOR_KEYS,
           stripInputConditional: false,
         }),

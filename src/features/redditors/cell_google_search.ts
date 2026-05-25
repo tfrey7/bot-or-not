@@ -5,7 +5,7 @@
 // into the user's dossier — pagination + repeat searches all flow in too.
 // Without that permission, the button is just a launcher.
 
-export function bonRedditorsRenderGoogleSearchButton(
+export function redditorsRenderGoogleSearchButton(
   username: string
 ): HTMLButtonElement {
   const button = document.createElement("button");

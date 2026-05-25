@@ -1,26 +1,26 @@
 // Tab bar for the reports page. Owns activation, the `?tab=` URL param,
 // and the tab-name allowlist.
 
-const BON_PAGE_TABS = [
+const PAGE_TABS = [
   "redditors",
   "metrics",
   "personas",
   "subreddits",
   "settings",
 ] as const;
-export type BonPageTab = (typeof BON_PAGE_TABS)[number];
-const BON_PAGE_DEFAULT_TAB: BonPageTab = "redditors";
-const BON_PAGE_URL_TAB_PARAM = "tab";
+export type PageTab = (typeof PAGE_TABS)[number];
+const PAGE_DEFAULT_TAB: PageTab = "redditors";
+const PAGE_URL_TAB_PARAM = "tab";
 
-export interface BonPageTabsHandle {
-  activate(target: BonPageTab): void;
+export interface PageTabsHandle {
+  activate(target: PageTab): void;
 }
 
-export function bonPageInitTabs(): BonPageTabsHandle {
+export function pageInitTabs(): PageTabsHandle {
   const tabs = document.querySelectorAll<HTMLButtonElement>(".bon-tab");
   const panels = document.querySelectorAll<HTMLElement>(".bon-tab-panel");
 
-  const activate = (target: BonPageTab): void => {
+  const activate = (target: PageTab): void => {
     for (const other of tabs) {
       const isActive = other.dataset.tab === target;
       other.classList.toggle("bon-tab--active", isActive);
@@ -45,7 +45,7 @@ export function bonPageInitTabs(): BonPageTabsHandle {
   }
 
   const initialTab = readTabFromUrl();
-  if (initialTab !== BON_PAGE_DEFAULT_TAB) {
+  if (initialTab !== PAGE_DEFAULT_TAB) {
     activate(initialTab);
   }
 
@@ -57,34 +57,34 @@ export function bonPageInitTabs(): BonPageTabsHandle {
   };
 }
 
-function isBonPageTab(value: string): value is BonPageTab {
-  return (BON_PAGE_TABS as readonly string[]).includes(value);
+function isBonPageTab(value: string): value is PageTab {
+  return (PAGE_TABS as readonly string[]).includes(value);
 }
 
-function readTabFromUrl(): BonPageTab {
+function readTabFromUrl(): PageTab {
   const raw = new URLSearchParams(window.location.search).get(
-    BON_PAGE_URL_TAB_PARAM
+    PAGE_URL_TAB_PARAM
   );
   const trimmed = raw?.trim();
-  return trimmed && isBonPageTab(trimmed) ? trimmed : BON_PAGE_DEFAULT_TAB;
+  return trimmed && isBonPageTab(trimmed) ? trimmed : PAGE_DEFAULT_TAB;
 }
 
-function writeTabToUrl(tab: BonPageTab): void {
+function writeTabToUrl(tab: PageTab): void {
   const params = new URLSearchParams(window.location.search);
-  const current = params.get(BON_PAGE_URL_TAB_PARAM);
+  const current = params.get(PAGE_URL_TAB_PARAM);
 
-  if (tab === BON_PAGE_DEFAULT_TAB) {
+  if (tab === PAGE_DEFAULT_TAB) {
     if (current === null) {
       return;
     }
 
-    params.delete(BON_PAGE_URL_TAB_PARAM);
+    params.delete(PAGE_URL_TAB_PARAM);
   } else {
     if (current === tab) {
       return;
     }
 
-    params.set(BON_PAGE_URL_TAB_PARAM, tab);
+    params.set(PAGE_URL_TAB_PARAM, tab);
   }
 
   const query = params.toString();

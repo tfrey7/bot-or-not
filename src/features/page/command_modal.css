@@ -410,7 +410,7 @@
 
 /* Agent reasoning prose. CSS `pre-wrap` so newlines from the streamed text
    survive; inline emphasis is rendered with safe-escaped HTML by
-   bonAiCommandFormatBlock at end-of-turn. */
+   aiCommandFormatBlock at end-of-turn. */
 .bon-cmd-turn-reasoning-section[hidden],
 .bon-cmd-turn-actions-section[hidden] {
   display: none;

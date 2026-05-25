@@ -4,34 +4,34 @@
 // storage.onChanged should cover transitions but doesn't always fire
 // reliably across extension pages, so polling is the source of truth.
 
-import { bonClientSend } from "../../client.ts";
+import { clientSend } from "../../client.ts";
 import type { Report } from "../../types.ts";
-import { bonExpectedDurationMs } from "../../utils/expected_duration.ts";
-import { bonIsInvestigationStale } from "../../verdict.ts";
+import { computeExpectedDurationMs } from "../../utils/expected_duration.ts";
+import { isInvestigationStale } from "../../verdict.ts";
 import {
-  bonRedditorsFormatRunningCellText,
-  bonRedditorsFormatRunningTitle,
-  bonRedditorsHasStructuralChange,
+  redditorsFormatRunningCellText,
+  redditorsFormatRunningTitle,
+  redditorsHasStructuralChange,
   type ReportRow,
 } from "./logic.ts";
 
 const POLL_INTERVAL_MS = 1000;
 
-export interface BonRedditorsPollingDeps {
+export interface RedditorsPollingDeps {
   getReports(): ReportRow[];
   setReports(next: ReportRow[]): void;
   onStructuralChange(): void;
   setExpectedDurationMs(value: number | null): void;
 }
 
-export interface BonRedditorsPollingHandle {
+export interface RedditorsPollingHandle {
   ensurePolling(): void;
   pollNow(): Promise<void>;
 }
 
-export function bonRedditorsInitPolling(
-  deps: BonRedditorsPollingDeps
-): BonRedditorsPollingHandle {
+export function redditorsInitPolling(
+  deps: RedditorsPollingDeps
+): RedditorsPollingHandle {
   let pollTimer: ReturnType<typeof setInterval> | null = null;
 
   const ensurePolling = (): void => {
@@ -42,7 +42,7 @@ export function bonRedditorsInitPolling(
       }
 
       return (
-        status === "running" && !bonIsInvestigationStale(report.investigation)
+        status === "running" && !isInvestigationStale(report.investigation)
       );
     });
 
@@ -56,7 +56,7 @@ export function bonRedditorsInitPolling(
 
   const pollNow = async (): Promise<void> => {
     try {
-      const { reports = {} } = await bonClientSend<{
+      const { reports = {} } = await clientSend<{
         reports?: Record<string, Report>;
       }>({
         type: "get-all-reports",
@@ -69,7 +69,7 @@ export function bonRedditorsInitPolling(
         })
       );
 
-      const structuralChange = bonRedditorsHasStructuralChange(
+      const structuralChange = redditorsHasStructuralChange(
         deps.getReports(),
         fresh
       );
@@ -98,7 +98,7 @@ function updateRunningInPlace(
 ): void {
   // Recompute in case a run completed between full renders and we have a
   // new sample for the median (no full re-render fires for that alone).
-  const expectedDurationMs = bonExpectedDurationMs(reports);
+  const expectedDurationMs = computeExpectedDurationMs(reports);
   setExpectedDurationMs(expectedDurationMs);
 
   for (const report of reports) {
@@ -107,7 +107,7 @@ function updateRunningInPlace(
       continue;
     }
 
-    if (bonIsInvestigationStale(investigation)) {
+    if (isInvestigationStale(investigation)) {
       continue;
     }
 
@@ -128,11 +128,11 @@ function updateRunningInPlace(
         continue;
       }
 
-      button.textContent = bonRedditorsFormatRunningCellText(
+      button.textContent = redditorsFormatRunningCellText(
         elapsedSec,
         expectedDurationMs
       );
-      button.title = bonRedditorsFormatRunningTitle(
+      button.title = redditorsFormatRunningTitle(
         elapsedSec,
         expectedDurationMs
       );

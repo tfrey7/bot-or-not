@@ -1,6 +1,6 @@
 // Time/date/duration formatters. Pure — same input always yields same output.
 
-export function bonFmtDuration(ms: number | null | undefined): string {
+export function fmtDuration(ms: number | null | undefined): string {
   if (ms == null || !isFinite(ms)) {
     return "—";
   }
@@ -26,7 +26,7 @@ export function bonFmtDuration(ms: number | null | undefined): string {
   return `${hours}h ${minutes % 60}m`;
 }
 
-export function bonFormatDate(ts: number): string {
+export function formatDate(ts: number): string {
   const date = new Date(ts);
   const diffMs = Date.now() - ts;
   const minute = 60_000;
@@ -57,9 +57,9 @@ export function bonFormatDate(ts: number): string {
   });
 }
 
-// Like bonFormatDate but with terser relative units ("5m" vs "5m ago") for
+// Like formatDate but with terser relative units ("5m" vs "5m ago") for
 // the in-feed panel where horizontal space is tight.
-export function bonFormatPanelDate(ts: number): string {
+export function formatPanelDate(ts: number): string {
   const diffMs = Date.now() - ts;
   const minute = 60_000;
   const hour = 60 * minute;
@@ -90,7 +90,7 @@ export function bonFormatPanelDate(ts: number): string {
   });
 }
 
-export function bonFmtTimestamp(ts: number): string {
+export function fmtTimestamp(ts: number): string {
   const date = new Date(ts);
   const dateStr = date.toLocaleDateString(undefined, {
     month: "short",
@@ -104,6 +104,6 @@ export function bonFmtTimestamp(ts: number): string {
   return `${dateStr} ${timeStr}`;
 }
 
-export function bonPad2(n: number): string {
+export function pad2(n: number): string {
   return String(n).padStart(2, "0");
 }

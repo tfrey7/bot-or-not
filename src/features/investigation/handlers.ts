@@ -7,7 +7,7 @@
 //   - Storage is the durable record of *what* investigations exist and what
 //     state they're in (queued / running / done / error). UI reads here.
 //   - PQueue is the transient dispatcher capping concurrency at
-//     BON_INVESTIGATION_CONCURRENCY. p-retry handles per-attempt retries +
+//     INVESTIGATION_CONCURRENCY. p-retry handles per-attempt retries +
 //     Retry-After cooldowns. Both vanish on service-worker eviction.
 //   - On startup, hydrate re-enqueues anything in a non-terminal state.
 
@@ -23,39 +23,39 @@ import type {
   RunSnapshot,
 } from "../../types.ts";
 import {
-  bonReadApiKey,
-  bonReadLlmSelection,
-  bonReadReport,
-  bonReadReports,
-  bonUpdateReport,
-  bonWriteReports,
+  readApiKey,
+  readLlmSelection,
+  readReport,
+  readReports,
+  updateReport,
+  writeReports,
 } from "../../storage.ts";
 import {
-  bonFindReportKey,
-  bonNormalizeReport,
-  bonSnapshotRun,
+  findReportKey,
+  normalizeReport,
+  snapshotRun,
 } from "../../utils/history.ts";
-import { bonIsProfileHidden } from "../../utils/profile_hidden.ts";
-import { bonClampRetryAfter } from "../../utils/retry_after.ts";
-import { bonIsInvestigationStale } from "../../verdict.ts";
+import { isProfileHidden } from "../../utils/profile_hidden.ts";
+import { clampRetryAfter } from "../../utils/retry_after.ts";
+import { isInvestigationStale } from "../../verdict.ts";
 import {
-  bonExtractSnoovatarUrl,
-  bonGatherProfile,
-  bonRunOneDAnalysis,
+  extractSnoovatarUrl,
+  gatherProfile,
+  runOneDAnalysis,
   RedditFetchError,
 } from "./index.ts";
 
-const BON_AUTO_INVESTIGATE_FRESHNESS_MS = 60 * 60 * 1000;
+const AUTO_INVESTIGATE_FRESHNESS_MS = 60 * 60 * 1000;
 
 // Reddit throttling is handled globally by the shared Reddit client. This
 // cap just controls how many investigations overlap their Claude calls.
-export const BON_INVESTIGATION_CONCURRENCY = 3;
+export const INVESTIGATION_CONCURRENCY = 3;
 
-const BON_INVESTIGATION_MAX_ATTEMPTS = 4;
+const INVESTIGATION_MAX_ATTEMPTS = 4;
 
-const queue = new PQueue({ concurrency: BON_INVESTIGATION_CONCURRENCY });
+const queue = new PQueue({ concurrency: INVESTIGATION_CONCURRENCY });
 
-// Guard against double-enqueue. bonInvestigationStart and the hydrate path
+// Guard against double-enqueue. investigationStart and the hydrate path
 // both try to enqueue; this Set lets either fail fast if the other got
 // there first.
 const inFlight = new Set<string>();
@@ -63,9 +63,9 @@ const inFlight = new Set<string>();
 // Re-enqueue any investigation that didn't reach a terminal state. Both
 // "queued" and "running" records get re-run — the "running" ones are
 // orphans from a previous worker that died mid-await.
-export async function bonInvestigationSweepOrphans(): Promise<void> {
+export async function investigationSweepOrphans(): Promise<void> {
   try {
-    const reports = await bonReadReports();
+    const reports = await readReports();
 
     for (const [username, report] of Object.entries(reports)) {
       const investigation = report.investigation;
@@ -85,16 +85,16 @@ export async function bonInvestigationSweepOrphans(): Promise<void> {
   }
 }
 
-export async function bonInvestigationStart(
+export async function investigationStart(
   username: string
 ): Promise<{ ok: boolean; queued?: boolean; error?: string }> {
   if (!username) {
     return { ok: false, error: "missing username" };
   }
 
-  const selection = await bonReadLlmSelection();
+  const selection = await readLlmSelection();
   const vendor = selection.vendor ?? "anthropic";
-  const apiKey = await bonReadApiKey(vendor);
+  const apiKey = await readApiKey(vendor);
 
   if (!apiKey) {
     return { ok: false, error: "no-api-key" };
@@ -105,7 +105,7 @@ export async function bonInvestigationStart(
     return { ok: true, queued: true };
   }
 
-  const existing = (await bonReadReport(username))?.investigation;
+  const existing = (await readReport(username))?.investigation;
 
   // Already queued or running — don't bump position by overwriting
   // queuedAt; just make sure something has it enqueued.
@@ -121,7 +121,7 @@ export async function bonInvestigationStart(
   });
   void enqueueInvestigation(username);
 
-  return { ok: true, queued: queue.pending >= BON_INVESTIGATION_CONCURRENCY };
+  return { ok: true, queued: queue.pending >= INVESTIGATION_CONCURRENCY };
 }
 
 // Bulk enqueue. Collapses N×{read,read,write} of the full reports object
@@ -129,22 +129,22 @@ export async function bonInvestigationStart(
 // subreddit-analyze flow enqueues ~100 users in one burst. Each write
 // fires browser.storage.onChanged on every subscriber, so the savings
 // compound across the UI surfaces too.
-export async function bonInvestigationStartBatch(
+export async function investigationStartBatch(
   usernames: string[]
 ): Promise<{ ok: boolean; error?: string }> {
   if (usernames.length === 0) {
     return { ok: true };
   }
 
-  const selection = await bonReadLlmSelection();
+  const selection = await readLlmSelection();
   const vendor = selection.vendor ?? "anthropic";
-  const apiKey = await bonReadApiKey(vendor);
+  const apiKey = await readApiKey(vendor);
 
   if (!apiKey) {
     return { ok: false, error: "no-api-key" };
   }
 
-  const reports = await bonReadReports();
+  const reports = await readReports();
   const toEnqueue: string[] = [];
   let dirty = false;
   const now = Date.now();
@@ -154,12 +154,12 @@ export async function bonInvestigationStartBatch(
       continue;
     }
 
-    const key = bonFindReportKey(reports, username) ?? username;
-    const existing = reports[key] ?? bonNormalizeReport(undefined);
+    const key = findReportKey(reports, username) ?? username;
+    const existing = reports[key] ?? normalizeReport(undefined);
     const prevInvestigation = existing.investigation;
 
     // Already queued/running: skip the storage stamp (mirrors the
-    // single-user shortcut in bonInvestigationStart). Still re-enqueue
+    // single-user shortcut in investigationStart). Still re-enqueue
     // into PQueue in case the in-memory queue lost it.
     if (
       prevInvestigation?.status === "queued" ||
@@ -173,7 +173,7 @@ export async function bonInvestigationStartBatch(
       prevInvestigation?.status === "done" &&
       (prevInvestigation.runs?.length ?? 0) === 0;
     const prevRuns: RunSnapshot[] = seedFromLegacy
-      ? [bonSnapshotRun(prevInvestigation, "done")]
+      ? [snapshotRun(prevInvestigation, "done")]
       : (prevInvestigation?.runs ?? []);
 
     reports[key] = {
@@ -196,7 +196,7 @@ export async function bonInvestigationStartBatch(
   }
 
   if (dirty) {
-    await bonWriteReports(reports);
+    await writeReports(reports);
   }
 
   for (const username of toEnqueue) {
@@ -222,9 +222,9 @@ async function enqueueInvestigation(username: string): Promise<void> {
 }
 
 async function runInvestigationLifecycle(username: string): Promise<void> {
-  const selection = await bonReadLlmSelection();
+  const selection = await readLlmSelection();
   const vendor = selection.vendor ?? "anthropic";
-  const apiKey = await bonReadApiKey(vendor);
+  const apiKey = await readApiKey(vendor);
   if (!apiKey) {
     await setInvestigationState(username, {
       status: "error",
@@ -259,7 +259,7 @@ async function runInvestigationLifecycle(username: string): Promise<void> {
         }
       },
       {
-        retries: BON_INVESTIGATION_MAX_ATTEMPTS - 1,
+        retries: INVESTIGATION_MAX_ATTEMPTS - 1,
 
         // Custom delay handled in onFailedAttempt.
         minTimeout: 0,
@@ -272,7 +272,7 @@ async function runInvestigationLifecycle(username: string): Promise<void> {
 
         onFailedAttempt: async ({ error, attemptNumber }) => {
           const retryAfterMs = readRetryAfterMs(error);
-          const delayMs = bonClampRetryAfter(
+          const delayMs = clampRetryAfter(
             retryAfterMs ?? defaultBackoffMs(attemptNumber)
           );
           const notBefore = Date.now() + delayMs;
@@ -284,7 +284,7 @@ async function runInvestigationLifecycle(username: string): Promise<void> {
             : attemptNumber;
 
           console.warn(
-            `[Bot or Not] investigation ${username} failed (attempt ${accountedAttempts}/${BON_INVESTIGATION_MAX_ATTEMPTS}); retrying after ${Math.round(delayMs / 1000)}s: ${message}`
+            `[Bot or Not] investigation ${username} failed (attempt ${accountedAttempts}/${INVESTIGATION_MAX_ATTEMPTS}); retrying after ${Math.round(delayMs / 1000)}s: ${message}`
           );
 
           await setInvestigationState(username, {
@@ -321,9 +321,9 @@ async function runOneAttempt(
   startedAt: number
 ): Promise<void> {
   const existingRecord =
-    (await bonReadReport(username)) ?? bonNormalizeReport(undefined);
+    (await readReport(username)) ?? normalizeReport(undefined);
 
-  const inputs = await bonGatherProfile(username, {
+  const inputs = await gatherProfile(username, {
     ...(existingRecord.botBouncerStatus
       ? { botBouncerStatus: existingRecord.botBouncerStatus }
       : {}),
@@ -337,11 +337,11 @@ async function runOneAttempt(
       ? { passiveHarvest: existingRecord.passiveHarvest }
       : {}),
   });
-  const selection = await bonReadLlmSelection();
-  const analysis = await bonRunOneDAnalysis(
+  const selection = await readLlmSelection();
+  const analysis = await runOneDAnalysis(
     apiKey,
     inputs.summary,
-    bonExtractSnoovatarUrl(inputs.raw),
+    extractSnoovatarUrl(inputs.raw),
     selection
   );
 
@@ -388,7 +388,7 @@ async function runOneAttempt(
 
   await setProfileHidden(
     username,
-    bonIsProfileHidden({
+    isProfileHidden({
       postsFetched,
       commentsFetched,
       totalKarma: inputs.summary.account.total_karma,
@@ -432,7 +432,7 @@ function delay(ms: number): Promise<void> {
 // investigation when one isn't already on file. Stale "running" is treated
 // as no-investigation since a previous worker died mid-await. Done / error /
 // fresh-running are left alone; the user can retry errors via the panel.
-export async function bonInvestigationAutoOnView(
+export async function investigationAutoOnView(
   username: string
 ): Promise<{ ok: boolean; started?: boolean; error?: string }> {
   const trimmed = username.trim();
@@ -441,27 +441,27 @@ export async function bonInvestigationAutoOnView(
   }
 
   try {
-    const selection = await bonReadLlmSelection();
+    const selection = await readLlmSelection();
     const vendor = selection.vendor ?? "anthropic";
-    const apiKey = await bonReadApiKey(vendor);
+    const apiKey = await readApiKey(vendor);
 
     if (!apiKey) {
       return { ok: true, started: false };
     }
 
-    const investigation = (await bonReadReport(trimmed))?.investigation ?? null;
+    const investigation = (await readReport(trimmed))?.investigation ?? null;
 
     if (
       investigation &&
       !(
         investigation.status === "running" &&
-        bonIsInvestigationStale(investigation)
+        isInvestigationStale(investigation)
       )
     ) {
       return { ok: true, started: false };
     }
 
-    void bonInvestigationStart(trimmed);
+    void investigationStart(trimmed);
     return { ok: true, started: true };
   } catch (error) {
     console.error("[Bot or Not] auto-investigate-on-view failed", error);
@@ -474,24 +474,21 @@ export async function bonInvestigationAutoOnView(
 
 // Triggered when a user gets re-reported. Re-runs the investigation unless
 // one is already running or a fresh result is on file.
-export async function bonInvestigationMaybeAuto(
-  username: string
-): Promise<void> {
+export async function investigationMaybeAuto(username: string): Promise<void> {
   try {
-    const selection = await bonReadLlmSelection();
+    const selection = await readLlmSelection();
     const vendor = selection.vendor ?? "anthropic";
-    const apiKey = await bonReadApiKey(vendor);
+    const apiKey = await readApiKey(vendor);
 
     if (!apiKey) {
       return;
     }
 
-    const investigation =
-      (await bonReadReport(username))?.investigation ?? null;
+    const investigation = (await readReport(username))?.investigation ?? null;
 
     if (
       investigation?.status === "running" &&
-      !bonIsInvestigationStale(investigation)
+      !isInvestigationStale(investigation)
     ) {
       return;
     }
@@ -502,13 +499,12 @@ export async function bonInvestigationMaybeAuto(
 
     if (
       investigation?.status === "done" &&
-      Date.now() - investigation.results.runAt <
-        BON_AUTO_INVESTIGATE_FRESHNESS_MS
+      Date.now() - investigation.results.runAt < AUTO_INVESTIGATE_FRESHNESS_MS
     ) {
       return;
     }
 
-    await bonInvestigationStart(username);
+    await investigationStart(username);
   } catch (error) {
     console.error("[Bot or Not] auto-investigate failed", error);
   }
@@ -548,8 +544,8 @@ async function setInvestigationState(
   username: string,
   transition: InvestigationTransition
 ): Promise<void> {
-  await bonUpdateReport(username, (current) => {
-    const existing = current ?? bonNormalizeReport(undefined);
+  await updateReport(username, (current) => {
+    const existing = current ?? normalizeReport(undefined);
     const prevInvestigation = existing.investigation;
 
     const prevAttempts = prevInvestigation?.attempts ?? 0;
@@ -563,7 +559,7 @@ async function setInvestigationState(
       prevInvestigation?.status === "done" &&
       (prevInvestigation.runs?.length ?? 0) === 0;
     const prevRuns: RunSnapshot[] = seedFromLegacy
-      ? [bonSnapshotRun(prevInvestigation, "done")]
+      ? [snapshotRun(prevInvestigation, "done")]
       : (prevInvestigation?.runs ?? []);
 
     let nextInvestigation: Investigation;
@@ -633,7 +629,7 @@ async function setInvestigationState(
     ) {
       nextInvestigation.runs = [
         ...prevRuns,
-        bonSnapshotRun(nextInvestigation, transition.status),
+        snapshotRun(nextInvestigation, transition.status),
       ];
     }
 
@@ -645,8 +641,8 @@ async function saveActivityData(
   username: string,
   activityData: ActivityData
 ): Promise<void> {
-  await bonUpdateReport(username, (current) => {
-    const existing = current ?? bonNormalizeReport(undefined);
+  await updateReport(username, (current) => {
+    const existing = current ?? normalizeReport(undefined);
     return { ...existing, activityData };
   });
 }
@@ -660,8 +656,8 @@ async function setProfileHidden(
   username: string,
   hidden: boolean
 ): Promise<void> {
-  await bonUpdateReport(username, (current) => {
-    const existing = current ?? bonNormalizeReport(undefined);
+  await updateReport(username, (current) => {
+    const existing = current ?? normalizeReport(undefined);
     if (existing.profileHidden === hidden) {
       return existing;
     }
@@ -672,13 +668,13 @@ async function setProfileHidden(
 
 // Inlined rather than calling into redditors/handlers.ts so the two feature
 // directories don't form an import cycle. Same shape as
-// bonRedditorsSetBotBouncerStatus — keep them in sync if the field semantics
+// redditorsSetBotBouncerStatus — keep them in sync if the field semantics
 // change.
 async function persistBotBouncerStatus(
   username: string,
   status: Report["botBouncerStatus"]
 ): Promise<void> {
-  await bonUpdateReport(username, (current) => {
+  await updateReport(username, (current) => {
     if (!current) {
       return null;
     }

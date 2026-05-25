@@ -10,7 +10,7 @@
 
 import type { Factor, ProfileSummary } from "../../types.ts";
 
-export const BON_DETERMINISTIC_FACTOR_KEYS = [
+export const DETERMINISTIC_FACTOR_KEYS = [
   "username_pattern",
   "hidden_post_history",
   "bot_bouncer_status",
@@ -19,12 +19,9 @@ export const BON_DETERMINISTIC_FACTOR_KEYS = [
   "moderated_subreddits",
 ] as const;
 
-export type DeterministicFactorKey =
-  (typeof BON_DETERMINISTIC_FACTOR_KEYS)[number];
+export type DeterministicFactorKey = (typeof DETERMINISTIC_FACTOR_KEYS)[number];
 
-export function bonScoreDeterministicFactors(
-  summary: ProfileSummary
-): Factor[] {
+export function scoreDeterministicFactors(summary: ProfileSummary): Factor[] {
   return [
     scoreUsernamePattern(summary),
     scoreHiddenPostHistory(summary),
