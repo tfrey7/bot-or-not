@@ -11,6 +11,8 @@ references/
 reddit-page.png
 .claude/*
 !.claude/settings.json
+!.claude/skills/
+!.claude/skills/**
 dev/
 .dev-server.pid
 .dev-server.log
