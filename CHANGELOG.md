@@ -2,6 +2,20 @@
 
 Notable changes to Bot or Not. Signed `.xpi` builds for each version are attached to the matching [GitHub Release](https://github.com/tfrey7/bot-or-not/releases).
 
+## [7.4.0] — 2026-05-25
+- CLAUDE.md: drop the bon-prefix naming convention
+- Strip the bon prefix from all JS/TS exports
+- Forbid strand sessions from auto-claiming the dev singleton
+- Drop Dependabot for an on-demand update-deps skill
+- Storage: serialize report writes per username
+- Subreddit analyze: batch enqueue into a single reports write
+- Bump actions/setup-node from 4 to 6 (#3)
+- Merge pull request #2 from tfrey7/dependabot/github_actions/dependabot/fetch-metadata-3
+- Merge pull request #1 from tfrey7/dependabot/github_actions/actions/checkout-6
+- Bump the dev-minor-patch group with 4 updates (#4)
+- Bump dependabot/fetch-metadata from 2 to 3
+- Bump actions/checkout from 4 to 6
+
 ## [7.3.0] — 2026-05-25
 - Fix broken README masthead — point at chromes-investigating.webp
 - Dependabot: weekly grouped updates with cooldowns + CI auto-merge
