@@ -2,6 +2,17 @@
 // pipeline (Reddit fetch → Claude → verdict) lives in `./index.ts`; this
 // file wraps it with the storage I/O that persists per-run state into the
 // matching Report record.
+//
+// Architecture:
+//   - Storage is the durable record of *what* investigations exist and what
+//     state they're in (queued / running / done / error). UI reads here.
+//   - PQueue is the transient dispatcher capping concurrency at
+//     BON_INVESTIGATION_CONCURRENCY. p-retry handles per-attempt retries +
+//     Retry-After cooldowns. Both vanish on service-worker eviction.
+//   - On startup, hydrate re-enqueues anything in a non-terminal state.
+
+import PQueue from "p-queue";
+import pRetry, { AbortError } from "p-retry";
 
 import type {
   ActivityData,
@@ -11,7 +22,6 @@ import type {
   Report,
   RunSnapshot,
 } from "../../types.ts";
-import { bonRedditGetPausedUntil } from "../../reddit/client.ts";
 import {
   bonReadApiKey,
   bonReadLlmSelection,
@@ -35,35 +45,25 @@ import {
 
 const BON_AUTO_INVESTIGATE_FRESHNESS_MS = 60 * 60 * 1000;
 
-// Reddit throttling is handled globally by the shared Reddit client
-// (src/reddit/client.ts) — its in-flight semaphore is the real backstop.
-// This cap just controls how many investigations overlap their Claude
-// calls (the bulk of wall-clock time once Reddit fetches are bounded).
+// Reddit throttling is handled globally by the shared Reddit client. This
+// cap just controls how many investigations overlap their Claude calls.
 export const BON_INVESTIGATION_CONCURRENCY = 3;
 
-// One initial attempt + 3 retries. Counts every time we transition to
-// "running" — so a worker that dies mid-await still spent an attempt.
 const BON_INVESTIGATION_MAX_ATTEMPTS = 4;
 
-// In-memory set of usernames currently executing the Reddit + Claude
-// pipeline. Queue position is derived from storage (status: "queued"
-// records ordered by queuedAt) so a worker eviction doesn't lose
-// pending items.
-const activeRuns = new Set<string>();
+const queue = new PQueue({ concurrency: BON_INVESTIGATION_CONCURRENCY });
 
-// Investigations stuck at status: "running" at startup are orphaned — a
-// previous background-script instance died mid-await (web-ext reload,
-// browser restart, service-worker eviction) and its completion handler
-// never fired. If they have retries left, drop them back into "queued"
-// (at the tail) so drainQueue picks them up; otherwise they fall to
-// "error". Anything already "queued" just needs drainQueue to be poked.
+// Guard against double-enqueue. bonInvestigationStart and the hydrate path
+// both try to enqueue; this Set lets either fail fast if the other got
+// there first.
+const inFlight = new Set<string>();
+
+// Re-enqueue any investigation that didn't reach a terminal state. Both
+// "queued" and "running" records get re-run — the "running" ones are
+// orphans from a previous worker that died mid-await.
 export async function bonInvestigationSweepOrphans(): Promise<void> {
   try {
     const reports = await bonReadReports();
-
-    let changed = false;
-    let hasQueued = false;
-    const now = Date.now();
 
     for (const [username, report] of Object.entries(reports)) {
       const investigation = report.investigation;
@@ -71,64 +71,15 @@ export async function bonInvestigationSweepOrphans(): Promise<void> {
         continue;
       }
 
-      if (investigation.status === "running") {
-        const canRetry =
-          investigation.attempts < BON_INVESTIGATION_MAX_ATTEMPTS;
-        const durationMs = investigation.startedAt
-          ? now - investigation.startedAt
-          : null;
-
-        if (canRetry) {
-          reports[username] = {
-            ...report,
-            investigation: {
-              status: "queued",
-              queuedAt: now,
-              notBefore: null,
-              startedAt: null,
-              durationMs,
-              error: null,
-              attempts: investigation.attempts,
-              runs: investigation.runs,
-              redditMetrics: investigation.redditMetrics,
-              results: null,
-            },
-          };
-          hasQueued = true;
-        } else {
-          reports[username] = {
-            ...report,
-            investigation: {
-              status: "error",
-              queuedAt: investigation.queuedAt,
-              notBefore: null,
-              startedAt: null,
-              durationMs,
-              error: "interrupted before completion",
-              attempts: investigation.attempts,
-              runs: investigation.runs,
-              redditMetrics: investigation.redditMetrics,
-              results: null,
-            },
-          };
-        }
-
-        changed = true;
-      } else if (investigation.status === "queued") {
-        hasQueued = true;
+      if (
+        investigation.status === "queued" ||
+        investigation.status === "running"
+      ) {
+        void enqueueInvestigation(username);
       }
     }
-
-    if (changed) {
-      await bonWriteReports(reports);
-      console.log("[Bot or Not] swept orphaned investigations");
-    }
-
-    if (hasQueued) {
-      void drainQueue();
-    }
   } catch (error) {
-    console.error("[Bot or Not] orphan sweep failed", error);
+    console.error("[Bot or Not] hydrate failed", error);
   }
 }
 
@@ -147,288 +98,231 @@ export async function bonInvestigationStart(
     return { ok: false, error: "no-api-key" };
   }
 
-  if (activeRuns.has(username.toLowerCase())) {
-    return { ok: true, queued: false };
+  const key = username.toLowerCase();
+  if (inFlight.has(key)) {
+    return { ok: true, queued: true };
   }
 
   const reports = await bonReadReports();
   const existing =
     reports[bonFindReportKey(reports, username) ?? username]?.investigation;
 
-  // Already in line — don't bump its position to the back by overwriting
-  // queuedAt. Callers like the re-report path lean on this idempotency.
-  if (existing?.status === "queued") {
+  // Already queued or running — don't bump position by overwriting
+  // queuedAt; just make sure something has it enqueued.
+  if (existing?.status === "queued" || existing?.status === "running") {
+    void enqueueInvestigation(username);
     return { ok: true, queued: true };
   }
-
-  if (activeRuns.size >= BON_INVESTIGATION_CONCURRENCY) {
-    await setInvestigationState(username, {
-      status: "queued",
-      queuedAt: Date.now(),
-      attempts: 0,
-    });
-
-    return { ok: true, queued: true };
-  }
-
-  void runInvestigation(username, apiKey, { resetAttempts: true });
-  return { ok: true, queued: false };
-}
-
-async function runInvestigation(
-  username: string,
-  apiKey: string,
-  options: { resetAttempts?: boolean } = {}
-): Promise<void> {
-  const key = username.toLowerCase();
-  activeRuns.add(key);
-
-  const startedAt = Date.now();
-
-  const reportsForAttempts = await bonReadReports();
-  const attemptsBefore = options.resetAttempts
-    ? 0
-    : (reportsForAttempts[
-        bonFindReportKey(reportsForAttempts, username) ?? username
-      ]?.investigation?.attempts ?? 0);
-  const attempts = attemptsBefore + 1;
 
   await setInvestigationState(username, {
-    status: "running",
-    startedAt,
-    attempts,
+    status: "queued",
+    queuedAt: Date.now(),
+    attempts: 0,
   });
+  void enqueueInvestigation(username);
+
+  return { ok: true, queued: queue.pending >= BON_INVESTIGATION_CONCURRENCY };
+}
+
+async function enqueueInvestigation(username: string): Promise<void> {
+  const key = username.toLowerCase();
+  if (inFlight.has(key)) {
+    return;
+  }
+
+  inFlight.add(key);
 
   try {
-    const latestReports = await bonReadReports();
-    const existingRecord =
-      latestReports[bonFindReportKey(latestReports, username) ?? username] ??
-      bonNormalizeReport(undefined);
+    await queue.add(() => runInvestigationLifecycle(username));
+  } finally {
+    inFlight.delete(key);
+  }
+}
 
-    const inputs = await bonGatherProfile(username, {
-      ...(existingRecord.botBouncerStatus
-        ? { botBouncerStatus: existingRecord.botBouncerStatus }
-        : {}),
-      ...(existingRecord.botBouncerCheckedAt
-        ? { botBouncerCheckedAt: existingRecord.botBouncerCheckedAt }
-        : {}),
-      ...(existingRecord.googleHarvest
-        ? { googleHarvest: existingRecord.googleHarvest }
-        : {}),
-      ...(existingRecord.passiveHarvest
-        ? { passiveHarvest: existingRecord.passiveHarvest }
-        : {}),
-    });
-    const selection = await bonReadLlmSelection();
-    const analysis = await bonRunOneDAnalysis(
-      apiKey,
-      inputs.summary,
-      bonExtractSnoovatarUrl(inputs.raw),
-      selection
-    );
-
-    const durationMs = Date.now() - startedAt;
-    console.log(
-      `[Bot or Not] timing: investigation ${username} ${durationMs}ms`
-    );
-
-    const postsFetched = inputs.raw.submitted.data?.children?.length ?? 0;
-    const commentsFetched = inputs.raw.comments.data?.children?.length ?? 0;
-
-    const results: InvestigationResults = {
-      runAt: analysis.runAt,
-      durationMs,
-      verdict: analysis.verdict,
-      confidence: analysis.confidence,
-      botProbability: analysis.botProbability,
-      factors: analysis.factors,
-      persona: analysis.persona,
-      region: analysis.region,
-      demographics: analysis.demographics,
-      summary: analysis.summary,
-      model: analysis.model,
-      usage: analysis.usage,
-      costUsd: analysis.costUsd,
-      postsFetched,
-      commentsFetched,
-      accountCreatedAt: inputs.summary.account.created_at,
-      accountAgeDays: inputs.summary.account.age_days,
-    };
-
+async function runInvestigationLifecycle(username: string): Promise<void> {
+  const selection = await bonReadLlmSelection();
+  const vendor = selection.vendor ?? "anthropic";
+  const apiKey = await bonReadApiKey(vendor);
+  if (!apiKey) {
     await setInvestigationState(username, {
-      status: "done",
-      durationMs,
-      results,
-      redditMetrics: inputs.redditMetrics,
+      status: "error",
+      error: "no-api-key",
+      durationMs: null,
     });
 
-    if (inputs.activityData) {
-      await saveActivityData(username, inputs.activityData);
-    }
+    return;
+  }
 
-    if (inputs.botBouncerStatus) {
-      await persistBotBouncerStatus(username, inputs.botBouncerStatus);
-    }
+  const lifecycleStartedAt = Date.now();
 
-    await setProfileHidden(
-      username,
-      bonIsProfileHidden({
-        postsFetched,
-        commentsFetched,
-        totalKarma: inputs.summary.account.total_karma,
-      })
+  try {
+    await pRetry(
+      async (attemptNumber) => {
+        const attemptStartedAt = Date.now();
+        await setInvestigationState(username, {
+          status: "running",
+          startedAt: attemptStartedAt,
+          attempts: attemptNumber,
+        });
+
+        try {
+          await runOneAttempt(username, apiKey, attemptStartedAt);
+        } catch (error) {
+          // 404 means the username doesn't exist — no retry will help.
+          if (error instanceof RedditFetchError && error.httpStatus === 404) {
+            throw new AbortError(error as Error);
+          }
+
+          throw error;
+        }
+      },
+      {
+        retries: BON_INVESTIGATION_MAX_ATTEMPTS - 1,
+
+        // Custom delay handled in onFailedAttempt.
+        minTimeout: 0,
+        maxTimeout: 0,
+
+        // 429 / 5xx are upstream-load signals, not investigation failures.
+        // Refund the attempt so a Reddit outage can't burn the operator's
+        // retry budget — the Reddit client's global pause handles waiting.
+        shouldConsumeRetry: ({ error }) => !isUpstreamLoad(error),
+
+        onFailedAttempt: async ({ error, attemptNumber }) => {
+          const retryAfterMs = readRetryAfterMs(error);
+          const delayMs = bonClampRetryAfter(
+            retryAfterMs ?? defaultBackoffMs(attemptNumber)
+          );
+          const notBefore = Date.now() + delayMs;
+          const message = String(
+            (error as { message?: string })?.message ?? error
+          );
+          const accountedAttempts = isUpstreamLoad(error)
+            ? attemptNumber - 1
+            : attemptNumber;
+
+          console.warn(
+            `[Bot or Not] investigation ${username} failed (attempt ${accountedAttempts}/${BON_INVESTIGATION_MAX_ATTEMPTS}); retrying after ${Math.round(delayMs / 1000)}s: ${message}`
+          );
+
+          await setInvestigationState(username, {
+            status: "queued",
+            queuedAt: Date.now(),
+            notBefore,
+            attempts: accountedAttempts,
+            durationMs: Date.now() - lifecycleStartedAt,
+            ...redditMetricsPatch(error),
+          });
+
+          await delay(delayMs);
+        },
+      }
     );
   } catch (error) {
     const message = String((error as { message?: string })?.message ?? error);
-    const durationMs = Date.now() - startedAt;
-    const redditMetricsPatch =
-      error instanceof RedditFetchError ? { redditMetrics: error.metrics } : {};
+    const durationMs = Date.now() - lifecycleStartedAt;
 
-    const httpStatus =
-      error instanceof RedditFetchError ? error.httpStatus : null;
+    console.error(`[Bot or Not] investigation ${username} failed:`, error);
 
-    // 404 on the about endpoint = the username doesn't exist. Retrying
-    // won't conjure them, so short-circuit to a terminal error instead
-    // of burning attempts.
-    const isUserNotFound = httpStatus === 404;
-
-    // 429 / 5xx are upstream-load signals, not investigation-specific
-    // failures. Refund the attempt so a Reddit outage can't burn the
-    // operator's retry budget; the Reddit client's global pause handles
-    // the wait.
-    const isUpstreamLoad =
-      httpStatus === 429 || (httpStatus !== null && httpStatus >= 500);
-    const accountedAttempts = isUpstreamLoad ? attempts - 1 : attempts;
-
-    if (!isUserNotFound && accountedAttempts < BON_INVESTIGATION_MAX_ATTEMPTS) {
-      const retryAfterMs = readRetryAfterMs(error);
-      const notBefore = retryAfterMs
-        ? Date.now() + bonClampRetryAfter(retryAfterMs)
-        : null;
-      const pauseSuffix = notBefore
-        ? ` (paused until ${new Date(notBefore).toLocaleTimeString()})`
-        : "";
-
-      console.warn(
-        `[Bot or Not] investigation ${username} failed (attempt ${accountedAttempts}/${BON_INVESTIGATION_MAX_ATTEMPTS}); re-queueing${pauseSuffix}: ${message}`
-      );
-
-      await setInvestigationState(username, {
-        status: "queued",
-        queuedAt: Date.now(),
-        notBefore,
-        attempts: accountedAttempts,
-        durationMs,
-        ...redditMetricsPatch,
-      });
-    } else {
-      console.error(
-        `[Bot or Not] investigation ${username} failed after ${attempts} attempts:`,
-        error
-      );
-
-      await setInvestigationState(username, {
-        status: "error",
-        error: message,
-        durationMs,
-        ...redditMetricsPatch,
-      });
-    }
-  } finally {
-    activeRuns.delete(key);
-    void drainQueue();
+    await setInvestigationState(username, {
+      status: "error",
+      error: message,
+      durationMs,
+      ...redditMetricsPatch(error),
+    });
   }
 }
 
-// Pending wake timer for the next paused-queued record's notBefore. Only
-// one is ever scheduled — drainQueue cancels and re-arms each pass so we
-// always wait for the *soonest* pause to elapse.
-let pauseWakeTimer: ReturnType<typeof setTimeout> | null = null;
+async function runOneAttempt(
+  username: string,
+  apiKey: string,
+  startedAt: number
+): Promise<void> {
+  const latestReports = await bonReadReports();
+  const existingRecord =
+    latestReports[bonFindReportKey(latestReports, username) ?? username] ??
+    bonNormalizeReport(undefined);
 
-// After a run finishes, pull the oldest queued record (by queuedAt) and
-// kick it. Records whose notBefore is in the future are skipped, and the
-// soonest of those is scheduled to re-drain when its cooldown elapses.
-async function drainQueue(): Promise<void> {
-  if (activeRuns.size >= BON_INVESTIGATION_CONCURRENCY) {
-    return;
+  const inputs = await bonGatherProfile(username, {
+    ...(existingRecord.botBouncerStatus
+      ? { botBouncerStatus: existingRecord.botBouncerStatus }
+      : {}),
+    ...(existingRecord.botBouncerCheckedAt
+      ? { botBouncerCheckedAt: existingRecord.botBouncerCheckedAt }
+      : {}),
+    ...(existingRecord.googleHarvest
+      ? { googleHarvest: existingRecord.googleHarvest }
+      : {}),
+    ...(existingRecord.passiveHarvest
+      ? { passiveHarvest: existingRecord.passiveHarvest }
+      : {}),
+  });
+  const selection = await bonReadLlmSelection();
+  const analysis = await bonRunOneDAnalysis(
+    apiKey,
+    inputs.summary,
+    bonExtractSnoovatarUrl(inputs.raw),
+    selection
+  );
+
+  const durationMs = Date.now() - startedAt;
+  console.log(`[Bot or Not] timing: investigation ${username} ${durationMs}ms`);
+
+  const postsFetched = inputs.raw.submitted.data?.children?.length ?? 0;
+  const commentsFetched = inputs.raw.comments.data?.children?.length ?? 0;
+
+  const results: InvestigationResults = {
+    runAt: analysis.runAt,
+    durationMs,
+    verdict: analysis.verdict,
+    confidence: analysis.confidence,
+    botProbability: analysis.botProbability,
+    factors: analysis.factors,
+    persona: analysis.persona,
+    region: analysis.region,
+    demographics: analysis.demographics,
+    summary: analysis.summary,
+    model: analysis.model,
+    usage: analysis.usage,
+    costUsd: analysis.costUsd,
+    postsFetched,
+    commentsFetched,
+    accountCreatedAt: inputs.summary.account.created_at,
+    accountAgeDays: inputs.summary.account.age_days,
+  };
+
+  await setInvestigationState(username, {
+    status: "done",
+    durationMs,
+    results,
+    redditMetrics: inputs.redditMetrics,
+  });
+
+  if (inputs.activityData) {
+    await saveActivityData(username, inputs.activityData);
   }
 
-  const globalPauseUntil = bonRedditGetPausedUntil();
-  if (globalPauseUntil !== null) {
-    scheduleQueueWake(globalPauseUntil);
-    return;
+  if (inputs.botBouncerStatus) {
+    await persistBotBouncerStatus(username, inputs.botBouncerStatus);
   }
 
-  try {
-    const selection = await bonReadLlmSelection();
-    const vendor = selection.vendor ?? "anthropic";
-    const apiKey = await bonReadApiKey(vendor);
-
-    if (!apiKey) {
-      return;
-    }
-
-    const reports = await bonReadReports();
-    const now = Date.now();
-    const eligible: Array<{ username: string; queuedAt: number }> = [];
-    let nextPauseElapsesAt: number | null = null;
-
-    for (const [username, report] of Object.entries(reports)) {
-      const investigation = report.investigation;
-      if (investigation?.status !== "queued") {
-        continue;
-      }
-
-      if (activeRuns.has(username.toLowerCase())) {
-        continue;
-      }
-
-      const notBefore = investigation.notBefore ?? null;
-      if (notBefore !== null && notBefore > now) {
-        if (nextPauseElapsesAt === null || notBefore < nextPauseElapsesAt) {
-          nextPauseElapsesAt = notBefore;
-        }
-
-        continue;
-      }
-
-      eligible.push({
-        username,
-        queuedAt: investigation.queuedAt ?? 0,
-      });
-    }
-
-    eligible.sort((a, b) => a.queuedAt - b.queuedAt);
-
-    for (const { username } of eligible) {
-      if (activeRuns.size >= BON_INVESTIGATION_CONCURRENCY) {
-        break;
-      }
-
-      void runInvestigation(username, apiKey);
-    }
-
-    scheduleQueueWake(nextPauseElapsesAt);
-  } catch (error) {
-    console.error("[Bot or Not] drainQueue failed", error);
-  }
+  await setProfileHidden(
+    username,
+    bonIsProfileHidden({
+      postsFetched,
+      commentsFetched,
+      totalKarma: inputs.summary.account.total_karma,
+    })
+  );
 }
 
-function scheduleQueueWake(elapsesAt: number | null): void {
-  if (pauseWakeTimer !== null) {
-    clearTimeout(pauseWakeTimer);
-    pauseWakeTimer = null;
+function isUpstreamLoad(error: unknown): boolean {
+  if (!(error instanceof RedditFetchError)) {
+    return false;
   }
 
-  if (elapsesAt === null) {
-    return;
-  }
-
-  const delayMs = Math.max(0, elapsesAt - Date.now());
-  pauseWakeTimer = setTimeout(() => {
-    pauseWakeTimer = null;
-    void drainQueue();
-  }, delayMs);
+  const status = error.httpStatus;
+  return status === 429 || (status !== null && status >= 500);
 }
 
 function readRetryAfterMs(error: unknown): number | null {
@@ -436,6 +330,22 @@ function readRetryAfterMs(error: unknown): number | null {
     ?.retryAfterMs;
 
   return typeof value === "number" && value > 0 ? value : null;
+}
+
+function defaultBackoffMs(attemptNumber: number): number {
+  return Math.min(30_000, 1_000 * 2 ** (attemptNumber - 1));
+}
+
+function redditMetricsPatch(
+  error: unknown
+): { redditMetrics: RedditMetrics } | Record<string, never> {
+  return error instanceof RedditFetchError
+    ? { redditMetrics: error.metrics }
+    : {};
+}
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 // Viewing someone's profile is itself a signal of suspicion — kick off an
@@ -563,8 +473,6 @@ async function setInvestigationState(
 ): Promise<void> {
   const reports = await bonReadReports();
 
-  // Create the record on first investigation so users who haven't been
-  // reported yet still get tracked.
   const key = bonFindReportKey(reports, username) ?? username;
   const existing = reports[key] ?? bonNormalizeReport(undefined);
   const prevInvestigation = existing.investigation;
