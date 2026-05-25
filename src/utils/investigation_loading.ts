@@ -13,47 +13,47 @@ import { bonExpectedDurationSec } from "./expected_duration.ts";
 
 const SLIDES: ReadonlyArray<{ src: string; alt: string }> = [
   {
-    src: "icons/chromes-investigating.png",
+    src: "icons/chromes-investigating.webp",
     alt: "Sherlock Chromes examining evidence under a desk lamp",
   },
   {
-    src: "icons/chromes-corkboard.png",
+    src: "icons/chromes-corkboard.webp",
     alt: "Sherlock Chromes studying a corkboard of pinned photos and red string",
   },
   {
-    src: "icons/chromes-peephole.png",
+    src: "icons/chromes-peephole.webp",
     alt: "Sherlock Chromes peering through a peephole",
   },
   {
-    src: "icons/chromes-typewriter.png",
+    src: "icons/chromes-typewriter.webp",
     alt: "Sherlock Chromes typing up a case report at a desk lamp",
   },
   {
-    src: "icons/chromes-magnifier-doorknob.png",
+    src: "icons/chromes-magnifier-doorknob.webp",
     alt: "Sherlock Chromes inspecting a brass doorknob with a magnifying glass",
   },
   {
-    src: "icons/chromes-plaster-cast.png",
+    src: "icons/chromes-plaster-cast.webp",
     alt: "Sherlock Chromes pouring plaster into a boot print in a cobblestone alley",
   },
   {
-    src: "icons/chromes-microscope.png",
+    src: "icons/chromes-microscope.webp",
     alt: "Sherlock Chromes peering into a brass microscope at a glass slide",
   },
   {
-    src: "icons/chromes-wiretap.png",
+    src: "icons/chromes-wiretap.webp",
     alt: "Sherlock Chromes listening on headphones beside a reel-to-reel recorder",
   },
   {
-    src: "icons/chromes-foggy-alley.png",
+    src: "icons/chromes-foggy-alley.webp",
     alt: "Sherlock Chromes walking through a foggy lamplit alley",
   },
   {
-    src: "icons/chromes-filing-cabinet.png",
+    src: "icons/chromes-filing-cabinet.webp",
     alt: "Sherlock Chromes pulling a folder from a filing cabinet by flashlight",
   },
   {
-    src: "icons/chromes-darkroom.png",
+    src: "icons/chromes-darkroom.webp",
     alt: "Sherlock Chromes lifting a developing photograph under a red darkroom safelight",
   },
 ];

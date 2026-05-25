@@ -24,12 +24,37 @@ export interface BonClient {
   subscribe(listener: BonClientListener): () => void;
 }
 
+// One investigation lifecycle fires ~5 separate storage writes (queued →
+// running → activityData → done → profileHidden/botBouncer). Without
+// coalescing, every subscriber re-renders for each write, and the reports
+// page slideshow + uplot canvases get rebuilt 5× per investigation step.
+// 250ms is short enough that user-driven actions still feel immediate.
+const BON_CLIENT_COALESCE_MS = 250;
+
 class BonExtensionClient implements BonClient {
   send<T = unknown>(message: BonClientMessage): Promise<T> {
     return browser.runtime.sendMessage(message) as Promise<T>;
   }
 
   subscribe(listener: BonClientListener): () => void {
+    const pending = new Map<
+      BonClientEvent["type"],
+      ReturnType<typeof setTimeout>
+    >();
+
+    const emit = (type: BonClientEvent["type"]): void => {
+      const existing = pending.get(type);
+      if (existing) {
+        clearTimeout(existing);
+      }
+
+      const timer = setTimeout(() => {
+        pending.delete(type);
+        listener({ type } as BonClientEvent);
+      }, BON_CLIENT_COALESCE_MS);
+      pending.set(type, timer);
+    };
+
     const handler = (
       changes: Record<string, browser.storage.StorageChange>,
       area: string
@@ -39,35 +64,42 @@ class BonExtensionClient implements BonClient {
       }
 
       if (changes.reports) {
-        listener({ type: "reports-changed" });
+        emit("reports-changed");
       }
 
       if (changes.subreddits) {
-        listener({ type: "subreddits-changed" });
+        emit("subreddits-changed");
       }
 
       if (changes.apiKeys || changes.claudeApiKey) {
         // `claudeApiKey` is the legacy single-vendor slot; once the
         // migration runs it becomes `apiKeys`. Subscribe to both so the
         // UI stays in sync regardless of which slot the change came from.
-        listener({ type: "api-key-changed" });
+        emit("api-key-changed");
       }
 
       if (changes.llmVendor || changes.llmModel) {
-        listener({ type: "llm-selection-changed" });
+        emit("llm-selection-changed");
       }
 
       if (changes.hidePii) {
-        listener({ type: "hide-pii-changed" });
+        emit("hide-pii-changed");
       }
 
       if (changes.redditPauseUntil) {
-        listener({ type: "reddit-pause-changed" });
+        emit("reddit-pause-changed");
       }
     };
 
     browser.storage.onChanged.addListener(handler);
-    return () => browser.storage.onChanged.removeListener(handler);
+    return () => {
+      for (const timer of pending.values()) {
+        clearTimeout(timer);
+      }
+
+      pending.clear();
+      browser.storage.onChanged.removeListener(handler);
+    };
   }
 }
 
