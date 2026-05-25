@@ -1,21 +1,20 @@
 // Single funnel for every background-side fetch against reddit.com. A
-// shared semaphore caps in-flight requests across all callers so they
+// shared p-queue caps in-flight requests across all callers so they
 // don't 429 each other or the operator's own logged-in Reddit tab.
 // Per-feature queues (investigation concurrency, attribution drain) still
 // gate *what work to schedule*; this only gates *how many HTTP calls are
 // in flight*.
 //
-// Two layers of rate-limit defense:
-//   1. Proactive pacing off Reddit's `x-ratelimit-*` response headers.
-//      Once the budget tightens (see BON_REDDIT_BUDGET_COMFORTABLE),
-//      drainWaiters spaces dispatch evenly across the remaining window so
-//      we walk up to the boundary instead of sprinting into it. When the
-//      budget hits the floor we proactively trip the pause without
-//      waiting for a 429.
-//   2. Reactive pause on 429 / 5xx — every subsequent fetch blocks until
-//      the cooldown elapses. State is mirrored to browser.storage.local
-//      under `redditPauseUntil` so UI surfaces can show a banner via the
-//      standard storage.onChanged path.
+// Rate-limit defense:
+//   1. Proactive floor-trip off Reddit's `x-ratelimit-*` response headers.
+//      When `remaining` drops to BON_REDDIT_BUDGET_FLOOR, pause the queue
+//      until the bucket resets — preempts the 429 we'd otherwise eat.
+//   2. Reactive pause on 429 / 5xx — `queue.pause()` halts dispatch until
+//      the cooldown elapses, then `queue.start()` resumes. State is
+//      mirrored to browser.storage.local under `redditPauseUntil` so UI
+//      surfaces can show a banner via storage.onChanged.
+
+import PQueue from "p-queue";
 
 import { bonShortUrl } from "../utils/format_text.ts";
 import {
@@ -26,32 +25,19 @@ import {
 const BON_REDDIT_CONCURRENCY = 4;
 
 // Reddit usually answers in well under a second. A 30s ceiling means a
-// hung connection releases its semaphore slot instead of stalling the
-// whole queue behind one dead request.
+// hung connection releases its slot instead of stalling the queue.
 const BON_REDDIT_FETCH_TIMEOUT_MS = 30_000;
 
-// Proactive-pacing thresholds, driven by Reddit's `x-ratelimit-*` response
-// headers. Reddit gives cookie-authenticated browser fetches ~100 requests
-// per 10-minute window. We let dispatch run flat-out while there's headroom
-// and switch to evenly-spread pacing once the budget tightens, so a burst
-// (e.g. a 100-author subreddit analysis = ~500 fetches) doesn't sprint into
-// a 429 it could have walked around.
-const BON_REDDIT_BUDGET_COMFORTABLE = 30;
 const BON_REDDIT_BUDGET_FLOOR = 3;
-const BON_REDDIT_PACE_SAFETY_FACTOR = 1.2;
 
 interface BonRedditBudget {
   remaining: number;
   resetAt: number;
 }
 
+const queue = new PQueue({ concurrency: BON_REDDIT_CONCURRENCY });
+
 let latestBudget: BonRedditBudget | null = null;
-let nextAllowedAt = 0;
-
-let inFlight = 0;
-const waiters: Array<() => void> = [];
-let drainTimer: ReturnType<typeof setTimeout> | null = null;
-
 let pausedUntil: number | null = null;
 let pauseClearTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -74,88 +60,8 @@ function clearPause(): void {
     pauseClearTimer = null;
   }
 
+  queue.start();
   void publishPauseState();
-  drainWaiters();
-}
-
-function scheduleDrain(delayMs: number): void {
-  if (drainTimer !== null) {
-    clearTimeout(drainTimer);
-  }
-
-  drainTimer = setTimeout(
-    () => {
-      drainTimer = null;
-      drainWaiters();
-    },
-    Math.max(0, delayMs)
-  );
-}
-
-function drainWaiters(): void {
-  if (drainTimer !== null) {
-    clearTimeout(drainTimer);
-    drainTimer = null;
-  }
-
-  while (waiters.length > 0) {
-    if (pausedUntil !== null && pausedUntil > Date.now()) {
-      scheduleDrain(pausedUntil - Date.now());
-      return;
-    }
-
-    if (inFlight >= BON_REDDIT_CONCURRENCY) {
-      return;
-    }
-
-    const now = Date.now();
-    if (now < nextAllowedAt) {
-      scheduleDrain(nextAllowedAt - now);
-      return;
-    }
-
-    const next = waiters.shift();
-    if (!next) {
-      return;
-    }
-
-    inFlight += 1;
-    nextAllowedAt = Math.max(nextAllowedAt, now) + currentSpacingMs();
-    next();
-  }
-}
-
-function currentSpacingMs(): number {
-  if (latestBudget === null) {
-    return 0;
-  }
-
-  if (latestBudget.remaining >= BON_REDDIT_BUDGET_COMFORTABLE) {
-    return 0;
-  }
-
-  const msUntilReset = Math.max(0, latestBudget.resetAt - Date.now());
-  const denominator = Math.max(1, latestBudget.remaining);
-  return (msUntilReset / denominator) * BON_REDDIT_PACE_SAFETY_FACTOR;
-}
-
-function parseBudget(headers: Headers): BonRedditBudget | null {
-  const remainingRaw = headers.get("x-ratelimit-remaining");
-  const resetRaw = headers.get("x-ratelimit-reset");
-  if (remainingRaw === null || resetRaw === null) {
-    return null;
-  }
-
-  const remaining = Number(remainingRaw);
-  const resetSec = Number(resetRaw);
-  if (!Number.isFinite(remaining) || !Number.isFinite(resetSec)) {
-    return null;
-  }
-
-  return {
-    remaining: Math.max(0, Math.floor(remaining)),
-    resetAt: Date.now() + Math.max(0, resetSec) * 1000,
-  };
 }
 
 function notePause(retryAfterMs: number | null, reason: string): void {
@@ -167,6 +73,7 @@ function notePause(retryAfterMs: number | null, reason: string): void {
   }
 
   pausedUntil = newPausedUntil;
+  queue.pause();
 
   if (pauseClearTimer !== null) {
     clearTimeout(pauseClearTimer);
@@ -188,13 +95,6 @@ export function bonRedditGetPausedUntil(): number | null {
   return pausedUntil;
 }
 
-function acquireSlot(): Promise<void> {
-  return new Promise<void>((resolve) => {
-    waiters.push(resolve);
-    drainWaiters();
-  });
-}
-
 export function bonRedditGetBudget(): BonRedditBudget | null {
   if (latestBudget === null) {
     return null;
@@ -206,6 +106,25 @@ export function bonRedditGetBudget(): BonRedditBudget | null {
   }
 
   return latestBudget;
+}
+
+function parseBudget(headers: Headers): BonRedditBudget | null {
+  const remainingRaw = headers.get("x-ratelimit-remaining");
+  const resetRaw = headers.get("x-ratelimit-reset");
+  if (remainingRaw === null || resetRaw === null) {
+    return null;
+  }
+
+  const remaining = Number(remainingRaw);
+  const resetSec = Number(resetRaw);
+  if (!Number.isFinite(remaining) || !Number.isFinite(resetSec)) {
+    return null;
+  }
+
+  return {
+    remaining: Math.max(0, Math.floor(remaining)),
+    resetAt: Date.now() + Math.max(0, resetSec) * 1000,
+  };
 }
 
 function noteBudget(headers: Headers): void {
@@ -220,11 +139,6 @@ function noteBudget(headers: Headers): void {
     const resetMs = Math.max(0, budget.resetAt - Date.now());
     notePause(resetMs, `budget at ${budget.remaining} remaining`);
   }
-}
-
-function releaseSlot(): void {
-  inFlight -= 1;
-  drainWaiters();
 }
 
 export class RedditRequestError extends Error {
@@ -262,6 +176,7 @@ async function bootstrapPauseState(): Promise<void> {
     }
 
     pausedUntil = stored;
+    queue.pause();
     pauseClearTimer = setTimeout(clearPause, remaining);
   } catch (error) {
     console.error("[Bot or Not] failed to restore Reddit pause state", error);
@@ -271,47 +186,46 @@ async function bootstrapPauseState(): Promise<void> {
 void bootstrapPauseState();
 
 export async function bonRedditFetchJson<T = unknown>(url: string): Promise<T> {
-  await acquireSlot();
+  return await queue.add(async () => {
+    const startedAt = performance.now();
+    let succeeded = false;
 
-  const startedAt = performance.now();
-  let succeeded = false;
+    try {
+      const response = await fetch(url, {
+        headers: { Accept: "application/json" },
+        credentials: "include",
+        signal: AbortSignal.timeout(BON_REDDIT_FETCH_TIMEOUT_MS),
+      });
 
-  try {
-    const response = await fetch(url, {
-      headers: { Accept: "application/json" },
-      credentials: "include",
-      signal: AbortSignal.timeout(BON_REDDIT_FETCH_TIMEOUT_MS),
-    });
+      noteBudget(response.headers);
 
-    noteBudget(response.headers);
+      if (!response.ok) {
+        const retryAfterMs = bonParseRetryAfter(
+          response.headers.get("Retry-After")
+        );
 
-    if (!response.ok) {
-      const retryAfterMs = bonParseRetryAfter(
-        response.headers.get("Retry-After")
-      );
+        if (response.status === 429) {
+          notePause(retryAfterMs, "rate-limited");
+        } else if (response.status >= 500) {
+          notePause(retryAfterMs, `returned ${response.status}`);
+        }
 
-      if (response.status === 429) {
-        notePause(retryAfterMs, "rate-limited");
-      } else if (response.status >= 500) {
-        notePause(retryAfterMs, `returned ${response.status}`);
+        throw new RedditRequestError(
+          `Reddit fetch ${response.status} for ${url}`,
+          response.status,
+          retryAfterMs
+        );
       }
 
-      throw new RedditRequestError(
-        `Reddit fetch ${response.status} for ${url}`,
-        response.status,
-        retryAfterMs
+      const body = (await response.json()) as T;
+      succeeded = true;
+      return body;
+    } finally {
+      const elapsedMs = Math.round(performance.now() - startedAt);
+      const suffix = succeeded ? "" : " (failed)";
+      console.log(
+        `[Bot or Not] timing: fetch ${bonShortUrl(url)} ${elapsedMs}ms${suffix}`
       );
     }
-
-    const body = (await response.json()) as T;
-    succeeded = true;
-    return body;
-  } finally {
-    const elapsedMs = Math.round(performance.now() - startedAt);
-    const suffix = succeeded ? "" : " (failed)";
-    console.log(
-      `[Bot or Not] timing: fetch ${bonShortUrl(url)} ${elapsedMs}ms${suffix}`
-    );
-    releaseSlot();
-  }
+  });
 }

@@ -34,6 +34,8 @@
     "web-ext": "^10.1.0"
   },
   "dependencies": {
+    "p-queue": "^9.3.0",
+    "p-retry": "^8.0.0",
     "uplot": "^1.6.32"
   }
 }
