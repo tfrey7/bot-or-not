@@ -124,6 +124,88 @@ export async function bonInvestigationStart(
   return { ok: true, queued: queue.pending >= BON_INVESTIGATION_CONCURRENCY };
 }
 
+// Bulk enqueue. Collapses N×{read,read,write} of the full reports object
+// into a single read-modify-write — important when something like the
+// subreddit-analyze flow enqueues ~100 users in one burst. Each write
+// fires browser.storage.onChanged on every subscriber, so the savings
+// compound across the UI surfaces too.
+export async function bonInvestigationStartBatch(
+  usernames: string[]
+): Promise<{ ok: boolean; error?: string }> {
+  if (usernames.length === 0) {
+    return { ok: true };
+  }
+
+  const selection = await bonReadLlmSelection();
+  const vendor = selection.vendor ?? "anthropic";
+  const apiKey = await bonReadApiKey(vendor);
+
+  if (!apiKey) {
+    return { ok: false, error: "no-api-key" };
+  }
+
+  const reports = await bonReadReports();
+  const toEnqueue: string[] = [];
+  let dirty = false;
+  const now = Date.now();
+
+  for (const username of usernames) {
+    if (!username) {
+      continue;
+    }
+
+    const key = bonFindReportKey(reports, username) ?? username;
+    const existing = reports[key] ?? bonNormalizeReport(undefined);
+    const prevInvestigation = existing.investigation;
+
+    // Already queued/running: skip the storage stamp (mirrors the
+    // single-user shortcut in bonInvestigationStart). Still re-enqueue
+    // into PQueue in case the in-memory queue lost it.
+    if (
+      prevInvestigation?.status === "queued" ||
+      prevInvestigation?.status === "running"
+    ) {
+      toEnqueue.push(username);
+      continue;
+    }
+
+    const seedFromLegacy =
+      prevInvestigation?.status === "done" &&
+      (prevInvestigation.runs?.length ?? 0) === 0;
+    const prevRuns: RunSnapshot[] = seedFromLegacy
+      ? [bonSnapshotRun(prevInvestigation, "done")]
+      : (prevInvestigation?.runs ?? []);
+
+    reports[key] = {
+      ...existing,
+      investigation: {
+        status: "queued",
+        queuedAt: now,
+        notBefore: null,
+        startedAt: null,
+        durationMs: null,
+        error: null,
+        attempts: 0,
+        runs: prevRuns,
+        redditMetrics: prevInvestigation?.redditMetrics ?? null,
+        results: null,
+      },
+    };
+    dirty = true;
+    toEnqueue.push(username);
+  }
+
+  if (dirty) {
+    await bonWriteReports(reports);
+  }
+
+  for (const username of toEnqueue) {
+    void enqueueInvestigation(username);
+  }
+
+  return { ok: true };
+}
+
 async function enqueueInvestigation(username: string): Promise<void> {
   const key = username.toLowerCase();
   if (inFlight.has(key)) {

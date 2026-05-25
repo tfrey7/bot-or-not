@@ -307,6 +307,7 @@ export {
   BON_INVESTIGATION_CONCURRENCY,
   bonInvestigationSweepOrphans,
   bonInvestigationStart,
+  bonInvestigationStartBatch,
   bonInvestigationAutoOnView,
   bonInvestigationMaybeAuto,
 } from "./handlers.ts";

@@ -25,7 +25,7 @@ import {
 } from "../../storage.ts";
 import type { SubredditReport } from "../../types.ts";
 import { bonFindReportKey } from "../../utils/history.ts";
-import { bonInvestigationStart } from "../investigation";
+import { bonInvestigationStartBatch } from "../investigation";
 import { BON_SUBREDDIT_SAMPLE_SIZE } from "./data.ts";
 import { bonSubredditFetchAuthors } from "./fetch_authors.ts";
 import {
@@ -110,11 +110,14 @@ export async function bonSubredditAnalyze(
       continue;
     }
 
-    // bonInvestigationStart is idempotent for queued/running already;
-    // it also re-runs done records, which is why we gate above.
-    await bonInvestigationStart(username);
     enqueuedUsernames.push(username);
   }
+
+  // Single batched read-modify-write of the reports object. The per-user
+  // alternative would emit ~3 storage ops × 100 users per analyze click,
+  // which pegs the background SW and stalls the reports page until the
+  // burst settles.
+  await bonInvestigationStartBatch(enqueuedUsernames);
 
   return {
     ok: true,
