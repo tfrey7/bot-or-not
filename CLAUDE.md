@@ -25,6 +25,7 @@ Project-specific bits:
 - Worktrees live at `../bot-or-not-strands/<slug>/` on branches `strand/<slug>`. Symlink `node_modules` and `.env` from the main checkout so one `npm install` covers all strands. (The plugin handles this when spawning.)
 - **Only one worktree can be live in Firefox at a time** (Firefox can load exactly one copy of the extension). `npm run dev` in any worktree kills the previously-active dev server and takes over. The Firefox profile (`~/.bot-or-not-dev-profile/`) is persistent — configured in `vite.config.js` — so swapping which worktree is active preserves extension storage, the open reports tab, and other state.
 - There is no orchestrator session. Any session — main checkout or strand — can spawn sibling strands and can run `npm run dev` to claim the Firefox singleton. Publishing happens from whichever session is on `main`.
+- **Never auto-claim the dev singleton.** A strand session must not run `npm run dev` (or otherwise restart the dev server) on its own — not at the start of work, not after a build, not when a task wraps up. Stealing the singleton out from under whichever worktree the user is actively testing in is disruptive and frequent across parallel strands. Wait until the user explicitly asks ("grab dev here", "run dev in this strand", etc.). Typecheck / lint / build inside the worktree are fine — they don't touch the Firefox singleton.
 
 ### Publish a new version
 
