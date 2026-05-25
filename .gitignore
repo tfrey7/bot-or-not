@@ -15,4 +15,5 @@ dev/
 .dev-server.pid
 .dev-server.log
 .active-feature
+.strand.json
 docs/screenshots/fixture.json

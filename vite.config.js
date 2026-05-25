@@ -1,4 +1,4 @@
-import { cpSync } from "node:fs";
+import { cpSync, readFileSync } from "node:fs";
 import { basename, dirname, resolve } from "node:path";
 import { defineConfig, loadEnv } from "vite";
 import webExtension from "vite-plugin-web-extension";
@@ -33,6 +33,23 @@ export default defineConfig(({ mode }) => {
     ? basename(process.cwd())
     : null;
   const devStrand = mode === "development" ? inferredStrand : null;
+
+  // .strand.json is written by Claude from the Vibe Stranding MCP at strand
+  // start. When present, its `color` syncs the badge to the plugin's color.
+  // Missing file is normal (main checkout, or strand spawned before sync) —
+  // the badge falls back to a hash-derived palette.
+  let devStrandColor = null;
+  if (devStrand) {
+    try {
+      const strandMeta = JSON.parse(
+        readFileSync(resolve(process.cwd(), ".strand.json"), "utf8"),
+      );
+      devStrandColor =
+        typeof strandMeta.color === "string" ? strandMeta.color : null;
+    } catch {
+      devStrandColor = null;
+    }
+  }
 
   return {
     plugins: [
@@ -76,6 +93,7 @@ export default defineConfig(({ mode }) => {
     define: {
       __BON_DEV_CLAUDE_API_KEY__: JSON.stringify(devClaudeApiKey),
       __BON_STRAND__: JSON.stringify(devStrand),
+      __BON_STRAND_COLOR__: JSON.stringify(devStrandColor),
     },
     build: {
       outDir: "dist",
