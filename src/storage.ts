@@ -9,7 +9,7 @@
 
 import type { LlmVendor } from "./llm/index.ts";
 import type { Report, SubredditReport } from "./types.ts";
-import { bonNormalizeReport } from "./utils/history.ts";
+import { bonFindReportKey, bonNormalizeReport } from "./utils/history.ts";
 
 // Persisted LLM selection. Both fields nullable — `null` means "use the
 // provider's built-in default," so a fresh install (and any user who's
@@ -22,9 +22,27 @@ export interface BonLlmSelection {
 // One key per vendor. Missing entries = no key on file for that vendor.
 export type BonApiKeyMap = Partial<Record<LlmVendor, string>>;
 
+// Updater for bonUpdateReport. Receives the current Report (or null if no
+// record exists for this username) and returns the next one. Return null to
+// delete the record; return the current value untouched to no-op the write.
+export type BonReportUpdater = (
+  current: Report | null
+) => Report | null | Promise<Report | null>;
+
 export interface BonStorage {
   readReports(): Promise<Record<string, Report>>;
   writeReports(reports: Record<string, Report>): Promise<void>;
+
+  // Single-record read. Case-insensitive on username to match the way the
+  // report map is keyed in practice (lowercase going forward, mixed-case
+  // legacy data still on disk).
+  readReport(username: string): Promise<Report | null>;
+
+  // Atomically updates one record under a per-username lock. Concurrent
+  // calls for the same username run strictly in order; calls for different
+  // usernames run independently. Bulk writers via writeReports() are not
+  // coordinated with this lock — they remain the danger-zone path.
+  updateReport(username: string, updater: BonReportUpdater): Promise<void>;
 
   readSubreddits(): Promise<Record<string, SubredditReport>>;
   writeSubreddits(subreddits: Record<string, SubredditReport>): Promise<void>;
@@ -58,6 +76,69 @@ class BonExtensionStorage implements BonStorage {
 
   async writeReports(reports: Record<string, Report>): Promise<void> {
     await browser.storage.local.set({ reports });
+  }
+
+  // Tail of the per-username update chain. Each updateReport call appends a
+  // task to the entry's promise and replaces the entry with the new tail.
+  // Map entry is evicted when its tail resolves and no further work has
+  // been queued on top of it.
+  private reportUpdateChains = new Map<string, Promise<unknown>>();
+
+  async readReport(username: string): Promise<Report | null> {
+    const reports = await this.readReports();
+    const key = bonFindReportKey(reports, username);
+    return key ? reports[key] : null;
+  }
+
+  async updateReport(
+    username: string,
+    updater: BonReportUpdater
+  ): Promise<void> {
+    const lockKey = username.toLowerCase();
+    const previous = this.reportUpdateChains.get(lockKey) ?? Promise.resolve();
+
+    // Swallow upstream errors for the *chain*: a prior caller's failure
+    // shouldn't poison subsequent updates. The original caller already
+    // received its own rejection via its own `await next` below.
+    const next = previous
+      .catch(() => undefined)
+      .then(() => this.applyReportUpdate(username, updater));
+
+    this.reportUpdateChains.set(lockKey, next);
+
+    try {
+      await next;
+    } finally {
+      if (this.reportUpdateChains.get(lockKey) === next) {
+        this.reportUpdateChains.delete(lockKey);
+      }
+    }
+  }
+
+  private async applyReportUpdate(
+    username: string,
+    updater: BonReportUpdater
+  ): Promise<void> {
+    const reports = await this.readReports();
+    const existingKey = bonFindReportKey(reports, username) ?? username;
+    const current = reports[existingKey] ?? null;
+    const updated = await updater(current);
+
+    if (updated === null) {
+      if (existingKey in reports) {
+        delete reports[existingKey];
+        await this.writeReports(reports);
+      }
+
+      return;
+    }
+
+    if (updated === current) {
+      return;
+    }
+
+    reports[existingKey] = updated;
+    await this.writeReports(reports);
   }
 
   async readSubreddits(): Promise<Record<string, SubredditReport>> {
@@ -227,6 +308,17 @@ export function bonWriteReports(
   reports: Record<string, Report>
 ): Promise<void> {
   return bonStorage.writeReports(reports);
+}
+
+export function bonReadReport(username: string): Promise<Report | null> {
+  return bonStorage.readReport(username);
+}
+
+export function bonUpdateReport(
+  username: string,
+  updater: BonReportUpdater
+): Promise<void> {
+  return bonStorage.updateReport(username, updater);
 }
 
 export function bonReadSubreddits(): Promise<Record<string, SubredditReport>> {

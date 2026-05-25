@@ -8,7 +8,12 @@ import { BON_PERSONA_LABELS } from "../../factors.ts";
 import type { PersonaLabel, Report, UserNotes } from "../../types.ts";
 import { bonGoogleHarvestMerge, type BonScrapedPost } from "../google-harvest";
 import { bonExpectedDurationMs } from "../../utils/expected_duration.ts";
-import { bonReadReports, bonWriteReports } from "../../storage.ts";
+import {
+  bonReadReport,
+  bonReadReports,
+  bonUpdateReport,
+  bonWriteReports,
+} from "../../storage.ts";
 import {
   bonDedupeHistory,
   bonFindReportKey,
@@ -35,31 +40,32 @@ export async function bonRedditorsRecordReport(
   username: string,
   context: Record<string, unknown>
 ): Promise<{ count: number }> {
-  const reports = await bonReadReports();
+  let count = 0;
 
-  const existing = bonNormalizeReport(reports[username]);
-  const reportedAt = Date.now();
-  const entry = { at: reportedAt, ...context };
-  const history = bonDedupeHistory([...existing.history, entry]);
+  await bonUpdateReport(username, (current) => {
+    const existing = current ?? bonNormalizeReport(undefined);
+    const reportedAt = Date.now();
+    const entry = { at: reportedAt, ...context };
+    const history = bonDedupeHistory([...existing.history, entry]);
+    count = history.length;
 
-  reports[username] = {
-    ...existing,
-    count: history.length,
-    lastReportedAt: reportedAt,
-    history,
-  };
-  await bonWriteReports(reports);
+    return {
+      ...existing,
+      count: history.length,
+      lastReportedAt: reportedAt,
+      history,
+    };
+  });
 
   void bonInvestigationMaybeAuto(username);
 
-  return { count: history.length };
+  return { count };
 }
 
 export async function bonRedditorsGetState(
   username: string
 ): Promise<{ count: number; isBot: boolean }> {
-  const reports = await bonReadReports();
-  const count = reports[username]?.count ?? 0;
+  const count = (await bonReadReport(username))?.count ?? 0;
   return { count, isBot: count > 0 };
 }
 
@@ -147,37 +153,37 @@ export async function bonRedditorsDelete(
     return { ok: false, error: "missing-username" };
   }
 
-  const reports = await bonReadReports();
-  if (!(trimmed in reports)) {
-    return { ok: true, removed: false };
-  }
+  let removed = false;
+  await bonUpdateReport(trimmed, (current) => {
+    if (current) {
+      removed = true;
+    }
 
-  delete reports[trimmed];
-  await bonWriteReports(reports);
-  return { ok: true, removed: true };
+    return null;
+  });
+
+  return { ok: true, removed };
 }
 
 export async function bonRedditorsSetUserStatus(
   username: string,
   status: Report["userStatus"]
 ): Promise<void> {
-  const reports = await bonReadReports();
+  await bonUpdateReport(username, (current) => {
+    if (!current) {
+      return null;
+    }
 
-  if (!reports[username]) {
-    return;
-  }
+    if (current.userStatus === status) {
+      return current;
+    }
 
-  const existing = reports[username];
-  if (existing.userStatus === status) {
-    return;
-  }
-
-  reports[username] = {
-    ...existing,
-    userStatus: status,
-    userStatusCheckedAt: Date.now(),
-  };
-  await bonWriteReports(reports);
+    return {
+      ...current,
+      userStatus: status,
+      userStatusCheckedAt: Date.now(),
+    };
+  });
 }
 
 export async function bonRedditorsUpdateProfileStats(
@@ -185,32 +191,29 @@ export async function bonRedditorsUpdateProfileStats(
   createdAt: number | null,
   totalKarma: number | null
 ): Promise<void> {
-  const reports = await bonReadReports();
+  await bonUpdateReport(username, (current) => {
+    if (!current) {
+      return null;
+    }
 
-  if (!reports[username]) {
-    return;
-  }
+    // Cake day is immutable, so only fill it when we don't already have one.
+    // Karma changes over time — let the latest fetch win.
+    const nextCreatedAt = current.createdAt ?? createdAt ?? null;
+    const nextKarma = totalKarma ?? current.totalKarma ?? null;
 
-  const existing = reports[username];
+    if (
+      nextCreatedAt === current.createdAt &&
+      nextKarma === current.totalKarma
+    ) {
+      return current;
+    }
 
-  // Cake day is immutable, so only fill it when we don't already have one.
-  // Karma changes over time — let the latest fetch win.
-  const nextCreatedAt = existing.createdAt ?? createdAt ?? null;
-  const nextKarma = totalKarma ?? existing.totalKarma ?? null;
-
-  if (
-    nextCreatedAt === existing.createdAt &&
-    nextKarma === existing.totalKarma
-  ) {
-    return;
-  }
-
-  reports[username] = {
-    ...existing,
-    createdAt: nextCreatedAt,
-    totalKarma: nextKarma,
-  };
-  await bonWriteReports(reports);
+    return {
+      ...current,
+      createdAt: nextCreatedAt,
+      totalKarma: nextKarma,
+    };
+  });
 }
 
 export async function bonRedditorsUpdatePostStatus(
@@ -263,12 +266,6 @@ export async function bonRedditorsSetUserNotes(
   username: string,
   patch: { ratings: string[]; note: string }
 ): Promise<{ ok: boolean; userNotes: UserNotes | null }> {
-  const reports = await bonReadReports();
-  const key = bonFindReportKey(reports, username);
-  if (!key) {
-    return { ok: false, userNotes: null };
-  }
-
   const seen = new Set<PersonaLabel>();
   const ratings: PersonaLabel[] = [];
 
@@ -293,8 +290,20 @@ export async function bonRedditorsSetUserNotes(
       ? null
       : { ratings, note, updatedAt: Date.now() };
 
-  reports[key] = { ...reports[key], userNotes };
-  await bonWriteReports(reports);
+  let applied = false;
+  await bonUpdateReport(username, (current) => {
+    if (!current) {
+      return null;
+    }
+
+    applied = true;
+    return { ...current, userNotes };
+  });
+
+  if (!applied) {
+    return { ok: false, userNotes: null };
+  }
+
   return { ok: true, userNotes };
 }
 
@@ -314,44 +323,42 @@ export async function bonRedditorsSetGoogleHarvest(
     return { ok: false };
   }
 
-  const reports = await bonReadReports();
-  const key = bonFindReportKey(reports, trimmed) ?? trimmed;
-  const existing = reports[key] ?? bonNormalizeReport(undefined);
+  let postCount = 0;
+  await bonUpdateReport(trimmed, (current) => {
+    const existing = current ?? bonNormalizeReport(undefined);
+    const merged = bonGoogleHarvestMerge({
+      existing: existing.googleHarvest,
+      incomingPosts,
+      query,
+      now: Date.now(),
+    });
+    postCount = merged.posts.length;
 
-  const merged = bonGoogleHarvestMerge({
-    existing: existing.googleHarvest,
-    incomingPosts,
-    query,
-    now: Date.now(),
+    return { ...existing, googleHarvest: merged };
   });
 
-  reports[key] = { ...existing, googleHarvest: merged };
-  await bonWriteReports(reports);
-  return { ok: true, postCount: merged.posts.length };
+  return { ok: true, postCount };
 }
 
 export async function bonRedditorsSetBotBouncerStatus(
   username: string,
   status: Report["botBouncerStatus"]
 ): Promise<void> {
-  const reports = await bonReadReports();
-  const key = bonFindReportKey(reports, username);
+  await bonUpdateReport(username, (current) => {
+    if (!current) {
+      return null;
+    }
 
-  if (!key) {
-    return;
-  }
+    if (current.botBouncerStatus === status) {
+      return current;
+    }
 
-  const existing = reports[key];
-  if (existing.botBouncerStatus === status) {
-    return;
-  }
-
-  reports[key] = {
-    ...existing,
-    botBouncerStatus: status,
-    botBouncerCheckedAt: Date.now(),
-  };
-  await bonWriteReports(reports);
+    return {
+      ...current,
+      botBouncerStatus: status,
+      botBouncerCheckedAt: Date.now(),
+    };
+  });
 }
 
 export async function bonRedditorsLinkRing(

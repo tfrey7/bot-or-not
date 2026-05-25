@@ -25,7 +25,9 @@ import type {
 import {
   bonReadApiKey,
   bonReadLlmSelection,
+  bonReadReport,
   bonReadReports,
+  bonUpdateReport,
   bonWriteReports,
 } from "../../storage.ts";
 import {
@@ -103,9 +105,7 @@ export async function bonInvestigationStart(
     return { ok: true, queued: true };
   }
 
-  const reports = await bonReadReports();
-  const existing =
-    reports[bonFindReportKey(reports, username) ?? username]?.investigation;
+  const existing = (await bonReadReport(username))?.investigation;
 
   // Already queued or running — don't bump position by overwriting
   // queuedAt; just make sure something has it enqueued.
@@ -320,10 +320,8 @@ async function runOneAttempt(
   apiKey: string,
   startedAt: number
 ): Promise<void> {
-  const latestReports = await bonReadReports();
   const existingRecord =
-    latestReports[bonFindReportKey(latestReports, username) ?? username] ??
-    bonNormalizeReport(undefined);
+    (await bonReadReport(username)) ?? bonNormalizeReport(undefined);
 
   const inputs = await bonGatherProfile(username, {
     ...(existingRecord.botBouncerStatus
@@ -451,9 +449,7 @@ export async function bonInvestigationAutoOnView(
       return { ok: true, started: false };
     }
 
-    const reports = await bonReadReports();
-    const key = bonFindReportKey(reports, trimmed) ?? trimmed;
-    const investigation = bonNormalizeReport(reports[key]).investigation;
+    const investigation = (await bonReadReport(trimmed))?.investigation ?? null;
 
     if (
       investigation &&
@@ -490,9 +486,8 @@ export async function bonInvestigationMaybeAuto(
       return;
     }
 
-    const reports = await bonReadReports();
-    const key = bonFindReportKey(reports, username) ?? username;
-    const investigation = bonNormalizeReport(reports[key]).investigation;
+    const investigation =
+      (await bonReadReport(username))?.investigation ?? null;
 
     if (
       investigation?.status === "running" &&
@@ -553,110 +548,107 @@ async function setInvestigationState(
   username: string,
   transition: InvestigationTransition
 ): Promise<void> {
-  const reports = await bonReadReports();
+  await bonUpdateReport(username, (current) => {
+    const existing = current ?? bonNormalizeReport(undefined);
+    const prevInvestigation = existing.investigation;
 
-  const key = bonFindReportKey(reports, username) ?? username;
-  const existing = reports[key] ?? bonNormalizeReport(undefined);
-  const prevInvestigation = existing.investigation;
+    const prevAttempts = prevInvestigation?.attempts ?? 0;
+    const prevRedditMetrics = prevInvestigation?.redditMetrics ?? null;
 
-  const prevAttempts = prevInvestigation?.attempts ?? 0;
-  const prevRedditMetrics = prevInvestigation?.redditMetrics ?? null;
+    // Older records have only the single most-recent investigation stored —
+    // seed runs[] from those fields the first time we touch one so historical
+    // timing/cost data survives the next re-run. Must happen before the
+    // transition writes a null `results`, otherwise the legacy data is lost.
+    const seedFromLegacy =
+      prevInvestigation?.status === "done" &&
+      (prevInvestigation.runs?.length ?? 0) === 0;
+    const prevRuns: RunSnapshot[] = seedFromLegacy
+      ? [bonSnapshotRun(prevInvestigation, "done")]
+      : (prevInvestigation?.runs ?? []);
 
-  // Older records have only the single most-recent investigation stored —
-  // seed runs[] from those fields the first time we touch one so historical
-  // timing/cost data survives the next re-run. Must happen before the
-  // transition writes a null `results`, otherwise the legacy data is lost.
-  const seedFromLegacy =
-    prevInvestigation?.status === "done" &&
-    (prevInvestigation.runs?.length ?? 0) === 0;
-  const prevRuns: RunSnapshot[] = seedFromLegacy
-    ? [bonSnapshotRun(prevInvestigation, "done")]
-    : (prevInvestigation?.runs ?? []);
+    let nextInvestigation: Investigation;
+    switch (transition.status) {
+      case "queued":
+        nextInvestigation = {
+          status: "queued",
+          queuedAt: transition.queuedAt,
+          notBefore: transition.notBefore ?? null,
+          startedAt: null,
+          durationMs: transition.durationMs ?? null,
+          error: null,
+          attempts: transition.attempts ?? prevAttempts,
+          runs: prevRuns,
+          redditMetrics: transition.redditMetrics ?? prevRedditMetrics,
+          results: null,
+        };
+        break;
+      case "running":
+        nextInvestigation = {
+          status: "running",
+          queuedAt: null,
+          notBefore: null,
+          startedAt: transition.startedAt,
+          durationMs: prevInvestigation?.durationMs ?? null,
+          error: null,
+          attempts: transition.attempts,
+          runs: prevRuns,
+          redditMetrics: prevRedditMetrics,
+          results: null,
+        };
+        break;
+      case "done":
+        nextInvestigation = {
+          status: "done",
+          queuedAt: prevInvestigation?.queuedAt ?? null,
+          notBefore: null,
+          startedAt: null,
+          durationMs: transition.durationMs,
+          error: null,
+          attempts: prevAttempts,
+          runs: prevRuns,
+          redditMetrics: transition.redditMetrics,
+          results: transition.results,
+        };
+        break;
+      case "error":
+        nextInvestigation = {
+          status: "error",
+          queuedAt: prevInvestigation?.queuedAt ?? null,
+          notBefore: null,
+          startedAt: null,
+          durationMs: transition.durationMs,
+          error: transition.error,
+          attempts: prevAttempts,
+          runs: prevRuns,
+          redditMetrics: transition.redditMetrics ?? prevRedditMetrics,
+          results: null,
+        };
+        break;
+    }
 
-  let nextInvestigation: Investigation;
-  switch (transition.status) {
-    case "queued":
-      nextInvestigation = {
-        status: "queued",
-        queuedAt: transition.queuedAt,
-        notBefore: transition.notBefore ?? null,
-        startedAt: null,
-        durationMs: transition.durationMs ?? null,
-        error: null,
-        attempts: transition.attempts ?? prevAttempts,
-        runs: prevRuns,
-        redditMetrics: transition.redditMetrics ?? prevRedditMetrics,
-        results: null,
-      };
-      break;
-    case "running":
-      nextInvestigation = {
-        status: "running",
-        queuedAt: null,
-        notBefore: null,
-        startedAt: transition.startedAt,
-        durationMs: prevInvestigation?.durationMs ?? null,
-        error: null,
-        attempts: transition.attempts,
-        runs: prevRuns,
-        redditMetrics: prevRedditMetrics,
-        results: null,
-      };
-      break;
-    case "done":
-      nextInvestigation = {
-        status: "done",
-        queuedAt: prevInvestigation?.queuedAt ?? null,
-        notBefore: null,
-        startedAt: null,
-        durationMs: transition.durationMs,
-        error: null,
-        attempts: prevAttempts,
-        runs: prevRuns,
-        redditMetrics: transition.redditMetrics,
-        results: transition.results,
-      };
-      break;
-    case "error":
-      nextInvestigation = {
-        status: "error",
-        queuedAt: prevInvestigation?.queuedAt ?? null,
-        notBefore: null,
-        startedAt: null,
-        durationMs: transition.durationMs,
-        error: transition.error,
-        attempts: prevAttempts,
-        runs: prevRuns,
-        redditMetrics: transition.redditMetrics ?? prevRedditMetrics,
-        results: null,
-      };
-      break;
-  }
+    // Append a snapshot to runs[] whenever a run terminates.
+    if (
+      prevInvestigation?.status === "running" &&
+      (transition.status === "done" || transition.status === "error")
+    ) {
+      nextInvestigation.runs = [
+        ...prevRuns,
+        bonSnapshotRun(nextInvestigation, transition.status),
+      ];
+    }
 
-  // Append a snapshot to runs[] whenever a run terminates.
-  if (
-    prevInvestigation?.status === "running" &&
-    (transition.status === "done" || transition.status === "error")
-  ) {
-    nextInvestigation.runs = [
-      ...prevRuns,
-      bonSnapshotRun(nextInvestigation, transition.status),
-    ];
-  }
-
-  reports[key] = { ...existing, investigation: nextInvestigation };
-  await bonWriteReports(reports);
+    return { ...existing, investigation: nextInvestigation };
+  });
 }
 
 async function saveActivityData(
   username: string,
   activityData: ActivityData
 ): Promise<void> {
-  const reports = await bonReadReports();
-  const key = bonFindReportKey(reports, username) ?? username;
-  const existing = reports[key] ?? bonNormalizeReport(undefined);
-  reports[key] = { ...existing, activityData };
-  await bonWriteReports(reports);
+  await bonUpdateReport(username, (current) => {
+    const existing = current ?? bonNormalizeReport(undefined);
+    return { ...existing, activityData };
+  });
 }
 
 // Flips report.profileHidden whenever an investigation completes. The
@@ -668,16 +660,14 @@ async function setProfileHidden(
   username: string,
   hidden: boolean
 ): Promise<void> {
-  const reports = await bonReadReports();
-  const key = bonFindReportKey(reports, username) ?? username;
-  const existing = reports[key] ?? bonNormalizeReport(undefined);
+  await bonUpdateReport(username, (current) => {
+    const existing = current ?? bonNormalizeReport(undefined);
+    if (existing.profileHidden === hidden) {
+      return existing;
+    }
 
-  if (existing.profileHidden === hidden) {
-    return;
-  }
-
-  reports[key] = { ...existing, profileHidden: hidden };
-  await bonWriteReports(reports);
+    return { ...existing, profileHidden: hidden };
+  });
 }
 
 // Inlined rather than calling into redditors/handlers.ts so the two feature
@@ -688,21 +678,19 @@ async function persistBotBouncerStatus(
   username: string,
   status: Report["botBouncerStatus"]
 ): Promise<void> {
-  const reports = await bonReadReports();
-  const key = bonFindReportKey(reports, username);
-  if (!key) {
-    return;
-  }
+  await bonUpdateReport(username, (current) => {
+    if (!current) {
+      return null;
+    }
 
-  const existing = reports[key];
-  if (existing.botBouncerStatus === status) {
-    return;
-  }
+    if (current.botBouncerStatus === status) {
+      return current;
+    }
 
-  reports[key] = {
-    ...existing,
-    botBouncerStatus: status,
-    botBouncerCheckedAt: Date.now(),
-  };
-  await bonWriteReports(reports);
+    return {
+      ...current,
+      botBouncerStatus: status,
+      botBouncerCheckedAt: Date.now(),
+    };
+  });
 }

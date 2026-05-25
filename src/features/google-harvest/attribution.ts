@@ -22,9 +22,12 @@ import PQueue from "p-queue";
 import pRetry from "p-retry";
 
 import { bonRedditFetchJson, RedditRequestError } from "../../reddit/client.ts";
-import { bonReadReports, bonWriteReports } from "../../storage.ts";
+import {
+  bonReadReport,
+  bonReadReports,
+  bonUpdateReport,
+} from "../../storage.ts";
 import type { GoogleHarvest, GoogleHarvestPost, Report } from "../../types.ts";
-import { bonFindReportKey } from "../../utils/history.ts";
 
 const BON_ATTRIBUTION_CONCURRENCY = 3;
 const BON_ATTRIBUTION_MAX_ATTEMPTS = 3;
@@ -211,8 +214,8 @@ function recomputeAuthoredDistribution(
   return out;
 }
 
-// Re-read the report, locate the post by URL, apply the result. We do a
-// fresh read so a concurrent harvest write doesn't get clobbered.
+// Locate the post by URL inside a per-username update so a concurrent
+// harvest write on the same user can't get clobbered.
 async function persistAttribution(
   reportKey: string,
   url: string,
@@ -220,40 +223,37 @@ async function persistAttribution(
   attempts: number,
   now: number
 ): Promise<void> {
-  const reports = await bonReadReports();
-  const liveKey = bonFindReportKey(reports, reportKey) ?? reportKey;
-  const report = reports[liveKey];
-  if (!report?.googleHarvest) {
-    return;
-  }
+  await bonUpdateReport(reportKey, (current) => {
+    if (!current?.googleHarvest) {
+      return current;
+    }
 
-  const harvest = report.googleHarvest;
-  const index = harvest.posts.findIndex((post) => post.url === url);
-  if (index === -1) {
-    return;
-  }
+    const harvest = current.googleHarvest;
+    const index = harvest.posts.findIndex((post) => post.url === url);
+    if (index === -1) {
+      return current;
+    }
 
-  const post = harvest.posts[index];
+    const post = harvest.posts[index];
 
-  const next: GoogleHarvestPost = {
-    ...post,
-    attribution: result.attribution,
-    attributionAttempts: attempts,
-    attributionCheckedAt: result.settled ? now : post.attributionCheckedAt,
-  };
+    const next: GoogleHarvestPost = {
+      ...post,
+      attribution: result.attribution,
+      attributionAttempts: attempts,
+      attributionCheckedAt: result.settled ? now : post.attributionCheckedAt,
+    };
 
-  const nextPosts = harvest.posts.slice();
-  nextPosts[index] = next;
+    const nextPosts = harvest.posts.slice();
+    nextPosts[index] = next;
 
-  const nextHarvest: GoogleHarvest = {
-    ...harvest,
-    posts: nextPosts,
-    authoredSubredditDistribution: recomputeAuthoredDistribution(nextPosts),
-  };
+    const nextHarvest: GoogleHarvest = {
+      ...harvest,
+      posts: nextPosts,
+      authoredSubredditDistribution: recomputeAuthoredDistribution(nextPosts),
+    };
 
-  const nextReport: Report = { ...report, googleHarvest: nextHarvest };
-  reports[liveKey] = nextReport;
-  await bonWriteReports(reports);
+    return { ...current, googleHarvest: nextHarvest };
+  });
 }
 
 function collectPending(reports: Record<string, Report>): PendingItem[] {
@@ -309,12 +309,9 @@ async function processOne(item: PendingItem): Promise<void> {
 
         // Re-read just before classifying so a concurrent harvest write
         // didn't quietly drop or replace the post.
-        const reports = await bonReadReports();
-        const liveKey =
-          bonFindReportKey(reports, item.reportKey) ?? item.reportKey;
-        const post = reports[liveKey]?.googleHarvest?.posts.find(
-          (p) => p.url === item.url
-        );
+        const post = (
+          await bonReadReport(item.reportKey)
+        )?.googleHarvest?.posts.find((p) => p.url === item.url);
 
         if (!post) {
           return;

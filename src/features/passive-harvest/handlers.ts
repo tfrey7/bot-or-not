@@ -3,9 +3,7 @@
 // also drops the storage writes — the message dispatch in
 // background.ts is the only other touchpoint.
 
-import type { Report } from "../../types.ts";
-import { bonReadReports, bonWriteReports } from "../../storage.ts";
-import { bonFindReportKey } from "../../utils/history.ts";
+import { bonReadReports, bonUpdateReport } from "../../storage.ts";
 import { bonPassiveHarvestMerge } from "./merge.ts";
 import type { BonPassiveHarvestFinding } from "./scrape.ts";
 
@@ -42,25 +40,26 @@ export async function bonPassiveHarvestRecord(
     return { ok: false };
   }
 
-  const reports = await bonReadReports();
-  const key = bonFindReportKey(reports, trimmed);
-  if (!key) {
-    return { ok: false };
-  }
+  let mergedItemCount: number | null = null;
 
-  const existing: Report = reports[key];
-  if (!existing.profileHidden) {
-    return { ok: false };
-  }
+  await bonUpdateReport(trimmed, (current) => {
+    if (!current?.profileHidden) {
+      return current;
+    }
 
-  const merged = bonPassiveHarvestMerge({
-    existing: existing.passiveHarvest,
-    incoming: items,
-    now: Date.now(),
+    const merged = bonPassiveHarvestMerge({
+      existing: current.passiveHarvest,
+      incoming: items,
+      now: Date.now(),
+    });
+
+    mergedItemCount = merged.items.length;
+    return { ...current, passiveHarvest: merged };
   });
 
-  reports[key] = { ...existing, passiveHarvest: merged };
-  await bonWriteReports(reports);
+  if (mergedItemCount === null) {
+    return { ok: false };
+  }
 
-  return { ok: true, itemCount: merged.items.length };
+  return { ok: true, itemCount: mergedItemCount };
 }
