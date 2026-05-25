@@ -3,7 +3,7 @@
 > *A field dossier for Reddit.* A Firefox extension that pulls a Reddit account through an AI investigation and reports back — bot, human, or something in between — with the receipts.
 
 <p align="center">
-  <img src="icons/chromes-investigating.png" width="240" alt="Sherlock Chromes, the case mascot" />
+  <img src="icons/chromes-investigating.webp" width="240" alt="Sherlock Chromes, the case mascot" />
 </p>
 
 ## What it does
