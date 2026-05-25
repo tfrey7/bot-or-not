@@ -108,21 +108,12 @@ Top-level files in `src/` are intentional cross-feature contracts (the canonical
 
 General file-role rules (`index.ts`, `logic.ts`, `data.ts`, `<widget>.ts`; avoid grab-bag files; separate logic from rendering) live in the `writing-code` Skill.
 
-### Naming exported names
-
-ES modules everywhere; cross-file communication is via `import` / `export` (no IIFE/`globalThis`).
-
-- Every exported name gets the `bon` prefix so it's obvious in import lists where the symbol came from.
-- **Feature-internal helpers** used by other files in the same feature get a `bon<Feature>` prefix (`bonAnalyticsSvgRoot`, `bonReportsRow`). The long name keeps ownership obvious and prevents collisions if another feature grows similar helpers.
-- **Cross-feature utilities** go in `src/utils/<topic>.ts` with a short `bon` prefix (`bonFmtUsd`, `bonExtractJson`).
-- TypeScript domain types are `bon`-free (just `Report`, `Investigation`, `Factor`, etc.) since they're already namespaced by the `types.ts` import path.
-
 ### Refactoring guidelines (when asked to "feature-ify" something)
 
 1. Survey the file to identify the seams (one widget = one render function = one file).
 2. `git mv` the main file into `src/features/<feature>/index.ts` to preserve history.
 3. Pull pure data into `logic.ts` / `data.ts` first — these are the easiest extractions.
-4. Pull each widget into its own file, exporting one `bon<Feature><Widget>` function.
+4. Pull each widget into its own file, exporting one render function named for the widget.
 5. Slim `index.ts` to an orchestrator: data-load → call each widget → assemble. Keep page chrome (header/empty/footnote) inline if tiny.
 6. Update any `import` sites in `background.ts` / `content_script.ts` / `reports.html` to point at the new feature path.
 7. Run `npm run typecheck && npm run lint && npm run format && npm run build`. Done.
