@@ -3,15 +3,23 @@
 // investigating actually authored anything there, or whether Google just
 // matched their username inside someone else's content.
 //
-// The queue is implicit in storage: posts with `attribution: "unknown"`
-// AND `attributionCheckedAt: null` are pending. The in-memory busy set
-// (`activeAttributionFetches`) bounds concurrent Reddit fetches; if the
-// background worker dies, the next instance's drain re-scans storage and
-// resumes — same recovery story as the investigation queue.
+// Architecture:
+//   - Storage holds per-post state (`attribution`, `attributionCheckedAt`,
+//     `attributionAttempts`). A post is "pending" iff attribution is
+//     "unknown" AND checkedAt is null AND attempts < MAX.
+//   - PQueue caps concurrent Reddit fetches at BON_ATTRIBUTION_CONCURRENCY.
+//     p-retry handles transient classification failures inside a single
+//     dispatch — no more re-drain-on-failure loop.
+//   - bonGoogleAttributionDrain is the public idempotent entry point. It
+//     scans storage and enqueues anything pending that isn't already in
+//     the queue.
 //
 // We do NOT re-trigger investigations when attribution arrives. Verdicts
 // stay stable; the next time the user re-investigates (manually or via
 // the staleness check), the prompt gets the freshly attributed data.
+
+import PQueue from "p-queue";
+import pRetry from "p-retry";
 
 import { bonRedditFetchJson, RedditRequestError } from "../../reddit/client.ts";
 import { bonReadReports, bonWriteReports } from "../../storage.ts";
@@ -21,14 +29,14 @@ import { bonFindReportKey } from "../../utils/history.ts";
 const BON_ATTRIBUTION_CONCURRENCY = 3;
 const BON_ATTRIBUTION_MAX_ATTEMPTS = 3;
 
-// URL keys (canonical, with `<username>@` prefix so the same Reddit URL
-// pending under two different report records doesn't share a slot).
-const activeAttributionFetches = new Set<string>();
+const queue = new PQueue({ concurrency: BON_ATTRIBUTION_CONCURRENCY });
 
-// Set when a drain is already scheduled / running on the current event
-// loop. Coalesces back-pressure from rapid storage writes (the harvest
-// merge fires sequential setGoogleHarvest calls).
-let drainScheduled = false;
+// Dedup: keys (`<reportKey>@<url>`) currently enqueued or running. Lets
+// rapid-fire drain calls avoid double-enqueueing the same post.
+const enqueued = new Set<string>();
+
+// Coalesces a burst of drain() calls into one storage scan per tick.
+let scanScheduled = false;
 
 interface PendingItem {
   reportKey: string;
@@ -226,14 +234,12 @@ async function persistAttribution(
   }
 
   const post = harvest.posts[index];
-  const giveUp = !result.settled && attempts >= BON_ATTRIBUTION_MAX_ATTEMPTS;
 
   const next: GoogleHarvestPost = {
     ...post,
     attribution: result.attribution,
     attributionAttempts: attempts,
-    attributionCheckedAt:
-      result.settled || giveUp ? now : post.attributionCheckedAt,
+    attributionCheckedAt: result.settled ? now : post.attributionCheckedAt,
   };
 
   const nextPosts = harvest.posts.slice();
@@ -272,7 +278,7 @@ function collectPending(reports: Record<string, Report>): PendingItem[] {
         continue;
       }
 
-      if (activeAttributionFetches.has(busyKey(reportKey, post.url))) {
+      if (enqueued.has(busyKey(reportKey, post.url))) {
         continue;
       }
 
@@ -293,43 +299,61 @@ function collectPending(reports: Record<string, Report>): PendingItem[] {
 }
 
 async function processOne(item: PendingItem): Promise<void> {
-  const key = busyKey(item.reportKey, item.url);
-  activeAttributionFetches.add(key);
-  const attempts = item.attempts + 1;
-  const now = Date.now();
+  let totalAttempts = item.attempts;
+  const startedAt = Date.now();
 
   try {
-    // Re-read just this post for the freshest classifier inputs (kind /
-    // username case-canonical). Cheap because storage reads are local.
-    const reports = await bonReadReports();
-    const liveKey = bonFindReportKey(reports, item.reportKey) ?? item.reportKey;
-    const post = reports[liveKey]?.googleHarvest?.posts.find(
-      (p) => p.url === item.url
+    await pRetry(
+      async () => {
+        totalAttempts++;
+
+        // Re-read just before classifying so a concurrent harvest write
+        // didn't quietly drop or replace the post.
+        const reports = await bonReadReports();
+        const liveKey =
+          bonFindReportKey(reports, item.reportKey) ?? item.reportKey;
+        const post = reports[liveKey]?.googleHarvest?.posts.find(
+          (p) => p.url === item.url
+        );
+
+        if (!post) {
+          return;
+        }
+
+        const result = await classifyPost(post, item.username);
+        if (!result.settled) {
+          throw new Error("transient classification failure");
+        }
+
+        await persistAttribution(
+          item.reportKey,
+          item.url,
+          result,
+          totalAttempts,
+          Date.now()
+        );
+      },
+      {
+        retries: BON_ATTRIBUTION_MAX_ATTEMPTS - 1,
+        minTimeout: 1_000,
+        factor: 2,
+      }
     );
-
-    if (!post) {
-      return;
-    }
-
-    const result = await classifyPost(post, item.username);
-    await persistAttribution(item.reportKey, item.url, result, attempts, now);
   } catch (error) {
     console.error(
       `[Bot or Not] attribution worker failed on ${item.url}`,
       error
     );
+
+    // Out of attempts — settle as unknown so we stop trying. Otherwise the
+    // next harvest write would re-enqueue this same post forever.
     await persistAttribution(
       item.reportKey,
       item.url,
-      { attribution: "unknown", settled: false },
-      attempts,
-      now
+      { attribution: "unknown", settled: true },
+      totalAttempts,
+      startedAt
     );
-  } finally {
-    activeAttributionFetches.delete(key);
-
-    // After releasing the slot, see if there's more in the queue.
-    bonGoogleAttributionDrain();
   }
 }
 
@@ -337,33 +361,28 @@ async function processOne(item: PendingItem): Promise<void> {
 // rapid calls so a burst of harvest writes triggers at most one storage
 // scan per tick.
 export function bonGoogleAttributionDrain(): void {
-  if (drainScheduled) {
+  if (scanScheduled) {
     return;
   }
 
-  drainScheduled = true;
+  scanScheduled = true;
 
-  // queueMicrotask lets a burst of synchronous callers coalesce without
-  // forcing them to await.
   queueMicrotask(async () => {
-    drainScheduled = false;
+    scanScheduled = false;
 
     try {
-      if (activeAttributionFetches.size >= BON_ATTRIBUTION_CONCURRENCY) {
-        return;
-      }
-
       const reports = await bonReadReports();
       const pending = collectPending(reports);
-      if (pending.length === 0) {
-        return;
-      }
 
-      const slots = BON_ATTRIBUTION_CONCURRENCY - activeAttributionFetches.size;
-      const toRun = pending.slice(0, slots);
+      for (const item of pending) {
+        const key = busyKey(item.reportKey, item.url);
+        enqueued.add(key);
 
-      for (const item of toRun) {
-        void processOne(item);
+        void queue
+          .add(() => processOne(item))
+          .finally(() => {
+            enqueued.delete(key);
+          });
       }
     } catch (error) {
       console.error("[Bot or Not] attribution drain failed", error);
