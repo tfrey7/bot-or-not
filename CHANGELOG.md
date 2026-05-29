@@ -2,6 +2,9 @@
 
 Notable changes to Bot or Not. Signed `.xpi` builds for each version are attached to the matching [GitHub Release](https://github.com/tfrey7/bot-or-not/releases).
 
+## [7.4.1] — 2026-05-29
+- Per-key report storage: stop the storage.onChanged jank storm
+
 ## [7.4.0] — 2026-05-25
 - CLAUDE.md: drop the bon-prefix naming convention
 - Strip the bon prefix from all JS/TS exports
