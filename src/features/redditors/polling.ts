@@ -1,8 +1,8 @@
-// Polling loop for in-flight investigations. While anything is queued or
-// running, fetch fresh data every second and either do a full re-render
-// (structural change) or an in-place tick of the running-row buttons.
-// storage.onChanged should cover transitions but doesn't always fire
-// reliably across extension pages, so polling is the source of truth.
+// Drives the running-row "Xs / ~Ys" tick and the storage-onChanged-triggered
+// full refresh. The 1Hz tick is local-only — it just rewrites text from the
+// reports already in memory, so it costs nothing across the WebExtension
+// boundary. State transitions arrive via storage.onChanged, which calls
+// pollNow() once per write to re-pull the canonical set.
 
 import { clientSend } from "../../client.ts";
 import type { Report } from "../../types.ts";
@@ -15,7 +15,7 @@ import {
   type ReportRow,
 } from "./logic.ts";
 
-const POLL_INTERVAL_MS = 1000;
+const TICK_INTERVAL_MS = 1000;
 
 export interface RedditorsPollingDeps {
   getReports(): ReportRow[];
@@ -32,7 +32,7 @@ export interface RedditorsPollingHandle {
 export function redditorsInitPolling(
   deps: RedditorsPollingDeps
 ): RedditorsPollingHandle {
-  let pollTimer: ReturnType<typeof setInterval> | null = null;
+  let tickTimer: ReturnType<typeof setInterval> | null = null;
 
   const ensurePolling = (): void => {
     const anyLive = deps.getReports().some((report) => {
@@ -46,12 +46,20 @@ export function redditorsInitPolling(
       );
     });
 
-    if (anyLive && !pollTimer) {
-      pollTimer = setInterval(pollNow, POLL_INTERVAL_MS);
-    } else if (!anyLive && pollTimer) {
-      clearInterval(pollTimer);
-      pollTimer = null;
+    if (anyLive && !tickTimer) {
+      tickTimer = setInterval(tickLocal, TICK_INTERVAL_MS);
+    } else if (!anyLive && tickTimer) {
+      clearInterval(tickTimer);
+      tickTimer = null;
     }
+  };
+
+  // Local-only: no IPC, no storage read. Re-renders the elapsed-time text on
+  // running rows from the in-memory reports. A stale "running" record will
+  // start matching isInvestigationStale here and stop the timer on its own.
+  const tickLocal = (): void => {
+    updateRunningInPlace(deps.getReports(), deps.setExpectedDurationMs);
+    ensurePolling();
   };
 
   const pollNow = async (): Promise<void> => {
