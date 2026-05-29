@@ -57,12 +57,14 @@ void bootstrapDevClaudeApiKey();
 
 void bootstrapDevReportsTab();
 
-void investigationSweepOrphans();
-
 void runMigrations().then(() => {
-  // After migrations finish (legacy harvest posts may have just gained
-  // their attribution fields), kick the worker so any pending sub-post /
-  // comment URLs start trickling toward resolution.
+  // Migrations run first so everything below reads the finalized per-key
+  // store. Sweeping orphans before the reports_per_key migration converts
+  // the blob would scan an empty per-key store and re-enqueue nothing.
+  void investigationSweepOrphans();
+
+  // Legacy harvest posts may have just gained their attribution fields —
+  // kick the worker so pending sub-post / comment URLs start resolving.
   googleAttributionDrain();
 });
 

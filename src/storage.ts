@@ -22,6 +22,23 @@ export interface LlmSelection {
 // One key per vendor. Missing entries = no key on file for that vendor.
 export type ApiKeyMap = Partial<Record<LlmVendor, string>>;
 
+// Each report record lives under its own `report:<username>` key rather
+// than in one monolithic `reports` blob. A single-record write then fires
+// storage.onChanged carrying only that record (tens of KB) instead of the
+// entire store (megabytes) — the difference between every Reddit/Google tab
+// janking on each investigation step and not. The prefix preserves the
+// original-case username so reports-page display casing is unchanged.
+const REPORT_KEY_PREFIX = "report:";
+
+// The pre-split monolithic blob. Read-folded by readReports/readReport until
+// the reports_per_key migration removes it, so the store stays coherent if a
+// read races the migration on first launch after upgrade.
+const LEGACY_REPORTS_KEY = "reports";
+
+function reportStorageKey(username: string): string {
+  return `${REPORT_KEY_PREFIX}${username}`;
+}
+
 // Updater for updateReport. Receives the current Report (or null if no
 // record exists for this username) and returns the next one. Return null to
 // delete the record; return the current value untouched to no-op the write.
@@ -62,20 +79,59 @@ export interface StorageAdapter {
 
 class ExtensionStorage implements StorageAdapter {
   async readReports(): Promise<Record<string, Report>> {
-    const raw = (await browser.storage.local.get("reports")) as {
-      reports?: Record<string, unknown>;
-    };
+    const raw = (await browser.storage.local.get(null)) as Record<
+      string,
+      unknown
+    >;
     const out: Record<string, Report> = {};
 
-    for (const [username, value] of Object.entries(raw.reports ?? {})) {
-      out[username] = normalizeReport(value);
+    // Fold the legacy blob first so a live per-key entry wins on overlap.
+    const legacy = raw[LEGACY_REPORTS_KEY];
+    if (legacy && typeof legacy === "object") {
+      for (const [username, value] of Object.entries(legacy)) {
+        out[username] = normalizeReport(value);
+      }
+    }
+
+    for (const [key, value] of Object.entries(raw)) {
+      if (key.startsWith(REPORT_KEY_PREFIX)) {
+        out[key.slice(REPORT_KEY_PREFIX.length)] = normalizeReport(value);
+      }
     }
 
     return out;
   }
 
+  // Bulk replace — the danger-zone path (see updateReport). Sets every
+  // provided record under its own key in one call (one onChanged) and
+  // removes any per-key records no longer in the map.
   async writeReports(reports: Record<string, Report>): Promise<void> {
-    await browser.storage.local.set({ reports });
+    const raw = (await browser.storage.local.get(null)) as Record<
+      string,
+      unknown
+    >;
+
+    const batch: Record<string, Report> = {};
+
+    for (const [username, report] of Object.entries(reports)) {
+      batch[reportStorageKey(username)] = report;
+    }
+
+    const stale: string[] = [];
+
+    for (const key of Object.keys(raw)) {
+      if (key.startsWith(REPORT_KEY_PREFIX) && !(key in batch)) {
+        stale.push(key);
+      }
+    }
+
+    if (Object.keys(batch).length > 0) {
+      await browser.storage.local.set(batch);
+    }
+
+    if (stale.length > 0) {
+      await browser.storage.local.remove(stale);
+    }
   }
 
   // Tail of the per-username update chain. Each updateReport call appends a
@@ -85,6 +141,14 @@ class ExtensionStorage implements StorageAdapter {
   private reportUpdateChains = new Map<string, Promise<unknown>>();
 
   async readReport(username: string): Promise<Report | null> {
+    const directKey = reportStorageKey(username);
+    const direct = await browser.storage.local.get(directKey);
+    if (direct[directKey] !== undefined) {
+      return normalizeReport(direct[directKey]);
+    }
+
+    // Case-mismatched key or a legacy-only record — fall back to a full
+    // assemble so the case-insensitive lookup still resolves.
     const reports = await this.readReports();
     const key = findReportKey(reports, username);
     return key ? reports[key] : null;
@@ -123,8 +187,7 @@ class ExtensionStorage implements StorageAdapter {
 
     if (updated === null) {
       if (existingKey in reports) {
-        delete reports[existingKey];
-        await this.writeReports(reports);
+        await browser.storage.local.remove(reportStorageKey(existingKey));
       }
 
       return;
@@ -134,8 +197,9 @@ class ExtensionStorage implements StorageAdapter {
       return;
     }
 
-    reports[existingKey] = updated;
-    await this.writeReports(reports);
+    await browser.storage.local.set({
+      [reportStorageKey(existingKey)]: updated,
+    });
   }
 
   async readSubreddits(): Promise<Record<string, SubredditReport>> {

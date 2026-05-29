@@ -31,74 +31,94 @@ export interface ClientAdapter {
 // 250ms is short enough that user-driven actions still feel immediate.
 const CLIENT_COALESCE_MS = 250;
 
+// Reports now live under per-record `report:<username>` keys (see
+// storage.ts). A storage change touches one such key, so detect the prefix
+// rather than a single `reports` key. `reports` is still matched for the
+// brief window before the reports_per_key migration removes the legacy blob.
+const REPORT_KEY_PREFIX = "report:";
+
 class ExtensionClient implements ClientAdapter {
+  // One storage.onChanged listener fans out to every subscriber in this
+  // context. Each feature used to register its own listener (≈7 per Reddit
+  // tab), so every write paid the per-listener dispatch + coalescing-timer
+  // overhead N times for the same change.
+  private listeners = new Set<ClientListener>();
+  private pending = new Map<
+    ClientEvent["type"],
+    ReturnType<typeof setTimeout>
+  >();
+  private storageListenerActive = false;
+
   send<T = unknown>(message: ClientMessage): Promise<T> {
     return browser.runtime.sendMessage(message) as Promise<T>;
   }
 
-  subscribe(listener: ClientListener): () => void {
-    const pending = new Map<
-      ClientEvent["type"],
-      ReturnType<typeof setTimeout>
-    >();
+  private emit(type: ClientEvent["type"]): void {
+    const existing = this.pending.get(type);
+    if (existing) {
+      clearTimeout(existing);
+    }
 
-    const emit = (type: ClientEvent["type"]): void => {
-      const existing = pending.get(type);
-      if (existing) {
-        clearTimeout(existing);
-      }
+    const timer = setTimeout(() => {
+      this.pending.delete(type);
 
-      const timer = setTimeout(() => {
-        pending.delete(type);
+      for (const listener of this.listeners) {
         listener({ type } as ClientEvent);
-      }, CLIENT_COALESCE_MS);
-      pending.set(type, timer);
-    };
-
-    const handler = (
-      changes: Record<string, browser.storage.StorageChange>,
-      area: string
-    ): void => {
-      if (area !== "local") {
-        return;
       }
+    }, CLIENT_COALESCE_MS);
+    this.pending.set(type, timer);
+  }
 
-      if (changes.reports) {
-        emit("reports-changed");
-      }
+  private handleStorageChange = (
+    changes: Record<string, browser.storage.StorageChange>,
+    area: string
+  ): void => {
+    if (area !== "local") {
+      return;
+    }
 
-      if (changes.subreddits) {
-        emit("subreddits-changed");
-      }
+    const keys = Object.keys(changes);
 
-      if (changes.apiKeys || changes.claudeApiKey) {
-        // `claudeApiKey` is the legacy single-vendor slot; once the
-        // migration runs it becomes `apiKeys`. Subscribe to both so the
-        // UI stays in sync regardless of which slot the change came from.
-        emit("api-key-changed");
-      }
+    if (
+      keys.some((key) => key === "reports" || key.startsWith(REPORT_KEY_PREFIX))
+    ) {
+      this.emit("reports-changed");
+    }
 
-      if (changes.llmVendor || changes.llmModel) {
-        emit("llm-selection-changed");
-      }
+    if (changes.subreddits) {
+      this.emit("subreddits-changed");
+    }
 
-      if (changes.hidePii) {
-        emit("hide-pii-changed");
-      }
+    if (changes.apiKeys || changes.claudeApiKey) {
+      // `claudeApiKey` is the legacy single-vendor slot; once the migration
+      // runs it becomes `apiKeys`. Match both so the UI stays in sync
+      // regardless of which slot the change came from.
+      this.emit("api-key-changed");
+    }
 
-      if (changes.redditPauseUntil) {
-        emit("reddit-pause-changed");
-      }
-    };
+    if (changes.llmVendor || changes.llmModel) {
+      this.emit("llm-selection-changed");
+    }
 
-    browser.storage.onChanged.addListener(handler);
+    if (changes.hidePii) {
+      this.emit("hide-pii-changed");
+    }
+
+    if (changes.redditPauseUntil) {
+      this.emit("reddit-pause-changed");
+    }
+  };
+
+  subscribe(listener: ClientListener): () => void {
+    this.listeners.add(listener);
+
+    if (!this.storageListenerActive) {
+      browser.storage.onChanged.addListener(this.handleStorageChange);
+      this.storageListenerActive = true;
+    }
+
     return () => {
-      for (const timer of pending.values()) {
-        clearTimeout(timer);
-      }
-
-      pending.clear();
-      browser.storage.onChanged.removeListener(handler);
+      this.listeners.delete(listener);
     };
   }
 }

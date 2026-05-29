@@ -15,7 +15,6 @@ import PQueue from "p-queue";
 import pRetry, { AbortError } from "p-retry";
 
 import type {
-  ActivityData,
   Investigation,
   InvestigationResults,
   RedditMetrics,
@@ -371,29 +370,48 @@ async function runOneAttempt(
     accountAgeDays: inputs.summary.account.age_days,
   };
 
-  await setInvestigationState(username, {
-    status: "done",
-    durationMs,
-    results,
-    redditMetrics: inputs.redditMetrics,
+  // One write for the whole terminal state. Splitting it (investigation +
+  // activityData + botBouncer + profileHidden) into separate updateReports
+  // would fire storage.onChanged four times, re-rendering every Reddit tag
+  // and the reports page on each.
+  const hidden = isProfileHidden({
+    postsFetched,
+    commentsFetched,
+    totalKarma: inputs.summary.account.total_karma,
   });
 
-  if (inputs.activityData) {
-    await saveActivityData(username, inputs.activityData);
-  }
+  await updateReport(username, (current) => {
+    let next = applyInvestigationTransition(
+      current ?? normalizeReport(undefined),
+      {
+        status: "done",
+        durationMs,
+        results,
+        redditMetrics: inputs.redditMetrics,
+      }
+    );
 
-  if (inputs.botBouncerStatus) {
-    await persistBotBouncerStatus(username, inputs.botBouncerStatus);
-  }
+    if (inputs.activityData) {
+      next = { ...next, activityData: inputs.activityData };
+    }
 
-  await setProfileHidden(
-    username,
-    isProfileHidden({
-      postsFetched,
-      commentsFetched,
-      totalKarma: inputs.summary.account.total_karma,
-    })
-  );
+    if (
+      inputs.botBouncerStatus &&
+      next.botBouncerStatus !== inputs.botBouncerStatus
+    ) {
+      next = {
+        ...next,
+        botBouncerStatus: inputs.botBouncerStatus,
+        botBouncerCheckedAt: Date.now(),
+      };
+    }
+
+    if (next.profileHidden !== hidden) {
+      next = { ...next, profileHidden: hidden };
+    }
+
+    return next;
+  });
 }
 
 function isUpstreamLoad(error: unknown): boolean {
@@ -544,149 +562,109 @@ async function setInvestigationState(
   username: string,
   transition: InvestigationTransition
 ): Promise<void> {
-  await updateReport(username, (current) => {
-    const existing = current ?? normalizeReport(undefined);
-    const prevInvestigation = existing.investigation;
-
-    const prevAttempts = prevInvestigation?.attempts ?? 0;
-    const prevRedditMetrics = prevInvestigation?.redditMetrics ?? null;
-
-    // Older records have only the single most-recent investigation stored —
-    // seed runs[] from those fields the first time we touch one so historical
-    // timing/cost data survives the next re-run. Must happen before the
-    // transition writes a null `results`, otherwise the legacy data is lost.
-    const seedFromLegacy =
-      prevInvestigation?.status === "done" &&
-      (prevInvestigation.runs?.length ?? 0) === 0;
-    const prevRuns: RunSnapshot[] = seedFromLegacy
-      ? [snapshotRun(prevInvestigation, "done")]
-      : (prevInvestigation?.runs ?? []);
-
-    let nextInvestigation: Investigation;
-    switch (transition.status) {
-      case "queued":
-        nextInvestigation = {
-          status: "queued",
-          queuedAt: transition.queuedAt,
-          notBefore: transition.notBefore ?? null,
-          startedAt: null,
-          durationMs: transition.durationMs ?? null,
-          error: null,
-          attempts: transition.attempts ?? prevAttempts,
-          runs: prevRuns,
-          redditMetrics: transition.redditMetrics ?? prevRedditMetrics,
-          results: null,
-        };
-        break;
-      case "running":
-        nextInvestigation = {
-          status: "running",
-          queuedAt: null,
-          notBefore: null,
-          startedAt: transition.startedAt,
-          durationMs: prevInvestigation?.durationMs ?? null,
-          error: null,
-          attempts: transition.attempts,
-          runs: prevRuns,
-          redditMetrics: prevRedditMetrics,
-          results: null,
-        };
-        break;
-      case "done":
-        nextInvestigation = {
-          status: "done",
-          queuedAt: prevInvestigation?.queuedAt ?? null,
-          notBefore: null,
-          startedAt: null,
-          durationMs: transition.durationMs,
-          error: null,
-          attempts: prevAttempts,
-          runs: prevRuns,
-          redditMetrics: transition.redditMetrics,
-          results: transition.results,
-        };
-        break;
-      case "error":
-        nextInvestigation = {
-          status: "error",
-          queuedAt: prevInvestigation?.queuedAt ?? null,
-          notBefore: null,
-          startedAt: null,
-          durationMs: transition.durationMs,
-          error: transition.error,
-          attempts: prevAttempts,
-          runs: prevRuns,
-          redditMetrics: transition.redditMetrics ?? prevRedditMetrics,
-          results: null,
-        };
-        break;
-    }
-
-    // Append a snapshot to runs[] whenever a run terminates.
-    if (
-      prevInvestigation?.status === "running" &&
-      (transition.status === "done" || transition.status === "error")
-    ) {
-      nextInvestigation.runs = [
-        ...prevRuns,
-        snapshotRun(nextInvestigation, transition.status),
-      ];
-    }
-
-    return { ...existing, investigation: nextInvestigation };
-  });
+  await updateReport(username, (current) =>
+    applyInvestigationTransition(
+      current ?? normalizeReport(undefined),
+      transition
+    )
+  );
 }
 
-async function saveActivityData(
-  username: string,
-  activityData: ActivityData
-): Promise<void> {
-  await updateReport(username, (current) => {
-    const existing = current ?? normalizeReport(undefined);
-    return { ...existing, activityData };
-  });
-}
+// Pure: layer a lifecycle transition onto a report's investigation, carrying
+// forward attempts/runs/redditMetrics. Kept separate from the storage write
+// so a terminal "done" can be bundled with activityData / botBouncer /
+// profileHidden into one updateReport instead of four sequential writes —
+// each write fires storage.onChanged across every tab.
+function applyInvestigationTransition(
+  existing: Report,
+  transition: InvestigationTransition
+): Report {
+  const prevInvestigation = existing.investigation;
 
-// Flips report.profileHidden whenever an investigation completes. The
-// passive-harvest content script reads this flag to decide which
-// usernames to scrape from the DOM as the operator browses — only the
-// hidden ones, since visible accounts can be re-fetched via the Reddit
-// API on the next investigation.
-async function setProfileHidden(
-  username: string,
-  hidden: boolean
-): Promise<void> {
-  await updateReport(username, (current) => {
-    const existing = current ?? normalizeReport(undefined);
-    if (existing.profileHidden === hidden) {
-      return existing;
-    }
+  const prevAttempts = prevInvestigation?.attempts ?? 0;
+  const prevRedditMetrics = prevInvestigation?.redditMetrics ?? null;
 
-    return { ...existing, profileHidden: hidden };
-  });
-}
+  // Older records have only the single most-recent investigation stored —
+  // seed runs[] from those fields the first time we touch one so historical
+  // timing/cost data survives the next re-run. Must happen before the
+  // transition writes a null `results`, otherwise the legacy data is lost.
+  const seedFromLegacy =
+    prevInvestigation?.status === "done" &&
+    (prevInvestigation.runs?.length ?? 0) === 0;
+  const prevRuns: RunSnapshot[] = seedFromLegacy
+    ? [snapshotRun(prevInvestigation, "done")]
+    : (prevInvestigation?.runs ?? []);
 
-// Inlined rather than calling into redditors/handlers.ts so the two feature
-// directories don't form an import cycle. Same shape as
-// redditorsSetBotBouncerStatus — keep them in sync if the field semantics
-// change.
-async function persistBotBouncerStatus(
-  username: string,
-  status: Report["botBouncerStatus"]
-): Promise<void> {
-  await updateReport(username, (current) => {
-    if (!current) {
-      return null;
-    }
+  let nextInvestigation: Investigation;
+  switch (transition.status) {
+    case "queued":
+      nextInvestigation = {
+        status: "queued",
+        queuedAt: transition.queuedAt,
+        notBefore: transition.notBefore ?? null,
+        startedAt: null,
+        durationMs: transition.durationMs ?? null,
+        error: null,
+        attempts: transition.attempts ?? prevAttempts,
+        runs: prevRuns,
+        redditMetrics: transition.redditMetrics ?? prevRedditMetrics,
+        results: null,
+      };
+      break;
+    case "running":
+      nextInvestigation = {
+        status: "running",
+        queuedAt: null,
+        notBefore: null,
+        startedAt: transition.startedAt,
+        durationMs: prevInvestigation?.durationMs ?? null,
+        error: null,
+        attempts: transition.attempts,
+        runs: prevRuns,
+        redditMetrics: prevRedditMetrics,
+        results: null,
+      };
+      break;
+    case "done":
+      nextInvestigation = {
+        status: "done",
+        queuedAt: prevInvestigation?.queuedAt ?? null,
+        notBefore: null,
+        startedAt: null,
+        durationMs: transition.durationMs,
+        error: null,
+        attempts: prevAttempts,
+        runs: prevRuns,
+        redditMetrics: transition.redditMetrics,
+        results: transition.results,
+      };
+      break;
+    case "error":
+      nextInvestigation = {
+        status: "error",
+        queuedAt: prevInvestigation?.queuedAt ?? null,
+        notBefore: null,
+        startedAt: null,
+        durationMs: transition.durationMs,
+        error: transition.error,
+        attempts: prevAttempts,
+        runs: prevRuns,
+        redditMetrics: transition.redditMetrics ?? prevRedditMetrics,
+        results: null,
+      };
+      break;
+  }
 
-    if (current.botBouncerStatus === status) {
-      return current;
-    }
+  // Append a snapshot to runs[] whenever a run terminates.
+  if (
+    prevInvestigation?.status === "running" &&
+    (transition.status === "done" || transition.status === "error")
+  ) {
+    nextInvestigation.runs = [
+      ...prevRuns,
+      snapshotRun(nextInvestigation, transition.status),
+    ];
+  }
 
-    return {
-      ...current,
-      botBouncerStatus: status,
-      botBouncerCheckedAt: Date.now(),
-    };
-  });
+  return { ...existing, investigation: nextInvestigation };
 }
