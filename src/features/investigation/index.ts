@@ -27,6 +27,7 @@ import type {
   Verdict,
 } from "../../types.ts";
 import { FACTORS } from "../../factors.ts";
+import { QUEUE_PRIORITY } from "../../queue_priority.ts";
 import { normalizeDemographics } from "../../utils/demographics.ts";
 import { extractJson } from "../../utils/json.ts";
 import { normalizePersona } from "../../utils/persona.ts";
@@ -95,13 +96,14 @@ export interface OneDAnalysisResult {
 // lookup run in parallel so the wall time is max() not sum().
 export async function gatherProfile(
   username: string,
-  extra: GatherProfileExtra = {}
+  extra: GatherProfileExtra = {},
+  priority: number = QUEUE_PRIORITY.bulk
 ): Promise<GatheredProfile> {
   const wallStart = performance.now();
 
   const [profileSettled, botBouncerSettled] = await Promise.allSettled([
-    fetchRedditProfile(username),
-    fetchBotBouncerStatus(username),
+    fetchRedditProfile(username, priority),
+    fetchBotBouncerStatus(username, priority),
   ]);
 
   const botBouncerResult =

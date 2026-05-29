@@ -7,6 +7,7 @@
 // parser does the same on incoming backups.
 
 import { PERSONA_LABELS } from "../factors.ts";
+import { QUEUE_PRIORITY } from "../queue_priority.ts";
 import type {
   Factor,
   GoogleHarvest,
@@ -215,6 +216,10 @@ function canonicalizeInvestigation(value: unknown): Investigation | null {
       typeof investigation.queuedAt === "number"
         ? investigation.queuedAt
         : null,
+    priority:
+      typeof investigation.priority === "number"
+        ? investigation.priority
+        : QUEUE_PRIORITY.bulk,
     notBefore:
       typeof investigation.notBefore === "number"
         ? investigation.notBefore

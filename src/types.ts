@@ -146,6 +146,15 @@ export interface InvestigationResults {
 interface InvestigationLifecycle {
   queuedAt: number | null;
 
+  // Queue priority this investigation was enqueued at — see QUEUE_PRIORITY.
+  // `interactive` for a manual launch / currently-viewed profile, `bulk` for
+  // a subreddit sweep. Drives the dispatcher's pickup order, the active
+  // table's queue ordering, and the priority marker. Like `queuedAt` /
+  // `notBefore`, it's transient queue state mirrored here so the UI (which
+  // can't see the in-memory queue) can render it and it survives a
+  // service-worker eviction. Only meaningful while status is queued/running.
+  priority: number;
+
   // Earliest ms-since-epoch at which a queued record is eligible to run.
   // Set after a 429 (or other Retry-After-bearing failure) so drainQueue
   // skips the record until the upstream's cooldown elapses. Null = ready.

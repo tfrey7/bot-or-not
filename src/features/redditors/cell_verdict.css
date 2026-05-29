@@ -48,3 +48,17 @@
   color: var(--bon-stamp-red);
   opacity: 0.85;
 }
+/* Priority marker — overrides the muted queued/running color so a
+   manually-launched / currently-viewed investigation stands out above the
+   bulk sweep rows it sorts ahead of. Listed last to win on equal specificity. */
+.bon-verdict-badge--priority {
+  display: inline-flex;
+  align-items: center;
+  color: var(--bon-stamp-amber);
+  opacity: 1;
+}
+.bon-verdict-badge-star {
+  margin-right: 0.4em;
+  line-height: 1;
+  transform: translateY(-1px);
+}

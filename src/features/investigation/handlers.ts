@@ -34,6 +34,7 @@ import {
   normalizeReport,
   snapshotRun,
 } from "../../utils/history.ts";
+import { QUEUE_PRIORITY } from "../../queue_priority.ts";
 import { isProfileHidden } from "../../utils/profile_hidden.ts";
 import { clampRetryAfter } from "../../utils/retry_after.ts";
 import { isInvestigationStale } from "../../verdict.ts";
@@ -76,7 +77,7 @@ export async function investigationSweepOrphans(): Promise<void> {
         investigation.status === "queued" ||
         investigation.status === "running"
       ) {
-        void enqueueInvestigation(username);
+        void enqueueInvestigation(username, QUEUE_PRIORITY.bulk);
       }
     }
   } catch (error) {
@@ -109,16 +110,17 @@ export async function investigationStart(
   // Already queued or running — don't bump position by overwriting
   // queuedAt; just make sure something has it enqueued.
   if (existing?.status === "queued" || existing?.status === "running") {
-    void enqueueInvestigation(username);
+    void enqueueInvestigation(username, QUEUE_PRIORITY.interactive);
     return { ok: true, queued: true };
   }
 
   await setInvestigationState(username, {
     status: "queued",
     queuedAt: Date.now(),
+    priority: QUEUE_PRIORITY.interactive,
     attempts: 0,
   });
-  void enqueueInvestigation(username);
+  void enqueueInvestigation(username, QUEUE_PRIORITY.interactive);
 
   return { ok: true, queued: queue.pending >= INVESTIGATION_CONCURRENCY };
 }
@@ -180,6 +182,7 @@ export async function investigationStartBatch(
       investigation: {
         status: "queued",
         queuedAt: now,
+        priority: QUEUE_PRIORITY.bulk,
         notBefore: null,
         startedAt: null,
         durationMs: null,
@@ -199,13 +202,16 @@ export async function investigationStartBatch(
   }
 
   for (const username of toEnqueue) {
-    void enqueueInvestigation(username);
+    void enqueueInvestigation(username, QUEUE_PRIORITY.bulk);
   }
 
   return { ok: true };
 }
 
-async function enqueueInvestigation(username: string): Promise<void> {
+async function enqueueInvestigation(
+  username: string,
+  priority: number
+): Promise<void> {
   const key = username.toLowerCase();
   if (inFlight.has(key)) {
     return;
@@ -214,13 +220,18 @@ async function enqueueInvestigation(username: string): Promise<void> {
   inFlight.add(key);
 
   try {
-    await queue.add(() => runInvestigationLifecycle(username));
+    await queue.add(() => runInvestigationLifecycle(username, priority), {
+      priority,
+    });
   } finally {
     inFlight.delete(key);
   }
 }
 
-async function runInvestigationLifecycle(username: string): Promise<void> {
+async function runInvestigationLifecycle(
+  username: string,
+  priority: number
+): Promise<void> {
   const selection = await readLlmSelection();
   const vendor = selection.vendor ?? "anthropic";
   const apiKey = await readApiKey(vendor);
@@ -247,7 +258,7 @@ async function runInvestigationLifecycle(username: string): Promise<void> {
         });
 
         try {
-          await runOneAttempt(username, apiKey, attemptStartedAt);
+          await runOneAttempt(username, apiKey, attemptStartedAt, priority);
         } catch (error) {
           // 404 means the username doesn't exist — no retry will help.
           if (error instanceof RedditFetchError && error.httpStatus === 404) {
@@ -317,25 +328,30 @@ async function runInvestigationLifecycle(username: string): Promise<void> {
 async function runOneAttempt(
   username: string,
   apiKey: string,
-  startedAt: number
+  startedAt: number,
+  priority: number
 ): Promise<void> {
   const existingRecord =
     (await readReport(username)) ?? normalizeReport(undefined);
 
-  const inputs = await gatherProfile(username, {
-    ...(existingRecord.botBouncerStatus
-      ? { botBouncerStatus: existingRecord.botBouncerStatus }
-      : {}),
-    ...(existingRecord.botBouncerCheckedAt
-      ? { botBouncerCheckedAt: existingRecord.botBouncerCheckedAt }
-      : {}),
-    ...(existingRecord.googleHarvest
-      ? { googleHarvest: existingRecord.googleHarvest }
-      : {}),
-    ...(existingRecord.passiveHarvest
-      ? { passiveHarvest: existingRecord.passiveHarvest }
-      : {}),
-  });
+  const inputs = await gatherProfile(
+    username,
+    {
+      ...(existingRecord.botBouncerStatus
+        ? { botBouncerStatus: existingRecord.botBouncerStatus }
+        : {}),
+      ...(existingRecord.botBouncerCheckedAt
+        ? { botBouncerCheckedAt: existingRecord.botBouncerCheckedAt }
+        : {}),
+      ...(existingRecord.googleHarvest
+        ? { googleHarvest: existingRecord.googleHarvest }
+        : {}),
+      ...(existingRecord.passiveHarvest
+        ? { passiveHarvest: existingRecord.passiveHarvest }
+        : {}),
+    },
+    priority
+  );
   const selection = await readLlmSelection();
   const analysis = await runOneDAnalysis(
     apiKey,
@@ -535,6 +551,7 @@ type InvestigationTransition =
   | {
       status: "queued";
       queuedAt: number;
+      priority?: number;
       notBefore?: number | null;
       durationMs?: number | null;
       attempts?: number;
@@ -583,6 +600,7 @@ function applyInvestigationTransition(
 
   const prevAttempts = prevInvestigation?.attempts ?? 0;
   const prevRedditMetrics = prevInvestigation?.redditMetrics ?? null;
+  const prevPriority = prevInvestigation?.priority ?? QUEUE_PRIORITY.bulk;
 
   // Older records have only the single most-recent investigation stored —
   // seed runs[] from those fields the first time we touch one so historical
@@ -601,6 +619,7 @@ function applyInvestigationTransition(
       nextInvestigation = {
         status: "queued",
         queuedAt: transition.queuedAt,
+        priority: transition.priority ?? prevPriority,
         notBefore: transition.notBefore ?? null,
         startedAt: null,
         durationMs: transition.durationMs ?? null,
@@ -615,6 +634,7 @@ function applyInvestigationTransition(
       nextInvestigation = {
         status: "running",
         queuedAt: null,
+        priority: prevPriority,
         notBefore: null,
         startedAt: transition.startedAt,
         durationMs: prevInvestigation?.durationMs ?? null,
@@ -629,6 +649,7 @@ function applyInvestigationTransition(
       nextInvestigation = {
         status: "done",
         queuedAt: prevInvestigation?.queuedAt ?? null,
+        priority: prevPriority,
         notBefore: null,
         startedAt: null,
         durationMs: transition.durationMs,
@@ -643,6 +664,7 @@ function applyInvestigationTransition(
       nextInvestigation = {
         status: "error",
         queuedAt: prevInvestigation?.queuedAt ?? null,
+        priority: prevPriority,
         notBefore: null,
         startedAt: null,
         durationMs: transition.durationMs,

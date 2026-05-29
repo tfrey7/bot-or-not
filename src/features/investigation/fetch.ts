@@ -10,6 +10,7 @@
 // failure. The metrics ride alongside the data so the analytics page can
 // chart Reddit-side performance the same way it does the Claude call.
 
+import { QUEUE_PRIORITY } from "../../queue_priority.ts";
 import { redditFetchJson, RedditRequestError } from "../../reddit/client.ts";
 import type {
   BotBouncerStatus,
@@ -91,12 +92,13 @@ function countItems(endpoint: RedditEndpoint, data: unknown): number | null {
 
 async function measureFetch<T>(
   endpoint: RedditEndpoint,
-  url: string
+  url: string,
+  priority: number
 ): Promise<MeasuredFetch<T>> {
   const start = performance.now();
 
   try {
-    const data = await redditFetchJson<T>(url);
+    const data = await redditFetchJson<T>(url, priority);
     return {
       data,
       retryAfterMs: null,
@@ -141,7 +143,8 @@ interface PaginatedListingResult {
 async function measureFetchListingPaginated(
   endpoint: RedditEndpoint,
   pathBase: string,
-  targetCount: number
+  targetCount: number,
+  priority: number
 ): Promise<PaginatedListingResult> {
   const metrics: RedditFetchMetric[] = [];
   const allChildren: Array<{ data?: Record<string, unknown> }> = [];
@@ -157,7 +160,7 @@ async function measureFetchListingPaginated(
       : "";
     const url: string = `${pathBase}?limit=${pageLimit}${afterParam}&raw_json=1`;
 
-    const page = await measureFetch<RedditListing>(endpoint, url);
+    const page = await measureFetch<RedditListing>(endpoint, url, priority);
     metrics.push(page.metric);
     if (page.retryAfterMs !== null) {
       lastRetryAfterMs = page.retryAfterMs;
@@ -206,14 +209,16 @@ export interface BotBouncerFetchResult {
 }
 
 export async function fetchBotBouncerStatus(
-  username: string
+  username: string,
+  priority: number = QUEUE_PRIORITY.bulk
 ): Promise<BotBouncerFetchResult> {
   const query = encodeURIComponent(`Overview for ${username}`);
   const url = `https://www.reddit.com/r/BotBouncer/search.json?q=${query}&restrict_sr=true&sort=new&limit=10&raw_json=1`;
 
   const { data, metric } = await measureFetch<BotBouncerSearchResponse>(
     "botbouncer",
-    url
+    url,
+    priority
   );
 
   if (!data) {
@@ -249,27 +254,32 @@ export interface RedditProfileResult {
 }
 
 export async function fetchRedditProfile(
-  username: string
+  username: string,
+  priority: number = QUEUE_PRIORITY.bulk
 ): Promise<RedditProfileResult> {
   const encodedUsername = encodeURIComponent(username);
   const [about, submitted, comments, moderated] = await Promise.all([
     measureFetch<RedditAboutEnvelope>(
       "about",
-      `https://www.reddit.com/user/${encodedUsername}/about.json`
+      `https://www.reddit.com/user/${encodedUsername}/about.json`,
+      priority
     ),
     measureFetchListingPaginated(
       "submitted",
       `https://www.reddit.com/user/${encodedUsername}/submitted.json`,
-      REDDIT_FETCH_LIMIT
+      REDDIT_FETCH_LIMIT,
+      priority
     ),
     measureFetchListingPaginated(
       "comments",
       `https://www.reddit.com/user/${encodedUsername}/comments.json`,
-      REDDIT_FETCH_LIMIT
+      REDDIT_FETCH_LIMIT,
+      priority
     ),
     measureFetch<RedditModeratedList>(
       "moderated",
-      `https://www.reddit.com/user/${encodedUsername}/moderated_subreddits.json?raw_json=1`
+      `https://www.reddit.com/user/${encodedUsername}/moderated_subreddits.json?raw_json=1`,
+      priority
     ),
   ]);
 

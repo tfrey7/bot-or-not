@@ -6,6 +6,7 @@
 //   - `region.ts` for per-report region + timezone inference
 //   - `subreddit_chart_data.ts` for the subreddit chart's bucket math
 
+import { QUEUE_PRIORITY } from "../../queue_priority.ts";
 import type { Investigation, Report } from "../../types.ts";
 import { expectedDurationSec } from "../../utils/expected_duration.ts";
 import { investigationResults } from "../../utils/history.ts";
@@ -25,8 +26,9 @@ export function redditorsIsActiveRow(report: ReportRow): boolean {
 }
 
 // Sort order for the active table: running before queued, newest-started
-// running first, oldest-queued first within the queue (FIFO matches the
-// background's pickup order).
+// running first, then within the queue higher-priority first and oldest-
+// queued first within a priority tier (matches the background's pickup
+// order — p-queue drains highest priority, FIFO within ties).
 export function redditorsCompareActive(a: ReportRow, b: ReportRow): number {
   const aStatus = a.investigation?.status;
   const bStatus = b.investigation?.status;
@@ -45,13 +47,20 @@ export function redditorsCompareActive(a: ReportRow, b: ReportRow): number {
     return bTime - aTime;
   }
 
+  const aPriority = a.investigation?.priority ?? QUEUE_PRIORITY.bulk;
+  const bPriority = b.investigation?.priority ?? QUEUE_PRIORITY.bulk;
+  if (aPriority !== bPriority) {
+    return bPriority - aPriority;
+  }
+
   const aQueued = a.investigation?.queuedAt ?? 0;
   const bQueued = b.investigation?.queuedAt ?? 0;
   return aQueued - bQueued;
 }
 
-// Number of queued investigations ahead of `target` in the FIFO queue —
-// older queuedAt values run first. Returns 0 if `target` isn't queued.
+// Number of queued investigations that will be picked before `target` —
+// higher priority first, then older queuedAt within a priority tier (the
+// background's pickup order). Returns 0 if `target` isn't queued.
 export function redditorsCountQueuedAhead(
   reports: ReportRow[],
   target: ReportRow
@@ -60,6 +69,8 @@ export function redditorsCountQueuedAhead(
   if (target.investigation?.status !== "queued" || myQueuedAt == null) {
     return 0;
   }
+
+  const myPriority = target.investigation.priority ?? QUEUE_PRIORITY.bulk;
 
   let ahead = 0;
 
@@ -73,7 +84,18 @@ export function redditorsCountQueuedAhead(
       continue;
     }
 
-    if (investigation.queuedAt != null && investigation.queuedAt < myQueuedAt) {
+    const priority = investigation.priority ?? QUEUE_PRIORITY.bulk;
+
+    if (priority > myPriority) {
+      ahead++;
+      continue;
+    }
+
+    if (
+      priority === myPriority &&
+      investigation.queuedAt != null &&
+      investigation.queuedAt < myQueuedAt
+    ) {
       ahead++;
     }
   }

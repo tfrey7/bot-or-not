@@ -2,6 +2,7 @@
 // running and error states so the column doesn't read as "—" when an
 // investigation is mid-flight or failed.
 
+import { QUEUE_PRIORITY } from "../../queue_priority.ts";
 import type { Investigation } from "../../types.ts";
 import { formatVerdict } from "../../utils/format_text.ts";
 import { isInvestigationStale, normalizeInvestigation } from "../../verdict.ts";
@@ -15,6 +16,11 @@ export function redditorsVerdictBadge(
     return null;
   }
 
+  const isPriority =
+    (rawInvestigation.status === "queued" ||
+      rawInvestigation.status === "running") &&
+    (rawInvestigation.priority ?? QUEUE_PRIORITY.bulk) > QUEUE_PRIORITY.bulk;
+
   if (rawInvestigation.status === "queued") {
     const pauseRemainingSec = queuedPauseRemainingSec(rawInvestigation);
     const span = document.createElement("span");
@@ -23,7 +29,7 @@ export function redditorsVerdictBadge(
       span.className = "bon-verdict-badge bon-verdict-badge--paused";
       span.textContent = `Paused · ${pauseRemainingSec}s`;
       span.title = `Upstream rate-limited the last attempt — waiting ${pauseRemainingSec}s before retrying.`;
-      return span;
+      return markPriority(span, isPriority);
     }
 
     span.className = "bon-verdict-badge bon-verdict-badge--queued";
@@ -34,7 +40,7 @@ export function redditorsVerdictBadge(
         ? "Up next — will start when a slot frees"
         : `Waiting behind ${queueAhead} other investigation${queueAhead === 1 ? "" : "s"}`;
 
-    return span;
+    return markPriority(span, isPriority);
   }
 
   if (rawInvestigation.status === "running") {
@@ -47,7 +53,7 @@ export function redditorsVerdictBadge(
       ? "Investigation appears orphaned — click the retry button to re-run"
       : "Investigation in progress";
 
-    return span;
+    return markPriority(span, isPriority);
   }
 
   if (rawInvestigation.status === "error") {
@@ -69,6 +75,29 @@ export function redditorsVerdictBadge(
   span.className = `bon-verdict-badge bon-verdict-badge--${verdict}`;
   span.textContent = formatVerdict(verdict);
   span.title = summary || verdict;
+
+  return span;
+}
+
+// Stamp a queued/running badge as priority: a leading star + amber accent
+// so a manually-launched / currently-viewed investigation reads as ahead of
+// the bulk subreddit-sweep rows it's sorted above.
+function markPriority(
+  span: HTMLSpanElement,
+  isPriority: boolean
+): HTMLSpanElement {
+  if (!isPriority) {
+    return span;
+  }
+
+  span.classList.add("bon-verdict-badge--priority");
+  span.title = `Priority — ${span.title}`;
+
+  const star = document.createElement("span");
+  star.className = "bon-verdict-badge-star";
+  star.textContent = "★";
+  star.setAttribute("aria-hidden", "true");
+  span.prepend(star);
 
   return span;
 }

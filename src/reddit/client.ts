@@ -16,6 +16,7 @@
 
 import PQueue from "p-queue";
 
+import { QUEUE_PRIORITY } from "../queue_priority.ts";
 import { shortUrl } from "../utils/format_text.ts";
 import { clampRetryAfter, parseRetryAfter } from "../utils/retry_after.ts";
 
@@ -182,47 +183,53 @@ async function bootstrapPauseState(): Promise<void> {
 
 void bootstrapPauseState();
 
-export async function redditFetchJson<T = unknown>(url: string): Promise<T> {
-  return await queue.add(async () => {
-    const startedAt = performance.now();
-    let succeeded = false;
+export async function redditFetchJson<T = unknown>(
+  url: string,
+  priority: number = QUEUE_PRIORITY.bulk
+): Promise<T> {
+  return await queue.add(
+    async () => {
+      const startedAt = performance.now();
+      let succeeded = false;
 
-    try {
-      const response = await fetch(url, {
-        headers: { Accept: "application/json" },
-        credentials: "include",
-        signal: AbortSignal.timeout(REDDIT_FETCH_TIMEOUT_MS),
-      });
+      try {
+        const response = await fetch(url, {
+          headers: { Accept: "application/json" },
+          credentials: "include",
+          signal: AbortSignal.timeout(REDDIT_FETCH_TIMEOUT_MS),
+        });
 
-      noteBudget(response.headers);
+        noteBudget(response.headers);
 
-      if (!response.ok) {
-        const retryAfterMs = parseRetryAfter(
-          response.headers.get("Retry-After")
-        );
+        if (!response.ok) {
+          const retryAfterMs = parseRetryAfter(
+            response.headers.get("Retry-After")
+          );
 
-        if (response.status === 429) {
-          notePause(retryAfterMs, "rate-limited");
-        } else if (response.status >= 500) {
-          notePause(retryAfterMs, `returned ${response.status}`);
+          if (response.status === 429) {
+            notePause(retryAfterMs, "rate-limited");
+          } else if (response.status >= 500) {
+            notePause(retryAfterMs, `returned ${response.status}`);
+          }
+
+          throw new RedditRequestError(
+            `Reddit fetch ${response.status} for ${url}`,
+            response.status,
+            retryAfterMs
+          );
         }
 
-        throw new RedditRequestError(
-          `Reddit fetch ${response.status} for ${url}`,
-          response.status,
-          retryAfterMs
+        const body = (await response.json()) as T;
+        succeeded = true;
+        return body;
+      } finally {
+        const elapsedMs = Math.round(performance.now() - startedAt);
+        const suffix = succeeded ? "" : " (failed)";
+        console.log(
+          `[Bot or Not] timing: fetch ${shortUrl(url)} ${elapsedMs}ms${suffix}`
         );
       }
-
-      const body = (await response.json()) as T;
-      succeeded = true;
-      return body;
-    } finally {
-      const elapsedMs = Math.round(performance.now() - startedAt);
-      const suffix = succeeded ? "" : " (failed)";
-      console.log(
-        `[Bot or Not] timing: fetch ${shortUrl(url)} ${elapsedMs}ms${suffix}`
-      );
-    }
-  });
+    },
+    { priority }
+  );
 }
