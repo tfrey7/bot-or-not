@@ -1,4 +1,4 @@
-// Renders the personas scatter plot: archetype anchors around a circle,
+// Renders the personas scatter plot: archetype anchors around a hexagon,
 // each investigated account placed at the barycentric projection of its
 // archetype radar vector. Pure DOM building; data comes pre-computed from
 // logic.ts.
@@ -58,6 +58,15 @@ export function personasScatter(
   return svg;
 }
 
+// Rings are hexagonal polygons whose corners land on the archetype spokes,
+// echoing the persona hexagon used elsewhere. Vertex count tracks the
+// archetype count automatically via PERSONAS_ANCHORS.
+function ringPoints(radius: number): string {
+  return PERSONAS_ANCHORS.map(
+    (anchor) => `${CENTER + anchor.x * radius},${CENTER + anchor.y * radius}`
+  ).join(" ");
+}
+
 function buildBackdrop(): SVGGElement {
   const group = document.createElementNS(SVG_NS, "g");
   group.setAttribute("class", "bon-personas-backdrop");
@@ -65,17 +74,15 @@ function buildBackdrop(): SVGGElement {
   const rings = 4;
 
   for (let i = 1; i <= rings; i++) {
-    const circle = document.createElementNS(SVG_NS, "circle");
-    circle.setAttribute("cx", String(CENTER));
-    circle.setAttribute("cy", String(CENTER));
-    circle.setAttribute("r", String((PLOT_RADIUS * i) / rings));
-    circle.setAttribute(
+    const polygon = document.createElementNS(SVG_NS, "polygon");
+    polygon.setAttribute("points", ringPoints((PLOT_RADIUS * i) / rings));
+    polygon.setAttribute(
       "class",
       i === rings
         ? "bon-personas-ring bon-personas-ring--outer"
         : "bon-personas-ring"
     );
-    group.appendChild(circle);
+    group.appendChild(polygon);
   }
 
   return group;

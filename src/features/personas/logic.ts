@@ -66,6 +66,18 @@ export const PERSONAS_ANCHORS: readonly ArchetypeAnchor[] = ARCHETYPES.map(
   }
 );
 
+// Distance from center to the anchor polygon's boundary along `theta`, for a
+// circumradius-1 polygon with a vertex at -π/2 (matching PERSONAS_ANCHORS). 1
+// at a vertex, the apothem cos(π/N) at an edge midpoint. Used to clamp points
+// to the hexagon's edge rather than the circumscribed circle, which bulges
+// past the edges between vertices.
+function anchorBoundaryRadius(theta: number): number {
+  const sides = PERSONAS_ANCHORS.length;
+  const step = (Math.PI * 2) / sides;
+  const local = (((theta + Math.PI / 2) % step) + step) % step;
+  return Math.cos(Math.PI / sides) / Math.cos(local - step / 2);
+}
+
 export type PersonasRow = Report & { username: string };
 
 export function personasCollect(reports: PersonasRow[]): PersonaPoint[] {
@@ -100,18 +112,20 @@ export function personasCollect(reports: PersonasRow[]): PersonaPoint[] {
       }
     }
 
-    // Raw barycentric sum can overshoot the unit disk when two adjacent
-    // archetypes both score high (Superfan 1.0 + Farmer 1.0 reinforces in their
-    // shared direction). Pin overshoots to the rim — direction stays
-    // meaningful, magnitude saturates at "max possible pull."
+    // Raw barycentric sum can overshoot the hexagon when two adjacent
+    // archetypes both score high (Superfan 1.0 + Shill 1.0 reinforces in their
+    // shared direction). Pin overshoots to the polygon edge — direction stays
+    // meaningful, and a 50/50 adjacent blend lands on the edge connecting the
+    // two vertices instead of bulging out onto the circumscribed circle.
     const rawMagnitude = Math.sqrt(sumX * sumX + sumY * sumY);
     let x = sumX;
     let y = sumY;
     let magnitude = rawMagnitude;
-    if (magnitude > 1) {
-      x /= magnitude;
-      y /= magnitude;
-      magnitude = 1;
+    const maxRadius = anchorBoundaryRadius(Math.atan2(sumY, sumX));
+    if (magnitude > maxRadius) {
+      x *= maxRadius / magnitude;
+      y *= maxRadius / magnitude;
+      magnitude = maxRadius;
     }
 
     points.push({
