@@ -5,12 +5,18 @@ import webExtension from "vite-plugin-web-extension";
 
 // The webext plugin processes manifest scripts/HTML, but does not walk
 // manifest.icons / action.default_icon / web_accessible_resources to copy
-// referenced image files. Copy the whole icons/ tree ourselves.
+// referenced image files. Copy icons/ ourselves, skipping the source/
+// subdir of SVG/PNG masters — those are designer working files, not
+// runtime assets, and bloat the xpi by ~1.5 MB.
 const copyIcons = () => ({
   name: "bon-copy-icons",
   apply: "build",
   closeBundle() {
-    cpSync(resolve("icons"), resolve("dist/icons"), { recursive: true });
+    const sourceDir = resolve("icons/source");
+    cpSync(resolve("icons"), resolve("dist/icons"), {
+      recursive: true,
+      filter: (src) => !resolve(src).startsWith(sourceDir),
+    });
   },
 });
 
