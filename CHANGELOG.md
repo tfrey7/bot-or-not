@@ -2,6 +2,9 @@
 
 Notable changes to Bot or Not. Signed `.xpi` builds for each version are attached to the matching [GitHub Release](https://github.com/tfrey7/bot-or-not/releases).
 
+## [7.5.0] — 2026-05-29
+- Priority queuing: interactive investigations jump ahead of bulk sweeps
+
 ## [7.4.3] — 2026-05-29
 - Shrink xpi from ~50 MB to ~12 MB
 
