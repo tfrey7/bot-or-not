@@ -2,6 +2,9 @@
 
 Notable changes to Bot or Not. Signed `.xpi` builds for each version are attached to the matching [GitHub Release](https://github.com/tfrey7/bot-or-not/releases).
 
+## [7.4.2] — 2026-05-29
+- Reports page: stop refetching full storage every tick
+
 ## [7.4.1] — 2026-05-29
 - Per-key report storage: stop the storage.onChanged jank storm
 
