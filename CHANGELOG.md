@@ -2,6 +2,16 @@
 
 Notable changes to Bot or Not. Signed `.xpi` builds for each version are attached to the matching [GitHub Release](https://github.com/tfrey7/bot-or-not/releases).
 
+## [7.6.0] — 2026-06-04
+- Export PersonaExemplar so the field guide tab compiles
+- Add knip dead-code check (npm run deadcode)
+- Remove dead code: unused functions, constants, types, and exports
+- Add field guide tab
+- Personas scatter: hexagonal rings + clamp points to the hexagon
+- Rename persona archetypes: zealot→politics, stan→superfan, hustler→shill
+- Skip analysis for hidden profiles until a dossier exists
+- Replace cumulative-spend line with a spend-per-day bar chart
+
 ## [7.5.1] — 2026-06-04
 - Decouple Reddit client from browser storage
 - Bump dev deps: eslint, prettier, typescript-eslint, vite, web-ext, tsx, @types/node
