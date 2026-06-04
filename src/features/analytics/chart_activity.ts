@@ -1,9 +1,8 @@
 // Daily-activity bar chart — one bar per calendar day in the last 30 days,
-// height = number of runs that day, tooltip shows the day's spend.
+// height = number of runs that day.
 
 import uPlot from "uplot";
 
-import { fmtUsd } from "../../utils/format_number.ts";
 import type { AnalyticsEntry } from "./logic.ts";
 import { formatDayTick } from "./tick_helpers.ts";
 import {
@@ -26,7 +25,7 @@ export function analyticsActivityChart(runs: AnalyticsEntry[]): HTMLElement {
     return analyticsEmptyPanel("No timestamped runs to plot.");
   }
 
-  const buckets = new Map<number, { count: number; cost: number }>();
+  const buckets = new Map<number, { count: number }>();
   let earliest = Infinity;
 
   for (const run of runsWithTime) {
@@ -34,9 +33,8 @@ export function analyticsActivityChart(runs: AnalyticsEntry[]): HTMLElement {
     day.setHours(0, 0, 0, 0);
     const timestamp = day.getTime();
     earliest = Math.min(earliest, timestamp);
-    const bucket = buckets.get(timestamp) || { count: 0, cost: 0 };
+    const bucket = buckets.get(timestamp) || { count: 0 };
     bucket.count++;
-    bucket.cost += run.totalCost;
     buckets.set(timestamp, bucket);
   }
 
@@ -49,14 +47,12 @@ export function analyticsActivityChart(runs: AnalyticsEntry[]): HTMLElement {
 
   const xs: number[] = new Array(totalDays);
   const counts: Array<number | null> = new Array(totalDays);
-  const costs: number[] = new Array(totalDays);
 
   for (let i = 0; i < totalDays; i++) {
     const dayTs = startTs + i * MS_PER_DAY;
     const bucket = buckets.get(dayTs);
     xs[i] = Math.round(dayTs / 1000);
     counts[i] = bucket ? bucket.count : null;
-    costs[i] = bucket ? bucket.cost : 0;
   }
 
   const palette = analyticsUplotPalette();
@@ -133,11 +129,6 @@ export function analyticsActivityChart(runs: AnalyticsEntry[]): HTMLElement {
           row1.className = "bon-analytics-uplot-tooltip__row";
           row1.innerHTML = `<span>runs</span><span>${count}</span>`;
           tooltip.appendChild(row1);
-
-          const row2 = document.createElement("div");
-          row2.className = "bon-analytics-uplot-tooltip__row";
-          row2.innerHTML = `<span>spend</span><span>${fmtUsd(costs[idx])}</span>`;
-          tooltip.appendChild(row2);
 
           tooltip.hidden = false;
           analyticsPlaceTooltip(

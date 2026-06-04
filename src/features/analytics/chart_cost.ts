@@ -1,7 +1,5 @@
-// Cumulative-spend line chart. Plots the running total of run cost over time;
-// the single most-expensive run is highlighted with a marker drawn on top of
-// the line, and hovering anywhere along the line surfaces a tooltip with that
-// run's u/name, individual cost, and the cumulative-so-far.
+// Spend-per-day bar chart — one bar per calendar day in the last 30 days,
+// height = that day's total run cost, tooltip shows the day's spend and run count.
 
 import uPlot from "uplot";
 
@@ -17,80 +15,83 @@ import {
   type UplotChartOptions,
 } from "./uplot_helpers.ts";
 
-interface CostPoint {
-  ts: number;
-  cumulative: number;
-  cost: number;
-  username: string;
-}
+const MS_PER_DAY = 86_400_000;
 
 export function analyticsCostChart(runs: AnalyticsEntry[]): HTMLElement {
-  const sorted = runs
-    .filter(
-      (run): run is AnalyticsEntry & { runAt: number } => run.runAt != null
-    )
-    .sort((a, b) => a.runAt - b.runAt);
+  const runsWithTime = runs.filter(
+    (run): run is AnalyticsEntry & { runAt: number } => run.runAt != null
+  );
 
-  if (!sorted.length) {
+  if (!runsWithTime.length) {
     return analyticsEmptyPanel("No timestamped runs to plot.");
   }
 
-  const points: CostPoint[] = [];
-  let cumulative = 0;
+  const buckets = new Map<number, { count: number; cost: number }>();
+  let earliest = Infinity;
 
-  for (const run of sorted) {
-    cumulative += run.totalCost;
-    points.push({
-      ts: Math.round(run.runAt / 1000),
-      cumulative,
-      cost: run.totalCost,
-      username: run.username,
-    });
+  for (const run of runsWithTime) {
+    const day = new Date(run.runAt);
+    day.setHours(0, 0, 0, 0);
+    const timestamp = day.getTime();
+    earliest = Math.min(earliest, timestamp);
+    const bucket = buckets.get(timestamp) || { count: 0, cost: 0 };
+    bucket.count++;
+    bucket.cost += run.totalCost;
+    buckets.set(timestamp, bucket);
   }
 
-  // Highlight the single most expensive run.
-  let maxIndex = 0;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const todayTs = today.getTime();
+  const maxSpan = 30 * MS_PER_DAY;
+  const startTs = Math.max(earliest, todayTs - maxSpan);
+  const totalDays = Math.round((todayTs - startTs) / MS_PER_DAY) + 1;
 
-  for (let i = 1; i < sorted.length; i++) {
-    if (sorted[i].totalCost > sorted[maxIndex].totalCost) {
-      maxIndex = i;
-    }
+  const xs: number[] = new Array(totalDays);
+  const spends: Array<number | null> = new Array(totalDays);
+  const counts: number[] = new Array(totalDays);
+
+  for (let i = 0; i < totalDays; i++) {
+    const dayTs = startTs + i * MS_PER_DAY;
+    const bucket = buckets.get(dayTs);
+    xs[i] = Math.round(dayTs / 1000);
+    spends[i] = bucket ? bucket.cost : null;
+    counts[i] = bucket ? bucket.count : 0;
   }
 
   const palette = analyticsUplotPalette();
   const { host, tooltip, mount } = analyticsUplotHost();
 
-  const xs = points.map((point) => point.ts);
-  const ys = points.map((point) => point.cumulative);
+  const data: uPlot.AlignedData = [xs, spends];
 
-  // Single-run charts are pathological for uplot's autoscale (zero x-range);
-  // pad ±30s so the lone point renders centered with axis labels.
-  if (xs.length === 1) {
-    xs.unshift(xs[0] - 30);
-    xs.push(xs[xs.length - 1] + 30);
-    ys.unshift(NaN);
-    ys.push(NaN);
-  }
-
-  const data: uPlot.AlignedData = [xs, ys];
+  // Bar widths: scale so a 30-day chart yields ~70% fill per day cell. For
+  // shorter ranges keep bars slim so single-spend days don't dominate.
+  const barWidth = Math.max(0.45, Math.min(0.85, 0.9 - totalDays * 0.005));
 
   const opts: UplotChartOptions = {
     legend: { show: false },
     cursor: {
-      points: { size: 7 },
+      points: { show: false },
       focus: { prox: 24 },
       drag: { x: false, y: false, setScale: false },
     },
     scales: {
-      x: { time: true },
+      // Pad ½ day on each side so the first/last bar isn't clipped by the
+      // plot area (bars are centered on their data point and would
+      // otherwise have their outer half cut off).
+      x: {
+        time: true,
+        range: (_u, min, max) => [min - 43_200, max + 43_200],
+      },
       y: { range: (_u, _min, max) => [0, Math.max(max, 0.0001)] },
     },
     series: [
       {},
       {
         stroke: palette.accent,
-        width: 1.75,
-        fill: palette.accentSoft,
+        fill: palette.accent,
+        width: 0,
+        paths: uPlot.paths.bars!({ size: [barWidth, 32] }),
         points: { show: false },
       },
     ],
@@ -100,79 +101,33 @@ export function analyticsCostChart(runs: AnalyticsEntry[]): HTMLElement {
       yValues: (_u, splits) => splits.map((value) => fmtUsd(value)),
     }),
     hooks: {
-      draw: [
-        (u) => {
-          // Draw the "most expensive" marker on the actual data point in
-          // axis coords. drawn here (after series) so it sits on top.
-          const sourceIdx = xs.length === ys.length ? maxIndex : maxIndex + 1;
-          const x = u.valToPos(xs[sourceIdx], "x", true);
-          const y = u.valToPos(ys[sourceIdx], "y", true);
-          const ctx = u.ctx;
-          ctx.save();
-          ctx.fillStyle = palette.rust;
-          ctx.strokeStyle = palette.surface;
-          ctx.lineWidth = 1.5 * uPlot.pxRatio;
-          ctx.beginPath();
-          ctx.arc(x, y, 4 * uPlot.pxRatio, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.stroke();
-          ctx.restore();
-        },
-      ],
       setCursor: [
         (u) => {
           const idx = u.cursor.idx;
           const left = u.cursor.left ?? -1;
           const top = u.cursor.top ?? -1;
 
-          if (idx == null || left < 0 || top < 0) {
-            tooltip.hidden = true;
-            return;
-          }
-
-          // Skip the synthetic padding points used for single-run charts.
-          const yVal = ys[idx];
-          if (!Number.isFinite(yVal)) {
-            tooltip.hidden = true;
-            return;
-          }
-
-          const sourceIdx = xs.length === points.length ? idx : idx - 1;
-          const point = points[sourceIdx];
-
-          if (!point) {
+          if (idx == null || left < 0 || top < 0 || spends[idx] == null) {
             tooltip.hidden = true;
             return;
           }
 
           tooltip.innerHTML = "";
 
-          const headline = document.createElement("div");
-          headline.className = "bon-analytics-uplot-tooltip__head bon-pii-name";
-          headline.textContent = `u/${point.username}`;
-          tooltip.appendChild(headline);
+          const head = document.createElement("div");
+          head.className = "bon-analytics-uplot-tooltip__head";
+          head.textContent = new Date(xs[idx] * 1000).toLocaleDateString();
+          tooltip.appendChild(head);
 
-          const when = document.createElement("div");
-          when.className = "bon-analytics-uplot-tooltip__sub";
-          when.textContent = new Date(point.ts * 1000).toLocaleString();
-          tooltip.appendChild(when);
+          const spendRow = document.createElement("div");
+          spendRow.className = "bon-analytics-uplot-tooltip__row";
+          spendRow.innerHTML = `<span>spend</span><span>${fmtUsd(spends[idx] as number)}</span>`;
+          tooltip.appendChild(spendRow);
 
-          const thisRun = document.createElement("div");
-          thisRun.className = "bon-analytics-uplot-tooltip__row";
-          thisRun.innerHTML = `<span>this run</span><span>${fmtUsd(point.cost)}</span>`;
-          tooltip.appendChild(thisRun);
-
-          const cum = document.createElement("div");
-          cum.className = "bon-analytics-uplot-tooltip__row";
-          cum.innerHTML = `<span>cumulative</span><span>${fmtUsd(point.cumulative)}</span>`;
-          tooltip.appendChild(cum);
-
-          if (sourceIdx === maxIndex) {
-            const flag = document.createElement("div");
-            flag.className = "bon-analytics-uplot-tooltip__flag";
-            flag.textContent = "Most expensive run";
-            tooltip.appendChild(flag);
-          }
+          const runsRow = document.createElement("div");
+          runsRow.className = "bon-analytics-uplot-tooltip__row";
+          runsRow.innerHTML = `<span>runs</span><span>${counts[idx]}</span>`;
+          tooltip.appendChild(runsRow);
 
           tooltip.hidden = false;
           analyticsPlaceTooltip(

@@ -84,7 +84,7 @@ function renderInto(
     const llmCharts = document.createElement("div");
     llmCharts.className = "bon-analytics-charts";
     llmCharts.appendChild(
-      analyticsChartCard("Cumulative spend", null, analyticsCostChart(llmRuns))
+      analyticsChartCard("Spend per day", null, analyticsCostChart(llmRuns))
     );
     llmCharts.appendChild(
       analyticsChartCard(
