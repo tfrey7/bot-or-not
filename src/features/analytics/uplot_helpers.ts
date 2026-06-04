@@ -165,5 +165,3 @@ export function analyticsPlaceTooltip(
   tooltip.style.left = `${Math.max(4, posX)}px`;
   tooltip.style.top = `${Math.max(4, posY)}px`;
 }
-
-export const ANALYTICS_CHART_HEIGHT = CHART_HEIGHT;

@@ -7,7 +7,7 @@ import { fmtDuration, fmtTimestamp } from "../../utils/format_time.ts";
 import { pagination } from "../../utils/pagination.ts";
 import type { AnalyticsEntry } from "./logic.ts";
 
-export const ANALYTICS_RUN_LOG_PAGE_SIZE = 25;
+const ANALYTICS_RUN_LOG_PAGE_SIZE = 25;
 
 export interface RunLogOpts {
   currentPage: number;

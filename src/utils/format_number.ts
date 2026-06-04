@@ -52,14 +52,6 @@ export function fmtThousands(value: number | null | undefined): string {
   return String(Math.round(value));
 }
 
-export function fmtNum(value: number | null | undefined, digits = 0): string {
-  if (value == null || !isFinite(value)) {
-    return "—";
-  }
-
-  return value.toFixed(digits);
-}
-
 export function fmtPercent(
   value: number | null | undefined,
   digits = 0

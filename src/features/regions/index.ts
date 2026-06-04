@@ -42,16 +42,7 @@ import type { TimezoneOnlyRegionInference, TzInferred } from "./timezone.ts";
 
 export { REGION_INFO } from "./data.ts";
 export type { RegionInfo } from "./data.ts";
-export { normalizeSubName } from "./subreddit.ts";
-export type { SubRegionHit, SubregionInference } from "./subreddit.ts";
-export type { ScriptInference } from "./scripts.ts";
-export type { LanguageInference } from "./language.ts";
-export type { ModeratedInference } from "./moderated.ts";
-export {
-  regionForOffset,
-  type TimezoneOnlyRegionInference,
-  type TzInferred,
-} from "./timezone.ts";
+export { type TzInferred } from "./timezone.ts";
 
 export interface DeterministicRegionInference {
   kind: "deterministic";

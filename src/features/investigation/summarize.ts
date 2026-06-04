@@ -245,7 +245,7 @@ function trimTrailingNulls(row: unknown[]): unknown[] {
 // here; default accounts return `""`. The companion `icon_img` field is
 // always populated (often with a generic snoo) so it can't tell us
 // whether the user actually chose anything.
-export function hasCustomSnoovatar(snoovatarImg?: string): boolean {
+function hasCustomSnoovatar(snoovatarImg?: string): boolean {
   return typeof snoovatarImg === "string" && snoovatarImg.trim().length > 0;
 }
 

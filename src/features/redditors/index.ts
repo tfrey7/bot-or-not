@@ -29,15 +29,8 @@ export {
   redditorsUnlinkRing,
 } from "./handlers.ts";
 
-export {
-  redditorsComputeRegionForReport,
-  redditorsInferTimezoneFromTimestamps,
-} from "./region.ts";
-export type { TimezoneInference } from "./region.ts";
+export { redditorsComputeRegionForReport } from "./region.ts";
 
-export {
-  redditorsGoogleDossierSection,
-  redditorsGoogleDossierCountFresh,
-} from "./google_dossier_section.ts";
+export { redditorsGoogleDossierSection } from "./google_dossier_section.ts";
 
 export type { ReportRow } from "./logic.ts";

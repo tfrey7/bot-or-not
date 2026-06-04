@@ -18,7 +18,7 @@ import type {
 } from "../../types.ts";
 import type { PassiveHarvestFinding } from "./scrape.ts";
 
-export const PASSIVE_HARVEST_CAP = 100;
+const PASSIVE_HARVEST_CAP = 100;
 
 function canonicalizePermalink(permalink: string): string {
   return permalink.split("#")[0].split("?")[0].replace(/\/$/, "");

@@ -26,7 +26,7 @@ import type {
 // Reddit's per-request listing cap. The API silently clamps anything
 // higher to 100, so we paginate via `after=` cursors to reach the
 // configured target.
-export const REDDIT_PAGE_LIMIT = 100;
+const REDDIT_PAGE_LIMIT = 100;
 
 // Target item count per listing (submitted / comments). The investigation
 // fetch paginates to this depth so the heatmap, calendar, region inference,

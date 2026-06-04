@@ -4,7 +4,7 @@
 const RING_ID_ALPHABET = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
 const RING_ID_LENGTH = 4;
 
-export function randomRingId(): string {
+function randomRingId(): string {
   let id = "";
 
   for (let i = 0; i < RING_ID_LENGTH; i++) {

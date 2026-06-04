@@ -386,4 +386,3 @@ function formatImportResult(
 }
 
 export { syncExport, syncImport } from "./handlers.ts";
-export type { ImportRequest } from "./handlers.ts";

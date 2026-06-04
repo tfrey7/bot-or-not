@@ -54,18 +54,11 @@ export function sniffVendor(apiKey: string): LlmVendor {
 
 export type {
   LlmAction,
-  LlmCompleteRequest,
-  LlmCompleteResult,
   LlmContentPart,
   LlmMessage,
-  LlmModelOption,
   LlmProgressEvent,
-  LlmProgressListener,
   LlmProvider,
-  LlmRole,
   LlmTool,
   LlmToolDispatch,
-  LlmToolLoopRequest,
-  LlmToolLoopResult,
   LlmVendor,
 } from "./provider.ts";

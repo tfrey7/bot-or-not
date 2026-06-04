@@ -9,7 +9,7 @@ export interface ClientMessage {
   [key: string]: unknown;
 }
 
-export type ClientEvent =
+type ClientEvent =
   | { type: "reports-changed" }
   | { type: "subreddits-changed" }
   | { type: "api-key-changed" }
@@ -19,7 +19,7 @@ export type ClientEvent =
 
 export type ClientListener = (event: ClientEvent) => void;
 
-export interface ClientAdapter {
+interface ClientAdapter {
   send<T = unknown>(message: ClientMessage): Promise<T>;
   subscribe(listener: ClientListener): () => void;
 }

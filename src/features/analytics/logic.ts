@@ -12,7 +12,7 @@ import type {
 import { snapshotRun } from "../../utils/history.ts";
 import { estimateCostUsd } from "../../llm/cost.ts";
 
-export interface AnalyticsCall {
+interface AnalyticsCall {
   kind: string;
   model: string | null;
   usage: ClaudeUsage | null;

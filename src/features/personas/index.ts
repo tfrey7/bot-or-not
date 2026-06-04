@@ -134,6 +134,5 @@ function buildFootnote(): HTMLElement {
 
 export { renderFieldGuideTab } from "./field_guide.ts";
 export { personasScatter } from "./scatter.ts";
-export type { PersonasScatterOptions } from "./scatter.ts";
 export { personasCollect } from "./logic.ts";
 export type { PersonaPoint, PersonasRow } from "./logic.ts";

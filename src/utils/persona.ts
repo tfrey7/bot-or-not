@@ -34,7 +34,7 @@ export function normalizePersona(raw: unknown): Persona | null {
   };
 }
 
-export function normalizeArchetypes(
+function normalizeArchetypes(
   raw: unknown
 ): Record<ArchetypeKey, number> | null {
   const out = {} as Record<ArchetypeKey, number>;

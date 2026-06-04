@@ -3,4 +3,3 @@
 // the strip widgets in this directory (persona, notes, preview, etc.).
 
 export { panelBuildProfilePanel } from "./panel.ts";
-export type { BuildPanelOpts } from "./panel.ts";

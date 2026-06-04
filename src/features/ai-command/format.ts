@@ -16,24 +16,6 @@ function escapeHtml(input: string): string {
   return input.replace(/[&<>"']/g, (char) => HTML_ESCAPE[char]);
 }
 
-export function aiCommandFormatSummary(raw: string): string {
-  if (!raw) {
-    return "";
-  }
-
-  let text = raw.trim();
-
-  text = text.replace(/```[\s\S]*?```/g, " ");
-  text = text.replace(/^\s{0,3}#{1,6}\s+/gm, "");
-  text = text.replace(/^\s*[-*+]\s+/gm, "");
-  text = text.replace(/^\s*\d+\.\s+/gm, "");
-
-  text = text.replace(/\s*\n\s*/g, " · ");
-  text = text.replace(/\s+/g, " ").trim();
-
-  return applyInlineMarkdown(escapeHtml(text));
-}
-
 // Block-level formatter for the command modal's reasoning pane. Preserves
 // paragraphing (so multi-paragraph answers don't collapse) and applies inline
 // emphasis the same way as the status-line formatter. Caller renders with

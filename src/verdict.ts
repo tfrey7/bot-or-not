@@ -27,7 +27,7 @@ import type { Factor, Investigation, Verdict } from "./types.ts";
 // the UI re-enables the retry button. Needs to outlast a legit slow Claude
 // call so healthy runs on heavy accounts don't flip to "stalled" while still
 // in flight.
-export const STALE_INVESTIGATION_MS = 5 * 60 * 1000;
+const STALE_INVESTIGATION_MS = 5 * 60 * 1000;
 
 export function isInvestigationStale(
   investigation: Investigation | null | undefined

@@ -272,7 +272,7 @@ export type SortDir = "asc" | "desc";
 
 type SortValue = string | number | null;
 
-export function redditorsSortValue(
+function redditorsSortValue(
   report: ReportRow,
   key: SortKey,
   regionLabels: Record<string, string>

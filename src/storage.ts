@@ -46,7 +46,7 @@ export type ReportUpdater = (
   current: Report | null
 ) => Report | null | Promise<Report | null>;
 
-export interface StorageAdapter {
+interface StorageAdapter {
   readReports(): Promise<Record<string, Report>>;
   writeReports(reports: Record<string, Report>): Promise<void>;
 
@@ -67,7 +67,6 @@ export interface StorageAdapter {
   readApiKey(vendor: LlmVendor): Promise<string>;
   readAllApiKeys(): Promise<ApiKeyMap>;
   writeApiKey(vendor: LlmVendor, key: string): Promise<void>;
-  clearApiKey(vendor: LlmVendor): Promise<void>;
   clearAllApiKeys(): Promise<void>;
 
   readLlmSelection(): Promise<LlmSelection>;
@@ -262,16 +261,6 @@ class ExtensionStorage implements StorageAdapter {
     await browser.storage.local.set({ apiKeys: map });
   }
 
-  async clearApiKey(vendor: LlmVendor): Promise<void> {
-    const map = await this.readAllApiKeys();
-    if (!(vendor in map)) {
-      return;
-    }
-
-    delete map[vendor];
-    await browser.storage.local.set({ apiKeys: map });
-  }
-
   async clearAllApiKeys(): Promise<void> {
     await browser.storage.local.remove("apiKeys");
   }
@@ -408,10 +397,6 @@ class InMemoryStorage implements StorageAdapter {
     this.apiKeys[vendor] = key;
   }
 
-  async clearApiKey(vendor: LlmVendor): Promise<void> {
-    delete this.apiKeys[vendor];
-  }
-
   async clearAllApiKeys(): Promise<void> {
     this.apiKeys = {};
   }
@@ -521,10 +506,6 @@ export function readAllApiKeys(): Promise<ApiKeyMap> {
 
 export function writeApiKey(vendor: LlmVendor, key: string): Promise<void> {
   return storage.writeApiKey(vendor, key);
-}
-
-export function clearApiKey(vendor: LlmVendor): Promise<void> {
-  return storage.clearApiKey(vendor);
 }
 
 export function clearAllApiKeys(): Promise<void> {

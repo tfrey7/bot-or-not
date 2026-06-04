@@ -5,7 +5,7 @@
 
 import type { ClaudeUsage } from "../types.ts";
 
-export interface ModelPricing {
+interface ModelPricing {
   input: number;
   output: number;
   cacheRead: number;
@@ -13,7 +13,7 @@ export interface ModelPricing {
   cacheWrite1h: number;
 }
 
-export const MODEL_PRICING: Record<string, ModelPricing> = {
+const MODEL_PRICING: Record<string, ModelPricing> = {
   "claude-opus-4-7": {
     input: 15,
     output: 75,
@@ -71,9 +71,7 @@ export const MODEL_PRICING: Record<string, ModelPricing> = {
 
 // Look up a pricing row by the model id the API echoed back. The API often
 // returns a dated suffix (e.g. "claude-sonnet-4-6-20251022"); match by prefix.
-export function lookupPricing(
-  model: string | null | undefined
-): ModelPricing | null {
+function lookupPricing(model: string | null | undefined): ModelPricing | null {
   if (!model) {
     return null;
   }
@@ -121,16 +119,4 @@ export function estimateCostUsd(
       write1hTokens * pricing.cacheWrite1h) /
     1_000_000
   );
-}
-
-// Sum cost of runs in the last N days. `runs` is an array of records with a
-// numeric `runAt` timestamp and `totalCost` field (as built in analytics.js).
-export function recentCost(
-  runs: Array<{ runAt?: number | null; totalCost?: number | null }>,
-  days: number
-): number {
-  const cutoff = Date.now() - days * 86_400_000;
-  return runs
-    .filter((run) => run.runAt && run.runAt >= cutoff)
-    .reduce((sum, run) => sum + (run.totalCost || 0), 0);
 }

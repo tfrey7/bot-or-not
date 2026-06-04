@@ -20,7 +20,7 @@ export async function syncExport(): Promise<{ payload: SyncBackupPayload }> {
   };
 }
 
-export interface ImportRequest {
+interface ImportRequest {
   reports: Record<string, Report>;
 }
 

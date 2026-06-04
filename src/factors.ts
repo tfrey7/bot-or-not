@@ -31,14 +31,6 @@ export const FACTORS: readonly FactorMeta[] = [
   { key: "avatar_style", label: "Avatar style" },
 ];
 
-export const FACTOR_KEYS: readonly string[] = FACTORS.map(
-  (factor) => factor.key
-);
-
-export const FACTOR_LABELS: Record<string, string> = Object.fromEntries(
-  FACTORS.map((factor) => [factor.key, factor.label])
-);
-
 export interface ArchetypeMeta {
   key: ArchetypeKey;
   label: string;

@@ -36,7 +36,6 @@ interface RedditBudget {
 
 const queue = new PQueue({ concurrency: REDDIT_CONCURRENCY });
 
-let latestBudget: RedditBudget | null = null;
 let pausedUntil: number | null = null;
 let pauseClearTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -82,27 +81,6 @@ function notePause(retryAfterMs: number | null, reason: string): void {
   void publishPauseState();
 }
 
-export function redditGetPausedUntil(): number | null {
-  if (pausedUntil !== null && pausedUntil <= Date.now()) {
-    clearPause();
-  }
-
-  return pausedUntil;
-}
-
-export function redditGetBudget(): RedditBudget | null {
-  if (latestBudget === null) {
-    return null;
-  }
-
-  if (latestBudget.resetAt <= Date.now()) {
-    latestBudget = null;
-    return null;
-  }
-
-  return latestBudget;
-}
-
 function parseBudget(headers: Headers): RedditBudget | null {
   const remainingRaw = headers.get("x-ratelimit-remaining");
   const resetRaw = headers.get("x-ratelimit-reset");
@@ -127,8 +105,6 @@ function noteBudget(headers: Headers): void {
   if (budget === null) {
     return;
   }
-
-  latestBudget = budget;
 
   if (budget.remaining <= REDDIT_BUDGET_FLOOR) {
     const resetMs = Math.max(0, budget.resetAt - Date.now());

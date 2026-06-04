@@ -26,7 +26,7 @@ import { SUBREDDIT_SAMPLE_SIZE } from "./data.ts";
 import { subredditFetchAuthors } from "./fetch_authors.ts";
 import { subredditDeriveVerdict, type SubredditVerdict } from "./verdict.ts";
 
-export interface SubredditAnalyzeResult {
+interface SubredditAnalyzeResult {
   ok: boolean;
   error?: string;
   record?: SubredditReport;
@@ -34,7 +34,7 @@ export interface SubredditAnalyzeResult {
   reusedUsernames?: string[];
 }
 
-export interface SubredditGetReportResult {
+interface SubredditGetReportResult {
   ok: boolean;
   record: SubredditReport | null;
   verdict: SubredditVerdict | null;

@@ -9,7 +9,7 @@ const PAGE_TABS = [
   "subreddits",
   "settings",
 ] as const;
-export type PageTab = (typeof PAGE_TABS)[number];
+type PageTab = (typeof PAGE_TABS)[number];
 const PAGE_DEFAULT_TAB: PageTab = "redditors";
 const PAGE_URL_TAB_PARAM = "tab";
 

@@ -31,7 +31,7 @@ export function enrichLlmError(error: Error, response: Response): Error {
   return error;
 }
 
-export type LlmRole = "user" | "assistant";
+type LlmRole = "user" | "assistant";
 
 // Pieces of a single message. `tool-use` and `tool-result` parts only
 // appear inside `runToolLoop` conversations — `complete` callers stick to

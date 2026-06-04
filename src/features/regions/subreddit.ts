@@ -35,7 +35,7 @@ export function regionsLookupSub(normalizedSub: string): string | undefined {
   return undefined;
 }
 
-export interface SubRegionHit {
+interface SubRegionHit {
   sub: string;
   count: number;
 }

@@ -6,18 +6,10 @@ export {
   type AiCommandProgress,
   type AiCommandProgressEvent,
   type AiCommandResult,
-  type RunAiCommandOptions,
 } from "./agent.ts";
-export { aiCommandFormatBlock, aiCommandFormatSummary } from "./format.ts";
+export { aiCommandFormatBlock } from "./format.ts";
 export {
   aiCommandBuildSnapshot,
   aiCommandBuildUserDetails,
-  type AiCommandSnapshotEntry,
-  type AiCommandUserDetails,
 } from "./snapshot.ts";
-export {
-  aiCommandHandle,
-  aiCommandReset,
-  type AiCommandConfirmRequest,
-  type AiCommandHandleOptions,
-} from "./handler.ts";
+export { aiCommandHandle, aiCommandReset } from "./handler.ts";

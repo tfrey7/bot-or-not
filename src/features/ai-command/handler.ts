@@ -34,7 +34,7 @@ import { AI_COMMAND_DESTRUCTIVE_TOOLS } from "./tools.ts";
 // Reaches up from the dispatcher into the UI to ask the operator to approve
 // a destructive tool call. Resolves to `true` on approve, `false` on deny or
 // when the AI command modal is dismissed before the operator answers.
-export type AiCommandConfirmRequest = (request: {
+type AiCommandConfirmRequest = (request: {
   tool: string;
   input: Record<string, unknown>;
 }) => Promise<boolean>;

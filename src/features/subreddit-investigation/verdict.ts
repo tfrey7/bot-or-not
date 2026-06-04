@@ -29,7 +29,7 @@ import { findReportKey } from "../../utils/history.ts";
 const BOT_LEANING_VERDICTS = new Set<Verdict>(["bot", "likely-bot"]);
 const COMPROMISED_FRACTION = 0.5;
 
-export type SubredditSampleStatus = Investigation["status"] | "missing";
+type SubredditSampleStatus = Investigation["status"] | "missing";
 
 export interface SubredditSample {
   username: string;

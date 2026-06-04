@@ -14,10 +14,8 @@
 export { googleAttributionDrain } from "./attribution.ts";
 
 export { googleHarvestMerge } from "./merge.ts";
-export type { HarvestMergeInput } from "./merge.ts";
 
-export { googleHarvestParse } from "./parse.ts";
-export type { ScrapedPost, ParsedHarvest } from "./parse.ts";
+export type { ScrapedPost } from "./parse.ts";
 
 export {
   googleHarvestIsGranted,

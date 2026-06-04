@@ -19,8 +19,6 @@ export const DETERMINISTIC_FACTOR_KEYS = [
   "moderated_subreddits",
 ] as const;
 
-export type DeterministicFactorKey = (typeof DETERMINISTIC_FACTOR_KEYS)[number];
-
 export function scoreDeterministicFactors(summary: ProfileSummary): Factor[] {
   return [
     scoreUsernamePattern(summary),

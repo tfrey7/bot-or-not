@@ -309,15 +309,5 @@ export {
   subredditList,
   subredditGetReport,
 } from "./handlers.ts";
-export type {
-  SubredditAnalyzeResult,
-  SubredditGetReportResult,
-  SubredditListEntry,
-  SubredditListResult,
-} from "./handlers.ts";
-export { subredditDeriveVerdict } from "./verdict.ts";
-export type {
-  SubredditSample,
-  SubredditSampleStatus,
-  SubredditVerdict,
-} from "./verdict.ts";
+export type { SubredditListEntry, SubredditListResult } from "./handlers.ts";
+export type { SubredditSample, SubredditVerdict } from "./verdict.ts";

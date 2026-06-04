@@ -5,13 +5,7 @@
 export { pageInstallDevBadge } from "./dev_badge.ts";
 export {
   pageInitCommandBar,
-  type PageCommandBarDeps,
   type PageCommandBarHandle,
 } from "./command_bar.ts";
-export { pageOpenCommandModal } from "./command_modal.ts";
-export {
-  pageInitConfirmModal,
-  pageOpenConfirmModal,
-  type ConfirmModalOpts,
-} from "./confirm_modal.ts";
-export { pageInitTabs, type PageTab, type PageTabsHandle } from "./tabs.ts";
+export { pageInitConfirmModal, pageOpenConfirmModal } from "./confirm_modal.ts";
+export { pageInitTabs } from "./tabs.ts";

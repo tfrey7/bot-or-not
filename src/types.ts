@@ -10,7 +10,7 @@ export type Verdict =
   | "likely-human"
   | "human";
 
-export type InvestigationStatus = "queued" | "running" | "done" | "error";
+type InvestigationStatus = "queued" | "running" | "done" | "error";
 
 export type ArchetypeKey =
   | "superfan"
@@ -35,7 +35,7 @@ export interface Demographics {
 
 export type PersonaLabel = ArchetypeKey | "bot" | "normal";
 
-export type UserStatus = "active" | "suspended" | null;
+type UserStatus = "active" | "suspended" | null;
 
 export type BotBouncerStatus = "banned" | "pending" | "organic" | null;
 
@@ -391,7 +391,7 @@ export interface SubredditReport {
 // enforcement, but the assembly call sites in summarize.ts produce these named
 // shapes so consumers (and prompt authors) can see what's guaranteed.
 
-export interface AccountSummary {
+interface AccountSummary {
   name: string;
   created_at: string | null;
   age_days: number | null;
@@ -432,7 +432,7 @@ export interface ModeratedSubreddits {
   list: ModeratedSubreddit[];
 }
 
-export interface BotBouncerSignal {
+interface BotBouncerSignal {
   status: Exclude<BotBouncerStatus, null>;
   checked_at: string | null;
 }

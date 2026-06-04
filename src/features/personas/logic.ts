@@ -145,7 +145,7 @@ export function personasCollect(reports: PersonasRow[]): PersonaPoint[] {
   return points;
 }
 
-export interface PersonaExemplar {
+interface PersonaExemplar {
   username: string;
   score: number;
 }

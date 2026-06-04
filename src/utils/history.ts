@@ -26,10 +26,7 @@ import type {
 import { normalizeDemographics } from "./demographics.ts";
 import { normalizeRegionInference } from "./region_inference.ts";
 
-export function mergeHistoryEntries(
-  a: HistoryEntry,
-  b: HistoryEntry
-): HistoryEntry {
+function mergeHistoryEntries(a: HistoryEntry, b: HistoryEntry): HistoryEntry {
   const newer = (b?.at || 0) >= (a?.at || 0) ? b : a;
   const older = newer === a ? b : a;
 
@@ -433,7 +430,7 @@ export function findReportKey(
 // the inline `inv?.status === "done" ? inv.results : null` repeated at
 // every consumer site.
 
-export function isInvestigationDone(
+function isInvestigationDone(
   investigation: Investigation | null | undefined
 ): investigation is Extract<Investigation, { status: "done" }> {
   return investigation?.status === "done";

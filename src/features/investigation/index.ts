@@ -1,9 +1,10 @@
-// Investigation pipeline orchestrator. Two public entry points:
-//   investigateUser — full Reddit fetch → Claude → structured verdict
-//   gatherProfile   — just the fetch + summarize step (shared by the
-//                        background's two-step "set running, then call AI"
-//                        flow that needs the inputs object to persist
-//                        botBouncerStatus + activityData independently)
+// Investigation pipeline orchestrator. Two public steps:
+//   gatherProfile   — the fetch + summarize step (Reddit profile +
+//                        BotBouncer lookup → ProfileSummary)
+//   runOneDAnalysis — the AI step (assembled prompt → Claude → structured
+//                        verdict) against an already-built summary
+// The background's two-step "set running, then call AI" flow calls these
+// separately so it can persist botBouncerStatus + activityData between them.
 //
 // `prompt.md` is the system prompt — Vite inlines it as a string at
 // build time so there's no runtime fetch.
@@ -256,47 +257,6 @@ export async function runOneDAnalysis(
     model,
     usage,
     costUsd,
-  };
-}
-
-export interface InvestigateUserResult extends OneDAnalysisResult {
-  postsFetched: number;
-  commentsFetched: number;
-  accountCreatedAt: string | null;
-  accountAgeDays: number | null;
-  activityData: ActivityData;
-  botBouncerStatus: BotBouncerStatus;
-  botBouncerCheckedAt: number | null;
-  redditMetrics: RedditMetrics;
-}
-
-// Single-call entry point: fetch the profile, run the 1D analyzer,
-// return the combined investigation object.
-export async function investigateUser(
-  username: string,
-  apiKey: string,
-  extra: GatherProfileExtra = {},
-  selection: InvestigationLlmSelection = {}
-): Promise<InvestigateUserResult> {
-  const gathered = await gatherProfile(username, extra);
-  const avatarUrl = extractSnoovatarUrl(gathered.raw);
-  const analysisResult = await runOneDAnalysis(
-    apiKey,
-    gathered.summary,
-    avatarUrl,
-    selection
-  );
-
-  return {
-    ...analysisResult,
-    postsFetched: gathered.raw.submitted.data?.children?.length ?? 0,
-    commentsFetched: gathered.raw.comments.data?.children?.length ?? 0,
-    accountCreatedAt: gathered.summary.account.created_at,
-    accountAgeDays: gathered.summary.account.age_days,
-    activityData: gathered.activityData,
-    botBouncerStatus: gathered.botBouncerStatus,
-    botBouncerCheckedAt: gathered.botBouncerCheckedAt,
-    redditMetrics: gathered.redditMetrics,
   };
 }
 
