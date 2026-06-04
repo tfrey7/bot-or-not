@@ -35,7 +35,10 @@ import {
   snapshotRun,
 } from "../../utils/history.ts";
 import { QUEUE_PRIORITY } from "../../queue_priority.ts";
-import { isProfileHidden } from "../../utils/profile_hidden.ts";
+import {
+  HIDDEN_PROFILE_MODEL,
+  isProfileHidden,
+} from "../../utils/profile_hidden.ts";
 import { clampRetryAfter } from "../../utils/retry_after.ts";
 import { isInvestigationStale } from "../../verdict.ts";
 import {
@@ -43,9 +46,14 @@ import {
   gatherProfile,
   runOneDAnalysis,
   RedditFetchError,
+  type GatheredProfile,
 } from "./index.ts";
-
 const AUTO_INVESTIGATE_FRESHNESS_MS = 60 * 60 * 1000;
+
+// Shown as the investigation summary when a hidden profile is parked without
+// running the analyzer — see runOneAttempt.
+const HIDDEN_PROFILE_SUMMARY =
+  "This profile is hidden — almost nothing is public despite an established account, so there's not enough to analyze. Harvest a Google dossier for this user (search their username on Google), then re-run the investigation.";
 
 // Reddit throttling is handled globally by the shared Reddit client. This
 // cap just controls how many investigations overlap their Claude calls.
@@ -352,6 +360,30 @@ async function runOneAttempt(
     },
     priority
   );
+
+  const postsFetched = inputs.raw.submitted.data?.children?.length ?? 0;
+  const commentsFetched = inputs.raw.comments.data?.children?.length ?? 0;
+  const hidden = isProfileHidden({
+    postsFetched,
+    commentsFetched,
+    totalKarma: inputs.summary.account.total_karma,
+  });
+
+  // A hidden profile exposes almost nothing through Reddit's API. Until the
+  // operator harvests a Google dossier there's nothing for the analyzer to
+  // work from, so skip the Claude call and park the report at "uncertain".
+  const hasDossier = (existingRecord.googleHarvest?.posts.length ?? 0) > 0;
+  if (hidden && !hasDossier) {
+    const results = hiddenProfileResults(
+      inputs,
+      postsFetched,
+      commentsFetched,
+      startedAt
+    );
+    await persistInvestigationDone(username, inputs, results, hidden);
+    return;
+  }
+
   const selection = await readLlmSelection();
   const analysis = await runOneDAnalysis(
     apiKey,
@@ -362,9 +394,6 @@ async function runOneAttempt(
 
   const durationMs = Date.now() - startedAt;
   console.log(`[Bot or Not] timing: investigation ${username} ${durationMs}ms`);
-
-  const postsFetched = inputs.raw.submitted.data?.children?.length ?? 0;
-  const commentsFetched = inputs.raw.comments.data?.children?.length ?? 0;
 
   const results: InvestigationResults = {
     runAt: analysis.runAt,
@@ -386,22 +415,55 @@ async function runOneAttempt(
     accountAgeDays: inputs.summary.account.age_days,
   };
 
-  // One write for the whole terminal state. Splitting it (investigation +
-  // activityData + botBouncer + profileHidden) into separate updateReports
-  // would fire storage.onChanged four times, re-rendering every Reddit tag
-  // and the reports page on each.
-  const hidden = isProfileHidden({
+  await persistInvestigationDone(username, inputs, results, hidden);
+}
+
+// Synthetic results for a hidden profile we declined to analyze. Empty
+// factors keep computeVerdict pinned at "uncertain"; the summary tells the
+// operator to harvest a dossier and re-run.
+function hiddenProfileResults(
+  inputs: GatheredProfile,
+  postsFetched: number,
+  commentsFetched: number,
+  startedAt: number
+): InvestigationResults {
+  return {
+    runAt: Date.now(),
+    durationMs: Date.now() - startedAt,
+    verdict: "uncertain",
+    confidence: 0,
+    botProbability: 0.5,
+    factors: [],
+    persona: null,
+    region: null,
+    demographics: null,
+    summary: HIDDEN_PROFILE_SUMMARY,
+    model: HIDDEN_PROFILE_MODEL,
+    usage: null,
+    costUsd: null,
     postsFetched,
     commentsFetched,
-    totalKarma: inputs.summary.account.total_karma,
-  });
+    accountCreatedAt: inputs.summary.account.created_at,
+    accountAgeDays: inputs.summary.account.age_days,
+  };
+}
 
+// One write for the whole terminal state. Splitting it (investigation +
+// activityData + botBouncer + profileHidden) into separate updateReports
+// would fire storage.onChanged four times, re-rendering every Reddit tag
+// and the reports page on each.
+async function persistInvestigationDone(
+  username: string,
+  inputs: GatheredProfile,
+  results: InvestigationResults,
+  hidden: boolean
+): Promise<void> {
   await updateReport(username, (current) => {
     let next = applyInvestigationTransition(
       current ?? normalizeReport(undefined),
       {
         status: "done",
-        durationMs,
+        durationMs: results.durationMs,
         results,
         redditMetrics: inputs.redditMetrics,
       }

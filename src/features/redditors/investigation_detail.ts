@@ -7,6 +7,7 @@ import { isInvestigationStale, normalizeInvestigation } from "../../verdict.ts";
 import { linkifyReddit } from "../../utils/linkify_reddit.ts";
 import { topReasonsList } from "../../utils/top_reasons_list.ts";
 import { investigationLoading } from "../../utils/investigation_loading.ts";
+import { isHiddenProfileResult } from "../../utils/profile_hidden.ts";
 import { buildPersonaBlock } from "../persona-block";
 import {
   redditorsIsUserNotFoundError,
@@ -74,6 +75,11 @@ export function redditorsInvestigationDetail(
     return wrap;
   }
 
+  if (isHiddenProfileResult(investigation.results)) {
+    wrap.appendChild(buildColdTrailPanel(investigation.results.summary));
+    return wrap;
+  }
+
   const { factors, persona, summary } = investigation.results;
   const reasonsList =
     factors.length > 0 ? topReasonsList(factors, { perSide: 4 }) : null;
@@ -112,6 +118,25 @@ export function redditorsInvestigationDetail(
   }
 
   return wrap;
+}
+
+function buildColdTrailPanel(summary: string): HTMLDivElement {
+  const panel = document.createElement("div");
+  panel.className = "bon-cold-trail-panel";
+
+  const figure = document.createElement("img");
+  figure.className = "bon-cold-trail-panel__art";
+  figure.src = browser.runtime.getURL("icons/chromes-cold-trail.png");
+  figure.alt =
+    "Sherlock Chromes bursting into an empty room as the suspect's shadow slips out a lit doorway — no evidence left behind";
+  panel.appendChild(figure);
+
+  const message = document.createElement("p");
+  message.className = "bon-cold-trail-panel__body";
+  message.textContent = summary;
+  panel.appendChild(message);
+
+  return panel;
 }
 
 function buildQueuedPanel(notBefore: number | null): HTMLDivElement {

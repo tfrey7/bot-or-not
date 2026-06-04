@@ -6,6 +6,8 @@
 // passive-harvest content script (which gates its DOM scan on the same
 // flag) can't drift from the prompt's definition.
 
+import type { InvestigationResults } from "../types.ts";
+
 const HIDDEN_MAX_VISIBLE_ITEMS = 5;
 const HIDDEN_MIN_KARMA = 1000;
 
@@ -18,4 +20,13 @@ export function isProfileHidden(args: {
   const karma = args.totalKarma ?? 0;
 
   return visibleItems <= HIDDEN_MAX_VISIBLE_ITEMS && karma >= HIDDEN_MIN_KARMA;
+}
+
+// Sentinel `model` the pipeline writes when it parks a hidden profile at
+// "uncertain" without running the analyzer — there was no model call. Lets
+// the reports UI tell that skip apart from a real (empty-factor) result.
+export const HIDDEN_PROFILE_MODEL = "skipped";
+
+export function isHiddenProfileResult(results: InvestigationResults): boolean {
+  return results.model === HIDDEN_PROFILE_MODEL;
 }
