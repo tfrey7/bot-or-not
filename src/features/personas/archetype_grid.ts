@@ -9,12 +9,12 @@ import type { ArchetypeKey } from "../../types.ts";
 import { ARCHETYPES } from "../../factors.ts";
 import type { PersonaExemplars } from "./logic.ts";
 
-import medallionStan from "../../../assets/persona-icons/noir-medallion-stan.png";
-import medallionHustler from "../../../assets/persona-icons/noir-medallion-hustler.png";
+import medallionSuperfan from "../../../assets/persona-icons/noir-medallion-superfan.png";
+import medallionShill from "../../../assets/persona-icons/noir-medallion-shill.png";
 import medallionFarmer from "../../../assets/persona-icons/noir-medallion-farmer.png";
 import medallionDoomer from "../../../assets/persona-icons/noir-medallion-doomer.png";
-import medallionCamModel from "../../../assets/persona-icons/noir-medallion-thirst.png";
-import medallionZealot from "../../../assets/persona-icons/noir-medallion-zealot.png";
+import medallionCamModel from "../../../assets/persona-icons/noir-medallion-cam_model.png";
+import medallionPolitics from "../../../assets/persona-icons/noir-medallion-politics.png";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
 
@@ -28,15 +28,13 @@ const HEX_CENTER = HEX_VIEWBOX / 2;
 const HEX_RADIUS = 34;
 const HEX_ICON_SCALE = 1.3;
 
-// cam_model still uses the legacy "thirst" filename in assets/ — the
-// archetype was renamed, the medallion art wasn't.
 const PERSONAS_MEDALLIONS: Record<ArchetypeKey, string> = {
-  stan: medallionStan,
-  hustler: medallionHustler,
+  superfan: medallionSuperfan,
+  shill: medallionShill,
   farmer: medallionFarmer,
   doomer: medallionDoomer,
   cam_model: medallionCamModel,
-  zealot: medallionZealot,
+  politics: medallionPolitics,
 };
 
 export interface PersonasArchetypeGridOptions {

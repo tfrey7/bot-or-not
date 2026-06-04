@@ -1,5 +1,5 @@
 // Personas tab entry point. Projects every investigated account's archetype
-// vector into a 2D barycentric scatter so straddlers (stan+hustler etc.)
+// vector into a 2D barycentric scatter so straddlers (superfan+shill etc.)
 // land between their dominant anchors. Click a dot to jump to its dossier.
 
 import type { Report } from "../../types.ts";

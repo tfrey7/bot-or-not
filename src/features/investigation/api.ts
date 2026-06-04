@@ -27,9 +27,8 @@ export interface InvestigationLlmResult {
 // `model` overrides the provider's default model for experimentation
 // (see scripts/investigate.ts --model flag).
 // `serialize` overrides the user-message serializer — by default we emit
-// the compact columnar shape via serializeProfileForClaude; the
-// cost-experiment harness passes its own verbose serializer to A/B the
-// two formats against the same summary.
+// the compact columnar shape via serializeProfileForClaude; callers can
+// pass an alternative serializer to A/B different message formats.
 export interface InvestigationLlmOptions {
   avatarUrl?: string | null;
   vendor?: LlmVendor | null;

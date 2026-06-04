@@ -1,6 +1,6 @@
 // Hue on the HSL color wheel for a persona. When the top two archetype scores
 // both clear the combo threshold, the hue is interpolated along the shorter
-// arc — so an Affiliate Spam (farmer 210° + hustler 155°) lands between blue
+// arc — so an Affiliate Spam (farmer 210° + shill 155°) lands between blue
 // and teal. Returns null for personas that don't map to an archetype (bot,
 // normal) — those fall back to a neutral CSS rule on the card.
 

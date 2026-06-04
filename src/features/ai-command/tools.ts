@@ -93,7 +93,7 @@ export const AI_COMMAND_TOOLS: LlmTool[] = [
         label: {
           type: "string",
           description:
-            "Short phrase (≤ 8 words) describing the filter criteria — e.g. 'Doomer persona', 'not Stan', 'high LLM content style', 'Bot Bouncer banned'. Shown in the persistent filter badge under the tabs so the operator can see at a glance what they're looking at. Omit when clearing.",
+            "Short phrase (≤ 8 words) describing the filter criteria — e.g. 'Doomer persona', 'not Superfan', 'high LLM content style', 'Bot Bouncer banned'. Shown in the persistent filter badge under the tabs so the operator can see at a glance what they're looking at. Omit when clearing.",
         },
       },
       required: ["usernames"],

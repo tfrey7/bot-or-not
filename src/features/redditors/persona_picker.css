@@ -167,7 +167,7 @@
   flex: 0 0 4px;
   background-color: var(--bon-border);
 }
-.bon-persona-picker__stripe--stan {
+.bon-persona-picker__stripe--superfan {
   background-color: hsl(45 70% 50%);
 }
 .bon-persona-picker__stripe--farmer {
@@ -176,10 +176,10 @@
 .bon-persona-picker__stripe--cam_model {
   background-color: hsl(320 60% 55%);
 }
-.bon-persona-picker__stripe--zealot {
+.bon-persona-picker__stripe--politics {
   background-color: hsl(0 65% 50%);
 }
-.bon-persona-picker__stripe--hustler {
+.bon-persona-picker__stripe--shill {
   background-color: hsl(155 55% 40%);
 }
 .bon-persona-picker__stripe--doomer {

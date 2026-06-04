@@ -8,8 +8,8 @@ set -euo pipefail
 #
 # Usage:
 #   ./scripts/gen-persona-orb.sh <slug>
-#   ./scripts/gen-persona-orb.sh stan
-#   ./scripts/gen-persona-orb.sh hustler+thirst    # blend, sorted-alpha key
+#   ./scripts/gen-persona-orb.sh superfan
+#   ./scripts/gen-persona-orb.sh doomer+politics    # blend, sorted-alpha key
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
@@ -19,15 +19,15 @@ SPECS="$ASSETS_DIR/specs.json"
 GEN_IMAGE="$HOME/.claude/skills/generate-image/gen-image.sh"
 REMBG="$HOME/.local/share/rembg-venv/bin/rembg"
 
-STYLE_REF_1="$ASSETS_DIR/noir-medallion-zealot.png"
-STYLE_REF_2="$ASSETS_DIR/noir-medallion-hustler.png"
+STYLE_REF_1="$ASSETS_DIR/noir-medallion-politics.png"
+STYLE_REF_2="$ASSETS_DIR/noir-medallion-shill.png"
 
 mkdir -p "$SHIPPED_DIR"
 
 if [ $# -lt 1 ]; then
   echo "Usage: $0 <slug>" >&2
-  echo "  e.g.  $0 stan" >&2
-  echo "        $0 hustler+thirst   # blend (sorted alphabetical pair)" >&2
+  echo "  e.g.  $0 superfan" >&2
+  echo "        $0 doomer+politics   # blend (sorted alphabetical pair)" >&2
   exit 1
 fi
 

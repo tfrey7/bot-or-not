@@ -15,7 +15,7 @@ import {
 const SVG_NS = "http://www.w3.org/2000/svg";
 
 // Plot radius and label pad are in SVG units; viewBox is sized so the
-// widest labels (HUSTLER on the left, FARMER on the right) clear the disk
+// widest labels (SHILL on the left, FARMER on the right) clear the disk
 // without clipping. CENTER stays at viewBox/2 so the plot remains centered.
 const VIEWBOX = 680;
 const CENTER = VIEWBOX / 2;

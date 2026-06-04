@@ -347,7 +347,7 @@ function countRemovals(
 // Posting rate over the visible window. The fetched sample is capped at
 // REDDIT_FETCH_LIMIT items per kind; the window between the oldest
 // and newest item tells us how fast they accumulated. A heavy farmer can
-// hit 50+/day sustained — well above what a normal human (even a Stan) does.
+// hit 50+/day sustained — well above what a normal human (even a Superfan) does.
 function computePostingRate(
   posts: RawPost[],
   comments: RawComment[]

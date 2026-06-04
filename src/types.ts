@@ -13,11 +13,11 @@ export type Verdict =
 export type InvestigationStatus = "queued" | "running" | "done" | "error";
 
 export type ArchetypeKey =
-  | "stan"
+  | "superfan"
   | "farmer"
   | "cam_model"
-  | "zealot"
-  | "hustler"
+  | "politics"
+  | "shill"
   | "doomer";
 
 // Age band Claude infers for the account operator. Lives parallel to region

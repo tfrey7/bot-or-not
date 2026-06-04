@@ -1,6 +1,6 @@
 // Display title for a persona. Defaults to the LLM's single-axis label, but
 // when the account scores high on two archetypes at once we substitute a
-// bespoke combo title (e.g. Stan + Doomer → "Tragic Stan"). The label
+// bespoke combo title (e.g. Superfan + Doomer → "Tragic Fan"). The label
 // modifier class is still derived from `persona.label` so the accent color
 // stays tied to the dominant archetype the LLM picked.
 
@@ -13,21 +13,21 @@ const ARCHETYPE_LABELS = Object.fromEntries(
 
 // Keys are sorted-alphabetical "a+b" so lookup doesn't depend on which axis
 // happens to be highest by 0.01. Pairs not listed fall through to the
-// single-axis label. Note: `cam_model + hustler` is the defining pair of
+// single-axis label. Note: `cam_model + shill` is the defining pair of
 // the cam_model archetype itself — no combo title needed; the single label
 // "Cam Model" already says it.
 const COMBO_TITLES: Record<string, string> = {
-  "farmer+stan": "Fan Acct",
-  "stan+zealot": "Hate-Stan",
-  "hustler+stan": "Indie Creator",
-  "doomer+stan": "Tragic Stan",
-  "farmer+zealot": "Rage Farmer",
-  "farmer+hustler": "Affiliate Spam",
+  "farmer+superfan": "Fan Acct",
+  "politics+superfan": "Hate-Fan",
+  "shill+superfan": "Indie Creator",
+  "doomer+superfan": "Tragic Fan",
+  "farmer+politics": "Rage Farmer",
+  "farmer+shill": "Affiliate Spam",
   "doomer+farmer": "Doom Farmer",
-  "hustler+zealot": "Grifter",
-  "doomer+zealot": "Black-Pill Ranter",
-  "doomer+hustler": "Crisis Grifter",
-  "cam_model+stan": "Niche Showcase",
+  "politics+shill": "Grifter",
+  "doomer+politics": "Black-Pill Ranter",
+  "doomer+shill": "Crisis Grifter",
+  "cam_model+superfan": "Niche Showcase",
 };
 
 // Top-2 axes must both clear this threshold and the runner-up must be at

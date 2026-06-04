@@ -9,7 +9,7 @@
 ## What it does
 
 - **Flag any Reddit user from their profile page.** The extension pulls their post history and runs an investigation through your chosen LLM (Claude by default) against {{factor_count}} factors — username patterns, posting timestamps, karma-farming subs, LLM-generated cadence, dormant-account revival, and more.
-- **Returns a verdict on the bot↔human axis,** plus a persona archetype (Stan, Hustler, Farmer, Doomer, …). Both pieces are stored locally — no cloud sync, no telemetry.
+- **Returns a verdict on the bot↔human axis,** plus a persona archetype (Superfan, Shill, Farmer, Doomer, …). Both pieces are stored locally — no cloud sync, no telemetry.
 - **Inline tags on Reddit.** Once a user is reported, their username gets a small chip wherever it appears — comment threads, post lists, profile pages — so you can read the room at a glance.
 - **A reports page** with sortable tables, a persona radar chart per dossier, run-log analytics, and a settings tab. Opens from the toolbar.
 
@@ -48,7 +48,7 @@ The exact weighting, red-flag floors, and probability math live in [`src/verdict
 
 ### Persona archetypes
 
-The radar chart on each dossier shows how strongly the account matches each human archetype. They're independent 0–1 strengths, so an account can read both Stan and Hustler at once (e.g. an indie dev posting their own tool in niche-relevant subs).
+The radar chart on each dossier shows how strongly the account matches each human archetype. They're independent 0–1 strengths, so an account can read both Shill and Superfan at once (e.g. an indie dev posting their own tool in niche-relevant subs).
 
 {{archetype_list}}
 

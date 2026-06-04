@@ -58,7 +58,7 @@ export interface ArchetypeMeta {
 // `hue` positions the archetype on the HSL color wheel (0–360). The persona
 // card's accent is computed from this hue, and when a blend kicks in the hue
 // is interpolated along the shorter arc — so combo titles get a naturally
-// in-between color (Affiliate Spam = farmer blue pulled toward hustler teal).
+// in-between color (Affiliate Spam = farmer blue pulled toward shill teal).
 //
 // Axes describe flavors of *human* behavior. `bot` is not on the radar — the
 // bot↔human verdict already answers that question, so giving it a spoke would
@@ -73,15 +73,15 @@ export interface ArchetypeMeta {
 // two anchors, instead of leaping across the wheel.
 export const ARCHETYPES: readonly ArchetypeMeta[] = [
   {
-    key: "stan",
-    label: "Stan",
+    key: "superfan",
+    label: "Superfan",
     hue: 45,
     blurb:
       "A human hyperfocused on one niche — a fandom, regional community, identity community, or earnestly-advocated cause. Posts heavily in a few themed subs with fluent in-group voice.",
   },
   {
-    key: "hustler",
-    label: "Hustler",
+    key: "shill",
+    label: "Shill",
     hue: 155,
     blurb:
       "A commercial-vehicle account that drives attention to a product, service, or person the operator profits from — crypto pumps, dropship stores, MLM funnels, paid courses, indie apps.",
@@ -108,8 +108,8 @@ export const ARCHETYPES: readonly ArchetypeMeta[] = [
       "A commercial account whose product is the operator’s own appearance. The selfies are the business; the Reddit presence funnels subscribers to OnlyFans, Fansly, or a cam site.",
   },
   {
-    key: "zealot",
-    label: "Zealot",
+    key: "politics",
+    label: "Politics",
     hue: 0,
     blurb:
       "Single-issue political combatant. Reddit is their battlefield: daily outrage, tribal antagonism, every news item treated as ammunition for the cause.",

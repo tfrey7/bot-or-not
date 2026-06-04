@@ -1,34 +1,29 @@
 {
   "primaries": {
-    "stan": {
+    "superfan": {
       "wash": "golden-amber",
-      "accent": "platinum-gold",
-      "silhouette": "Chest-up 3/4 view of a 'stan' archetype — a young man in a sleeveless white tank top (wifebeater outline visible against the black body silhouette), holding a folded letter up near his chest in one hand. The figure has short bleached-blonde hair on top of the head, rendered as bright glowing platinum-gold spikes/peach-fuzz. The bleach-blonde hair itself IS the at-a-glance identifier and is the bright accent. Body is otherwise pure black silhouette. No hat."
+      "accent": "bright gold",
+      "silhouette": "Chest-up 3/4 view of a sports/fandom superfan — wearing a team jersey (jersey outline and a number visible against the black body silhouette), mouth open mid-cheer. One arm is raised high overhead holding up an oversized foam '#1' pointing-finger glove. The big foam #1 finger glows bright gold and IS the at-a-glance identifier and the bright accent. Body otherwise pure black silhouette. No hat."
+    },
+    "shill": {
+      "wash": "teal-cyan, aged copper patina",
+      "accent": "teal-cyan",
+      "silhouette": "Chest-up 3/4 view of a sleazy salesman — slicked-back hair, wide-lapel suit jacket (a blazer, NOT a trenchcoat) held OPEN with both hands to flash the inner lining, where a row of four or five wristwatches is lined up for sale (a knockoff-watch huckster). A big toothy salesman grin implied in the head silhouette. The row of watches along the open jacket lining glows brighter teal-cyan and IS the at-a-glance identifier and the bright accent. Body otherwise pure black silhouette. No hat."
+    },
+    "politics": {
+      "wash": "split crimson and navy, bruised purple where they meet",
+      "accent": "split half red and half blue",
+      "silhouette": "Chest-up view of an everyday partisan — an ordinary person facing roughly toward the viewer (head near front-on), wearing a baseball cap seen from the front so the bill points at the viewer. The cap is split vertically straight down its CENTER SEAM, front to back through the middle of the crown AND down the middle of the bill: the LEFT half is bright RED and the RIGHT half is bright BLUE, the dividing line running dead-center so both colored halves are clearly visible and equal in size. The whole cap glows brighter as the at-a-glance identifier and the bright accent (just as bleach-blonde hair identifies the superfan). The figure is talking with their hands — one hand raised mid-gesture as if making a point, mouth open mid-speech. NOT menacing, no hood, no raised fist — an animated everyday voter, not a militant. Body otherwise pure black silhouette."
+    },
+    "cam_model": {
+      "wash": "hot-magenta",
+      "accent": "hot-magenta",
+      "silhouette": "Chest-up 3/4 view — a young goth woman with sharp asymmetric emo bangs falling across one eye, long swooping black hair, a thick black choker visible at the neck. Head tilted slightly, lips pursed blowing a kiss to the side. A small heart shape floats from her lips outward — the heart is the at-a-glance identifier and the bright accent."
     },
     "farmer": {
       "wash": "cobalt-blue",
       "accent": "cobalt-blue",
       "silhouette": "Chest-up view rendered as a MONKEY (chimpanzee) — a hunched faceless monkey/ape silhouette seated at a desk, leaning forward over a row of THREE phones lined up side-by-side on the desk. Clear primate silhouette: rounded ape skull, prominent brow ridge, longer arms, hunched primate shoulders, no clothing or just a plain bare body outline. Both hairy monkey hands hover over the phones, fingers poised to tap. The three phone screens all glow brighter, casting upward light onto the underside of the monkey's chin. The cluster of glowing phone screens is the at-a-glance identifier."
-    },
-    "teen": {
-      "wash": "spring-green",
-      "accent": "spring-green",
-      "silhouette": "Chest-up view rendered as a CHUBBY CARTOON BABY for goofy/juvenile effect — oversized round bald head, tiny rounded shoulders, the silhouette obviously infantile and exaggerated like a comic-strip baby. On top of the head: a small propeller-beanie hat (knit beanie with a stick rising from the top and a three-bladed propeller spinning at the end), motion-blur lines indicating the propeller is spinning. Pacifier silhouette in the mouth area. The spinning propeller blades and motion-blur arcs glow brighter as the at-a-glance identifier."
-    },
-    "thirst": {
-      "wash": "hot-magenta",
-      "accent": "hot-magenta",
-      "silhouette": "Chest-up 3/4 view — a young goth woman with sharp asymmetric emo bangs falling across one eye, long swooping black hair, a thick black choker visible at the neck. Head tilted slightly, lips pursed blowing a kiss to the side. A small heart shape floats from her lips outward — the heart is the at-a-glance identifier and the bright accent."
-    },
-    "zealot": {
-      "wash": "blood-red",
-      "accent": "blood-red",
-      "silhouette": "Chest-up 3/4 view — a figure in a hooded cowl with one fist raised high above the head in a militant gesture. The silhouette of the raised clenched fist breaks the upper part of the circle's negative space and is the at-a-glance identifier. A single tiny burning ember (eye or torch) glows brighter against the wash. Hood low over the face, no facial features."
-    },
-    "hustler": {
-      "wash": "teal-cyan, aged copper patina",
-      "accent": "teal-cyan",
-      "silhouette": "Chest-up 3/4 view of a modern podcaster/grifter — slicked-back hair (no hat of any kind), wearing a headset with a boom microphone curving in front of the mouth, one hand raised in front in an open-palm 'trust me' pitch gesture. The headset boom mic + open pitch hand is the at-a-glance identifier. The tip of the microphone glows brighter as the bright accent."
     },
     "doomer": {
       "wash": "indigo-purple, twilight smog",
@@ -47,110 +42,80 @@
     }
   },
   "blends": {
-    "teen+zealot": {
-      "wash": "dingy olive-red, like rust over damp moss",
-      "accent": "blood-red",
-      "silhouette": "Chest-up view rendered as a CHUBBY CARTOON BABY (carrying the teen archetype's baby motif) — oversized round bald head, tiny rounded shoulders, infantile exaggerated proportions. On top of the head: a propeller-beanie with a slowly spinning three-bladed propeller, motion-blur lines around it. The baby has one tiny clenched fist raised militantly straight up above its head (the zealot pose). A pacifier hangs partly out of its mouth in defiance. One small eye visible in the silhouette glows fiery blood-red as the bright accent. The baby silhouette + tiny raised fist + glowing red eye is the at-a-glance identifier — juvenile rage."
-    },
-    "hustler+zealot": {
-      "wash": "rusted bronze, oxidized teal stained with blood-red",
-      "accent": "blood-red",
-      "silhouette": "Chest-up 3/4 view of a rage-pitch grifter — slicked-back hair (no hat), wearing a headset with a boom microphone curving in front of the mouth (the hustler signal), but caught mid-sermon: one fist raised militantly straight up above the head, mouth open in a shouting/preaching pose, head thrown slightly back, veins/tension implied in the neck silhouette. One eye glows fiery blood-red as the bright accent. The headset boom mic + raised fist + open shouting mouth + glowing red eye is the at-a-glance identifier — the angry podcaster grifter."
-    },
-    "farmer+stan": {
-      "wash": "stormy indigo with gilded edges, like dusk over a wheatfield",
-      "accent": "platinum-gold",
-      "silhouette": "Chest-up view rendered as a MONKEY (chimpanzee) at a desk with THREE phones lined up side-by-side (the farmer signal). Bright glowing PLATINUM-GOLD bleach-blonde spikes/peach-fuzz sit on top of the monkey's rounded ape skull (the stan signal). Both hairy monkey hands hover over the phones, fingers poised to tap; each phone screen glows faintly platinum-gold, casting upward light onto the underside of the monkey's chin. The bleach-blonde hair + three glowing phones is the at-a-glance identifier — a fan-account farm."
-    },
-    "stan+teen": {
-      "wash": "sunlit chartreuse with golden highlights, spring-meadow gold",
-      "accent": "platinum-gold",
-      "silhouette": "Chest-up view rendered as a CHUBBY CARTOON BABY (the teen signal) — oversized round bald head EXCEPT for bright glowing PLATINUM-GOLD bleach-blonde spikes/peach-fuzz on top (the stan signal), tiny rounded shoulders, infantile exaggerated proportions. On top of the head over the blonde fuzz: a propeller-beanie with a slowly spinning three-bladed propeller, motion-blur lines around it. Tiny chubby baby hands clutch a folded letter held up near the chest. Pacifier silhouette in the mouth area. The bleach-blonde hair + propeller + clutched letter is the at-a-glance identifier — a baby fangirl."
-    },
-    "stan+thirst": {
-      "wash": "rose-gold dusk, candied pink with amber undertones",
+    "cam_model+doomer": {
+      "wash": "violet bruise, faded neon heartache, indigo washed with magenta",
       "accent": "hot-magenta",
-      "silhouette": "Chest-up 3/4 view of a young man in a sleeveless white tank top outline visible against the black body silhouette. Bright glowing PLATINUM-GOLD bleach-blonde spikes/peach-fuzz on top of the head (the stan signal). Both hands clutch a folded letter up near the chest; head tilted slightly with lips pursed sending an adoring kiss. A small bright HOT-MAGENTA heart shape floats from his lips outward (the thirst signal) — the heart is the brightest accent. The bleach-blonde hair + clutched letter + floating heart is the at-a-glance identifier — devoted simp."
+      "silhouette": "Chest-up 3/4 view — a figure in a pulled-down knit beanie (the doomer signal), shoulders hunched forward, head tilted down. Long swooping black hair pokes out from under the beanie with sharp asymmetric emo bangs falling across one of where its eyes would be, a thick black choker at the neck (the cam_model signal). A lit cigarette dangles from where the mouth would be, ember glowing brighter HOT-MAGENTA with a faint curl of smoke. A small magenta heart shape floats up alongside the smoke but is fading/cracked. The beanie + emo bangs + cigarette + faint cracked heart is the at-a-glance identifier — heartbroken loner."
     },
-    "stan+zealot": {
-      "wash": "scorched amber over arterial red, rage-red sunset",
-      "accent": "blood-red",
-      "silhouette": "Chest-up 3/4 view of a young man in a sleeveless white tank top outline. Bright glowing PLATINUM-GOLD bleach-blonde spikes on top of the head (the stan signal). One arm is raised militantly straight up above the head with fist clenched (the zealot signal); the other hand clutches a crumpled letter at chest height. Mouth open in a shouting pose. One eye glows fiery BLOOD-RED as the brightest accent. The bleach-blonde hair + raised fist + crumpled letter + glowing red eye is the at-a-glance identifier — adoration turned to fury."
-    },
-    "hustler+stan": {
-      "wash": "polished brass on aged copper patina, teal-cyan with golden highlights",
-      "accent": "platinum-gold",
-      "silhouette": "Chest-up 3/4 view of a modern podcaster (the hustler signal) — bright glowing PLATINUM-GOLD bleach-blonde spikes on top of the head (the stan signal, no slicked-back hair), wearing a headset with a boom microphone curving in front of the mouth. One hand raised in front in an open-palm 'trust me' pitch gesture. The bleach-blonde hair + boom mic + open pitch hand is the at-a-glance identifier — the influencer pitch."
-    },
-    "doomer+stan": {
-      "wash": "bruised violet fading into amber afterglow",
-      "accent": "platinum-gold",
-      "silhouette": "Chest-up 3/4 view — head tilted DOWN, shoulders slouched forward, silhouette reading as collapsed and weary (the doomer signal). Bright glowing PLATINUM-GOLD bleach-blonde spikes on top of the head (the stan signal). Both hands cradle a folded letter against the chest mournfully, as if grieving over it. A small lit cigarette dangles from the mouth, ember glowing PLATINUM-GOLD with a faint curl of smoke. The slouched posture + bleach-blonde hair + cradled letter is the at-a-glance identifier — the tragic devotee."
-    },
-    "farmer+teen": {
-      "wash": "sickly cyan-green, swamp moss over cobalt",
-      "accent": "spring-green",
-      "silhouette": "Chest-up view rendered as a CHUBBY CARTOON BABY (the teen signal) — oversized round bald head, tiny rounded shoulders, infantile exaggerated proportions, propeller-beanie with a slowly spinning three-bladed propeller on top, motion-blur lines around it. The baby is seated at a desk with THREE phones lined up side-by-side (the farmer signal). Both tiny chubby baby hands hover over the phones, fingers poised to tap. Each phone screen glows brighter SPRING-GREEN, casting upward light onto the underside of the baby's round chin. Pacifier silhouette in the mouth area. The baby + propeller + three glowing phones is the at-a-glance identifier — a karma-farming kid."
-    },
-    "farmer+thirst": {
+    "cam_model+farmer": {
       "wash": "synth-wave purple, neon midnight, cobalt bleeding into magenta",
       "accent": "hot-magenta",
-      "silhouette": "Chest-up view rendered as a MONKEY (chimpanzee) at a desk with THREE phones lined up side-by-side (the farmer signal). The monkey has long swooping black hair with sharp asymmetric emo bangs falling across where one of its eyes would be (the thirst signal — a goth monkey), a thick black choker visible at the neck. Both hairy monkey hands hover over the phones; one phone screen shows a tiny floating HOT-MAGENTA heart as the brightest accent. The goth-bangs monkey + three phones + magenta heart is the at-a-glance identifier — thirst-trap content farm."
+      "silhouette": "Chest-up view rendered as a MONKEY (chimpanzee) at a desk with THREE phones lined up side-by-side (the farmer signal). The monkey has long swooping black hair with sharp asymmetric emo bangs falling across where one of its eyes would be (the cam_model signal — a goth monkey), a thick black choker visible at the neck. Both hairy monkey hands hover over the phones; one phone screen shows a tiny floating HOT-MAGENTA heart as the brightest accent. The goth-bangs monkey + three phones + magenta heart is the at-a-glance identifier — cam-model content farm."
     },
-    "farmer+zealot": {
-      "wash": "deep plum, ink and arterial red, cobalt-blue stained with blood",
-      "accent": "blood-red",
-      "silhouette": "Chest-up view rendered as a MONKEY (chimpanzee) at a desk with THREE phones lined up side-by-side (the farmer signal). One hairy monkey arm is raised militantly straight up above the head with fist clenched (the zealot signal); the other hairy hand still hovers over the phones. Mouth open in a shouting/screeching pose. One eye glows fiery BLOOD-RED as the bright accent. The monkey + three phones + raised fist + glowing red eye is the at-a-glance identifier — the rage-bait farmer."
+    "cam_model+politics": {
+      "wash": "hot-magenta neon bleeding into split crimson and navy",
+      "accent": "split red and blue cap, with a hot-magenta heart",
+      "silhouette": "Chest-up view of a young goth woman with sharp asymmetric emo bangs falling across one eye, long swooping black hair, a thick black choker at the neck (the cam_model signal). She wears a baseball cap seen from the front, split straight down its CENTER SEAM front-to-back — the LEFT half bright RED and the RIGHT half bright BLUE, both halves equal and the whole cap glowing (the politics signal). Lips pursed sending a kiss to the side; a small bright HOT-MAGENTA heart floats from her lips outward. The split red/blue cap + emo bangs + floating magenta heart is the at-a-glance identifier."
     },
-    "farmer+hustler": {
-      "wash": "deep ocean teal, oxidized cobalt with copper patina",
-      "accent": "teal-cyan",
-      "silhouette": "Chest-up view rendered as a MONKEY (chimpanzee) at a desk with THREE phones lined up side-by-side (the farmer signal). The monkey wears a headset with a boom microphone curving in front of where its mouth would be (the hustler signal). Both hairy monkey hands hover over the phones, fingers poised to tap. The tip of the boom mic and the three phone screens glow brighter TEAL-CYAN as the bright accent. The monkey + headset + three phones is the at-a-glance identifier — automated affiliate spam."
+    "cam_model+shill": {
+      "wash": "vaporwave magenta over teal-cyan and aged copper patina",
+      "accent": "teal-cyan, with a hot-magenta heart",
+      "silhouette": "Chest-up view of a young goth woman with sharp asymmetric emo bangs across one eye, long swooping black hair, a thick black choker (the cam_model signal). She holds a wide-lapel blazer (NOT a trenchcoat) OPEN with both hands to flash the inner lining, where a row of four or five wristwatches is lined up for sale (the shill signal); the row of watches glows brighter TEAL-CYAN. Lips pursed blowing a kiss; a small HOT-MAGENTA heart floats from her lips outward. The emo bangs + open jacket of watches + floating heart is the at-a-glance identifier — selling intimacy."
+    },
+    "cam_model+superfan": {
+      "wash": "rose-gold dusk, candied magenta with amber undertones",
+      "accent": "bright gold, with a hot-magenta heart",
+      "silhouette": "Chest-up view of a young goth woman with sharp asymmetric emo bangs across one eye, long swooping black hair, a thick black choker (the cam_model signal), wearing a team jersey (jersey outline and a number visible). One arm raised high overhead holding an oversized foam '#1' pointing-finger glove that glows bright GOLD (the superfan signal). Lips pursed blowing a kiss; a small HOT-MAGENTA heart floats from her lips outward. The emo bangs + foam #1 glove + floating heart is the at-a-glance identifier — the niche showcase superfan."
     },
     "doomer+farmer": {
       "wash": "midnight ink, drowned blue, violet-stained cobalt",
       "accent": "cobalt-blue",
       "silhouette": "Chest-up view of a hunched figure in a pulled-down knit beanie (the doomer signal), shoulders slouched forward, seated at a desk with THREE phones lined up side-by-side (the farmer signal). Both hands hover over the phones listlessly. A lit cigarette dangles from where the mouth would be, ember glowing brighter COBALT-BLUE with a faint curl of smoke rising. The three phone screens cast pale upward light. The beanie + slouched posture + cigarette + three phones is the at-a-glance identifier — the exhausted content farmer."
     },
-    "hustler+teen": {
-      "wash": "neon mint over chartreuse, sickly teal-green",
-      "accent": "teal-cyan",
-      "silhouette": "Chest-up view rendered as a CHUBBY CARTOON BABY (the teen signal) — oversized round bald head, tiny rounded shoulders, propeller-beanie with a spinning three-bladed propeller on top, motion-blur lines around it. The baby wears an oversized adult-sized headset with a boom microphone curving in front of where its mouth would be (the hustler signal — comically too big for the baby). One tiny chubby baby hand is raised in front in an open-palm 'trust me' pitch gesture. The tip of the mic glows brighter TEAL-CYAN as the bright accent. The baby + propeller + oversized boom mic + tiny pitch hand is the at-a-glance identifier — the teen grindset bro."
+    "doomer+politics": {
+      "wash": "ash-purple over split crimson and navy, twilight smog stained red and blue",
+      "accent": "split red and blue",
+      "silhouette": "Chest-up view of a weary, hunched figure, shoulders slouched forward and head tilted slightly down (the doomer signal), wearing a baseball cap seen from the front split straight down its CENTER SEAM — the LEFT half bright RED and the RIGHT half bright BLUE, both halves equal and the whole cap glowing (the politics signal). A lit cigarette dangles from the corner of the mouth, ember glowing with a faint curl of smoke. Mouth open in a tired, defeated rant. The split red/blue cap + slouched posture + dangling cigarette is the at-a-glance identifier — the burnt-out political ranter."
     },
-    "doomer+teen": {
-      "wash": "moldy bruise, mossy violet, indigo over chartreuse",
-      "accent": "spring-green",
-      "silhouette": "Chest-up view rendered as a CHUBBY CARTOON BABY (the teen signal) — oversized round bald head, tiny rounded shoulders, propeller-beanie on top with a three-bladed propeller drooping/barely spinning, tired motion lines around it. The baby's shoulders are slouched forward, head tilted DOWN, silhouette reading as collapsed (the doomer signal). A lit cigarette dangles from where the pacifier would be, ember glowing brighter SPRING-GREEN with a faint curl of smoke. The slouched baby + drooping propeller + glowing cigarette is the at-a-glance identifier — defeated infant nihilist."
-    },
-    "teen+thirst": {
-      "wash": "watermelon pink-green, candy bubblegum with chartreuse highlights",
-      "accent": "hot-magenta",
-      "silhouette": "Chest-up view rendered as a CHUBBY CARTOON BABY (the teen signal) — oversized round bald head, tiny rounded shoulders, propeller-beanie with a slowly spinning three-bladed propeller on top, motion-blur lines around it. The baby has long swooping black hair poking out under the beanie with sharp asymmetric emo bangs falling across one of where its eyes would be, a thick black choker at the neck (the thirst signal). Mouth pursed sending an exaggerated kiss; a small bright HOT-MAGENTA heart shape floats from the lips outward. The baby + propeller + emo bangs + floating heart is the at-a-glance identifier — emo baby thirst-poster."
-    },
-    "thirst+zealot": {
-      "wash": "fevered crimson over fuchsia bruise, magenta stained with arterial red",
-      "accent": "hot-magenta",
-      "silhouette": "Chest-up 3/4 view — a young goth woman with sharp asymmetric emo bangs falling across one eye, long swooping black hair, a thick black choker at the neck (the thirst signal). One arm is raised militantly straight up above her head with fist clenched (the zealot signal). Her mouth is open in a shouting pose; one eye glows faintly BLOOD-RED. A small HOT-MAGENTA heart shape floats from her lips outward but is faintly cracked/torn down the middle — the cracked heart is the brightest accent. The bangs + raised fist + cracked floating heart is the at-a-glance identifier — devotion turned destructive."
-    },
-    "hustler+thirst": {
-      "wash": "vaporwave neon, electric magenta on teal, synthwave glow",
-      "accent": "hot-magenta",
-      "silhouette": "Chest-up 3/4 view — a young goth woman with sharp asymmetric emo bangs falling across one eye, long swooping black hair, a thick black choker at the neck (the thirst signal). She wears a headset with a boom microphone curving in front of her mouth (the hustler signal). Her lips are pursed just past the mic blowing a kiss; a small bright HOT-MAGENTA heart shape floats from her lips outward, brighter than anything else. The bangs + boom mic + floating heart is the at-a-glance identifier — the cam hustler."
-    },
-    "doomer+thirst": {
-      "wash": "violet bruise, faded neon heartache, indigo washed with magenta",
-      "accent": "hot-magenta",
-      "silhouette": "Chest-up 3/4 view — a figure in a pulled-down knit beanie (the doomer signal), shoulders hunched forward, head tilted down. Long swooping black hair pokes out from under the beanie with sharp asymmetric emo bangs falling across one of where its eyes would be, a thick black choker at the neck (the thirst signal). A lit cigarette dangles from where the mouth would be, ember glowing brighter HOT-MAGENTA with a faint curl of smoke. A small magenta heart shape floats up alongside the smoke but is fading/cracked. The beanie + emo bangs + cigarette + faint cracked heart is the at-a-glance identifier — heartbroken loner."
-    },
-    "doomer+zealot": {
-      "wash": "ash-purple over arterial red, dying ember, indigo stained with blood",
-      "accent": "blood-red",
-      "silhouette": "Chest-up 3/4 view — a figure in a pulled-down knit beanie, shoulders hunched forward (the doomer signal). Head tilted UP slightly with one fist raised straight up above the head militantly (the zealot signal); mouth open in a tired but defiant shout. A lit cigarette dangles from the corner of the mouth, ember glowing brighter BLOOD-RED with a curl of smoke. One eye glows faintly red. The slouched beanie + raised fist + smoldering cigarette + glowing red eye is the at-a-glance identifier — exhausted ideologue ranter."
-    },
-    "doomer+hustler": {
+    "doomer+shill": {
       "wash": "drowned dusk, oxidized violet bleeding into teal, twilight patina",
       "accent": "teal-cyan",
-      "silhouette": "Chest-up 3/4 view — a hunched figure in a pulled-down knit beanie, shoulders forward (the doomer signal), wearing a headset with a boom microphone curving in front of the mouth (the hustler signal). A lit cigarette dangles from the side of the mouth past the mic, ember glowing brighter TEAL-CYAN with a faint curl of smoke. The tip of the boom mic also glows teal-cyan. The beanie + slouched posture + boom mic + smoldering cigarette is the at-a-glance identifier — the doom-mongering podcaster."
+      "silhouette": "Chest-up view of a hunched figure in a pulled-down knit beanie, shoulders forward, head low (the doomer signal). He holds a wide-lapel blazer (NOT a trenchcoat) OPEN with both hands to flash the inner lining, where a row of four or five wristwatches is lined up for sale (the shill signal); the row of watches glows brighter TEAL-CYAN. A lit cigarette dangles from the mouth with a faint curl of smoke. The beanie + slouched posture + open jacket of watches is the at-a-glance identifier — peddling doom for profit."
+    },
+    "doomer+superfan": {
+      "wash": "bruised violet fading into amber afterglow",
+      "accent": "bright gold",
+      "silhouette": "Chest-up view of a hunched figure in a pulled-down knit beanie, shoulders slouched forward, head tilted down, silhouette reading as collapsed and weary (the doomer signal), wearing a team jersey (jersey outline and number visible). One arm is raised overhead but drooping and half-hearted, holding an oversized foam '#1' pointing-finger glove that glows bright GOLD (the superfan signal). A lit cigarette dangles from the mouth with a faint curl of smoke. The slouched posture + team jersey + drooping foam #1 glove is the at-a-glance identifier — the heartbroken superfan."
+    },
+    "farmer+politics": {
+      "wash": "deep plum, cobalt-blue stained with red and navy",
+      "accent": "split red and blue",
+      "silhouette": "Chest-up view rendered as a MONKEY (chimpanzee) seated at a desk with THREE phones lined up side-by-side (the farmer signal). On the monkey's rounded ape head sits a baseball cap seen from the front, split straight down its CENTER SEAM — the LEFT half bright RED and the RIGHT half bright BLUE, both halves equal and the whole cap glowing (the politics signal). Both hairy monkey hands hover over the phones; mouth open in a screech. The three phone screens cast pale upward light. The monkey + three phones + split red/blue cap is the at-a-glance identifier — the rage-bait political farm."
+    },
+    "farmer+shill": {
+      "wash": "deep ocean teal, oxidized cobalt with copper patina",
+      "accent": "teal-cyan",
+      "silhouette": "Chest-up view rendered as a MONKEY (chimpanzee) at a desk with THREE phones lined up side-by-side (the farmer signal), leaning back to hold a wide-lapel blazer (NOT a trenchcoat) OPEN with both hairy hands, flashing the inner lining where a row of four or five wristwatches is lined up for sale (the shill signal); the row of watches glows brighter TEAL-CYAN. The three phone screens on the desk cast pale teal upward light. The monkey + three phones + open jacket of watches is the at-a-glance identifier — automated affiliate spam."
+    },
+    "farmer+superfan": {
+      "wash": "stormy indigo with gilded edges, cobalt under golden dusk",
+      "accent": "bright gold",
+      "silhouette": "Chest-up view rendered as a MONKEY (chimpanzee) at a desk with THREE phones lined up side-by-side (the farmer signal), wearing a team jersey (jersey outline and number visible against the black body). One hairy monkey arm is raised overhead holding an oversized foam '#1' pointing-finger glove that glows bright GOLD (the superfan signal); the other hairy hand still hovers over the phones. The three phone screens cast pale gold upward light. The monkey + three phones + foam #1 glove is the at-a-glance identifier — the fan-account farm."
+    },
+    "politics+shill": {
+      "wash": "rusted bronze and teal patina stained with crimson and navy",
+      "accent": "teal-cyan, with a split red and blue cap",
+      "silhouette": "Chest-up view of a figure wearing a baseball cap seen from the front, split straight down its CENTER SEAM — the LEFT half bright RED and the RIGHT half bright BLUE, both halves equal and the whole cap glowing (the politics signal). He holds a wide-lapel blazer (NOT a trenchcoat) OPEN with both hands to flash the inner lining, where a row of four or five wristwatches is lined up for sale (the shill signal); the row of watches glows brighter TEAL-CYAN. A toothy salesman grin. The split red/blue cap + open jacket of watches is the at-a-glance identifier — the political grifter."
+    },
+    "politics+superfan": {
+      "wash": "scorched amber over crimson and navy, gilded rage",
+      "accent": "bright gold, with a split red and blue cap",
+      "silhouette": "Chest-up view of a figure wearing a team jersey (jersey outline and number visible) and a baseball cap seen from the front, split straight down its CENTER SEAM — the LEFT half bright RED and the RIGHT half bright BLUE, both halves equal and the whole cap glowing (the politics signal). One arm raised high overhead holding an oversized foam '#1' pointing-finger glove that glows bright GOLD (the superfan signal); mouth open mid-shout. The split red/blue cap + foam #1 glove + open shouting mouth is the at-a-glance identifier — the partisan superfan."
+    },
+    "shill+superfan": {
+      "wash": "polished brass on aged copper patina, teal-cyan with golden highlights",
+      "accent": "bright gold, with teal-cyan watches",
+      "silhouette": "Chest-up view of a figure wearing a team jersey (jersey outline and number visible). With one hand he holds a wide-lapel blazer (NOT a trenchcoat) OPEN over the jersey to flash the inner lining where a row of four or five wristwatches is lined up for sale (the shill signal), glowing TEAL-CYAN; the other arm is raised overhead holding an oversized foam '#1' pointing-finger glove that glows bright GOLD (the superfan signal). The team jersey + open jacket of watches + foam #1 glove is the at-a-glance identifier — the indie creator hyping their own thing."
     }
   }
 }

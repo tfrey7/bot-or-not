@@ -42,7 +42,7 @@ When `google_harvest` is present, the operator has run one or more Google search
 
 Treat as enrichment, not primary signal:
 
-- Use `authoredSubredditDistribution` directly. A hit there is as good a Stan / region signal as one in the Reddit-fetched top-25. `subredditDistribution` is weak corroboration only.
+- Use `authoredSubredditDistribution` directly. A hit there is as good a Superfan / region signal as one in the Reddit-fetched top-25. `subredditDistribution` is weak corroboration only.
 - The presence of the field means a human spent effort searching, typically because Reddit-side data was thin. **Weight heavily on hidden profiles** — `authoredSubredditDistribution` may be the only solid sub-clustering signal you have.
 - Posts with `attribution: "unknown"` are NOT counted toward sub-clustering or persona scoring — they may be mere mentions. Cite only `"authored"` hits.
 
@@ -129,8 +129,8 @@ Top-level `avatar: { customized: boolean }` flag. When `customized: true`, the u
 Most users don't customize; most who do pick generic items. **Sparse but high-precision when it fires.** Read for:
 
 - **Region / nationality.** Flags, country-coded sports kit (cricket bat + Indian flag → IN/PK/BD/LK; rugby jersey → AU/NZ/UK/IE/ZA), traditional clothing, language on signs. Feed into `region` — same weight as a country-coded sub.
-- **Identity flags.** Pride, trans, intersex/ace/lesbian/bi/etc., cause flags (Palestine, Ukraine, BLM). Score as **earnest-evangelist Stan** persona; correlates with sincere advocacy more than tribal combat. **Don't** infer personal attributes — score the behavioral pattern, not the diagnosis.
-- **Fandom / sports / commercial.** Band shirts, jerseys, character cosplay, branded merch → `stan` hint. Hyper-curated glamour aesthetics on an account that posts its own appearance → `cam_model` hint.
+- **Identity flags.** Pride, trans, intersex/ace/lesbian/bi/etc., cause flags (Palestine, Ukraine, BLM). Score as **earnest-evangelist Superfan** persona; correlates with sincere advocacy more than tribal combat. **Don't** infer personal attributes — score the behavioral pattern, not the diagnosis.
+- **Fandom / sports / commercial.** Band shirts, jerseys, character cosplay, branded merch → `superfan` hint. Hyper-curated glamour aesthetics on an account that posts its own appearance → `cam_model` hint.
 - **Age cues.** Cartoon characters, school-age props, recent-fashion items → `teen` / `young-adult`; vintage refs, formal/professional → `adult` / `older`. Weak alone.
 - **Bot-vs-human factor.** Customizing at all is a mild human signal — bots and karma-farmed accounts rarely bother. Scored under `avatar_style`.
 
@@ -158,11 +158,11 @@ Respond with **only** a JSON object (no prose, no markdown fences):
     "label": "bot",
     "reasoning": "ONE short clause — why this persona fits best",
     "archetypes": {
-      "stan": 0.0,
+      "superfan": 0.0,
       "farmer": 0.0,
       "cam_model": 0.0,
-      "zealot": 0.0,
-      "hustler": 0.0,
+      "politics": 0.0,
+      "shill": 0.0,
       "doomer": 0.0
     }
   },
@@ -253,7 +253,7 @@ Schema:
 
 #### Demographics
 
-Output a top-level `demographics` block — operator's age band. Like `region`, **independent of the bot↔human verdict** and independent of persona axes. Stans, cam-models, doomers can be any age.
+Output a top-level `demographics` block — operator's age band. Like `region`, **independent of the bot↔human verdict** and independent of persona axes. Superfans, cam-models, doomers can be any age.
 
 Signals:
 
@@ -278,11 +278,11 @@ Bot↔human is a scalar from factor math. **Persona** is a separate, holistic ju
 
 The six archetype axes are all flavors of *human* behavior — `bot` is not a radar axis (the scalar already answers that; spoking it would double-count). `bot` is still a valid `persona.label` for automated accounts. Age is not an archetype axis — it lives in `demographics`.
 
-**Scan `activity.top_subreddits` first.** Top-25 sub mix is the fastest persona signal — each archetype below names diagnostic subs (Hustler: r/CryptoMoonShots / r/Entrepreneur / r/AmazonFBA / r/dropship; Doomer: r/collapse / r/antiwork / r/Layoffs / r/late_stage_capitalism; Zealot: r/politics / r/conspiracy / r/conspiracytheories / r/PoliticalDiscussion / r/Conservative / r/PoliticalHumor; Farmer: r/FreeKarma4U / r/spread; Stan: tight-cluster fandom or country-coded subs like r/kpop, r/anime, r/india; Cam_model: founder-modded selfie/glamour/cam-funnel subs where the operator posts own-appearance content). Cross-reference the top-25 as the first cut, then layer voice / cadence / engagement / username on top. Subs surfaced via `google_harvest.authoredSubredditDistribution` count the same way. Sub mix won't always be diagnostic (cam_model / bot lean structural), but it's the cheapest starting point.
+**Scan `activity.top_subreddits` first.** Top-25 sub mix is the fastest persona signal — each archetype below names diagnostic subs (Shill: r/CryptoMoonShots / r/Entrepreneur / r/AmazonFBA / r/dropship; Doomer: r/collapse / r/antiwork / r/Layoffs / r/late_stage_capitalism; Politics: r/politics / r/conspiracy / r/conspiracytheories / r/PoliticalDiscussion / r/Conservative / r/PoliticalHumor; Farmer: r/FreeKarma4U / r/spread; Superfan: tight-cluster fandom or country-coded subs like r/kpop, r/anime, r/india; Cam_model: founder-modded selfie/glamour/cam-funnel subs where the operator posts own-appearance content). Cross-reference the top-25 as the first cut, then layer voice / cadence / engagement / username on top. Subs surfaced via `google_harvest.authoredSubredditDistribution` count the same way. Sub mix won't always be diagnostic (cam_model / bot lean structural), but it's the cheapest starting point.
 
-- **`stan`** — real human hyperfocused on a niche. Deeply invested in a regional/national community (r/india, r/AskUK), fandom (r/anime, r/kpop, a specific game/creator), identity community (r/lgbt, r/trans), self-improvement (r/looksmaxxing, r/SkincareAddiction, r/fitness), or a political cause they earnestly advocate for. Posts heavily but mostly in 1–3 themed subs. Engages emotionally, uses in-group slang. May write like a bot (short, choppy, enthusiastic) but content focus is the giveaway. Flavors:
-  - **Niche obsessive** — K-pop fan, sports fan, fandom Stan. Emotional in-group replies, fluent niche vocabulary.
-  - **Earnest-evangelist** — sincere advocacy, NOT combative. Single-topic info-dump cadence, low filter, walls-of-text or point-by-point rebuttals, takes opposing comments at face value. Identity-foregrounded presentation: pride/cause flag, label-led bio ("autistic / they-them / leftist / vegan"), identity-explicit username. Often correlates with neurodivergent-coded prose; score the behavioral cluster, not the diagnosis. **Vs Zealot:** Zealot is *combative* (rage-affect, name-calling); earnest-evangelist Stan is *advocating* (info-dump rather than attack). Same monomania, opposite affect. Identity-foregrounding tips toward Stan even when the topic is political. When both fire, score both honestly.
+- **`superfan`** — real human hyperfocused on a niche. Deeply invested in a regional/national community (r/india, r/AskUK), fandom (r/anime, r/kpop, a specific game/creator), identity community (r/lgbt, r/trans), self-improvement (r/looksmaxxing, r/SkincareAddiction, r/fitness), or a political cause they earnestly advocate for. Posts heavily but mostly in 1–3 themed subs. Engages emotionally, uses in-group slang. May write like a bot (short, choppy, enthusiastic) but content focus is the giveaway. Flavors:
+  - **Niche obsessive** — K-pop fan, sports fan, fandom superfan. Emotional in-group replies, fluent niche vocabulary.
+  - **Earnest-evangelist** — sincere advocacy, NOT combative. Single-topic info-dump cadence, low filter, walls-of-text or point-by-point rebuttals, takes opposing comments at face value. Identity-foregrounded presentation: pride/cause flag, label-led bio ("autistic / they-them / leftist / vegan"), identity-explicit username. Often correlates with neurodivergent-coded prose; score the behavioral cluster, not the diagnosis. **Vs the Politics archetype:** the Politics poster is *combative* (rage-affect, name-calling); the earnest-evangelist Superfan is *advocating* (info-dump rather than attack). Same monomania, opposite affect. Identity-foregrounding tips toward Superfan even when the topic is political. When both fire, score both honestly.
 - **`farmer`** — human-operated but inauthentic. Reposts viral content, drops generic engagement-bait ("This!", "Underrated take", "Take my upvote"), scatters across many unrelated big subs, participates in karma-farming subs (r/FreeKarma4U, r/spread), often on dormant-then-revived accounts.
 - **`cam_model`** — commercial-vehicle account whose product is the **operator's own appearance**. Selfies / body shots / outfit photos ARE the business; Reddit presence drives subscribers to OnlyFans, Fansly, cam sites, Patreon-as-funnel. Structural pattern (any suggests; co-occurrence strengthens):
   - **Founder-mod of a small (≤10k subscriber) sub** built around their own appearance content.
@@ -291,24 +291,24 @@ The six archetype axes are all flavors of *human* behavior — `bot` is not a ra
   - **Username pairs personal handle with cute/suggestive noun**, OR the same handle appears on an external OF/Fansly/Linktree page (Google dossier often surfaces this).
   - **Explicit funnel link** in profile bio, post titles, or comments.
 
-  This archetype **always fires alongside `hustler`** — `cam_model` captures surface behavior (operator-as-product); `hustler` captures commercial purpose. Score both high.
+  This archetype **always fires alongside `shill`** — `cam_model` captures surface behavior (operator-as-product); `shill` captures commercial purpose. Score both high.
 
-  **NOT the same as a normal Redditor with a selfie habit.** Someone who posts selfies in r/selfie, r/amiugly, or a body-rating sub but engages normally elsewhere (r/AskReddit, hobby subs, r/relationships) is **NOT** `cam_model` — they're a Stan (looksmaxing, fashion, fitness) or `normal`. The commercial-vehicle structure is the qualifier, not the selfies. Don't fire `cam_model` on validation-seeking posters lacking the founder-mod / single-sub-concentration / funnel-link pattern.
-- **`zealot`** — single-issue political combatant. Reddit is their battlefield: posts almost exclusively about politics, sees the other tribe as enemy, daily outrage, every news item as ammunition. Both flavors:
+  **NOT the same as a normal Redditor with a selfie habit.** Someone who posts selfies in r/selfie, r/amiugly, or a body-rating sub but engages normally elsewhere (r/AskReddit, hobby subs, r/relationships) is **NOT** `cam_model` — they're a Superfan (looksmaxing, fashion, fitness) or `normal`. The commercial-vehicle structure is the qualifier, not the selfies. Don't fire `cam_model` on validation-seeking posters lacking the founder-mod / single-sub-concentration / funnel-link pattern.
+- **`politics`** — single-issue political combatant. Reddit is their battlefield: posts almost exclusively about politics, sees the other tribe as enemy, daily outrage, every news item as ammunition. Both flavors:
   - **Fringe-conspiracy flavor**: hidden patterns everywhere, mainstream sources compromised, deep state / vaccines / election fraud / "globalists" / chemtrails / flat earth / sovcit doctrine. Subs: r/conspiracy, r/conspiracytheories, r/Conservative, fringe-right/left subs. Language: ALL-CAPS bursts, scare quotes ("they"), evidence-free certitude ("wake up", "do your own research"), Substack/Telegram/Rumble links.
   - **Mainstream-extreme flavor**: high-volume rage at the opposing tribe via *mainstream* outlets. Subs: r/politics, r/PoliticalHumor, r/Conservative, r/Liberal, r/PoliticalDiscussion. Tells: single politician/faction focus, name-calling ("MAGAts", "libtards", "fascists", "communists"), moral certitude as combat, tribal in/out-group framing, every news cycle a fresh outrage.
 
-  Common to both: **single-issue monomania + rage-affect + tribal antagonism + daily output**. Fighting, not informing. Distinct from Farmer (true believer, not faking) and Stan (anti-other-tribe, not pro-niche). Teen / Zealot disambiguation is **affect**: Zealot attacks; earnest-evangelist Teen advocates. Conspiracy markers ("wake up", "DYOR") are one flavor, not required — a 1M-karma r/politics anti-Trump account is just as much a Zealot as a r/conspiracy chemtrails poster.
-- **`hustler`** — commercial-monetization poster. Account drives attention to a product/service/person for commercial gain. Product can be anything — crypto token, course, dropship store, MLM funnel, paid Discord, indie-built app/game/tool. The tell: **"this account exists to drive attention to a thing the operator is selling."**
+  Common to both: **single-issue monomania + rage-affect + tribal antagonism + daily output**. Fighting, not informing. Distinct from Farmer (true believer, not faking) and Superfan (anti-other-tribe, not pro-niche). Superfan / Politics disambiguation is **affect**: the Politics poster attacks; the earnest-evangelist Superfan advocates. Conspiracy markers ("wake up", "DYOR") are one flavor, not required — a 1M-karma r/politics anti-Trump account is just as much a Politics account as a r/conspiracy chemtrails poster.
+- **`shill`** — commercial-monetization poster. Account drives attention to a product/service/person for commercial gain. Product can be anything — crypto token, course, dropship store, MLM funnel, paid Discord, indie-built app/game/tool. The tell: **"this account exists to drive attention to a thing the operator is selling."**
   - **Explicit funnel links** — Linktree, Beacons, Patreon, paid Discord, Etsy/Shopify/Gumroad stores, crypto tickers, MLM signup pages, affiliate codes, "DM me, I'll show you the system" promos.
   - **Vertical cues**:
     - *Crypto / finance*: r/CryptoMoonShots, r/CryptoCurrency pumps, r/wallstreetbets penny stocks, r/forex; "WAGMI" / "to the moon" / "DYOR"; tickers in every post; Telegram/Discord "signals" invites.
     - *Course / MLM / dropship*: r/Entrepreneur, r/dropship, r/passive_income, r/sidehustle, r/AmazonFBA; course-pitch comments; "DM me".
     - *Adult monetization*: handled by `cam_model` — score both high.
-  - **Absence of any other-life posting** — strong tell for pure commercial vehicles (crypto pumpers, dropship shills). **Sufficient evidence for `hustler`, not necessary.** An indie creator who built a niche-relevant product AND genuinely engages in the surrounding niche (substantive discussion, technique answers, non-promotional contributions) is **still a hustler** when self-promotion is sustained and structural — they're just also a `stan`. Visible non-promo engagement doesn't zero out hustler.
+  - **Absence of any other-life posting** — strong tell for pure commercial vehicles (crypto pumpers, dropship shills). **Sufficient evidence for `shill`, not necessary.** An indie creator who built a niche-relevant product AND genuinely engages in the surrounding niche (substantive discussion, technique answers, non-promotional contributions) is **still a shill** when self-promotion is sustained and structural — they're just also a `superfan`. Visible non-promo engagement doesn't zero out shill.
 
-  Distinct from Farmer (sells a thing; Farmer wants karma) and Zealot (chases money, not ideological combat). **OF/cam-funnel fires both `cam_model` and `hustler`** — for those, the categorical label is `cam_model` (more specific). **When the operator's product is rooted in a passionate niche, `stan` and `hustler` both fire** (see Stan + Hustler blend).
-- **`doomer`** — pessimist / burnout. Worldview: "things are getting worse, no fix"; affect ranges from despairing to nihilistic-funny. Signals: r/collapse, r/antiwork, r/povertyfinance, r/depression, r/SuicideWatch, r/cscareerquestions doom threads, r/Layoffs, r/late_stage_capitalism, r/doomer; themes of climate collapse, housing unaffordability, job-market hopelessness, AI-job-loss, "we're cooked", "it's over", "nothing matters"; flat affect even in upbeat threads. Distinct from Zealot (accepts consensus reality and despairs vs fights a tribal enemy) and Teen (Doomer's gloom is structural/political, not personal/dramatic).
+  Distinct from Farmer (sells a thing; Farmer wants karma) and the Politics archetype (chases money, not ideological combat). **OF/cam-funnel fires both `cam_model` and `shill`** — for those, the categorical label is `cam_model` (more specific). **When the operator's product is rooted in a passionate niche, `superfan` and `shill` both fire** (see Superfan + Shill blend).
+- **`doomer`** — pessimist / burnout. Worldview: "things are getting worse, no fix"; affect ranges from despairing to nihilistic-funny. Signals: r/collapse, r/antiwork, r/povertyfinance, r/depression, r/SuicideWatch, r/cscareerquestions doom threads, r/Layoffs, r/late_stage_capitalism, r/doomer; themes of climate collapse, housing unaffordability, job-market hopelessness, AI-job-loss, "we're cooked", "it's over", "nothing matters"; flat affect even in upbeat threads. Distinct from the Politics archetype (accepts consensus reality and despairs vs fights a tribal enemy).
 
 **Center of radar (all axes near 0)** reads as "Normal" — genuine, low-key, mixed-interest human. No `normal` axis; it's the absence of pulls.
 
@@ -326,15 +326,15 @@ Score **each** archetype independently in `[0.0, 1.0]` — "how strongly does th
 
 Scores are **independent**, not budget-shares — multiple axes can legitimately score high. Common blends:
 
-- **Stan + Hustler** (e.g. `stan: 0.85`, `hustler: 0.65`) — indie creator hyperfocused on a niche who built and self-promotes a niche-relevant product.
-- **Cam Model + Hustler** (e.g. `cam_model: 0.9`, `hustler: 0.85`) — OF / cam-funnel; always fires together.
-- **Stan + Doomer** (e.g. `stan: 0.8`, `doomer: 0.65`) — blackpilled niche obsessive (e.g. looksmaxer with collapse-pilled "it's over" affect).
-- **Zealot + Doomer** (e.g. `zealot: 0.8`, `doomer: 0.6`) — collapse-pilled political ranter.
-- **Farmer + Hustler** (e.g. `farmer: 0.7`, `hustler: 0.7`) — affiliate spam.
-- **Stan + Zealot** (e.g. `stan: 0.7`, `zealot: 0.6`) — fan-turned-attack-poster.
-- **Doomer + Hustler** (e.g. `doomer: 0.6`, `hustler: 0.7`) — crisis-funnel grifter.
+- **Superfan + Shill** (e.g. `superfan: 0.85`, `shill: 0.65`) — indie creator hyperfocused on a niche who built and self-promotes a niche-relevant product.
+- **Cam Model + Shill** (e.g. `cam_model: 0.9`, `shill: 0.85`) — OF / cam-funnel; always fires together.
+- **Superfan + Doomer** (e.g. `superfan: 0.8`, `doomer: 0.65`) — blackpilled niche obsessive (e.g. looksmaxer with collapse-pilled "it's over" affect).
+- **Politics + Doomer** (e.g. `politics: 0.8`, `doomer: 0.6`) — collapse-pilled political ranter.
+- **Farmer + Shill** (e.g. `farmer: 0.7`, `shill: 0.7`) — affiliate spam.
+- **Superfan + Politics** (e.g. `superfan: 0.7`, `politics: 0.6`) — fan-turned-attack-poster.
+- **Doomer + Shill** (e.g. `doomer: 0.6`, `shill: 0.7`) — crisis-funnel grifter.
 
-Score both honestly when two are present — don't drag the runner-up down. The UI substitutes combined titles ("Tragic Stan", "Affiliate Spam") when top two axes both clear ~0.55 with comparable magnitude.
+Score both honestly when two are present — don't drag the runner-up down. The UI substitutes combined titles ("Tragic Fan", "Affiliate Spam") when top two axes both clear ~0.55 with comparable magnitude.
 
 **Don't fabricate signal.** "Full range" means honest intensity, not padding. A no-flavor account has a near-empty radar — that's right for `normal` and for `bot`. A **bot** typically has all six human archetypes near `0.0`; the empty radar is its own signal.
 
@@ -346,17 +346,17 @@ Priority:
 2. Otherwise, if strongest human archetype ≥ `0.4`, pick it.
 3. Otherwise `"normal"`.
 
-Must be one of: `"bot"`, `"stan"`, `"farmer"`, `"cam_model"`, `"zealot"`, `"hustler"`, `"doomer"`, `"normal"`. No other strings.
+Must be one of: `"bot"`, `"superfan"`, `"farmer"`, `"cam_model"`, `"politics"`, `"shill"`, `"doomer"`, `"normal"`. No other strings.
 
-`persona.reasoning` — one short sentence (**≤25 words**) citing the strongest *archetype-specific* tell. Don't restate the summary. Examples: "Niche focus on r/kpop with emotional in-group replies" (Stan); "Token pumps in r/CryptoMoonShots plus affiliate links in every comment" (Hustler).
+`persona.reasoning` — one short sentence (**≤25 words**) citing the strongest *archetype-specific* tell. Don't restate the summary. Examples: "Niche focus on r/kpop with emotional in-group replies" (Superfan); "Token pumps in r/CryptoMoonShots plus affiliate links in every comment" (Shill).
 
 **Independent of the bot↔human scalar, but the two camps within "human" land in different verdict bands.** Six archetypes split into:
 
-- **Genuine humans** — `stan`, `zealot`, `doomer` → typically `likely-human` / `human`.
-- **Operated accounts** — `farmer`, `hustler`, `cam_model`. Humans running commercial/inauthentic vehicles. Most factors score positive (a human types), but `promotional_account` scores them strongly negative → `uncertain` / `likely-bot`. That's correct: not what a normal Reddit user looks like.
+- **Genuine humans** — `superfan`, `politics`, `doomer` → typically `likely-human` / `human`.
+- **Operated accounts** — `farmer`, `shill`, `cam_model`. Humans running commercial/inauthentic vehicles. Most factors score positive (a human types), but `promotional_account` scores them strongly negative → `uncertain` / `likely-bot`. That's correct: not what a normal Reddit user looks like.
 - `bot` persona → `bot` / `likely-bot`.
 
-Don't force `persona.label` to "agree" with the verdict band. But check internal consistency: `persona: "stan"` + `promotional_account: -0.7` is contradictory (rethink one); `persona: "hustler"` + `promotional_account: +0.3` is contradictory; `persona: "cam_model"` + `promotional_account: +0.3` is contradictory.
+Don't force `persona.label` to "agree" with the verdict band. But check internal consistency: `persona: "superfan"` + `promotional_account: -0.7` is contradictory (rethink one); `persona: "shill"` + `promotional_account: +0.3` is contradictory; `persona: "cam_model"` + `promotional_account: +0.3` is contradictory.
 
 When in doubt between two labels, pick `normal`. Don't reach unless the signal is clear.
 
@@ -585,7 +585,7 @@ Scoring:
 
 If `sample_capped: true`, treat rate as lower bound — nudge slightly more bot-ward. Cite literal rate (e.g. `"posting_rate: 73 items/day over 2.7 days (sample capped)"`).
 
-A focused-niche Stan can have high enthusiasm but rarely sustains 25+/day — if they do, lean on `engagement_patterns` and `topical_drift` rather than overweighting this.
+A focused-niche Superfan can have high enthusiasm but rarely sustains 25+/day — if they do, lean on `engagement_patterns` and `topical_drift` rather than overweighting this.
 <!--:endif-->
 
 <!--:if factor=moderated_subreddits-->
@@ -595,7 +595,7 @@ Sub moderation list is high-signal but multi-directional. `activity.moderated_su
 Look at:
 - **Count.** 1–2 unremarkable. 5+ unusual. 10+ almost always either rare Reddit power-user or farm operator squatting on manipulable subs.
 - **Subscriber size.** Real volunteer mods get added to subs with real audiences. Pile of mod roles on ≤1k-subscriber subs, especially obscure / generic-named, is the karma-farm pattern.
-- **Theme cohesion.** Tight cluster of themed subs (anime, K-pop, a specific game, regional community, identity community) is a Stan signal — informational, pulls toward `0.0` unless count is alarming.
+- **Theme cohesion.** Tight cluster of themed subs (anime, K-pop, a specific game, regional community, identity community) is a Superfan signal — informational, pulls toward `0.0` unless count is alarming.
 - **Mainstream large subs.** 1–2 large mainstream (≥100k, well-known) → moderate human signal (vetted positions).
 
 Scoring:
@@ -611,7 +611,7 @@ Cite count + few subs (e.g. `"moderates 8 subs incl. r/foo (412 subscribers), r/
 <!--:endif-->
 
 ### 15. `promotional_account`
-Class of account that isn't *automated* but isn't a normal Redditor — exists primarily to drive attention to a product/service/person (typically operator). Maps to `farmer`, `hustler`, `cam_model` personas. (A normal Redditor with an occasional selfie habit does NOT make a promotional account — that's `stan` or `normal`. This fires when the selfies / products / pumps ARE the business, i.e. the `cam_model` / `hustler` structural pattern.) Operators write the comments themselves, so they score human-positive on `llm_content_style`, `engagement_patterns`, `timestamp_patterns` — every per-factor signal says "human writes this." This factor keeps the verdict from landing at `human` for plainly commercial vehicles by capturing *purpose* rather than authorship.
+Class of account that isn't *automated* but isn't a normal Redditor — exists primarily to drive attention to a product/service/person (typically operator). Maps to `farmer`, `shill`, `cam_model` personas. (A normal Redditor with an occasional selfie habit does NOT make a promotional account — that's `superfan` or `normal`. This fires when the selfies / products / pumps ARE the business, i.e. the `cam_model` / `shill` structural pattern.) Operators write the comments themselves, so they score human-positive on `llm_content_style`, `engagement_patterns`, `timestamp_patterns` — every per-factor signal says "human writes this." This factor keeps the verdict from landing at `human` for plainly commercial vehicles by capturing *purpose* rather than authorship.
 
 Signals (any is suggestive; co-occurrence strengthens):
 
@@ -638,21 +638,21 @@ Scoring:
 
   Misread to avoid: softening to ~-0.25 because comments read human. Owning the venue you post own appearance content in is the editorial-check-bypass that *defines* the archetype. Red-flag tier (`score ≤ -0.6`, `confidence ≥ 0.6`) — floors verdict at `uncertain`, combined with any other red flag pushes to `likely-bot`. Example: founder-mod of r/<smallfashionsub> (≤1k subs), 99/107 visible items in that sub, all own outfit photos — this tier even if she writes thoughtful replies about earth-tone palettes.
 - Own-content-only with total absence of other-life posting (all visible in 1–2 niche subs; nothing in conversational/hobby/news) → `score ≈ -0.7`, `confidence ≈ 0.75`, even without explicit funnel links / founder-mod.
-- **Indie creator with niche-relevant product + genuine niche engagement** — operator built a tool/app/game/store rooted in a passionate niche, cross-promotes across themed subs, AND contributes substantive non-promo content (data analyses, technique answers, mainstream-sub posts not tied to product) → `score ≈ -0.3`, `confidence ≈ 0.5`. Bot↔human stays mild because user is plainly human and engaged. **On persona side this is `Stan + Hustler`** — stan axis for niche obsession (`0.7–0.9`) AND hustler axis for sustained self-promotion (`0.5–0.7`). Don't let visible non-promo zero out hustler. Don't let founder-mod of product's own sub push to the `-0.75` OF/cam tier — that's for personal-appearance monetization, not indie products.
+- **Indie creator with niche-relevant product + genuine niche engagement** — operator built a tool/app/game/store rooted in a passionate niche, cross-promotes across themed subs, AND contributes substantive non-promo content (data analyses, technique answers, mainstream-sub posts not tied to product) → `score ≈ -0.3`, `confidence ≈ 0.5`. Bot↔human stays mild because user is plainly human and engaged. **On persona side this is `Superfan + Shill`** — superfan axis for niche obsession (`0.7–0.9`) AND shill axis for sustained self-promotion (`0.5–0.7`). Don't let visible non-promo zero out shill. Don't let founder-mod of product's own sub push to the `-0.75` OF/cam tier — that's for personal-appearance monetization, not indie products.
 - Mixed but not indie-creator-shaped: visible promo + genuine niche discussion (artist posts own work but discusses other artists' work and answers technique questions) → `score ≈ -0.3`, `confidence ≈ 0.5`.
 - Single promo link in profile but otherwise normal user → `score ≈ 0.0`, `confidence ≤ 0.3`.
 - No promotional signals → `score ≈ +0.3`, `confidence ≈ 0.5` (mild human — here for conversation, not conversion).
 
 Cite specifics (e.g. `"founded r/altgothcloset (412 subs); 49/55 posts are her own outfit photos"`, `"profile bio: 'OF in bio 🍑'"`, `"Linktree link in 8/14 post bodies"`, `"$SHIBA ticker in every comment"`).
 
-When strongly negative, `persona.label` should be `farmer`, `hustler`, or `cam_model`. If persona disagrees (e.g. -0.7 here but `persona: "stan"`), one is wrong — rethink. OF/cam-funnel: high `cam_model` AND high `hustler` archetype scores, this factor strongly negative, `persona.label: "cam_model"`.
+When strongly negative, `persona.label` should be `farmer`, `shill`, or `cam_model`. If persona disagrees (e.g. -0.7 here but `persona: "superfan"`), one is wrong — rethink. OF/cam-funnel: high `cam_model` AND high `shill` archetype scores, this factor strongly negative, `persona.label: "cam_model"`.
 
 **Reverse consistency check.** If operator founded the sub they post own appearance content in AND visible items concentrated (≥80%) in that single sub + profile sub, **all must hold**:
 
 - `promotional_account` ≤ -0.65 (OF/cam structural-fingerprint tier).
 - `archetypes.cam_model` ≥ 0.6.
-- `archetypes.hustler` ≥ 0.6.
-- `archetypes.stan` should NOT be top — "fashion enthusiast hyperfocused on a fashion niche" is the misread; she's hyperfocused on a sub she founded to post own outfits in, which is a commercial vehicle, not Stan participation.
+- `archetypes.shill` ≥ 0.6.
+- `archetypes.superfan` should NOT be top — "fashion enthusiast hyperfocused on a fashion niche" is the misread; she's hyperfocused on a sub she founded to post own outfits in, which is a commercial vehicle, not Superfan participation.
 - `persona.label: "cam_model"`.
 
 If tempted to soften to ~-0.25 because no explicit funnel link visible, **apply the OF/cam tier** — funnel-link absence doesn't downgrade. The operator owns the venue, posts own appearance content, and the structural pattern (founder-mod + single-sub-concentration + own-appearance posts) *is* the OF/cam shape.
@@ -666,12 +666,12 @@ Use `avatar` flag + attached image:
 
 - `customized: false` (default snoo, no image) → `score: 0.0`, `confidence ≤ 0.2`, reasoning: `"Default avatar — no signal."`. **Do not score bot-ward** — plenty of long-time humans never customize.
 - `customized: true` with generic items (plain shirt, sunglasses, common props) → `score: +0.15`, `confidence ≈ 0.3`. Mild human — they bothered.
-- `customized: true` with **identity-specific** items (national flag, country-coded sport, traditional clothing, pride/cause flag, fandom merch, band shirts, character cosplay, glamour aesthetic) → `score: +0.35`, `confidence ≈ 0.5`. Cite items, **and** feed into `region.reasoning` (nation/region), `demographics.reasoning` (age), relevant `persona.archetypes` (pride/cause → `stan` earnest-evangelist; fandom merch → `stan`; glamour on own-appearance account → `cam_model`).
+- `customized: true` with **identity-specific** items (national flag, country-coded sport, traditional clothing, pride/cause flag, fandom merch, band shirts, character cosplay, glamour aesthetic) → `score: +0.35`, `confidence ≈ 0.5`. Cite items, **and** feed into `region.reasoning` (nation/region), `demographics.reasoning` (age), relevant `persona.archetypes` (pride/cause → `superfan` earnest-evangelist; fandom merch → `superfan`; glamour on own-appearance account → `cam_model`).
 - `customized: true` but image can't load → `score: 0.0`, `confidence ≤ 0.2`, reasoning: `"Avatar image could not be loaded."`. Don't guess.
 
 Weight stays modest — customized avatar is *consistent with* human but doesn't outweigh hard bot signals. Never let avatar alone pull a verdict from `likely-bot` to `human`.
 
-**Do not infer personal attributes (sexuality, religion, neurotype, etc.) from avatar.** Pride flag → user identifies with community OR allyship — both normal human; don't disambiguate. Score behavioral pattern (earnest identity-foregrounding → stan), never diagnosis. Same for `region`: cricket helmet is a sub-continent signal because of the sport, not any ethnicity claim.
+**Do not infer personal attributes (sexuality, religion, neurotype, etc.) from avatar.** Pride flag → user identifies with community OR allyship — both normal human; don't disambiguate. Score behavioral pattern (earnest identity-foregrounding → superfan), never diagnosis. Same for `region`: cricket helmet is a sub-continent signal because of the sport, not any ethnicity claim.
 
 Cite items compactly: `"avatar: cricket bat + helmet + Indian flag"`, `"avatar: rainbow tie-dye + flower hat + pet bird"`, `"avatar: default snoo"`, `"avatar: plain T-shirt, no notable items"`.
 

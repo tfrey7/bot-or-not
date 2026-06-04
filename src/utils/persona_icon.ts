@@ -8,11 +8,11 @@ import type { Persona } from "../types.ts";
 import { personaComboKey } from "./persona_title.ts";
 
 const KNOWN_PRIMARIES = new Set<string>([
-  "stan",
+  "superfan",
   "farmer",
   "cam_model",
-  "zealot",
-  "hustler",
+  "politics",
+  "shill",
   "doomer",
   "bot",
   "normal",
@@ -21,19 +21,19 @@ const KNOWN_PRIMARIES = new Set<string>([
 const KNOWN_BLENDS = new Set<string>([
   "cam_model+doomer",
   "cam_model+farmer",
-  "cam_model+hustler",
-  "cam_model+stan",
-  "cam_model+zealot",
+  "cam_model+politics",
+  "cam_model+shill",
+  "cam_model+superfan",
   "doomer+farmer",
-  "doomer+hustler",
-  "doomer+stan",
-  "doomer+zealot",
-  "farmer+hustler",
-  "farmer+stan",
-  "farmer+zealot",
-  "hustler+stan",
-  "hustler+zealot",
-  "stan+zealot",
+  "doomer+politics",
+  "doomer+shill",
+  "doomer+superfan",
+  "farmer+politics",
+  "farmer+shill",
+  "farmer+superfan",
+  "politics+shill",
+  "politics+superfan",
+  "shill+superfan",
 ]);
 
 export function personaIcon(

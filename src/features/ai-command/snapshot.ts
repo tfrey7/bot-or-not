@@ -15,7 +15,7 @@ export interface AiCommandSnapshotEntry {
   botProbability: number | null;
   confidence: number | null;
 
-  // AI's persona label — one of the archetype keys ("doomer", "stan", …) or
+  // AI's persona label — one of the archetype keys ("doomer", "superfan", …) or
   // "bot" / "normal". For "show users with the Doomer tag" check this field.
   persona: string | null;
 

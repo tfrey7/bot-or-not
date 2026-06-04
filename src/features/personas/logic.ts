@@ -101,7 +101,7 @@ export function personasCollect(reports: PersonasRow[]): PersonaPoint[] {
     }
 
     // Raw barycentric sum can overshoot the unit disk when two adjacent
-    // archetypes both score high (Stan 1.0 + Farmer 1.0 reinforces in their
+    // archetypes both score high (Superfan 1.0 + Farmer 1.0 reinforces in their
     // shared direction). Pin overshoots to the rim — direction stays
     // meaningful, magnitude saturates at "max possible pull."
     const rawMagnitude = Math.sqrt(sumX * sumX + sumY * sumY);
@@ -139,8 +139,8 @@ export interface PersonaExemplar {
 export type PersonaExemplars = Record<ArchetypeKey, PersonaExemplar[]>;
 
 // For each archetype, return the top-N investigated accounts by raw score
-// on *that specific axis* (not by top-archetype). A user with 0.7 stan AND
-// 0.65 hustler is a legitimate exemplar of both lists — the radar plots
+// on *that specific axis* (not by top-archetype). A user with 0.7 superfan AND
+// 0.65 shill is a legitimate exemplar of both lists — the radar plots
 // independent axes, so the exemplars do too.
 export function personasExemplars(points: PersonaPoint[]): PersonaExemplars {
   const buckets = {} as PersonaExemplars;
