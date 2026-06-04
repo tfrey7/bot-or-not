@@ -37,7 +37,7 @@ import { normalizePersona } from "../src/utils/persona.ts";
 import { extractActivityData } from "../src/utils/reddit_activity.ts";
 import { computeVerdict } from "../src/verdict.ts";
 import { inferRegion } from "../src/features/regions/index.ts";
-import { reportsInferTimezoneFromTimestamps } from "../src/features/reports/region.ts";
+import { redditorsInferTimezoneFromTimestamps } from "../src/features/redditors/region.ts";
 import type { Factor } from "../src/types.ts";
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -110,7 +110,7 @@ function log(...parts: unknown[]): void {
 
 function formatRegion(
   region: ReturnType<typeof inferRegion>,
-  timezone: ReturnType<typeof reportsInferTimezoneFromTimestamps>
+  timezone: ReturnType<typeof redditorsInferTimezoneFromTimestamps>
 ): string {
   if (region && region.kind === "deterministic") {
     const sources: string[] = [];
@@ -215,7 +215,7 @@ async function main(): Promise<void> {
     ...(activityData.postTimestamps || []),
     ...(activityData.commentTimestamps || []),
   ];
-  const timezone = reportsInferTimezoneFromTimestamps(timestamps);
+  const timezone = redditorsInferTimezoneFromTimestamps(timestamps);
   const region = inferRegion(activityData, timezone);
 
   const fullResult = {

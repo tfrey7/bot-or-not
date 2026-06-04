@@ -75,6 +75,12 @@ export interface StorageAdapter {
 
   readHidePii(): Promise<boolean>;
   writeHidePii(value: boolean): Promise<void>;
+
+  // Cross-tab Reddit rate-limit pause. `null` means "not paused"; a number
+  // is the epoch-ms instant fetches may resume. Persisted so UI surfaces can
+  // show a banner via storage.onChanged and so a reloaded worker restores it.
+  readRedditPauseUntil(): Promise<number | null>;
+  writeRedditPauseUntil(value: number | null): Promise<void>;
 }
 
 class ExtensionStorage implements StorageAdapter {
@@ -323,6 +329,116 @@ class ExtensionStorage implements StorageAdapter {
       await browser.storage.local.remove(toRemove);
     }
   }
+
+  async readRedditPauseUntil(): Promise<number | null> {
+    const raw = (await browser.storage.local.get("redditPauseUntil")) as {
+      redditPauseUntil?: number;
+    };
+
+    return typeof raw.redditPauseUntil === "number"
+      ? raw.redditPauseUntil
+      : null;
+  }
+
+  async writeRedditPauseUntil(value: number | null): Promise<void> {
+    if (value === null) {
+      await browser.storage.local.remove("redditPauseUntil");
+    } else {
+      await browser.storage.local.set({ redditPauseUntil: value });
+    }
+  }
+}
+
+// Backs the adapter outside the extension — CLI scripts and tests, where
+// `browser.storage.local` doesn't exist. State lives only for the process
+// lifetime, which is all a one-shot script run needs.
+class InMemoryStorage implements StorageAdapter {
+  private reports: Record<string, Report> = {};
+  private subreddits: Record<string, SubredditReport> = {};
+  private apiKeys: ApiKeyMap = {};
+  private llmSelection: LlmSelection = { vendor: null, model: null };
+  private hidePii = false;
+  private redditPauseUntil: number | null = null;
+
+  async readReports(): Promise<Record<string, Report>> {
+    return { ...this.reports };
+  }
+
+  async writeReports(reports: Record<string, Report>): Promise<void> {
+    this.reports = { ...reports };
+  }
+
+  async readReport(username: string): Promise<Report | null> {
+    const key = findReportKey(this.reports, username);
+    return key ? this.reports[key] : null;
+  }
+
+  async updateReport(username: string, updater: ReportUpdater): Promise<void> {
+    const existingKey = findReportKey(this.reports, username) ?? username;
+    const current = this.reports[existingKey] ?? null;
+    const updated = await updater(current);
+
+    if (updated === null) {
+      delete this.reports[existingKey];
+      return;
+    }
+
+    this.reports[existingKey] = updated;
+  }
+
+  async readSubreddits(): Promise<Record<string, SubredditReport>> {
+    return { ...this.subreddits };
+  }
+
+  async writeSubreddits(
+    subreddits: Record<string, SubredditReport>
+  ): Promise<void> {
+    this.subreddits = { ...subreddits };
+  }
+
+  async readApiKey(vendor: LlmVendor): Promise<string> {
+    return this.apiKeys[vendor] ?? "";
+  }
+
+  async readAllApiKeys(): Promise<ApiKeyMap> {
+    return { ...this.apiKeys };
+  }
+
+  async writeApiKey(vendor: LlmVendor, key: string): Promise<void> {
+    this.apiKeys[vendor] = key;
+  }
+
+  async clearApiKey(vendor: LlmVendor): Promise<void> {
+    delete this.apiKeys[vendor];
+  }
+
+  async clearAllApiKeys(): Promise<void> {
+    this.apiKeys = {};
+  }
+
+  async readLlmSelection(): Promise<LlmSelection> {
+    return { ...this.llmSelection };
+  }
+
+  async writeLlmSelection(selection: LlmSelection): Promise<void> {
+    this.llmSelection = { ...selection };
+  }
+
+  async readHidePii(): Promise<boolean> {
+    return this.hidePii;
+  }
+
+  async writeHidePii(value: boolean): Promise<void> {
+    this.hidePii = value;
+  }
+
+  async readRedditPauseUntil(): Promise<number | null> {
+    return this.redditPauseUntil;
+  }
+
+  async writeRedditPauseUntil(value: number | null): Promise<void> {
+    this.redditPauseUntil = value;
+  }
 }
 
 // Canonicalize a stored subreddit record. Drops entries that don't have a
@@ -354,7 +470,12 @@ function normalizeSubredditReport(
   return { name, analyzedAt, sampledUsernames };
 }
 
-const storage: StorageAdapter = new ExtensionStorage();
+// Scripts and tests import this module without a `browser` global; fall back
+// to in-memory there so the seam works the same everywhere.
+const storage: StorageAdapter =
+  typeof browser === "undefined"
+    ? new InMemoryStorage()
+    : new ExtensionStorage();
 
 // Module-level function wrappers — the public API everywhere else in the
 // codebase consumes. Function-style is consistent with the rest of the
@@ -424,4 +545,12 @@ export function readHidePii(): Promise<boolean> {
 
 export function writeHidePii(value: boolean): Promise<void> {
   return storage.writeHidePii(value);
+}
+
+export function readRedditPauseUntil(): Promise<number | null> {
+  return storage.readRedditPauseUntil();
+}
+
+export function writeRedditPauseUntil(value: number | null): Promise<void> {
+  return storage.writeRedditPauseUntil(value);
 }

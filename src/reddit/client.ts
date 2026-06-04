@@ -19,6 +19,7 @@ import PQueue from "p-queue";
 import { QUEUE_PRIORITY } from "../queue_priority.ts";
 import { shortUrl } from "../utils/format_text.ts";
 import { clampRetryAfter, parseRetryAfter } from "../utils/retry_after.ts";
+import { readRedditPauseUntil, writeRedditPauseUntil } from "../storage.ts";
 
 const REDDIT_CONCURRENCY = 4;
 
@@ -41,11 +42,7 @@ let pauseClearTimer: ReturnType<typeof setTimeout> | null = null;
 
 async function publishPauseState(): Promise<void> {
   try {
-    if (pausedUntil === null) {
-      await browser.storage.local.remove("redditPauseUntil");
-    } else {
-      await browser.storage.local.set({ redditPauseUntil: pausedUntil });
-    }
+    await writeRedditPauseUntil(pausedUntil);
   } catch (error) {
     console.error("[Bot or Not] failed to broadcast Reddit pause state", error);
   }
@@ -157,11 +154,7 @@ export class RedditRequestError extends Error {
 
 async function bootstrapPauseState(): Promise<void> {
   try {
-    const raw = (await browser.storage.local.get("redditPauseUntil")) as {
-      redditPauseUntil?: number;
-    };
-    const stored =
-      typeof raw.redditPauseUntil === "number" ? raw.redditPauseUntil : null;
+    const stored = await readRedditPauseUntil();
 
     if (stored === null) {
       return;
@@ -169,7 +162,7 @@ async function bootstrapPauseState(): Promise<void> {
 
     const remaining = stored - Date.now();
     if (remaining <= 0) {
-      await browser.storage.local.remove("redditPauseUntil");
+      await writeRedditPauseUntil(null);
       return;
     }
 
