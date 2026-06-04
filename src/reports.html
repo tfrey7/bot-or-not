@@ -90,6 +90,17 @@
             class="bon-tab"
             role="tab"
             aria-selected="false"
+            aria-controls="bon-panel-fieldguide"
+            id="bon-tab-fieldguide"
+            data-tab="fieldguide"
+          >
+            Field guide
+          </button>
+          <button
+            type="button"
+            class="bon-tab"
+            role="tab"
+            aria-selected="false"
             aria-controls="bon-panel-subreddits"
             id="bon-tab-subreddits"
             data-tab="subreddits"
@@ -202,6 +213,16 @@
         hidden
       >
         <div id="bon-personas-container"></div>
+      </section>
+
+      <section
+        class="bon-tab-panel"
+        role="tabpanel"
+        id="bon-panel-fieldguide"
+        aria-labelledby="bon-tab-fieldguide"
+        hidden
+      >
+        <div id="bon-fieldguide-container"></div>
       </section>
 
       <section

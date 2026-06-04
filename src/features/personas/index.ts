@@ -36,10 +36,7 @@ export function renderPersonasTab(
   if (points.length === 0) {
     section.appendChild(buildEmptyState());
     section.appendChild(
-      personasArchetypeGrid({
-        exemplars,
-        onSelectUser: options.onSelectUser,
-      })
+      personasArchetypeGrid({ exemplars, onSelectUser: options.onSelectUser })
     );
     container.appendChild(section);
     return;
@@ -71,10 +68,7 @@ export function renderPersonasTab(
 
   section.appendChild(buildFootnote());
   section.appendChild(
-    personasArchetypeGrid({
-      exemplars,
-      onSelectUser: options.onSelectUser,
-    })
+    personasArchetypeGrid({ exemplars, onSelectUser: options.onSelectUser })
   );
 
   container.appendChild(section);
@@ -138,6 +132,7 @@ function buildFootnote(): HTMLElement {
   return para;
 }
 
+export { renderFieldGuideTab } from "./field_guide.ts";
 export { personasScatter } from "./scatter.ts";
 export type { PersonasScatterOptions } from "./scatter.ts";
 export { personasCollect } from "./logic.ts";

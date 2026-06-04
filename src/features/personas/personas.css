@@ -291,6 +291,205 @@
   outline: none;
 }
 
+/* ---------- Persona field guide ----------
+   Editorial "history book" entries: a medallion with the body copy wrapping
+   around it, a drop-cap opener, a daggered identify list, and known specimens.
+   The whole guide is a mono scope to match the dossier pane (.bon-split-detail);
+   descendants inherit it, so no widget here re-declares font-family. Per-entry
+   accent comes from --bon-archetype-hue set on the article. */
+.bon-personas-field-guide {
+  font-family: var(--bon-font-mono);
+  max-width: 48em;
+}
+
+.bon-field-guide-masthead {
+  margin-bottom: 1.5em;
+}
+
+.bon-field-guide-page-title {
+  margin: 0 0 0.25em;
+  font-size: 1.6rem;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  line-height: 1.15;
+  color: var(--bon-text);
+}
+
+.bon-field-guide-lede {
+  margin: 0;
+  font-size: 0.92rem;
+  line-height: 1.45;
+  color: var(--bon-muted);
+}
+
+.bon-field-guide-entry {
+  margin: 2.5em 0 0;
+  padding-top: 2.5em;
+  border-top: 1px solid var(--bon-border);
+}
+
+.bon-field-guide-entry:first-of-type {
+  margin-top: 1.5em;
+  padding-top: 0;
+  border-top: none;
+}
+
+/* Floated right with a circular text-wrap contour. The medallion art has a
+   cream margin around its red disc, so the image is scaled up inside a round
+   clip to push that margin out of frame — same 1.3 zoom the radar uses. */
+.bon-field-guide-medallion {
+  float: right;
+  width: 160px;
+  height: 160px;
+  margin: 0.1em 0 0.8em 1.5em;
+  border-radius: 50%;
+  overflow: hidden;
+  shape-outside: circle(50%);
+  box-shadow:
+    0 0 0 1px hsl(var(--bon-archetype-hue) 50% 45% / 0.7),
+    var(--bon-shadow-sm);
+}
+
+.bon-field-guide-medallion img {
+  display: block;
+  width: 132%;
+  height: 132%;
+  margin: -16%;
+  object-fit: cover;
+}
+
+@media (max-width: 520px) {
+  .bon-field-guide-medallion {
+    float: none;
+    shape-outside: none;
+    width: 150px;
+    height: 150px;
+    margin: 0 auto 1em;
+  }
+}
+
+.bon-field-guide-title {
+  margin: 0 0 0.1em;
+  font-size: 1.7rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  line-height: 1.1;
+  color: var(--bon-text);
+}
+
+.bon-field-guide-epigraph {
+  margin: 0 0 0.9em;
+  font-style: italic;
+  font-size: 0.95rem;
+  color: var(--bon-muted);
+}
+
+.bon-field-guide-body {
+  margin: 0 0 1.1em;
+  font-size: 0.92rem;
+  line-height: 1.5;
+  color: var(--bon-text);
+}
+
+.bon-field-guide-body::first-letter {
+  float: left;
+  padding: 0.04em 0.12em 0 0;
+  font-size: 3.1em;
+  line-height: 0.78;
+  font-weight: 700;
+  color: hsl(var(--bon-archetype-hue) 55% 50%);
+}
+
+.bon-field-guide-subhead {
+  margin: 1.1em 0 0.5em;
+  font-family: var(--bon-font-mono);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: hsl(var(--bon-archetype-hue) 55% 42%);
+}
+
+.bon-field-guide-tells {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.bon-field-guide-tells li {
+  position: relative;
+  margin: 0 0 0.3em;
+  padding-left: 1.4em;
+  font-size: 0.9rem;
+  line-height: 1.45;
+  color: var(--bon-text);
+}
+
+.bon-field-guide-tells li::before {
+  content: "†";
+  position: absolute;
+  left: 0;
+  color: hsl(var(--bon-archetype-hue) 55% 50%);
+  font-weight: 700;
+}
+
+.bon-field-guide-habitat {
+  margin: 0;
+  font-size: 0.88rem;
+  line-height: 1.7;
+  color: var(--bon-muted);
+}
+
+.bon-field-guide-sub {
+  color: hsl(var(--bon-archetype-hue) 55% 50%);
+}
+
+.bon-field-guide-samples {
+  margin: 0 0 0.4em;
+}
+
+.bon-field-guide-sample {
+  margin: 0 0 0.6em;
+  padding: 0.55em 0.85em;
+  border-left: 2px solid hsl(var(--bon-archetype-hue) 55% 45%);
+  background: hsl(var(--bon-archetype-hue) 45% 50% / 0.07);
+  border-radius: 0 0.3em 0.3em 0;
+  font-size: 0.88rem;
+  line-height: 1.5;
+  color: var(--bon-muted);
+}
+
+.bon-field-guide-sample:last-child {
+  margin-bottom: 0;
+}
+
+.bon-field-guide-specimens {
+  margin: 0;
+  font-size: 0.85rem;
+  line-height: 1.7;
+  color: var(--bon-muted);
+}
+
+.bon-field-guide-specimen {
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  color: hsl(var(--bon-archetype-hue) 55% 45%);
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  text-underline-offset: 2px;
+  transition: text-decoration-color 120ms ease-out;
+}
+
+.bon-field-guide-specimen:hover,
+.bon-field-guide-specimen:focus-visible {
+  text-decoration-color: currentColor;
+  outline: none;
+}
+
 /* ---------- Hover card ----------
    Floats above the chart on dot mouseenter. Body content (.bon-persona,
    .bon-top-reasons) is the same DOM the reports detail pane builds, so

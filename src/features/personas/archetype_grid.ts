@@ -8,13 +8,7 @@
 import type { ArchetypeKey } from "../../types.ts";
 import { ARCHETYPES } from "../../factors.ts";
 import type { PersonaExemplars } from "./logic.ts";
-
-import medallionSuperfan from "../../../assets/persona-icons/noir-medallion-superfan.png";
-import medallionShill from "../../../assets/persona-icons/noir-medallion-shill.png";
-import medallionFarmer from "../../../assets/persona-icons/noir-medallion-farmer.png";
-import medallionDoomer from "../../../assets/persona-icons/noir-medallion-doomer.png";
-import medallionCamModel from "../../../assets/persona-icons/noir-medallion-cam_model.png";
-import medallionPolitics from "../../../assets/persona-icons/noir-medallion-politics.png";
+import { PERSONA_MEDALLIONS } from "./medallions.ts";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
 
@@ -27,15 +21,6 @@ const HEX_VIEWBOX = 100;
 const HEX_CENTER = HEX_VIEWBOX / 2;
 const HEX_RADIUS = 34;
 const HEX_ICON_SCALE = 1.3;
-
-const PERSONAS_MEDALLIONS: Record<ArchetypeKey, string> = {
-  superfan: medallionSuperfan,
-  shill: medallionShill,
-  farmer: medallionFarmer,
-  doomer: medallionDoomer,
-  cam_model: medallionCamModel,
-  politics: medallionPolitics,
-};
 
 export interface PersonasArchetypeGridOptions {
   exemplars: PersonaExemplars;
@@ -170,7 +155,7 @@ function buildMiniHexagon(highlight: ArchetypeKey): SVGSVGElement {
   pattern.setAttribute("height", String(iconSize));
 
   const image = document.createElementNS(SVG_NS, "image");
-  image.setAttribute("href", PERSONAS_MEDALLIONS[highlight]);
+  image.setAttribute("href", PERSONA_MEDALLIONS[highlight]);
   image.setAttribute("x", "0");
   image.setAttribute("y", "0");
   image.setAttribute("width", String(iconSize));

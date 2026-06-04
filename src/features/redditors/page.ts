@@ -12,7 +12,7 @@
 import { clientSend, clientSubscribe } from "../../client.ts";
 import { renderAnalyticsTab } from "../analytics";
 import { INVESTIGATION_CONCURRENCY } from "../investigation";
-import { renderPersonasTab } from "../personas";
+import { renderFieldGuideTab, renderPersonasTab } from "../personas";
 import { renderSubredditsTab } from "../subreddits";
 import { renderSync } from "../sync";
 import { REGION_INFO } from "../regions";
@@ -82,6 +82,9 @@ export async function redditorsRenderReportsPage(): Promise<void> {
   ) as HTMLElement | null;
   const personasContainer = document.getElementById(
     "bon-personas-container"
+  ) as HTMLElement | null;
+  const fieldGuideContainer = document.getElementById(
+    "bon-fieldguide-container"
   ) as HTMLElement | null;
   const subredditsListEl = document.getElementById(
     "bon-subreddits-list"
@@ -209,6 +212,7 @@ export async function redditorsRenderReportsPage(): Promise<void> {
       render();
       renderAnalytics();
       renderPersonas();
+      renderFieldGuide();
       renderSettingsStrip();
       void renderSubreddits();
     },
@@ -237,6 +241,7 @@ export async function redditorsRenderReportsPage(): Promise<void> {
       render();
       renderAnalytics();
       renderPersonas();
+      renderFieldGuide();
       renderSettingsStrip();
       void renderSubreddits();
     } catch (error) {
@@ -301,6 +306,12 @@ export async function redditorsRenderReportsPage(): Promise<void> {
     }
 
     renderPersonasTab(allReports, personasContainer, {
+      onSelectUser: navigateToUser,
+    });
+  }
+
+  function renderFieldGuide(): void {
+    renderFieldGuideTab(allReports, fieldGuideContainer, {
       onSelectUser: navigateToUser,
     });
   }
