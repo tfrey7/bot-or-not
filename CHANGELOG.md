@@ -2,6 +2,10 @@
 
 Notable changes to Bot or Not. Signed `.xpi` builds for each version are attached to the matching [GitHub Release](https://github.com/tfrey7/bot-or-not/releases).
 
+## [7.5.1] — 2026-06-04
+- Decouple Reddit client from browser storage
+- Bump dev deps: eslint, prettier, typescript-eslint, vite, web-ext, tsx, @types/node
+
 ## [7.5.0] — 2026-05-29
 - Priority queuing: interactive investigations jump ahead of bulk sweeps
 
