@@ -12,6 +12,7 @@ Invoke the `writing-code` Skill (`Skill(writing-code)`) before any Edit/Write/No
 | `npm run lint`      | Lint all `src/**/*.{ts,js}` with typescript-eslint                                                      |
 | `npm run format`    | Format all `src/**/*.{ts,js}` with Prettier                                                             |
 | `npm run typecheck` | Run `tsc --noEmit` against `src/**/*.ts`                                                                |
+| `npm run deadcode`  | Find unused files, exports, types, and dependencies with [knip](https://knip.dev). Entry points (manifest scripts, `reports.html`, `scripts/`) are configured in `knip.json` — `tsc`/ESLint can't see cross-file unused exports, so this is the only check that catches them. Exits non-zero when it finds something. |
 | `npm run build`     | Build an unsigned extension zip into `web-ext-artifacts/`                                               |
 | `npm run sign`      | Sign and publish to AMO (self-distribution, unlisted). Reads `AMO_API_KEY`/`AMO_API_SECRET` from `.env` |
 | `npm run investigate -- <username> [--json]` | Run the bot/human investigation pipeline against a Reddit username outside the extension. Lets you iterate on the investigation prompt without rebuilding. Reads `CLAUDE_API_KEY` from `.env` (gitignored). |

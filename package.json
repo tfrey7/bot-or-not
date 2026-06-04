@@ -14,6 +14,7 @@
     "format": "prettier --write \"src/**/*.{ts,js}\"",
     "lint": "eslint \"src/**/*.{ts,js}\"",
     "typecheck": "tsc --noEmit",
+    "deadcode": "knip",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "type": "module",
@@ -25,6 +26,7 @@
     "eslint": "^10.4.1",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-boundaries": "^6.0.2",
+    "knip": "^6.15.0",
     "playwright": "^1.60.0",
     "prettier": "^3.8.3",
     "tsx": "^4.22.4",

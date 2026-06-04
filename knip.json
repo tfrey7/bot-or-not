@@ -1,0 +1,13 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "entry": [
+    "src/background.ts",
+    "src/content_script.ts",
+    "src/reports.html",
+    "src/reports.ts",
+    "src/features/google-harvest/search_listener.ts",
+    "scripts/*.{ts,mjs,js}"
+  ],
+  "project": ["src/**/*.ts", "scripts/**/*.{ts,mjs,js}"],
+  "ignoreDependencies": ["linkedom"]
+}
