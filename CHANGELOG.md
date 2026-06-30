@@ -2,6 +2,9 @@
 
 Notable changes to Bot or Not. Signed `.xpi` builds for each version are attached to the matching [GitHub Release](https://github.com/tfrey7/bot-or-not/releases).
 
+## [7.7.0] — 2026-06-30
+- Load reports-page list from slim summaries; lazy-render heavy tabs
+
 ## [7.6.0] — 2026-06-04
 - Export PersonaExemplar so the field guide tab compiles
 - Add knip dead-code check (npm run deadcode)
