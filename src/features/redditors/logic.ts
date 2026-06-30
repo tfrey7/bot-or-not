@@ -25,6 +25,14 @@ export function redditorsIsActiveRow(report: ReportRow): boolean {
   return status === "running" || status === "queued";
 }
 
+// "Suspected bot" for the bots-only list filter: a completed investigation
+// whose verdict landed on the bot side of the scale. Rows without a done
+// investigation (queued, errored, never run) have no verdict and don't match.
+export function redditorsIsSuspectedBot(report: ReportRow): boolean {
+  const verdict = investigationResults(report.investigation)?.verdict;
+  return verdict === "bot" || verdict === "likely-bot";
+}
+
 // Sort order for the active table: running before queued, newest-started
 // running first, then within the queue higher-priority first and oldest-
 // queued first within a priority tier (matches the background's pickup

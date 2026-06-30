@@ -45,6 +45,7 @@ import {
   redditorsDetailFingerprint,
   redditorsDiagnoseLoadError,
   redditorsIsActiveRow,
+  redditorsIsSuspectedBot,
   type ReportRow,
 } from "./logic.ts";
 
@@ -75,6 +76,9 @@ export async function redditorsRenderReportsPage(): Promise<void> {
   const agentFilterClearBtn = document.getElementById(
     "bon-agent-filter-clear"
   ) as HTMLButtonElement;
+  const botsOnlyToggle = document.getElementById(
+    "bon-bots-only"
+  ) as HTMLInputElement;
   const paginationContainer = document.getElementById(
     "bon-pagination-container"
   ) as HTMLElement;
@@ -231,6 +235,11 @@ export async function redditorsRenderReportsPage(): Promise<void> {
     setExpectedDurationMs: (value) => {
       expectedDurationMs = value;
     },
+  });
+
+  botsOnlyToggle.addEventListener("change", () => {
+    currentPage = 1;
+    render();
   });
 
   initStickyShellMeasurement();
@@ -412,7 +421,12 @@ export async function redditorsRenderReportsPage(): Promise<void> {
       : allReports;
 
     const activeRows = filtered.filter(redditorsIsActiveRow);
-    const doneRows = filtered.filter((report) => !redditorsIsActiveRow(report));
+    const allDoneRows = filtered.filter(
+      (report) => !redditorsIsActiveRow(report)
+    );
+    const doneRows = botsOnlyToggle.checked
+      ? allDoneRows.filter(redditorsIsSuspectedBot)
+      : allDoneRows;
 
     activeRows.sort(redditorsCompareActive);
     doneRows.sort(redditorsCompareBy("investigatedAt", "desc", REGION_LABELS));
@@ -423,7 +437,7 @@ export async function redditorsRenderReportsPage(): Promise<void> {
 
     renderActiveSection(activeRows);
 
-    if (filtered.length === 0) {
+    if (activeRows.length === 0 && doneRows.length === 0) {
       tableWrap.hidden = true;
       emptyEl.hidden = false;
       selectedUsername = null;
@@ -439,7 +453,8 @@ export async function redditorsRenderReportsPage(): Promise<void> {
 
     if (
       selectedUsername &&
-      !filtered.some((report) => report.username === selectedUsername)
+      !activeRows.some((report) => report.username === selectedUsername) &&
+      !doneRows.some((report) => report.username === selectedUsername)
     ) {
       selectedUsername = null;
       updateUrlForSelection();
@@ -779,9 +794,14 @@ export async function redditorsRenderReportsPage(): Promise<void> {
 
     const text = document.createElement("p");
     text.className = "bon-empty-text";
-    text.textContent = commandBar.getAgentFilter()
-      ? "No reports match the active filter."
-      : "No reports yet. Flag a Reddit user from their profile page to start tracking.";
+    if (botsOnlyToggle.checked) {
+      text.textContent = "No suspected bots among your reports.";
+    } else if (commandBar.getAgentFilter()) {
+      text.textContent = "No reports match the active filter.";
+    } else {
+      text.textContent =
+        "No reports yet. Flag a Reddit user from their profile page to start tracking.";
+    }
 
     emptyEl.appendChild(text);
   }

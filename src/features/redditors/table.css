@@ -144,6 +144,24 @@ table.bon-table {
 .bon-agent-filter[hidden] {
   display: none;
 }
+.bon-list-filter {
+  margin: 0 0 0.6em;
+}
+.bon-list-filter-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5em;
+  font-family: var(--bon-font-mono);
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--bon-muted);
+  cursor: pointer;
+}
+.bon-list-filter-toggle input {
+  cursor: pointer;
+}
 .bon-link-btn {
   appearance: none;
   background: none;
