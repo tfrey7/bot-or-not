@@ -66,22 +66,17 @@ export interface AiRegionInference {
   confidence: number;
   reasoning: string;
   deterministic:
-    | DeterministicRegionInference
-    | TimezoneOnlyRegionInference
-    | null;
+    DeterministicRegionInference | TimezoneOnlyRegionInference | null;
 }
 
 // Output of the deterministic pipeline alone (no AI input). Used as the
 // `deterministic` slot on AiRegionInference and as the standalone result
 // when no AI investigation has run yet.
 export type DeterministicRegionResult =
-  | DeterministicRegionInference
-  | TimezoneOnlyRegionInference
-  | null;
+  DeterministicRegionInference | TimezoneOnlyRegionInference | null;
 
 export type RegionInferenceResult =
-  | DeterministicRegionResult
-  | AiRegionInference;
+  DeterministicRegionResult | AiRegionInference;
 
 // One-shot scan over a concatenated text corpus. Run during the investigation
 // fetch — output is stored in activityData.{scriptSignals,languageSignals,languageSamples}.

@@ -4,21 +4,12 @@
 // stay alongside their feature.
 
 export type Verdict =
-  | "bot"
-  | "likely-bot"
-  | "uncertain"
-  | "likely-human"
-  | "human";
+  "bot" | "likely-bot" | "uncertain" | "likely-human" | "human";
 
 type InvestigationStatus = "queued" | "running" | "done" | "error";
 
 export type ArchetypeKey =
-  | "superfan"
-  | "farmer"
-  | "cam_model"
-  | "politics"
-  | "shill"
-  | "doomer";
+  "superfan" | "farmer" | "cam_model" | "politics" | "shill" | "doomer";
 
 // Age band Claude infers for the account operator. Lives parallel to region
 // — same evidentiary model (avatar, voice, sub mix, self-references). `null`
@@ -40,11 +31,7 @@ type UserStatus = "active" | "suspended" | null;
 export type BotBouncerStatus = "banned" | "pending" | "organic" | null;
 
 export type FactorLeaning =
-  | "bot"
-  | "likely-bot"
-  | "neutral"
-  | "likely-human"
-  | "human";
+  "bot" | "likely-bot" | "neutral" | "likely-human" | "human";
 
 export interface Factor {
   key: string;
@@ -83,11 +70,7 @@ export interface ClaudeUsage {
 }
 
 export type RedditEndpoint =
-  | "about"
-  | "submitted"
-  | "comments"
-  | "moderated"
-  | "botbouncer";
+  "about" | "submitted" | "comments" | "moderated" | "botbouncer";
 
 export interface RedditFetchMetric {
   endpoint: RedditEndpoint;

@@ -262,11 +262,7 @@ export function redditorsHasStructuralChange(
 }
 
 export type SortKey =
-  | "username"
-  | "count"
-  | "verdict"
-  | "investigatedAt"
-  | "region";
+  "username" | "count" | "verdict" | "investigatedAt" | "region";
 
 export type SortDir = "asc" | "desc";
 

@@ -138,16 +138,14 @@ function expandToOpenAIMessages(message: LlmMessage): OpenAIChatMessage[] {
           input: Record<string, unknown>;
         } => part.kind === "tool-use"
       )
-      .map(
-        (part): OpenAIToolCall => ({
-          id: part.id,
-          type: "function",
-          function: {
-            name: part.tool,
-            arguments: JSON.stringify(part.input ?? {}),
-          },
-        })
-      );
+      .map((part): OpenAIToolCall => ({
+        id: part.id,
+        type: "function",
+        function: {
+          name: part.tool,
+          arguments: JSON.stringify(part.input ?? {}),
+        },
+      }));
 
     const out: OpenAIChatMessage = {
       role: "assistant",
@@ -750,13 +748,11 @@ export class OpenAIProvider implements LlmProvider {
 
     const sortedToolCalls = Array.from(toolCalls.entries())
       .sort(([a], [b]) => a - b)
-      .map(
-        ([, tc]): OpenAIToolCall => ({
-          id: tc.id,
-          type: "function",
-          function: { name: tc.name, arguments: tc.arguments },
-        })
-      );
+      .map(([, tc]): OpenAIToolCall => ({
+        id: tc.id,
+        type: "function",
+        function: { name: tc.name, arguments: tc.arguments },
+      }));
 
     return {
       text,

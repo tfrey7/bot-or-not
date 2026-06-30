@@ -13,7 +13,7 @@ export function regionsDetectScripts(text: string): Record<string, number> {
 
   const counts: Record<string, number> = {};
 
-  for (let i = 0; i < text.length; ) {
+  for (let i = 0; i < text.length;) {
     const codePoint = text.codePointAt(i)!;
     i += codePoint > 0xffff ? 2 : 1;
 

@@ -125,15 +125,13 @@ export function redditorsSubredditChartOverlaid(
 
   const uplotSeries: uPlot.Series[] = [
     {},
-    ...ordered.map(
-      (item): uPlot.Series => ({
-        label: item.entry.label === "other" ? "other" : `r/${item.entry.label}`,
-        stroke: item.color,
-        width: item.entry.isOther ? 1.2 : 1.8,
-        alpha: item.entry.isOther ? 0.55 : 1,
-        points: { show: false },
-      })
-    ),
+    ...ordered.map((item): uPlot.Series => ({
+      label: item.entry.label === "other" ? "other" : `r/${item.entry.label}`,
+      stroke: item.color,
+      width: item.entry.isOther ? 1.2 : 1.8,
+      alpha: item.entry.isOther ? 0.55 : 1,
+      points: { show: false },
+    })),
   ];
 
   const host = document.createElement("div");

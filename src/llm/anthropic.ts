@@ -548,8 +548,7 @@ export class AnthropicProvider implements LlmProvider {
 
           if (eventType === "message_start") {
             const message = payload.message as
-              | { model?: string; usage?: ClaudeUsage }
-              | undefined;
+              { model?: string; usage?: ClaudeUsage } | undefined;
             streamModel = message?.model ?? streamModel;
             usage = message?.usage ?? null;
           } else if (eventType === "content_block_start") {

@@ -44,8 +44,7 @@ export function syncBackupFilename(now: Date = new Date()): string {
 }
 
 export type ParseResult =
-  | { ok: true; payload: SyncBackupPayload }
-  | { ok: false; error: string };
+  { ok: true; payload: SyncBackupPayload } | { ok: false; error: string };
 
 export function syncParseBackup(raw: string): ParseResult {
   let value: unknown;
