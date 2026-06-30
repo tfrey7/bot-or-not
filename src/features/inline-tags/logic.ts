@@ -8,6 +8,7 @@ export interface UserTagInfo {
   username: string;
   count: number;
   verdict?: string | null;
+  persona?: string | null;
   confidence?: number | null;
   investigationStatus?: string | null;
   investigationStartedAt?: number | null;
@@ -20,6 +21,12 @@ export type TagVariant = string;
 
 export function inlineTagVariant(info: UserTagInfo): TagVariant {
   if (info.verdict) {
+    // An app persona reads bot-side on the scalar but presents as "App" — a
+    // transparent/official machine account, not a suspected disguised bot.
+    if (info.persona === "app") {
+      return "app";
+    }
+
     return info.verdict;
   }
 
@@ -59,13 +66,19 @@ export function inlineTagLabel(info: UserTagInfo, variant: TagVariant): string {
       : "Flagged";
   }
 
+  if (variant === "app") {
+    return "App";
+  }
+
   return formatVerdict(variant);
 }
 
 export function inlineTagTitle(info: UserTagInfo, variant: TagVariant): string {
   const parts = [`@${info.username}`];
 
-  if (info.verdict) {
+  if (variant === "app") {
+    parts.push("App — transparent / official automation, not a disguised bot");
+  } else if (info.verdict) {
     const confidenceText =
       typeof info.confidence === "number"
         ? ` (${Math.round(info.confidence * 100)}% confidence)`

@@ -30,6 +30,7 @@ const ARCHETYPE_LABEL_MAP: Record<string, string> = Object.fromEntries(
 
 const EXTRA_LABEL_MAP: Record<string, string> = {
   bot: "Bot",
+  app: "App",
   normal: "Normal",
 };
 

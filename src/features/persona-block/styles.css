@@ -40,6 +40,9 @@
 .bon-persona--normal {
   --bon-persona-accent: var(--bon-stamp-charcoal);
 }
+.bon-persona--app {
+  --bon-persona-accent: var(--bon-stamp-slate);
+}
 
 @media (prefers-color-scheme: dark) {
   .bon-persona {
@@ -48,6 +51,9 @@
   .bon-persona--bot,
   .bon-persona--normal {
     --bon-persona-accent: var(--bon-stamp-charcoal);
+  }
+  .bon-persona--app {
+    --bon-persona-accent: var(--bon-stamp-slate);
   }
 }
 

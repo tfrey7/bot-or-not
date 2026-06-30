@@ -4,7 +4,9 @@
 // stays accurate as individual investigations complete in the background.
 //
 // The rule (kept deliberately simple per design):
-//   - Bot-leaning user = verdict in {bot, likely-bot}.
+//   - Bot-leaning user = verdict in {bot, likely-bot}, EXCEPT an `app` persona
+//     (transparent automation) doesn't count — a sub full of news-feed apps
+//     isn't "compromised by bots."
 //   - Subreddit is compromised iff botLeaningCount / doneCount >= 0.5.
 //   - "Ready" iff every sampled user has reached a terminal state
 //     (done or error). Until then the badge shows pending progress.
@@ -25,6 +27,7 @@ import type {
   Verdict,
 } from "../../types.ts";
 import { findReportKey } from "../../utils/history.ts";
+import { isAppPersona } from "../../utils/verdict_display.ts";
 
 const BOT_LEANING_VERDICTS = new Set<Verdict>(["bot", "likely-bot"]);
 const COMPROMISED_FRACTION = 0.5;
@@ -73,7 +76,10 @@ export function subredditDeriveVerdict(
     if (investigation.status === "done") {
       doneCount++;
       const verdict = investigation.results.verdict;
-      if (BOT_LEANING_VERDICTS.has(verdict)) {
+      if (
+        BOT_LEANING_VERDICTS.has(verdict) &&
+        !isAppPersona(investigation.results.persona)
+      ) {
         botLeaningCount++;
       }
 

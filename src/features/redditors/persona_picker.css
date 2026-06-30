@@ -188,6 +188,9 @@
 .bon-persona-picker__stripe--bot {
   background-color: var(--bon-stamp-charcoal);
 }
+.bon-persona-picker__stripe--app {
+  background-color: var(--bon-stamp-slate);
+}
 .bon-persona-picker__stripe--normal {
   background-color: var(--bon-muted);
 }

@@ -54,9 +54,9 @@ export interface ArchetypeMeta {
 //
 // Axes describe flavors of *human* behavior. `bot` is not on the radar — the
 // bot↔human verdict already answers that question, so giving it a spoke would
-// double-count. `bot` and `normal` remain valid `persona.label` values though
-// (an account that isn't a flavor of human is still labelled, just with an
-// empty radar). Age inference is handled separately in the demographics block
+// double-count. `bot`, `app`, and `normal` remain valid `persona.label` values
+// though (an account that isn't a flavor of human is still labelled, just with
+// an empty radar). Age inference is handled separately in the demographics block
 // on the investigation result, not as an archetype axis.
 // Order matters — drives radar placement clockwise from the top. The order
 // here walks the HSL color wheel smoothly so adjacent axes share neighboring
@@ -112,11 +112,14 @@ export const ARCHETYPE_KEYS: readonly ArchetypeKey[] = ARCHETYPES.map(
   (archetype) => archetype.key
 );
 
-// `bot` and `normal` are valid persona labels but not radar axes — the chart
-// only plots human-flavor archetypes. `bot` = automated; `normal` = a genuine,
-// low-key human with no strong pull toward any of the named archetypes.
+// `bot`, `app`, and `normal` are valid persona labels but not radar axes — the
+// chart only plots human-flavor archetypes. `bot` = automation masquerading as
+// a human; `app` = transparent, openly-automated account (news/media auto-poster,
+// self-identifying feed bot) that isn't pretending to be a person; `normal` = a
+// genuine, low-key human with no strong pull toward any of the named archetypes.
 export const PERSONA_LABELS: readonly PersonaLabel[] = [
   ...ARCHETYPE_KEYS,
   "bot",
+  "app",
   "normal",
 ];

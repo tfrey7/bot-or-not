@@ -47,6 +47,10 @@ function singleLabel(persona: Persona): string {
     return "Bot";
   }
 
+  if (persona.label === "app") {
+    return "App";
+  }
+
   return ARCHETYPE_LABELS[persona.label] || persona.label;
 }
 

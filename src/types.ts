@@ -24,9 +24,9 @@ export interface Demographics {
   reasoning: string;
 }
 
-export type PersonaLabel = ArchetypeKey | "bot" | "normal";
+export type PersonaLabel = ArchetypeKey | "bot" | "app" | "normal";
 
-type UserStatus = "active" | "suspended" | null;
+type UserStatus = "active" | "suspended" | "deleted" | null;
 
 export type BotBouncerStatus = "banned" | "pending" | "organic" | null;
 
@@ -491,6 +491,7 @@ export interface RedditAboutEnvelope {
     link_karma?: number;
     comment_karma?: number;
     is_employee?: boolean;
+    is_suspended?: boolean;
     verified?: boolean;
     has_verified_email?: boolean;
 

@@ -94,6 +94,10 @@ body.bon-hide-pii .bon-pii-name:not(:hover):not(:focus):not(:focus-within)::befo
   background: #c0392b;
 }
 
+.bon-user-tag--app {
+  background: #52617a;
+}
+
 .bon-user-tag--likely-bot {
   background: #e67e22;
 }
@@ -389,6 +393,10 @@ body.bon-hide-pii .bon-pii-name:not(:hover):not(:focus):not(:focus-within)::befo
 .bon-panel-persona--bot,
 .bon-panel-persona--normal {
   --bon-persona-accent: rgba(160, 160, 160, 0.85);
+}
+
+.bon-panel-persona--app {
+  --bon-persona-accent: #8a96aa;
 }
 
 /* Radar widget — shared with reports detail pane via personaRadar.

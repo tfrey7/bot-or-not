@@ -80,6 +80,7 @@ function sameTagInfo(a: UserTagInfo, b: UserTagInfo): boolean {
   return (
     a.count === b.count &&
     (a.verdict ?? null) === (b.verdict ?? null) &&
+    (a.persona ?? null) === (b.persona ?? null) &&
     (a.confidence ?? null) === (b.confidence ?? null) &&
     (a.investigationStatus ?? null) === (b.investigationStatus ?? null) &&
     (a.botBouncerStatus ?? null) === (b.botBouncerStatus ?? null) &&

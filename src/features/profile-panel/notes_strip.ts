@@ -14,6 +14,7 @@ const ARCHETYPE_META: Record<string, { label: string; hue: number }> =
 
 const EXTRA_LABELS: Record<string, string> = {
   bot: "Bot",
+  app: "App",
   normal: "Normal",
 };
 

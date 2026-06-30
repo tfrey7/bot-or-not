@@ -22,6 +22,9 @@
 .bon-verdict-badge--bot {
   color: var(--bon-stamp-red);
 }
+.bon-verdict-badge--app {
+  color: var(--bon-stamp-slate);
+}
 .bon-verdict-badge--likely-bot {
   color: var(--bon-stamp-rust);
 }

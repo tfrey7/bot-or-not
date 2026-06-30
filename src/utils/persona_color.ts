@@ -27,10 +27,14 @@ function interpolateHue(h1: number, h2: number, t: number): number {
 }
 
 export function personaHue(persona: Persona): number | null {
-  // `normal` and `bot` are label-only personas — they have no archetype hue
-  // even if low archetype scores exist on the side. Callers that want a tint
+  // `normal`, `bot`, and `app` are label-only personas — they have no archetype
+  // hue even if low archetype scores exist on the side. Callers that want a tint
   // for these (e.g. the persona stamp) handle it via a CSS class override.
-  if (persona.label === "normal" || persona.label === "bot") {
+  if (
+    persona.label === "normal" ||
+    persona.label === "bot" ||
+    persona.label === "app"
+  ) {
     return null;
   }
 

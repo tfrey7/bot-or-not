@@ -4,7 +4,10 @@
 
 import { QUEUE_PRIORITY } from "../../queue_priority.ts";
 import type { Investigation } from "../../types.ts";
-import { formatVerdict } from "../../utils/format_text.ts";
+import {
+  verdictBadgeLabel,
+  verdictBadgeModifier,
+} from "../../utils/verdict_display.ts";
 import { isInvestigationStale, normalizeInvestigation } from "../../verdict.ts";
 
 export function redditorsVerdictBadge(
@@ -70,10 +73,10 @@ export function redditorsVerdictBadge(
     return null;
   }
 
-  const { verdict, summary } = investigation.results;
+  const { verdict, persona, summary } = investigation.results;
   const span = document.createElement("span");
-  span.className = `bon-verdict-badge bon-verdict-badge--${verdict}`;
-  span.textContent = formatVerdict(verdict);
+  span.className = `bon-verdict-badge bon-verdict-badge--${verdictBadgeModifier(verdict, persona)}`;
+  span.textContent = verdictBadgeLabel(verdict, persona);
   span.title = summary || verdict;
 
   return span;

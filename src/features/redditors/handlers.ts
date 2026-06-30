@@ -29,6 +29,7 @@ interface UserTag {
   username: string;
   count: number;
   verdict: string | null;
+  persona: string | null;
   confidence: number | null;
   investigationStatus: string | null;
   investigationStartedAt: number | null;
@@ -150,6 +151,7 @@ function summarizeUserTag(username: string, report: Report): UserTag | null {
     username,
     count: report.count,
     verdict,
+    persona: results?.persona?.label ?? null,
     confidence: results?.confidence ?? null,
     investigationStatus,
     investigationStartedAt: investigation?.startedAt ?? null,

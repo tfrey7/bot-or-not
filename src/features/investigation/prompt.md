@@ -288,7 +288,7 @@ Output schema:
 
 The bot↔human verdict is a scalar derived from factor math. The **persona profile** is a separate, holistic judgment about which extreme behavioral patterns this account exhibits. It has two pieces: a single categorical `label` and a per-axis radar of `archetypes` scores.
 
-The six archetype axes are all flavors of *human* behavior — `bot` is not a radar axis (the bot↔human verdict already answers that question; giving it a spoke would double-count). `bot` is still a valid `persona.label` for accounts that read as automated. Age (teen / young-adult / adult / older) is *not* an archetype axis either — it lives in the top-level `demographics` block.
+The six archetype axes are all flavors of *human* behavior — `bot` and `app` are not radar axes (the bot↔human verdict already answers that question; giving them a spoke would double-count). `bot` (deceptive automation) and `app` (transparent automation — see the categorical pick below) are still valid `persona.label` values for accounts that read as automated. Age (teen / young-adult / adult / older) is *not* an archetype axis either — it lives in the top-level `demographics` block.
 
 **Scan `activity.top_subreddits` first.** The rolled-up count of where the account spends its time is the single fastest persona signal — each archetype below names the subs that point to it (r/CryptoMoonShots / r/Entrepreneur / r/AmazonFBA / r/dropship → `shill`; r/collapse / r/antiwork / r/Layoffs / r/late_stage_capitalism → `doomer`; r/politics / r/conspiracy / r/conspiracytheories / r/PoliticalDiscussion / r/Conservative / r/PoliticalHumor → `politics`; r/FreeKarma4U / r/spread → `farmer`; tight-cluster fandom or country-coded subs (r/kpop, r/anime, r/india, etc.) → `superfan`; founder-modded selfie/glamour/cam-funnel subs where the operator posts their own appearance content → `cam_model`). Cross-reference the top-25 list against those archetype sub-lists as the **first cut**, then layer voice / cadence / engagement / username evidence on top to refine and disambiguate. Subs surfaced via `google_harvest.authoredSubredditDistribution` count the same way — a hit in r/IndianDankMemes there is as good a Superfan signal as one in `top_subreddits`. (Use the **authored** distribution specifically; the broader `subredditDistribution` may include subs where the user was just mentioned by someone else.) The sub mix won't always be diagnostic (`cam_model` and `bot` lean more on structural pattern than venue), but it's the cheapest place to start.
 
@@ -348,17 +348,19 @@ Scores are **independent**, not a share of a budget — they do not need to sum 
 
 When two archetypes are both clearly present, **score both honestly** — don't drag the runner-up down to keep the radar pointed at a single axis. The UI substitutes a combined title (e.g. "Tragic Fan", "Affiliate Spam") when the top two axes both clear ~0.55 and are comparable in magnitude, so accurate secondary scores produce sharper labels.
 
-**Don't fabricate signal that isn't there.** "Use the full range" means be honest about real intensity, not pad the chart. A genuinely no-flavor account has a near-empty radar; that's the right answer for `normal` and for `bot`. A **bot** account typically has all six human archetypes near `0.0` — there is no flavor-of-human to pick, just automation. The empty radar is its own signal; don't sprinkle weak scores across the chart to fill it in.
+**Don't fabricate signal that isn't there.** "Use the full range" means be honest about real intensity, not pad the chart. A genuinely no-flavor account has a near-empty radar; that's the right answer for `normal`, `bot`, and `app`. A **bot** or **app** account typically has all six human archetypes near `0.0` — there is no flavor-of-human to pick, just automation. The empty radar is its own signal; don't sprinkle weak scores across the chart to fill it in.
 
 ##### Categorical pick (`persona.label`)
 
 Pick a label using this priority:
 
-1. If the account reads as **automated** (use the same evidence that drives the bot-detection factors — scripted cadence, LLM-style writing, no human voice, sleeper-bot footprint), pick `"bot"`. Empty/near-empty archetype scores reinforce this — a bot has no human-archetype flavor to assign.
+1. If the account reads as **automated** (use the same evidence that drives the bot-detection factors — scripted cadence, LLM-style writing, no human voice, sleeper-bot footprint), decide *which kind* of automation. Empty/near-empty archetype scores reinforce automation either way — neither has a human-archetype flavor to assign.
+   - Pick `"app"` when the automation is **transparent / openly declared** — the account isn't pretending to be a person. Typical shapes: an official news/media or brand account that posts predominantly links to its own domain; a self-identifying feed or announcer bot (stock-ticker, "new release" notifier, automod-style poster, sports-score bot). The username, bio, and posting pattern read as "this is a machine/organization account," not a disguised human.
+   - Pick `"bot"` when the automation is **deceptive** — scripted/LLM output presented as an ordinary human (sleeper-bot warmup, karma-farm automation, astroturf account masquerading as a real person).
 2. Otherwise, if the strongest human archetype scores ≥ `0.4`, pick that one.
 3. Otherwise pick `"normal"`.
 
-Must be one of: `"bot"`, `"superfan"`, `"farmer"`, `"cam_model"`, `"politics"`, `"shill"`, `"doomer"`, `"normal"`. No other strings.
+Must be one of: `"bot"`, `"app"`, `"superfan"`, `"farmer"`, `"cam_model"`, `"politics"`, `"shill"`, `"doomer"`, `"normal"`. No other strings.
 
 `persona.reasoning` is one short sentence (**≤25 words**) explaining why this label fits, citing the strongest *archetype-specific* tell. Don't restate the summary or describe the shape of the radar — name the concrete evidence (e.g. "Niche focus on r/kpop with emotional in-group replies" for a Superfan; "Token pumps in r/CryptoMoonShots plus affiliate links in every comment" for a Shill).
 
@@ -367,6 +369,7 @@ Must be one of: `"bot"`, `"superfan"`, `"farmer"`, `"cam_model"`, `"politics"`, 
 - **Genuine humans** posting Reddit for their own reasons — `superfan`, `politics`, `doomer`. These typically land the verdict at `likely-human` / `human`.
 - **Operated accounts** — `farmer`, `shill`, `cam_model`. These are humans running a commercial / inauthentic vehicle (karma farm, OnlyFans/cam funnel, crypto pump, course/MLM grift). The operator writes like a human (because they are one), so most factors score positive, but `promotional_account` scores them strongly negative — pulling the verdict to `uncertain` or `likely-bot`. That's the *correct* outcome: the account is not what a normal Reddit user looks like, even if a human is typing the comments.
 - A `bot` persona lands at `bot` / `likely-bot`.
+- An `app` persona also lands bot-side on the scalar (it *is* automated) — the `app` label only refines *which kind* of automation it is; it does not pull the verdict toward human. Score the factors exactly as you would for any automated account.
 
 Don't try to force `persona.label` to "agree" with the verdict band — they answer different questions. But check internal consistency: `persona: "superfan"` + `promotional_account: -0.7` is contradictory (rethink one), as is `persona: "shill"` + `promotional_account: +0.3` (you can't be a commercial vehicle with no promo signal), as is `persona: "cam_model"` + `promotional_account: +0.3` (cam_model by definition is a commercial vehicle — the factor must reflect it).
 
