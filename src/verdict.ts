@@ -111,6 +111,13 @@ export function computeVerdict(
   return { verdict, confidence, botProbability, evidenceSum };
 }
 
+// The bot-leaning half of the verdict scale. Used wherever the UI or a
+// background job needs to single out "suspected bots" (the reports filter,
+// the weekly status re-check) from a single, canonical definition.
+export function isSuspectedBot(verdict: Verdict | null | undefined): boolean {
+  return verdict === "bot" || verdict === "likely-bot";
+}
+
 // Returns a shallow copy of `investigation` with verdict/confidence overridden
 // from the factor math. Only "done" investigations get re-derived — other
 // statuses don't have a `results` to recompute.

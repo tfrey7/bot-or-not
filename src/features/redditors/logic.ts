@@ -10,7 +10,8 @@ import { QUEUE_PRIORITY } from "../../queue_priority.ts";
 import type { Investigation, Report } from "../../types.ts";
 import { expectedDurationSec } from "../../utils/expected_duration.ts";
 import { investigationResults } from "../../utils/history.ts";
-import { isInvestigationStale } from "../../verdict.ts";
+import { isAppPersona } from "../../utils/verdict_display.ts";
+import { isInvestigationStale, isSuspectedBot } from "../../verdict.ts";
 import { REDDITORS_VERDICT_RANK } from "./data.ts";
 import { redditorsComputeRegionForReport } from "./region.ts";
 
@@ -28,9 +29,16 @@ export function redditorsIsActiveRow(report: ReportRow): boolean {
 // "Suspected bot" for the bots-only list filter: a completed investigation
 // whose verdict landed on the bot side of the scale. Rows without a done
 // investigation (queued, errored, never run) have no verdict and don't match.
+// An `app` persona scores bot-side too but is transparent automation, not a
+// hunting target — exclude it.
 export function redditorsIsSuspectedBot(report: ReportRow): boolean {
-  const verdict = investigationResults(report.investigation)?.verdict;
-  return verdict === "bot" || verdict === "likely-bot";
+  const results = investigationResults(report.investigation);
+
+  if (isAppPersona(results?.persona)) {
+    return false;
+  }
+
+  return isSuspectedBot(results?.verdict);
 }
 
 // Sort order for the active table: running before queued, newest-started
@@ -244,6 +252,13 @@ export function redditorsHasStructuralChange(
       investigationResults(report.investigation)?.verdict ?? null;
 
     if (prevVerdict !== nextVerdict) {
+      return true;
+    }
+
+    // The tombstone glyph is driven by userStatus, set by the weekly
+    // status re-check and the passive content-script detector. Re-render
+    // when it flips so a freshly-banned account grows its marker live.
+    if (prevReport.userStatus !== report.userStatus) {
       return true;
     }
 

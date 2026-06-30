@@ -34,6 +34,7 @@ import {
   subredditGetReport,
   subredditList,
 } from "./features/subreddit-investigation";
+import { statusRecheckSweep } from "./features/status-recheck";
 import { syncExport, syncImport } from "./features/sync";
 import { runMigrations } from "./migrations";
 import type { Report } from "./types.ts";
@@ -67,6 +68,11 @@ void runMigrations().then(() => {
   // Legacy harvest posts may have just gained their attribution fields —
   // kick the worker so pending sub-post / comment URLs start resolving.
   googleAttributionDrain();
+
+  // Lowest-priority pass: re-check suspected bots for bans/suspension so the
+  // reports table can tombstone the dead ones. Self-paced (weekly per
+  // account), runs behind everything else on the Reddit funnel.
+  void statusRecheckSweep();
 });
 
 // In dev builds running from a strand worktree, Firefox is the human-facing

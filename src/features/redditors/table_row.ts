@@ -5,6 +5,7 @@
 
 import { buildRingChip } from "../../utils/ring_chip.ts";
 import { redditorsVerdictBadge } from "./cell_verdict.ts";
+import { buildTombstone } from "./tombstone.ts";
 import type { ReportRow } from "./logic.ts";
 
 export interface RowOptions {
@@ -18,7 +19,7 @@ export function redditorsRow(
   opts: RowOptions
 ): HTMLTableRowElement {
   const { selectedUsername, queueAhead, onSelect } = opts;
-  const { username, investigation, ringId } = report;
+  const { username, investigation, ringId, userStatus } = report;
 
   const summary = document.createElement("tr");
   summary.className = "bon-row-summary";
@@ -71,6 +72,11 @@ export function redditorsRow(
     onSelect(username);
   });
   linkRow.appendChild(link);
+
+  const tombstone = buildTombstone(userStatus);
+  if (tombstone) {
+    linkRow.appendChild(tombstone);
+  }
 
   const ringChip = buildRingChip(ringId);
   if (ringChip) {
