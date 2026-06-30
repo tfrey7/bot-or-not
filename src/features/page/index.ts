@@ -8,4 +8,4 @@ export {
   type PageCommandBarHandle,
 } from "./command_bar.ts";
 export { pageInitConfirmModal, pageOpenConfirmModal } from "./confirm_modal.ts";
-export { pageInitTabs } from "./tabs.ts";
+export { pageInitTabs, type PageTab } from "./tabs.ts";

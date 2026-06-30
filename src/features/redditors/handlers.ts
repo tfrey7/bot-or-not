@@ -10,6 +10,7 @@ import { googleHarvestMerge, type ScrapedPost } from "../google-harvest";
 import { computeExpectedDurationMs } from "../../utils/expected_duration.ts";
 import {
   readReport,
+  readReportSummaries,
   readReports,
   updateReport,
   writeReports,
@@ -69,18 +70,42 @@ export async function redditorsGetState(
   return { count, isBot: count > 0 };
 }
 
+// The median completed-run duration changes only when an investigation
+// finishes, so a short-lived memo keeps the per-record detail fetch (one
+// storage read) from paying for a full-store assemble just to recompute it.
+let expectedDurationMemo: number | null = null;
+let expectedDurationMemoAt = 0;
+const EXPECTED_DURATION_MEMO_MS = 30_000;
+
+async function memoizedExpectedDurationMs(): Promise<number | null> {
+  const now = Date.now();
+  if (
+    expectedDurationMemoAt !== 0 &&
+    now - expectedDurationMemoAt < EXPECTED_DURATION_MEMO_MS
+  ) {
+    return expectedDurationMemo;
+  }
+
+  const reports = await readReports();
+  expectedDurationMemo = computeExpectedDurationMs(Object.values(reports));
+  expectedDurationMemoAt = now;
+
+  return expectedDurationMemo;
+}
+
 export async function redditorsGetReport(
   username: string
 ): Promise<{ report: Report | null; expectedDurationMs: number | null }> {
-  const reports = await readReports();
-  const expectedDurationMs = computeExpectedDurationMs(Object.values(reports));
-  const key = findReportKey(reports, username);
+  const report = await readReport(username);
+  const expectedDurationMs = await memoizedExpectedDurationMs();
 
-  if (!key) {
-    return { report: null, expectedDurationMs };
-  }
+  return { report, expectedDurationMs };
+}
 
-  return { report: reports[key]!, expectedDurationMs };
+export async function redditorsGetSummaries(): Promise<{
+  reports: Record<string, Report>;
+}> {
+  return { reports: await readReportSummaries() };
 }
 
 export async function redditorsGetTags(): Promise<{

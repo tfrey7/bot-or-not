@@ -15,6 +15,7 @@ export {
   redditorsRecordReport,
   redditorsGetState,
   redditorsGetReport,
+  redditorsGetSummaries,
   redditorsGetTags,
   redditorsGetAll,
   redditorsClearAll,

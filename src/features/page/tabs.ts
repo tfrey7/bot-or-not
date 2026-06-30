@@ -9,19 +9,32 @@ const PAGE_TABS = [
   "subreddits",
   "settings",
 ] as const;
-type PageTab = (typeof PAGE_TABS)[number];
+export type PageTab = (typeof PAGE_TABS)[number];
 const PAGE_DEFAULT_TAB: PageTab = "redditors";
 const PAGE_URL_TAB_PARAM = "tab";
 
 export interface PageTabsHandle {
   activate(target: PageTab): void;
+  current(): PageTab;
 }
 
-export function pageInitTabs(): PageTabsHandle {
+// onActivate fires whenever the visible tab changes (user click or
+// programmatic activate), so the orchestrator can render that tab's content on
+// demand instead of eagerly painting every tab up front. It is not fired for
+// the initial URL-restored tab — the orchestrator handles that one itself.
+export interface PageTabsOptions {
+  onActivate?: (tab: PageTab) => void;
+}
+
+export function pageInitTabs(options: PageTabsOptions = {}): PageTabsHandle {
   const tabs = document.querySelectorAll<HTMLButtonElement>(".bon-tab");
   const panels = document.querySelectorAll<HTMLElement>(".bon-tab-panel");
 
-  const activate = (target: PageTab): void => {
+  let currentTab: PageTab = readTabFromUrl();
+
+  const setActive = (target: PageTab): void => {
+    currentTab = target;
+
     for (const other of tabs) {
       const isActive = other.dataset.tab === target;
       other.classList.toggle("bon-tab--active", isActive);
@@ -31,6 +44,11 @@ export function pageInitTabs(): PageTabsHandle {
     for (const panel of panels) {
       panel.hidden = panel.id !== `bon-panel-${target}`;
     }
+  };
+
+  const activate = (target: PageTab): void => {
+    setActive(target);
+    options.onActivate?.(target);
   };
 
   for (const tab of tabs) {
@@ -45,9 +63,8 @@ export function pageInitTabs(): PageTabsHandle {
     });
   }
 
-  const initialTab = readTabFromUrl();
-  if (initialTab !== PAGE_DEFAULT_TAB) {
-    activate(initialTab);
+  if (currentTab !== PAGE_DEFAULT_TAB) {
+    setActive(currentTab);
   }
 
   return {
@@ -55,6 +72,7 @@ export function pageInitTabs(): PageTabsHandle {
       activate(target);
       writeTabToUrl(target);
     },
+    current: () => currentTab,
   };
 }
 

@@ -67,7 +67,7 @@ export function redditorsInitPolling(
       const { reports = {} } = await clientSend<{
         reports?: Record<string, Report>;
       }>({
-        type: "get-all-reports",
+        type: "get-reports-summary",
       });
 
       const fresh: ReportRow[] = Object.entries(reports).map(

@@ -17,6 +17,7 @@ import {
   redditorsGetAll,
   redditorsGetReport,
   redditorsGetState,
+  redditorsGetSummaries,
   redditorsGetTags,
   redditorsLinkRing,
   redditorsRecordReport,
@@ -152,6 +153,10 @@ browser.runtime.onMessage.addListener((message: BaseMessage) => {
 
   if (message.type === "get-all-reports") {
     return redditorsGetAll();
+  }
+
+  if (message.type === "get-reports-summary") {
+    return redditorsGetSummaries();
   }
 
   if (message.type === "update-user-status") {

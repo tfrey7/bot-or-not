@@ -25,6 +25,7 @@ import {
   pageInitTabs,
   pageInstallDevBadge,
   type PageCommandBarHandle,
+  type PageTab,
 } from "../page";
 import {
   settingsInit,
@@ -123,7 +124,14 @@ export async function redditorsRenderReportsPage(): Promise<void> {
     Object.entries(REGION_INFO).map(([code, info]) => [code, info.label])
   );
 
+  // The list, the active/queue table, and the polling loop run off lightweight
+  // summaries (heavy per-record fields stripped server-side). The detail pane
+  // and the heavy tabs need the full records, so those are fetched separately
+  // and cached here, refreshed only when their tab is shown or the data
+  // structurally changes.
   let allReports: ReportRow[] = [];
+  let fullReports: ReportRow[] | null = null;
+  let fullReportsDirty = true;
 
   // Median duration across all completed runs. Drives the progress ring and
   // "~Xs left" countdown on in-flight investigations. Recomputed before
@@ -154,16 +162,16 @@ export async function redditorsRenderReportsPage(): Promise<void> {
       // Route through the poll path so non-structural writes (notes, lazy
       // profile-stat fills) don't tear down whichever widget the operator
       // is currently typing into. polling.pollNow does a full re-render
-      // only when something actually changed structurally.
+      // only when something actually changed structurally — and that path
+      // also refreshes the Subreddits tab, whose badges derive from per-user
+      // verdicts, when it's the one on screen.
       void polling.pollNow();
-
-      // Subreddit verdicts derive from per-user reports, so a fresh
-      // user-investigation result shifts the badges on the Subreddits tab.
-      void renderSubreddits();
     }
 
     if (event.type === "subreddits-changed") {
-      void renderSubreddits();
+      if (tabs.current() === "subreddits") {
+        void renderSubreddits();
+      }
     }
 
     if (event.type === "api-key-changed") {
@@ -201,7 +209,11 @@ export async function redditorsRenderReportsPage(): Promise<void> {
     },
   });
 
-  const tabs = pageInitTabs();
+  const tabs = pageInitTabs({
+    onActivate: (tab) => {
+      void renderHeavyTab(tab);
+    },
+  });
 
   const polling = redditorsInitPolling({
     getReports: () => allReports,
@@ -210,11 +222,11 @@ export async function redditorsRenderReportsPage(): Promise<void> {
     },
     onStructuralChange: () => {
       render();
-      renderAnalytics();
-      renderPersonas();
-      renderFieldGuide();
-      renderSettingsStrip();
-      void renderSubreddits();
+
+      // The heavy tabs derive from the full records, which just went stale.
+      // Refresh whichever one is on screen; the rest re-fetch when shown.
+      fullReportsDirty = true;
+      void renderHeavyTab(tabs.current());
     },
     setExpectedDurationMs: (value) => {
       expectedDurationMs = value;
@@ -231,24 +243,91 @@ export async function redditorsRenderReportsPage(): Promise<void> {
     try {
       const { reports = {} } = await clientSend<{
         reports?: Record<string, Report>;
-      }>({ type: "get-all-reports" });
+      }>({ type: "get-reports-summary" });
 
       allReports = Object.entries(reports).map(([username, data]) => ({
         username,
         ...data,
       }));
 
+      fullReportsDirty = true;
+
       render();
-      renderAnalytics();
-      renderPersonas();
-      renderFieldGuide();
-      renderSettingsStrip();
-      void renderSubreddits();
+      void renderHeavyTab(tabs.current());
     } catch (error) {
       console.error("[Bot or Not] failed to load reports", error);
       tableWrap.hidden = true;
       emptyEl.hidden = false;
       renderLoadError(error);
+    }
+  }
+
+  // Full records (with the activity dumps, factor prose, and run snapshots the
+  // list path drops) for the tabs that need them. Re-fetched only when the
+  // cache is stale, so flipping between tabs is free until the data changes.
+  async function ensureFullReports(): Promise<ReportRow[]> {
+    if (fullReports && !fullReportsDirty) {
+      return fullReports;
+    }
+
+    const { reports = {} } = await clientSend<{
+      reports?: Record<string, Report>;
+    }>({ type: "get-all-reports" });
+
+    fullReports = Object.entries(reports).map(([username, data]) => ({
+      username,
+      ...data,
+    }));
+    fullReportsDirty = false;
+
+    return fullReports;
+  }
+
+  // Render one tab's content on demand. The Redditors list is always live off
+  // the summary path; every other tab is painted only while it's the one on
+  // screen, so hundreds of records don't get projected into charts/scatter/SVG
+  // on every poll tick behind a hidden panel.
+  async function renderHeavyTab(tab: PageTab): Promise<void> {
+    if (tab === "metrics") {
+      const reports = await ensureFullReports();
+      if (analyticsContainer) {
+        renderAnalyticsTab(reports, analyticsContainer);
+      }
+
+      return;
+    }
+
+    if (tab === "personas") {
+      const reports = await ensureFullReports();
+      if (personasContainer) {
+        renderPersonasTab(reports, personasContainer, {
+          onSelectUser: navigateToUser,
+        });
+      }
+
+      return;
+    }
+
+    if (tab === "fieldguide") {
+      const reports = await ensureFullReports();
+      renderFieldGuideTab(reports, fieldGuideContainer, {
+        onSelectUser: navigateToUser,
+      });
+
+      return;
+    }
+
+    if (tab === "settings") {
+      const reports = await ensureFullReports();
+      if (settingsStripContainer) {
+        settingsStrip(reports, settingsStripContainer);
+      }
+
+      return;
+    }
+
+    if (tab === "subreddits") {
+      await renderSubreddits();
     }
   }
 
@@ -290,32 +369,6 @@ export async function redditorsRenderReportsPage(): Promise<void> {
     emptyEl.appendChild(reloadButton);
   }
 
-  // Analytics shows aggregates across every investigation, so it should not
-  // react to every poll tick — only when the underlying data actually changes.
-  function renderAnalytics(): void {
-    if (!analyticsContainer) {
-      return;
-    }
-
-    renderAnalyticsTab(allReports, analyticsContainer);
-  }
-
-  function renderPersonas(): void {
-    if (!personasContainer) {
-      return;
-    }
-
-    renderPersonasTab(allReports, personasContainer, {
-      onSelectUser: navigateToUser,
-    });
-  }
-
-  function renderFieldGuide(): void {
-    renderFieldGuideTab(allReports, fieldGuideContainer, {
-      onSelectUser: navigateToUser,
-    });
-  }
-
   async function renderSubreddits(): Promise<void> {
     await renderSubredditsTab({
       listContainer: subredditsListEl,
@@ -330,14 +383,6 @@ export async function redditorsRenderReportsPage(): Promise<void> {
     updateUrlForSelection();
     pendingScrollToSelected = true;
     render();
-  }
-
-  function renderSettingsStrip(): void {
-    if (!settingsStripContainer) {
-      return;
-    }
-
-    settingsStrip(allReports, settingsStripContainer);
   }
 
   function render(): void {
@@ -604,14 +649,12 @@ export async function redditorsRenderReportsPage(): Promise<void> {
   }
 
   function renderDetail(): void {
-    let report: ReportRow | null = null;
-    if (selectedUsername) {
-      report =
-        allReports.find((row) => row.username === selectedUsername) ?? null;
+    const report = selectedUsername
+      ? (allReports.find((row) => row.username === selectedUsername) ?? null)
+      : null;
 
-      if (!report) {
-        selectedUsername = null;
-      }
+    if (selectedUsername && !report) {
+      selectedUsername = null;
     }
 
     const queueAhead = report
@@ -630,15 +673,57 @@ export async function redditorsRenderReportsPage(): Promise<void> {
 
     lastDetailFingerprint = fingerprint;
 
-    detailPane.replaceChildren();
-
     if (!report) {
+      detailPane.replaceChildren();
       detailPane.appendChild(
         redditorsDetailEmpty(
           allReports.length === 0
             ? "No reports yet. Flag a Reddit user from their profile to start tracking."
             : "Select a user from the list to see the dossier."
         )
+      );
+
+      maybeAnimateDetailSwap();
+      return;
+    }
+
+    void renderDetailPane(report.username, queueAhead);
+  }
+
+  // The list runs off slim summaries, so the dossier's heavy fields (activity
+  // charts, factor breakdown, harvest dumps) come from a per-record fetch. The
+  // summary already drove the fingerprint gate in renderDetail, so this runs
+  // once per meaningful change, not on every poll tick. The old content stays
+  // up until the fetch resolves to avoid an empty-pane flash on re-render.
+  async function renderDetailPane(
+    username: string,
+    queueAhead: number
+  ): Promise<void> {
+    let full: Report | null = null;
+    try {
+      const response = await clientSend<{ report?: Report | null }>({
+        type: "get-user-report",
+        username,
+      });
+      full = response?.report ?? null;
+    } catch (error) {
+      console.error("[Bot or Not] failed to load dossier", error);
+    }
+
+    // The operator may have clicked another row while the fetch was in flight.
+    if (selectedUsername !== username) {
+      return;
+    }
+
+    const report: ReportRow | null = full
+      ? { username, ...full }
+      : (allReports.find((row) => row.username === username) ?? null);
+
+    detailPane.replaceChildren();
+
+    if (!report) {
+      detailPane.appendChild(
+        redditorsDetailEmpty("Select a user from the list to see the dossier.")
       );
 
       maybeAnimateDetailSwap();

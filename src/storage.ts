@@ -8,7 +8,7 @@
 // is the only change needed to retarget the backend.
 
 import type { LlmVendor } from "./llm/index.ts";
-import type { Report, SubredditReport } from "./types.ts";
+import type { Investigation, Report, SubredditReport } from "./types.ts";
 import { findReportKey, normalizeReport } from "./utils/history.ts";
 
 // Persisted LLM selection. Both fields nullable — `null` means "use the
@@ -48,6 +48,16 @@ export type ReportUpdater = (
 
 interface StorageAdapter {
   readReports(): Promise<Record<string, Report>>;
+
+  // Projection of every record with the heavy fields stripped — the shape
+  // the reports-page list and its polling loop consume. A record's activity
+  // dumps, history, harvest blobs, factor prose, and run snapshots are an
+  // order of magnitude larger than the username/verdict/status the list
+  // actually paints, so shipping them across the messaging boundary on every
+  // load and every poll is what made the page sluggish at hundreds of records.
+  // A server-backed adapter would implement this as a projected query.
+  readReportSummaries(): Promise<Record<string, Report>>;
+
   writeReports(reports: Record<string, Report>): Promise<void>;
 
   // Single-record read. Case-insensitive on username to match the way the
@@ -102,6 +112,17 @@ class ExtensionStorage implements StorageAdapter {
       if (key.startsWith(REPORT_KEY_PREFIX)) {
         out[key.slice(REPORT_KEY_PREFIX.length)] = normalizeReport(value);
       }
+    }
+
+    return out;
+  }
+
+  async readReportSummaries(): Promise<Record<string, Report>> {
+    const reports = await this.readReports();
+    const out: Record<string, Report> = {};
+
+    for (const [username, report] of Object.entries(reports)) {
+      out[username] = slimReport(report);
     }
 
     return out;
@@ -185,13 +206,34 @@ class ExtensionStorage implements StorageAdapter {
     username: string,
     updater: ReportUpdater
   ): Promise<void> {
-    const reports = await this.readReports();
-    const existingKey = findReportKey(reports, username) ?? username;
-    const current = reports[existingKey] ?? null;
+    const directKey = reportStorageKey(username);
+    const direct = await browser.storage.local.get(directKey);
+
+    let existingKey = username;
+    let current: Report | null = null;
+    let existed = false;
+
+    if (direct[directKey] !== undefined) {
+      current = normalizeReport(direct[directKey]);
+      existed = true;
+    } else {
+      // A case-mismatched or legacy-blob record won't sit at the direct key —
+      // fall back to a full assemble so the case-insensitive update still
+      // resolves. The common path (exact lowercase key) never reaches here, so
+      // the per-write cost no longer scales with the size of the whole store.
+      const reports = await this.readReports();
+      const key = findReportKey(reports, username);
+      if (key) {
+        existingKey = key;
+        current = reports[key];
+        existed = true;
+      }
+    }
+
     const updated = await updater(current);
 
     if (updated === null) {
-      if (existingKey in reports) {
+      if (existed) {
         await browser.storage.local.remove(reportStorageKey(existingKey));
       }
 
@@ -353,6 +395,16 @@ class InMemoryStorage implements StorageAdapter {
     return { ...this.reports };
   }
 
+  async readReportSummaries(): Promise<Record<string, Report>> {
+    const out: Record<string, Report> = {};
+
+    for (const [username, report] of Object.entries(this.reports)) {
+      out[username] = slimReport(report);
+    }
+
+    return out;
+  }
+
   async writeReports(reports: Record<string, Report>): Promise<void> {
     this.reports = { ...reports };
   }
@@ -426,6 +478,53 @@ class InMemoryStorage implements StorageAdapter {
   }
 }
 
+// Strip a canonical Report down to the fields the reports-page list, its
+// active/queue table, and the structural-change diff actually read. The
+// dropped fields (activity timestamps, history, harvest blobs, factor prose,
+// run snapshots, persona/region) are only consumed by the detail pane and the
+// heavy tabs, which fetch the full record on demand.
+function slimReport(report: Report): Report {
+  return {
+    ...report,
+    history: [],
+    activityData: null,
+    googleHarvest: null,
+    passiveHarvest: null,
+    userNotes: null,
+    investigation: slimInvestigation(report.investigation),
+  };
+}
+
+function slimInvestigation(
+  investigation: Investigation | null
+): Investigation | null {
+  if (!investigation) {
+    return null;
+  }
+
+  if (investigation.status === "done") {
+    return {
+      ...investigation,
+      runs: [],
+      redditMetrics: null,
+      results: {
+        ...investigation.results,
+        factors: [],
+        persona: null,
+        region: null,
+        demographics: null,
+        usage: null,
+      },
+    };
+  }
+
+  return {
+    ...investigation,
+    runs: [],
+    redditMetrics: null,
+  };
+}
+
 // Canonicalize a stored subreddit record. Drops entries that don't have a
 // usable name or sampled-author list — those are the only fields the
 // derived verdict reads, so a record missing them carries no signal.
@@ -469,6 +568,10 @@ const storage: StorageAdapter =
 
 export function readReports(): Promise<Record<string, Report>> {
   return storage.readReports();
+}
+
+export function readReportSummaries(): Promise<Record<string, Report>> {
+  return storage.readReportSummaries();
 }
 
 export function writeReports(reports: Record<string, Report>): Promise<void> {
