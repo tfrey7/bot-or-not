@@ -2,6 +2,15 @@
 
 Notable changes to Bot or Not. Signed `.xpi` builds for each version are attached to the matching [GitHub Release](https://github.com/tfrey7/bot-or-not/releases).
 
+## [7.8.0] — 2026-06-30
+- Add weekly suspected-bot status re-check with tombstones
+- Add "app" persona archetype for transparent automation
+- Add "Suspected bots only" filter to the reports list
+- Split storage into storage/ subdirectory by role
+- Bump GH Actions: checkout v6 -> v7
+- Bump @types/node v25 -> v26
+- Bump dev deps: eslint, prettier, vite, typescript-eslint, playwright, web-ext
+
 ## [7.7.0] — 2026-06-30
 - Load reports-page list from slim summaries; lazy-render heavy tabs
 
