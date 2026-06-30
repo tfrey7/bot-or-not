@@ -22,7 +22,7 @@ import PQueue from "p-queue";
 import pRetry from "p-retry";
 
 import { redditFetchJson, RedditRequestError } from "../../reddit/client.ts";
-import { readReport, readReports, updateReport } from "../../storage.ts";
+import { readReport, readReports, updateReport } from "../../storage";
 import type { GoogleHarvest, GoogleHarvestPost, Report } from "../../types.ts";
 
 const ATTRIBUTION_CONCURRENCY = 3;

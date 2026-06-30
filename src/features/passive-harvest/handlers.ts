@@ -3,7 +3,7 @@
 // also drops the storage writes — the message dispatch in
 // background.ts is the only other touchpoint.
 
-import { readReports, updateReport } from "../../storage.ts";
+import { readReports, updateReport } from "../../storage";
 import { passiveHarvestMerge } from "./merge.ts";
 import type { PassiveHarvestFinding } from "./scrape.ts";
 

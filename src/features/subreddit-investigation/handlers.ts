@@ -18,7 +18,7 @@
 //   Returns the stored record alongside the live-derived verdict, so the
 //   content-script badge can paint without needing two round trips.
 
-import { readReports, readSubreddits, writeSubreddits } from "../../storage.ts";
+import { readReports, readSubreddits, writeSubreddits } from "../../storage";
 import type { SubredditReport } from "../../types.ts";
 import { findReportKey } from "../../utils/history.ts";
 import { investigationStartBatch } from "../investigation";

@@ -3,7 +3,7 @@
 // normalizeReport is the source of trust: every Report field always
 // present, Investigation canonicalized so consumers can drop defensive
 // `Array.isArray` / `typeof === "number"` / `?? null` checks. The storage
-// adapter (`src/storage.ts`) runs every read through it; sync's import
+// adapter (`src/storage/`) runs every read through it; sync's import
 // parser does the same on incoming backups.
 
 import { PERSONA_LABELS } from "../factors.ts";

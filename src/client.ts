@@ -32,7 +32,7 @@ interface ClientAdapter {
 const CLIENT_COALESCE_MS = 250;
 
 // Reports now live under per-record `report:<username>` keys (see
-// storage.ts). A storage change touches one such key, so detect the prefix
+// storage/extension.ts). A storage change touches one such key, so detect the prefix
 // rather than a single `reports` key. `reports` is still matched for the
 // brief window before the reports_per_key migration removes the legacy blob.
 const REPORT_KEY_PREFIX = "report:";

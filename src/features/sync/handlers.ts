@@ -3,7 +3,7 @@
 // excluded from backups and never round-tripped through this code path.
 
 import type { Report } from "../../types.ts";
-import { readReports, writeReports } from "../../storage.ts";
+import { readReports, writeReports } from "../../storage";
 import {
   syncBuildBackup,
   syncMergeReports,

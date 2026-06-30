@@ -10,7 +10,7 @@
 // touching anything. Runs after crank_to_zealot and persona_simplification
 // so it catches the keys those migrations produce.
 
-import { readReports, writeReports } from "../storage.ts";
+import { readReports, writeReports } from "../storage";
 import type { Persona, PersonaLabel, UserNotes } from "../types.ts";
 
 const RENAMES: Record<string, string> = {

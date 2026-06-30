@@ -28,7 +28,7 @@ import {
   readReports,
   updateReport,
   writeReports,
-} from "../../storage.ts";
+} from "../../storage";
 import {
   findReportKey,
   normalizeReport,

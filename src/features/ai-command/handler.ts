@@ -18,7 +18,7 @@ import {
   readLlmSelection,
   readReports,
   writeHidePii,
-} from "../../storage.ts";
+} from "../../storage";
 import { findReportKey } from "../../utils/history.ts";
 import {
   aiCommandBuildSnapshot,

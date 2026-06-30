@@ -47,7 +47,7 @@ import {
   writeHidePii,
   writeLlmSelection,
   type ApiKeyMap,
-} from "./storage.ts";
+} from "./storage";
 import { LLM_VENDORS, sniffVendor, type LlmVendor } from "./llm/index.ts";
 import { AnthropicProvider } from "./llm/anthropic.ts";
 import { OpenAIProvider } from "./llm/openai.ts";

@@ -19,7 +19,7 @@ import PQueue from "p-queue";
 import { QUEUE_PRIORITY } from "../queue_priority.ts";
 import { shortUrl } from "../utils/format_text.ts";
 import { clampRetryAfter, parseRetryAfter } from "../utils/retry_after.ts";
-import { readRedditPauseUntil, writeRedditPauseUntil } from "../storage.ts";
+import { readRedditPauseUntil, writeRedditPauseUntil } from "../storage";
 
 const REDDIT_CONCURRENCY = 4;
 
