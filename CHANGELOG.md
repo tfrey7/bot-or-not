@@ -2,6 +2,10 @@
 
 Notable changes to Bot or Not. Signed `.xpi` builds for each version are attached to the matching [GitHub Release](https://github.com/tfrey7/bot-or-not/releases).
 
+## [7.9.0] — 2026-07-01
+- Keep persona label in slimmed report summaries
+- Add automatic sync via private GitHub gist
+
 ## [7.8.0] — 2026-06-30
 - Add weekly suspected-bot status re-check with tombstones
 - Add "app" persona archetype for transparent automation
