@@ -11,6 +11,7 @@ import type {
   LlmSelection,
   ReportUpdater,
   StorageAdapter,
+  SyncConfig,
 } from "./types.ts";
 
 export class InMemoryStorage implements StorageAdapter {
@@ -20,6 +21,13 @@ export class InMemoryStorage implements StorageAdapter {
   private llmSelection: LlmSelection = { vendor: null, model: null };
   private hidePii = false;
   private redditPauseUntil: number | null = null;
+  private syncConfig: SyncConfig = {
+    enabled: false,
+    gistId: null,
+    token: null,
+    lastSyncedAt: null,
+    lastError: null,
+  };
 
   async readReports(): Promise<Record<string, Report>> {
     return { ...this.reports };
@@ -105,5 +113,13 @@ export class InMemoryStorage implements StorageAdapter {
 
   async writeRedditPauseUntil(value: number | null): Promise<void> {
     this.redditPauseUntil = value;
+  }
+
+  async readSyncConfig(): Promise<SyncConfig> {
+    return { ...this.syncConfig };
+  }
+
+  async writeSyncConfig(config: SyncConfig): Promise<void> {
+    this.syncConfig = { ...config };
   }
 }

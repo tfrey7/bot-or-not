@@ -35,7 +35,18 @@ import {
   subredditList,
 } from "./features/subreddit-investigation";
 import { statusRecheckSweep } from "./features/status-recheck";
-import { syncExport, syncImport } from "./features/sync";
+import {
+  syncBackgroundInit,
+  syncConfigure,
+  syncCreateGist,
+  syncDisable,
+  syncExport,
+  syncHandleStorageChange,
+  syncImport,
+  syncNow,
+  syncOnAlarm,
+  syncStatus,
+} from "./features/sync";
 import { runMigrations } from "./migrations";
 import type { Report } from "./types.ts";
 import {
@@ -73,7 +84,15 @@ void runMigrations().then(() => {
   // reports table can tombstone the dead ones. Self-paced (weekly per
   // account), runs behind everything else on the Reddit funnel.
   void statusRecheckSweep();
+
+  // Bring automatic sync online: create the pull alarm and do a first
+  // reconcile if the user has it enabled. Behind migrations so the reconcile
+  // reads the finalized per-key store.
+  void syncBackgroundInit();
 });
+
+browser.alarms.onAlarm.addListener(syncOnAlarm);
+browser.storage.onChanged.addListener(syncHandleStorageChange);
 
 // In dev builds running from a strand worktree, Firefox is the human-facing
 // test surface — and the reports page is almost always what we want in
@@ -303,6 +322,30 @@ browser.runtime.onMessage.addListener((message: BaseMessage) => {
     return syncImport({
       reports: (message.reports as Record<string, Report>) ?? {},
     });
+  }
+
+  if (message.type === "sync-status") {
+    return syncStatus();
+  }
+
+  if (message.type === "sync-create-gist") {
+    return syncCreateGist({ token: message.token as string });
+  }
+
+  if (message.type === "sync-configure") {
+    return syncConfigure({
+      token: message.token as string,
+      gistId: message.gistId as string,
+      enabled: !!message.enabled,
+    });
+  }
+
+  if (message.type === "sync-now") {
+    return syncNow();
+  }
+
+  if (message.type === "sync-disable") {
+    return syncDisable();
   }
 
   if (message.type === "get-hidden-usernames") {

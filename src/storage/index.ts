@@ -13,9 +13,10 @@ import type {
   LlmSelection,
   ReportUpdater,
   StorageAdapter,
+  SyncConfig,
 } from "./types.ts";
 
-export type { ApiKeyMap, LlmSelection, ReportUpdater };
+export type { ApiKeyMap, LlmSelection, ReportUpdater, SyncConfig };
 
 // Scripts and tests import this module without a `browser` global; fall back
 // to in-memory there so the seam works the same everywhere.
@@ -100,4 +101,12 @@ export function readRedditPauseUntil(): Promise<number | null> {
 
 export function writeRedditPauseUntil(value: number | null): Promise<void> {
   return storage.writeRedditPauseUntil(value);
+}
+
+export function readSyncConfig(): Promise<SyncConfig> {
+  return storage.readSyncConfig();
+}
+
+export function writeSyncConfig(config: SyncConfig): Promise<void> {
+  return storage.writeSyncConfig(config);
 }

@@ -10,7 +10,16 @@ import type {
   LlmSelection,
   ReportUpdater,
   StorageAdapter,
+  SyncConfig,
 } from "./types.ts";
+
+const EMPTY_SYNC_CONFIG: SyncConfig = {
+  enabled: false,
+  gistId: null,
+  token: null,
+  lastSyncedAt: null,
+  lastError: null,
+};
 
 // Each report record lives under its own `report:<username>` key rather
 // than in one monolithic `reports` blob. A single-record write then fires
@@ -315,6 +324,18 @@ export class ExtensionStorage implements StorageAdapter {
       await browser.storage.local.set({ redditPauseUntil: value });
     }
   }
+
+  async readSyncConfig(): Promise<SyncConfig> {
+    const raw = (await browser.storage.local.get("syncConfig")) as {
+      syncConfig?: unknown;
+    };
+
+    return normalizeSyncConfig(raw.syncConfig);
+  }
+
+  async writeSyncConfig(config: SyncConfig): Promise<void> {
+    await browser.storage.local.set({ syncConfig: config });
+  }
 }
 
 // Canonicalize a stored subreddit record. Drops entries that don't have a
@@ -344,4 +365,21 @@ function normalizeSubredditReport(
   }
 
   return { name, analyzedAt, sampledUsernames };
+}
+
+function normalizeSyncConfig(value: unknown): SyncConfig {
+  if (!value || typeof value !== "object") {
+    return { ...EMPTY_SYNC_CONFIG };
+  }
+
+  const record = value as Record<string, unknown>;
+
+  return {
+    enabled: record.enabled === true,
+    gistId: typeof record.gistId === "string" ? record.gistId : null,
+    token: typeof record.token === "string" ? record.token : null,
+    lastSyncedAt:
+      typeof record.lastSyncedAt === "number" ? record.lastSyncedAt : null,
+    lastError: typeof record.lastError === "string" ? record.lastError : null,
+  };
 }

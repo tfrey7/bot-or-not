@@ -12,7 +12,9 @@ import {
   type MergeStats,
   type ParseResult,
   type SyncBackupPayload,
+  type SyncStatusPayload,
 } from "./logic.ts";
+import { githubSyncRequest } from "./permission.ts";
 
 export function renderSync(container: HTMLElement | null): void {
   if (!container) {
@@ -23,10 +25,220 @@ export function renderSync(container: HTMLElement | null): void {
 
   const wrapper = document.createElement("div");
   wrapper.className = "bon-sync";
+  wrapper.appendChild(buildAutoSyncBlock());
   wrapper.appendChild(buildExportBlock());
   wrapper.appendChild(buildImportBlock());
 
   container.appendChild(wrapper);
+}
+
+function buildAutoSyncBlock(): HTMLElement {
+  const block = document.createElement("div");
+  block.className = "bon-sync-block";
+
+  const title = document.createElement("h3");
+  title.className = "bon-sync-block-title";
+  title.textContent = "Automatic sync";
+  block.appendChild(title);
+
+  const desc = document.createElement("p");
+  desc.className = "bon-sync-block-desc";
+  desc.textContent =
+    "Keep two browsers in step through a private GitHub gist. Needs a fine-grained token with gist read/write. On the first machine, create a new gist; on the second, paste that gist ID and the same token. The token stays on this device — only your reports travel through the gist.";
+  block.appendChild(desc);
+
+  const tokenInput = document.createElement("input");
+  tokenInput.type = "password";
+  tokenInput.className = "bon-sync-input";
+  tokenInput.autocomplete = "off";
+  tokenInput.placeholder = "GitHub token (github_pat_… or ghp_…)";
+
+  const gistInput = document.createElement("input");
+  gistInput.type = "text";
+  gistInput.className = "bon-sync-input";
+  gistInput.autocomplete = "off";
+  gistInput.spellcheck = false;
+  gistInput.placeholder = "Gist ID (paste on the second machine)";
+
+  const fields = document.createElement("div");
+  fields.className = "bon-sync-fields";
+  fields.appendChild(labeledField("Token", tokenInput));
+  fields.appendChild(labeledField("Gist ID", gistInput));
+  block.appendChild(fields);
+
+  const createButton = makeButton("Create gist & enable");
+  const useButton = makeButton("Use gist & enable");
+  const syncNowButton = makeButton("Sync now");
+  const disableButton = makeButton("Turn off");
+
+  const setupActions = document.createElement("div");
+  setupActions.className = "bon-sync-actions";
+  setupActions.appendChild(createButton);
+  setupActions.appendChild(useButton);
+
+  const liveActions = document.createElement("div");
+  liveActions.className = "bon-sync-actions";
+  liveActions.appendChild(syncNowButton);
+  liveActions.appendChild(disableButton);
+
+  const status = document.createElement("p");
+  status.className = "bon-sync-status";
+
+  block.appendChild(setupActions);
+  block.appendChild(liveActions);
+  block.appendChild(status);
+
+  const buttons = [createButton, useButton, syncNowButton, disableButton];
+
+  function setBusy(busy: boolean): void {
+    for (const button of buttons) {
+      button.disabled = busy;
+    }
+  }
+
+  function paint(state: SyncStatusPayload): void {
+    liveActions.hidden = !state.enabled;
+
+    if (state.gistId && !gistInput.value) {
+      gistInput.value = state.gistId;
+    }
+
+    if (state.hasToken) {
+      tokenInput.placeholder = "•••• (token on file — re-enter to change)";
+    }
+
+    if (state.lastError) {
+      status.textContent = `Last sync failed: ${state.lastError}`;
+      status.className = "bon-sync-status bon-sync-status--error";
+
+      return;
+    }
+
+    if (!state.enabled) {
+      status.textContent = "Off.";
+      status.className = "bon-sync-status";
+
+      return;
+    }
+
+    const when = state.lastSyncedAt
+      ? new Date(state.lastSyncedAt).toLocaleString()
+      : "not yet";
+    status.textContent = `On · syncing to gist ${state.gistId ?? "?"} · last synced ${when}`;
+    status.className = "bon-sync-status bon-sync-status--ok";
+  }
+
+  async function refresh(): Promise<void> {
+    const state = await clientSend<SyncStatusPayload>({ type: "sync-status" });
+    paint(state);
+  }
+
+  async function runAction(
+    pending: string,
+    action: () => Promise<SyncStatusPayload>
+  ): Promise<void> {
+    setBusy(true);
+    status.textContent = pending;
+    status.className = "bon-sync-status";
+
+    try {
+      const state = await action();
+      paint(state);
+    } catch (error) {
+      console.error("[Bot or Not] sync action failed", error);
+      status.textContent = `${(error as Error).message}`;
+      status.className = "bon-sync-status bon-sync-status--error";
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  createButton.addEventListener("click", async () => {
+    const token = tokenInput.value.trim();
+    if (!token) {
+      status.textContent = "Enter a GitHub token first.";
+      status.className = "bon-sync-status bon-sync-status--error";
+
+      return;
+    }
+
+    if (!(await githubSyncRequest())) {
+      status.textContent = "GitHub access permission was denied.";
+      status.className = "bon-sync-status bon-sync-status--error";
+
+      return;
+    }
+
+    await runAction("Creating gist…", () =>
+      clientSend<SyncStatusPayload>({ type: "sync-create-gist", token })
+    );
+  });
+
+  useButton.addEventListener("click", async () => {
+    const token = tokenInput.value.trim();
+    const gistId = gistInput.value.trim();
+    if (!token || !gistId) {
+      status.textContent = "Enter both a token and a gist ID.";
+      status.className = "bon-sync-status bon-sync-status--error";
+
+      return;
+    }
+
+    if (!(await githubSyncRequest())) {
+      status.textContent = "GitHub access permission was denied.";
+      status.className = "bon-sync-status bon-sync-status--error";
+
+      return;
+    }
+
+    await runAction("Enabling sync…", () =>
+      clientSend<SyncStatusPayload>({
+        type: "sync-configure",
+        token,
+        gistId,
+        enabled: true,
+      })
+    );
+  });
+
+  syncNowButton.addEventListener("click", async () => {
+    await runAction("Syncing…", () =>
+      clientSend<SyncStatusPayload>({ type: "sync-now" })
+    );
+  });
+
+  disableButton.addEventListener("click", async () => {
+    await runAction("Turning off…", () =>
+      clientSend<SyncStatusPayload>({ type: "sync-disable" })
+    );
+  });
+
+  void refresh();
+
+  return block;
+}
+
+function labeledField(label: string, input: HTMLInputElement): HTMLElement {
+  const field = document.createElement("label");
+  field.className = "bon-sync-field";
+
+  const caption = document.createElement("span");
+  caption.className = "bon-sync-field-label";
+  caption.textContent = label;
+
+  field.appendChild(caption);
+  field.appendChild(input);
+
+  return field;
+}
+
+function makeButton(text: string): HTMLButtonElement {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "bon-btn";
+  button.textContent = text;
+
+  return button;
 }
 
 function buildExportBlock(): HTMLElement {
@@ -385,4 +597,17 @@ function formatImportResult(
   return `Imported · ${parts.join(" · ")}`;
 }
 
-export { syncExport, syncImport } from "./handlers.ts";
+export {
+  syncConfigure,
+  syncCreateGist,
+  syncDisable,
+  syncExport,
+  syncImport,
+  syncNow,
+  syncStatus,
+} from "./handlers.ts";
+export {
+  syncBackgroundInit,
+  syncHandleStorageChange,
+  syncOnAlarm,
+} from "./schedule.ts";

@@ -17,6 +17,17 @@ export interface LlmSelection {
 // One key per vendor. Missing entries = no key on file for that vendor.
 export type ApiKeyMap = Partial<Record<LlmVendor, string>>;
 
+// Automatic-sync settings. `token` is a GitHub PAT — a secret held only in
+// local storage, never written into the synced gist payload (same rule as
+// the LLM API keys). A fresh install has enabled=false and no gist/token.
+export interface SyncConfig {
+  enabled: boolean;
+  gistId: string | null;
+  token: string | null;
+  lastSyncedAt: number | null;
+  lastError: string | null;
+}
+
 // Updater for updateReport. Receives the current Report (or null if no
 // record exists for this username) and returns the next one. Return null to
 // delete the record; return the current value untouched to no-op the write.
@@ -68,4 +79,7 @@ export interface StorageAdapter {
   // show a banner via storage.onChanged and so a reloaded worker restores it.
   readRedditPauseUntil(): Promise<number | null>;
   writeRedditPauseUntil(value: number | null): Promise<void>;
+
+  readSyncConfig(): Promise<SyncConfig>;
+  writeSyncConfig(config: SyncConfig): Promise<void>;
 }

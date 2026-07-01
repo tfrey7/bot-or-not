@@ -43,6 +43,49 @@
   flex-wrap: wrap;
 }
 
+.bon-sync-actions[hidden] {
+  display: none;
+}
+
+.bon-sync-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7em;
+}
+
+.bon-sync-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3em;
+}
+
+.bon-sync-field-label {
+  font-family: var(--bon-font-mono);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--bon-muted);
+}
+
+.bon-sync-input {
+  width: 100%;
+  box-sizing: border-box;
+  font-family: var(--bon-font-mono);
+  font-size: 0.82rem;
+  color: var(--bon-text);
+  background: var(--bon-surface-soft);
+  border: 1px solid var(--bon-border);
+  border-radius: 0.4em;
+  padding: 0.55em 0.7em;
+}
+
+.bon-sync-input:focus {
+  outline: none;
+  border-color: var(--bon-accent, var(--bon-text-soft));
+  box-shadow: 0 0 0 2px var(--bon-accent-soft, transparent);
+}
+
 .bon-sync-file-input {
   position: absolute;
   width: 1px;

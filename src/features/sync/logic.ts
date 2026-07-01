@@ -111,6 +111,16 @@ export interface MergeStats {
   unchanged: string[];
 }
 
+// What the settings UI reads to paint the automatic-sync controls. The token
+// is never sent back — only whether one is on file.
+export interface SyncStatusPayload {
+  enabled: boolean;
+  gistId: string | null;
+  hasToken: boolean;
+  lastSyncedAt: number | null;
+  lastError: string | null;
+}
+
 export interface MergeResult {
   reports: Record<string, Report>;
   stats: MergeStats;
