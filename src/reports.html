@@ -149,57 +149,8 @@
           </button>
         </div>
 
-        <div class="bon-split" id="bon-split">
-          <div class="bon-split-list">
-            <section
-              class="bon-list-section bon-list-section--active"
-              id="bon-active-section"
-              hidden
-            >
-              <p class="bon-list-section-title" id="bon-active-title">
-                In progress
-              </p>
-              <p
-                class="bon-queue-pause"
-                id="bon-queue-pause"
-                role="status"
-                aria-live="polite"
-                hidden
-              ></p>
-              <div class="bon-table-wrap">
-                <table class="bon-table">
-                  <tbody id="bon-tbody-active"></tbody>
-                </table>
-              </div>
-            </section>
-
-            <div class="bon-list-filter">
-              <label class="bon-list-filter-toggle">
-                <input type="checkbox" id="bon-bots-only" />
-                Suspected bots only
-              </label>
-            </div>
-
-            <div class="bon-table-wrap" id="bon-table-wrap">
-              <table class="bon-table" id="bon-table">
-                <tbody id="bon-tbody"></tbody>
-              </table>
-            </div>
-
-            <div id="bon-pagination-container"></div>
-
-            <div id="bon-empty" class="bon-empty" hidden>
-              No reports yet. Flag a Reddit user from their profile page to
-              start tracking.
-            </div>
-          </div>
-
-          <aside
-            class="bon-split-detail"
-            id="bon-detail-pane"
-            aria-live="polite"
-          ></aside>
-        </div>
+        <!-- Preact root — the redditors feature renders the split here. -->
+        <div class="bon-split" id="bon-split"></div>
       </section>
 
       <section
