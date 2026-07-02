@@ -11,8 +11,8 @@
     "investigate": "source .env && tsx scripts/investigate.ts",
     "regen-readme": "tsx scripts/regen-readme.ts",
     "screenshots": "tsx scripts/capture-screenshots.ts",
-    "format": "prettier --write \"src/**/*.{ts,js}\"",
-    "lint": "eslint \"src/**/*.{ts,js}\"",
+    "format": "prettier --write \"src/**/*.{ts,tsx,js}\"",
+    "lint": "eslint \"src/**/*.{ts,tsx,js}\"",
     "typecheck": "tsc --noEmit",
     "deadcode": "knip",
     "test": "echo \"Error: no test specified\" && exit 1"
@@ -39,6 +39,7 @@
   "dependencies": {
     "p-queue": "^9.3.0",
     "p-retry": "^8.0.0",
+    "preact": "^10.29.3",
     "uplot": "^1.6.32"
   }
 }

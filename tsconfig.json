@@ -6,6 +6,9 @@
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "types": ["firefox-webext-browser"],
 
+    "jsx": "react-jsx",
+    "jsxImportSource": "preact",
+
     "strict": true,
     "noUncheckedIndexedAccess": false,
     "exactOptionalPropertyTypes": false,
@@ -23,6 +26,6 @@
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true
   },
-  "include": ["src/**/*.ts", "src/**/*.d.ts"],
+  "include": ["src/**/*.ts", "src/**/*.tsx", "src/**/*.d.ts"],
   "exclude": ["node_modules", "dist", "web-ext-artifacts"]
 }

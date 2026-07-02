@@ -8,6 +8,6 @@
     "src/features/google-harvest/search_listener.ts",
     "scripts/*.{ts,mjs,js}"
   ],
-  "project": ["src/**/*.ts", "scripts/**/*.{ts,mjs,js}"],
+  "project": ["src/**/*.{ts,tsx}", "scripts/**/*.{ts,mjs,js}"],
   "ignoreDependencies": ["linkedom"]
 }

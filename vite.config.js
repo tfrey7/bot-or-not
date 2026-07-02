@@ -96,6 +96,12 @@ export default defineConfig(({ mode }) => {
       }),
       copyIcons(),
     ],
+    // tsconfig's jsx settings cover tsc; esbuild is configured here too so
+    // the plugin's child builds (reports.html) can't drift from the root one.
+    esbuild: {
+      jsx: "automatic",
+      jsxImportSource: "preact",
+    },
     define: {
       __DEV_CLAUDE_API_KEY__: JSON.stringify(devClaudeApiKey),
       __STRAND__: JSON.stringify(devStrand),
