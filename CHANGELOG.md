@@ -2,6 +2,10 @@
 
 Notable changes to Bot or Not. Signed `.xpi` builds for each version are attached to the matching [GitHub Release](https://github.com/tfrey7/bot-or-not/releases).
 
+## [7.10.0] — 2026-07-02
+- Auto-unblock dead accounts to free Reddit block-list slots
+- Skip flyout re-render when panel-visible data is unchanged
+
 ## [7.9.0] — 2026-07-01
 - Keep persona label in slimmed report summaries
 - Add automatic sync via private GitHub gist
