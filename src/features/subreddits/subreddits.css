@@ -247,7 +247,13 @@ table.bon-subreddits-list-table {
   padding: 0.5em;
 }
 
-.bon-subreddits-detail-scatter > svg {
+/* display: contents so the svg participates in the card's column flex
+   directly even though the DOM parent is the Preact host div. */
+.bon-subreddits-scatter-host {
+  display: contents;
+}
+
+.bon-subreddits-detail-scatter svg {
   width: 100%;
   height: auto;
   max-height: min(60vh, 520px);

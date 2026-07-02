@@ -13,7 +13,7 @@ import { clientSend, clientSubscribe } from "../../client.ts";
 import { renderAnalyticsTab } from "../analytics";
 import { INVESTIGATION_CONCURRENCY } from "../investigation";
 import { renderFieldGuideTab, renderPersonasTab } from "../personas";
-import { renderSubredditsTab } from "../subreddits";
+import { subredditsMountTab } from "../subreddits";
 import { renderSync } from "../sync";
 import { REGION_INFO } from "../regions";
 import type { Report } from "../../types.ts";
@@ -91,11 +91,8 @@ export async function redditorsRenderReportsPage(): Promise<void> {
   const fieldGuideContainer = document.getElementById(
     "bon-fieldguide-container"
   ) as HTMLElement | null;
-  const subredditsListEl = document.getElementById(
-    "bon-subreddits-list"
-  ) as HTMLElement | null;
-  const subredditsDetailEl = document.getElementById(
-    "bon-subreddits-detail"
+  const subredditsSplitEl = document.getElementById(
+    "bon-subreddits-split"
   ) as HTMLElement | null;
   const settingsStripContainer = document.getElementById(
     "bon-settings-strip"
@@ -166,16 +163,9 @@ export async function redditorsRenderReportsPage(): Promise<void> {
       // Route through the poll path so non-structural writes (notes, lazy
       // profile-stat fills) don't tear down whichever widget the operator
       // is currently typing into. polling.pollNow does a full re-render
-      // only when something actually changed structurally — and that path
-      // also refreshes the Subreddits tab, whose badges derive from per-user
-      // verdicts, when it's the one on screen.
+      // only when something actually changed structurally. The Subreddits
+      // tab subscribes on its own — its Preact component owns that refresh.
       void polling.pollNow();
-    }
-
-    if (event.type === "subreddits-changed") {
-      if (tabs.current() === "subreddits") {
-        void renderSubreddits();
-      }
     }
 
     if (event.type === "api-key-changed") {
@@ -336,7 +326,9 @@ export async function redditorsRenderReportsPage(): Promise<void> {
     }
 
     if (tab === "subreddits") {
-      await renderSubreddits();
+      // Mount-once: the Preact component fetches its own data and keeps
+      // itself fresh via clientSubscribe. Repeat activations are no-ops.
+      subredditsMountTab(subredditsSplitEl, { onSelectUser: navigateToUser });
     }
   }
 
@@ -376,14 +368,6 @@ export async function redditorsRenderReportsPage(): Promise<void> {
     });
 
     emptyEl.appendChild(reloadButton);
-  }
-
-  async function renderSubreddits(): Promise<void> {
-    await renderSubredditsTab({
-      listContainer: subredditsListEl,
-      detailContainer: subredditsDetailEl,
-      onSelectUser: navigateToUser,
-    });
   }
 
   function navigateToUser(username: string): void {
