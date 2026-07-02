@@ -2,6 +2,9 @@
 
 Notable changes to Bot or Not. Signed `.xpi` builds for each version are attached to the matching [GitHub Release](https://github.com/tfrey7/bot-or-not/releases).
 
+## [8.2.0] — 2026-07-02
+- Preserve deep-link ?user= selection until first reports load
+
 ## [8.1.0] — 2026-07-02
 - Add Sonnet 5 pricing and correct Opus 4.7 rates
 - Make Claude Sonnet 5 the default analysis model
