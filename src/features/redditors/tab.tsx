@@ -275,11 +275,17 @@ function RedditorsTab({ handle, onStructuralChange }: RedditorsTabProps) {
   // Keep state and URL in sync with what was actually painted: canonical
   // username case, selections that fell out of the list, clamped pages.
   useEffect(() => {
-    if (selectedUsername !== effectiveSelected) {
-      setSelectedUsername(effectiveSelected);
-    }
+    // A deep-link selection can't be validated until the first load lands —
+    // reconciling here would strip ?user= before the reports arrive.
+    const awaitingSelection = pendingScrollRef.current && !effectiveSelected;
 
-    writeSelectedUsernameToUrl(effectiveSelected);
+    if (!awaitingSelection) {
+      if (selectedUsername !== effectiveSelected) {
+        setSelectedUsername(effectiveSelected);
+      }
+
+      writeSelectedUsernameToUrl(effectiveSelected);
+    }
 
     if (currentPage !== page) {
       setCurrentPage(page);
