@@ -113,6 +113,10 @@
         {
           "version": "7.10.0",
           "update_link": "https://github.com/tfrey7/bot-or-not/releases/download/v7.10.0/fe5aa4514b5d4cb3aa94-7.10.0.xpi"
+        },
+        {
+          "version": "8.0.0",
+          "update_link": "https://github.com/tfrey7/bot-or-not/releases/download/v8.0.0/fe5aa4514b5d4cb3aa94-8.0.0.xpi"
         }
       ]
     }

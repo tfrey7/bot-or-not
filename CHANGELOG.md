@@ -2,6 +2,14 @@
 
 Notable changes to Bot or Not. Signed `.xpi` builds for each version are attached to the matching [GitHub Release](https://github.com/tfrey7/bot-or-not/releases).
 
+## [8.0.0] — 2026-07-02
+- Port the settings strip and sync panel to Preact
+- Port the Redditors tab to Preact
+- Port the Metrics (analytics) tab shell to Preact
+- Port the Personas + Field Guide tabs to Preact
+- Port the Subreddits tab to Preact (pilot)
+- Add preact + JSX wiring for the reports-page pilot
+
 ## [7.10.0] — 2026-07-02
 - Auto-unblock dead accounts to free Reddit block-list slots
 - Skip flyout re-render when panel-visible data is unchanged
