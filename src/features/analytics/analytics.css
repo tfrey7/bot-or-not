@@ -294,3 +294,46 @@
   text-decoration: underline;
   color: var(--bon-link-hover);
 }
+
+/* ---------- Background sweep cards ---------- */
+
+.bon-sweep-rows {
+  margin: 0;
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.5em 1.5em;
+  font-size: 0.84rem;
+}
+
+.bon-sweep-rows dt {
+  color: var(--bon-muted);
+}
+
+.bon-sweep-rows dd {
+  margin: 0;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.bon-sweep-list {
+  list-style: none;
+  margin: 0.85em 0 0;
+  padding: 0.85em 0 0;
+  border-top: 1px dashed var(--bon-border);
+  display: flex;
+  flex-direction: column;
+  gap: 0.4em;
+  font-size: 0.82rem;
+}
+
+.bon-sweep-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 1em;
+}
+
+.bon-sweep-when {
+  color: var(--bon-muted-soft);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}

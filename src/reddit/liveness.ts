@@ -1,14 +1,16 @@
-// Cheap, active liveness probe for the weekly re-check. Hits only
-// `about.json` (not the 500-item profile pull the investigation does) and
-// routes through the shared Reddit funnel, so it obeys the global rate-limit
-// budget and concurrency cap. This is the active counterpart to the passive
-// content-script detector in features/status-detection, which only fires on
-// profiles the operator happens to browse.
+// Cheap, active liveness probe shared by the weekly status re-check and the
+// blocklist cleanup sweep. Hits only `about.json` (not the 500-item profile
+// pull the investigation does) and routes through the shared Reddit funnel,
+// so it obeys the global rate-limit budget and concurrency cap. This is the
+// active counterpart to the passive content-script detector in
+// features/status-detection, which only fires on profiles the operator
+// happens to browse.
 
-import { QUEUE_PRIORITY } from "../../queue_priority.ts";
-import { redditFetchJson, RedditRequestError } from "../../reddit/client.ts";
-import type { RedditAboutEnvelope } from "../../types.ts";
-import type { AccountLiveness } from "./logic.ts";
+import { QUEUE_PRIORITY } from "../queue_priority.ts";
+import { redditFetchJson, RedditRequestError } from "./client.ts";
+import type { RedditAboutEnvelope } from "../types.ts";
+
+export type AccountLiveness = "active" | "suspended" | "deleted";
 
 // Returns the resolved liveness, or null when the result is inconclusive
 // (network error, 429, 5xx) — the caller leaves the account due for the next

@@ -7,6 +7,7 @@ import { findReportKey, normalizeReport } from "../utils/history.ts";
 import { slimReport } from "./logic.ts";
 import type {
   ApiKeyMap,
+  BlocklistCleanupState,
   LlmSelection,
   ReportUpdater,
   StorageAdapter,
@@ -336,6 +337,20 @@ export class ExtensionStorage implements StorageAdapter {
   async writeSyncConfig(config: SyncConfig): Promise<void> {
     await browser.storage.local.set({ syncConfig: config });
   }
+
+  async readBlocklistCleanupState(): Promise<BlocklistCleanupState> {
+    const raw = (await browser.storage.local.get("blocklistCleanup")) as {
+      blocklistCleanup?: unknown;
+    };
+
+    return normalizeBlocklistCleanupState(raw.blocklistCleanup);
+  }
+
+  async writeBlocklistCleanupState(
+    state: BlocklistCleanupState
+  ): Promise<void> {
+    await browser.storage.local.set({ blocklistCleanup: state });
+  }
 }
 
 // Canonicalize a stored subreddit record. Drops entries that don't have a
@@ -365,6 +380,57 @@ function normalizeSubredditReport(
   }
 
   return { name, analyzedAt, sampledUsernames };
+}
+
+function normalizeBlocklistCleanupState(value: unknown): BlocklistCleanupState {
+  const record = (value && typeof value === "object" ? value : {}) as Record<
+    string,
+    unknown
+  >;
+
+  const probedAt: Record<string, number> = {};
+  if (record.probedAt && typeof record.probedAt === "object") {
+    for (const [username, at] of Object.entries(record.probedAt)) {
+      if (typeof at === "number") {
+        probedAt[username] = at;
+      }
+    }
+  }
+
+  const unblocked = Array.isArray(record.unblocked)
+    ? (record.unblocked as unknown[]).filter(
+        (entry): entry is { username: string; at: number } =>
+          !!entry &&
+          typeof entry === "object" &&
+          typeof (entry as { username?: unknown }).username === "string" &&
+          typeof (entry as { at?: unknown }).at === "number"
+      )
+    : [];
+
+  const sweep = (
+    record.lastSweep && typeof record.lastSweep === "object"
+      ? record.lastSweep
+      : null
+  ) as Record<string, unknown> | null;
+
+  return {
+    lastSweep:
+      sweep && typeof sweep.at === "number"
+        ? {
+            at: sweep.at,
+            blockedCount:
+              typeof sweep.blockedCount === "number" ? sweep.blockedCount : 0,
+            probedCount:
+              typeof sweep.probedCount === "number" ? sweep.probedCount : 0,
+            unblockedCount:
+              typeof sweep.unblockedCount === "number"
+                ? sweep.unblockedCount
+                : 0,
+          }
+        : null,
+    probedAt,
+    unblocked,
+  };
 }
 
 function normalizeSyncConfig(value: unknown): SyncConfig {

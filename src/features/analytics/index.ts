@@ -7,7 +7,11 @@
 // state tracks the current run-log page so polling-driven re-renders
 // don't bounce the user back to page 1.
 
+import { clientSend } from "../../client.ts";
+import type { BlocklistCleanupState } from "../../storage";
 import type { Report } from "../../types.ts";
+import { analyticsSweepBlocklistCard } from "./card_sweep_blocklist.ts";
+import { analyticsSweepRecheckCard } from "./card_sweep_recheck.ts";
 import { analyticsActivityChart } from "./chart_activity.ts";
 import { analyticsChartCard } from "./chart_card.ts";
 import { analyticsCostChart } from "./chart_cost.ts";
@@ -19,10 +23,10 @@ import { analyticsRunLog } from "./table_run_log.ts";
 
 let runLogPage = 1;
 
-export function renderAnalyticsTab(
+export async function renderAnalyticsTab(
   reports: Array<Report & { username: string }>,
   container: HTMLElement | null
-): void {
+): Promise<void> {
   if (!container) {
     return;
   }
@@ -40,14 +44,27 @@ export function renderAnalyticsTab(
     (entry) => !!entry.redditMetrics
   ).length;
 
-  renderInto(container, runs, redditEligible, runsWithRedditMetrics);
+  const blocklistState = await clientSend<BlocklistCleanupState>({
+    type: "get-blocklist-cleanup-state",
+  });
+
+  renderInto(
+    container,
+    runs,
+    redditEligible,
+    runsWithRedditMetrics,
+    reports,
+    blocklistState
+  );
 }
 
 function renderInto(
   container: HTMLElement,
   llmRuns: AnalyticsEntry[],
   redditRuns: AnalyticsEntry[],
-  runsWithRedditMetrics: number
+  runsWithRedditMetrics: number,
+  reports: Report[],
+  blocklistState: BlocklistCleanupState
 ): void {
   container.replaceChildren();
 
@@ -76,7 +93,14 @@ function renderInto(
         currentPage: runLogPage,
         onPageChange: (next) => {
           runLogPage = next;
-          renderInto(container, llmRuns, redditRuns, runsWithRedditMetrics);
+          renderInto(
+            container,
+            llmRuns,
+            redditRuns,
+            runsWithRedditMetrics,
+            reports,
+            blocklistState
+          );
         },
       })
     );
@@ -138,6 +162,20 @@ function renderInto(
     );
     section.appendChild(redditCharts);
   }
+
+  section.appendChild(
+    buildSectionHeader(
+      "Background sweeps",
+      "Self-paced hygiene passes over the Reddit funnel: tombstoning removed accounts and clearing them off the block list.",
+      "sub"
+    )
+  );
+
+  const sweepCards = document.createElement("div");
+  sweepCards.className = "bon-analytics-charts";
+  sweepCards.appendChild(analyticsSweepRecheckCard(reports));
+  sweepCards.appendChild(analyticsSweepBlocklistCard(blocklistState));
+  section.appendChild(sweepCards);
 
   container.appendChild(section);
 }

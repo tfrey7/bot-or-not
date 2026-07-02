@@ -28,6 +28,26 @@ export interface SyncConfig {
   lastError: string | null;
 }
 
+// Blocklist-cleanup sweep bookkeeping. `lastSweep` summarizes the most
+// recent completed pass (null before the first one) and doubles as the
+// daily gate. `probedAt` remembers when each blocked account *without* a
+// report was last confirmed alive (reported accounts carry that on
+// Report.userStatusCheckedAt); keyed by lowercase username, pruned to the
+// current block list each sweep. `unblocked` is the audit trail of accounts
+// the sweep removed from the operator's block list.
+interface BlocklistSweepSummary {
+  at: number;
+  blockedCount: number;
+  probedCount: number;
+  unblockedCount: number;
+}
+
+export interface BlocklistCleanupState {
+  lastSweep: BlocklistSweepSummary | null;
+  probedAt: Record<string, number>;
+  unblocked: Array<{ username: string; at: number }>;
+}
+
 // Updater for updateReport. Receives the current Report (or null if no
 // record exists for this username) and returns the next one. Return null to
 // delete the record; return the current value untouched to no-op the write.
@@ -82,4 +102,7 @@ export interface StorageAdapter {
 
   readSyncConfig(): Promise<SyncConfig>;
   writeSyncConfig(config: SyncConfig): Promise<void>;
+
+  readBlocklistCleanupState(): Promise<BlocklistCleanupState>;
+  writeBlocklistCleanupState(state: BlocklistCleanupState): Promise<void>;
 }

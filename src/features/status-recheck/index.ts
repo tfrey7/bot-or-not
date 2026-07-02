@@ -7,8 +7,10 @@
 // account is re-fetched at most weekly.
 
 import { readReportSummaries, updateReport } from "../../storage";
-import { fetchAccountLiveness } from "./fetch.ts";
+import { fetchAccountLiveness } from "../../reddit/liveness.ts";
 import { selectDueAccounts } from "./logic.ts";
+
+export { statusRecheckStats } from "./logic.ts";
 
 export async function statusRecheckSweep(): Promise<void> {
   // Slim summaries are enough — selection only reads the verdict, userStatus,

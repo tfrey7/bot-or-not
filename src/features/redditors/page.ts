@@ -300,7 +300,7 @@ export async function redditorsRenderReportsPage(): Promise<void> {
     if (tab === "metrics") {
       const reports = await ensureFullReports();
       if (analyticsContainer) {
-        renderAnalyticsTab(reports, analyticsContainer);
+        await renderAnalyticsTab(reports, analyticsContainer);
       }
 
       return;

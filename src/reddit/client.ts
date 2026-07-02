@@ -156,6 +156,32 @@ export async function redditFetchJson<T = unknown>(
   url: string,
   priority: number = QUEUE_PRIORITY.bulk
 ): Promise<T> {
+  return await enqueueRequest<T>(url, {}, priority);
+}
+
+// Form-encoded POST to a legacy `/api/*` write endpoint. Rides the same
+// queue as the reads so writes count against the shared rate budget.
+export async function redditPostForm<T = unknown>(
+  url: string,
+  form: Record<string, string>,
+  priority: number = QUEUE_PRIORITY.bulk
+): Promise<T> {
+  return await enqueueRequest<T>(
+    url,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams(form).toString(),
+    },
+    priority
+  );
+}
+
+async function enqueueRequest<T>(
+  url: string,
+  init: RequestInit,
+  priority: number
+): Promise<T> {
   return await queue.add(
     async () => {
       const startedAt = performance.now();
@@ -163,7 +189,8 @@ export async function redditFetchJson<T = unknown>(
 
       try {
         const response = await fetch(url, {
-          headers: { Accept: "application/json" },
+          ...init,
+          headers: { Accept: "application/json", ...init.headers },
           credentials: "include",
           signal: AbortSignal.timeout(REDDIT_FETCH_TIMEOUT_MS),
         });

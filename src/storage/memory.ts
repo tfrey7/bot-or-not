@@ -8,6 +8,7 @@ import { findReportKey } from "../utils/history.ts";
 import { slimReport } from "./logic.ts";
 import type {
   ApiKeyMap,
+  BlocklistCleanupState,
   LlmSelection,
   ReportUpdater,
   StorageAdapter,
@@ -27,6 +28,11 @@ export class InMemoryStorage implements StorageAdapter {
     token: null,
     lastSyncedAt: null,
     lastError: null,
+  };
+  private blocklistCleanup: BlocklistCleanupState = {
+    lastSweep: null,
+    probedAt: {},
+    unblocked: [],
   };
 
   async readReports(): Promise<Record<string, Report>> {
@@ -121,5 +127,15 @@ export class InMemoryStorage implements StorageAdapter {
 
   async writeSyncConfig(config: SyncConfig): Promise<void> {
     this.syncConfig = { ...config };
+  }
+
+  async readBlocklistCleanupState(): Promise<BlocklistCleanupState> {
+    return { ...this.blocklistCleanup };
+  }
+
+  async writeBlocklistCleanupState(
+    state: BlocklistCleanupState
+  ): Promise<void> {
+    this.blocklistCleanup = { ...state };
   }
 }

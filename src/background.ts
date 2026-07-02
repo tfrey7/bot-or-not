@@ -34,6 +34,10 @@ import {
   subredditGetReport,
   subredditList,
 } from "./features/subreddit-investigation";
+import {
+  blocklistCleanupGetState,
+  blocklistCleanupSweep,
+} from "./features/blocklist-cleanup";
 import { statusRecheckSweep } from "./features/status-recheck";
 import {
   syncBackgroundInit,
@@ -84,6 +88,10 @@ void runMigrations().then(() => {
   // reports table can tombstone the dead ones. Self-paced (weekly per
   // account), runs behind everything else on the Reddit funnel.
   void statusRecheckSweep();
+
+  // Same tier: unblock suspended/deleted accounts to free slots in the
+  // operator's 1000-cap Reddit block list. Self-gated to one pass per day.
+  void blocklistCleanupSweep();
 
   // Bring automatic sync online: create the pull alarm and do a first
   // reconcile if the user has it enabled. Behind migrations so the reconcile
@@ -182,6 +190,10 @@ browser.runtime.onMessage.addListener((message: BaseMessage) => {
 
   if (message.type === "get-reports-summary") {
     return redditorsGetSummaries();
+  }
+
+  if (message.type === "get-blocklist-cleanup-state") {
+    return blocklistCleanupGetState();
   }
 
   if (message.type === "update-user-status") {

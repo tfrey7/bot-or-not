@@ -10,13 +10,20 @@ import { ExtensionStorage } from "./extension.ts";
 import { InMemoryStorage } from "./memory.ts";
 import type {
   ApiKeyMap,
+  BlocklistCleanupState,
   LlmSelection,
   ReportUpdater,
   StorageAdapter,
   SyncConfig,
 } from "./types.ts";
 
-export type { ApiKeyMap, LlmSelection, ReportUpdater, SyncConfig };
+export type {
+  ApiKeyMap,
+  BlocklistCleanupState,
+  LlmSelection,
+  ReportUpdater,
+  SyncConfig,
+};
 
 // Scripts and tests import this module without a `browser` global; fall back
 // to in-memory there so the seam works the same everywhere.
@@ -109,4 +116,14 @@ export function readSyncConfig(): Promise<SyncConfig> {
 
 export function writeSyncConfig(config: SyncConfig): Promise<void> {
   return storage.writeSyncConfig(config);
+}
+
+export function readBlocklistCleanupState(): Promise<BlocklistCleanupState> {
+  return storage.readBlocklistCleanupState();
+}
+
+export function writeBlocklistCleanupState(
+  state: BlocklistCleanupState
+): Promise<void> {
+  return storage.writeBlocklistCleanupState(state);
 }
