@@ -12,7 +12,7 @@ import {
   googleHarvestRevoke,
 } from "../google-harvest";
 import { pageOpenConfirmModal } from "../page";
-export { settingsStrip } from "./strip.ts";
+export { settingsStrip } from "./strip.tsx";
 
 // DOM refs deferred to settingsInit so this module is safe to import
 // from any context (the boundary lint rule forces redditors/index.ts to

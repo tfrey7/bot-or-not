@@ -3,12 +3,17 @@
 // operator can answer "is my install healthy?" without leaving Settings.
 // Stays out of the way; intentionally lighter than the analytics cards.
 
+import { render } from "preact";
 import type { ReportRow } from "../redditors";
 
 export function settingsStrip(
   reports: ReportRow[],
   container: HTMLElement
 ): void {
+  render(<SettingsStrip reports={reports} />, container);
+}
+
+function SettingsStrip({ reports }: { reports: ReportRow[] }) {
   const bytes = estimateBytes(reports);
   let errored = 0;
 
@@ -18,33 +23,22 @@ export function settingsStrip(
     }
   }
 
-  container.replaceChildren();
-
-  const strip = document.createElement("div");
-  strip.className = "bon-settings-strip";
-
-  strip.appendChild(buildStat("Storage", formatBytes(bytes)));
-  strip.appendChild(buildStat("Tracked users", String(reports.length)));
-  strip.appendChild(buildStat("Errors", String(errored)));
-
-  container.appendChild(strip);
+  return (
+    <div class="bon-settings-strip">
+      <Stat label="Storage" value={formatBytes(bytes)} />
+      <Stat label="Tracked users" value={String(reports.length)} />
+      <Stat label="Errors" value={String(errored)} />
+    </div>
+  );
 }
 
-function buildStat(label: string, value: string): HTMLDivElement {
-  const stat = document.createElement("div");
-  stat.className = "bon-settings-strip-stat";
-
-  const labelEl = document.createElement("div");
-  labelEl.className = "bon-settings-strip-label";
-  labelEl.textContent = label;
-  stat.appendChild(labelEl);
-
-  const valueEl = document.createElement("div");
-  valueEl.className = "bon-settings-strip-value";
-  valueEl.textContent = value;
-  stat.appendChild(valueEl);
-
-  return stat;
+function Stat({ label, value }: { label: string; value: string }) {
+  return (
+    <div class="bon-settings-strip-stat">
+      <div class="bon-settings-strip-label">{label}</div>
+      <div class="bon-settings-strip-value">{value}</div>
+    </div>
+  );
 }
 
 // Rough UTF-8 byte estimate from the JSON serialization — same approach
