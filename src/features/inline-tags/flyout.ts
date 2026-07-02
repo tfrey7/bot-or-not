@@ -15,6 +15,13 @@ interface FlyoutState {
   anchor: HTMLElement;
   unsubscribe: () => void;
   cleanup: () => void;
+
+  // Signature of the last-rendered panel inputs. `reports-changed` fires on
+  // every write to the reports key — Google-harvest scrapes, attribution
+  // backfill, passive captures — none of which the panel displays. Rebuilding
+  // anyway replays the flyout's entry animation (a visible blink), so the
+  // subscriber skips the render when this signature is unchanged.
+  renderedSignature: string | null;
 }
 
 let active: FlyoutState | null = null;
@@ -73,6 +80,21 @@ function renderInto(
 interface LoadedReport {
   report: Report | null;
   expectedDurationMs: number | null;
+}
+
+function renderSignature(
+  report: Report | null,
+  expectedDurationMs: number | null
+): string {
+  return JSON.stringify({
+    investigation: normalizeInvestigation(
+      report?.investigation,
+      !!report?.ringId
+    ),
+    ringId: report?.ringId ?? null,
+    userNotes: report?.userNotes ?? null,
+    expectedDurationMs,
+  });
 }
 
 async function loadReport(username: string): Promise<LoadedReport> {
@@ -141,6 +163,12 @@ export function inlineTagsOpenFlyout(
         return;
       }
 
+      const signature = renderSignature(report, expectedDurationMs);
+      if (signature === active.renderedSignature) {
+        return;
+      }
+
+      active.renderedSignature = signature;
       renderInto(active.container, active.username, report, expectedDurationMs);
     });
   });
@@ -191,7 +219,14 @@ export function inlineTagsOpenFlyout(
     window.removeEventListener("resize", onResize);
   };
 
-  active = { username, container, anchor, unsubscribe, cleanup };
+  active = {
+    username,
+    container,
+    anchor,
+    unsubscribe,
+    cleanup,
+    renderedSignature: null,
+  };
 
   positionFlyout(container, anchor);
 
@@ -200,6 +235,7 @@ export function inlineTagsOpenFlyout(
       return;
     }
 
+    active.renderedSignature = renderSignature(report, expectedDurationMs);
     renderInto(active.container, username, report, expectedDurationMs);
     maybeAutoInvestigate(username, report);
   });
