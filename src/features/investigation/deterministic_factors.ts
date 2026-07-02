@@ -9,6 +9,7 @@
 // alongside the LLM-scored ones in `merge_factors.ts`.
 
 import type { Factor, ProfileSummary } from "../../types.ts";
+import { AUTOGEN_WORDS } from "./autogen_words.ts";
 
 export const DETERMINISTIC_FACTOR_KEYS = [
   "username_pattern",
@@ -31,39 +32,101 @@ export function scoreDeterministicFactors(summary: ProfileSummary): Factor[] {
 }
 
 // --- username_pattern ----------------------------------------------------
-// Auto-generated style: `AdjectiveNoun####`, `FirstnameLastname####`,
-// random-looking strings. Reddit suggests these names so this is a weak
-// signal alone — keep score modest.
+// Reddit's real auto-suggestions are Word[sep]Word[sep]digits with both
+// words from a fixed 2,256-word inventory (see autogen_words.ts), the
+// separator consistently "", "-", or "_" (never mixed, never before the
+// digits alone), and 1-4 digits — plus Snoo-##### for SSO signups. A TRUE
+// suggestion is what millions of legitimate signups accept, so it's a weak
+// signal on its own. The IMPOSTER shape — right structure, words Reddit
+// never suggests (human first/last names) — is a spam-farm signature and
+// scores harder. Separator-less TitleCase pairs are also a common human
+// handle style (WillyNilly1997), so they score softer than the separator
+// variants. All tiers stay below the red-flag thresholds (-0.6 / 0.6):
+// a username alone must never floor the verdict.
+
+const AUTOGEN_SHAPE = /^([A-Z][a-z]+)([_-]?)([A-Z][a-z]+)\2?(\d{1,4})$/;
+const SNOO_SHAPE = /^Snoo[-_]\d{4,6}$/;
+
+// Spam-farm username generators documented by bot-swatter (BSD-3-Clause,
+// https://github.com/fsvreddit/bot-swatter): digit-infix names and
+// surname mutations like Margaret3U88Nelson, Patricia99kozlov,
+// MichelleWilson3g33, Laura_Parker_ea.
+const LLM_FARM_SHAPES = [
+  /^[A-Z]?[a-z]+\d{1,2}[AEIOU]\d{1,2}[A-Z]?[a-z]+\d{0,3}$/,
+  /^[A-Z][a-z]+\d[a-z]\d[A-Z][a-z]+\d{1,3}$/,
+  /^[A-Z][a-z]+\d{2,4}[a-z]+$/,
+  /^(?:[A-Z][a-z]+){1,2}\d[a-z][a-z0-9]{2}$/,
+  /^(?:[A-Z][a-z]+_){2}[a-z]{2}$/,
+];
 
 function scoreUsernamePattern(summary: ProfileSummary): Factor {
   const name = summary.username;
 
-  // Adjective+Noun+digits or Word+Word+digits — the classic Reddit
-  // auto-suggestion shape: two PascalCase words followed by 3-5 digits.
-  const autoSuggestPattern = /^[A-Z][a-z]+[_-]?[A-Z][a-z]+[-_]?\d{2,5}$/;
+  const usernameFactor = (
+    score: number,
+    confidence: number,
+    reasoning: string
+  ): Factor => ({
+    key: "username_pattern",
+    score,
+    confidence,
+    reasoning,
+    evidence: [`username: ${name}`],
+  });
 
-  // Snake/dash separated word+digits, also typical of auto-suggestions.
-  const wordDigitPattern = /^[a-z]+[-_]?[a-z]+[-_]?\d{2,5}$/i;
-  const looksAutoSuggested =
-    autoSuggestPattern.test(name) || wordDigitPattern.test(name);
+  const shapeMatch = AUTOGEN_SHAPE.exec(name);
+  if (shapeMatch || SNOO_SHAPE.test(name)) {
+    const isTrueAutogen =
+      SNOO_SHAPE.test(name) ||
+      (shapeMatch !== null &&
+        AUTOGEN_WORDS.has(shapeMatch[1]) &&
+        AUTOGEN_WORDS.has(shapeMatch[3]));
 
-  if (looksAutoSuggested) {
-    return {
-      key: "username_pattern",
-      score: -0.2,
-      confidence: 0.3,
-      reasoning: "Username matches Reddit's auto-suggested shape.",
-      evidence: [`username: ${name}`],
-    };
+    if (isTrueAutogen) {
+      const totalKarma = summary.account.total_karma ?? 0;
+      if (totalKarma <= 3) {
+        return usernameFactor(
+          -0.3,
+          0.5,
+          "Reddit-suggested default name on a zero-history account — LLM farms accept the default."
+        );
+      }
+
+      return usernameFactor(
+        -0.1,
+        0.3,
+        "Reddit-suggested default name; weak signal — millions of humans accept these."
+      );
+    }
+
+    if (shapeMatch![2] !== "") {
+      return usernameFactor(
+        -0.5,
+        0.55,
+        "Mimics Reddit's auto-suggested shape with words Reddit never suggests — spam-farm signature."
+      );
+    }
+
+    return usernameFactor(
+      -0.3,
+      0.45,
+      "Auto-suggest-like word pair outside Reddit's inventory; also a common human handle style."
+    );
   }
 
-  return {
-    key: "username_pattern",
-    score: 0.0,
-    confidence: 0.1,
-    reasoning: "Username doesn't match auto-suggested shape; no signal.",
-    evidence: [`username: ${name}`],
-  };
+  if (LLM_FARM_SHAPES.some((shape) => shape.test(name))) {
+    return usernameFactor(
+      -0.45,
+      0.5,
+      "Matches a known spam-farm username generator shape."
+    );
+  }
+
+  return usernameFactor(
+    0.0,
+    0.1,
+    "Username doesn't match auto-suggested or farm shapes; no signal."
+  );
 }
 
 // --- hidden_post_history -------------------------------------------------

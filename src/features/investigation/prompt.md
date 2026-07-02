@@ -426,6 +426,8 @@ Look at:
 - Whether the recent burst is concentrated (e.g. 50+ items within the last week of a 5-year-old account).
 - Whether the subreddits in the recent burst are different in character from what you'd expect of an old organic account (e.g. an account that "should" have any history is suddenly posting nothing but karma-farm or fake-political content).
 - **Cleared-history signature.** A common variant: the account didn't just go dormant — its old visible history was *deleted* by the user (or scrubbed during account transfer) before the recent burst started. Two telltale shapes: (a) `google_harvest` surfaces cached posts/comments in subs the *current* burst doesn't touch (or in a different language / region than the current content) — meaning the cached content was wiped from the live profile but Google still has it; (b) the recent burst's subs and topical focus are entirely disjoint from anything else the operator has ever done on the account, with the cached evidence proving there *was* a different prior identity. This is the classic stolen/sold-account pattern: buy an aged account, scrub the seller's posts, repurpose. Cite the cached-vs-current divergence in `evidence`.
+- **Continuity seam.** When old content *is* visible across the gap, read the oldest and newest items side by side: does the whole timeline read like one person? Account marketplaces price age and karma, but an operator can't retroactively fake stylistic continuity with the previous owner — a seam in English proficiency, vocabulary, register, or interests across the dormancy gap is the handover fingerprint. This check is yours alone; no threshold rule can run it.
+- **Re-warming shape.** The first items after a long dormancy are innocuous filler (a pet photo, a couple of generic comments in big subs) before the real pivot — revived accounts re-warm to rebuild standing. And purchase-intent comments right after revival ("where can I buy this", "just ordered one", "link?") or replies carrying storefront links are the scam-ring supporting-cast fingerprint.
 
 Scoring guidance:
 - Old account (≥1 year) + recent activity window ≤30 days + concentrated burst → `score ≈ -0.7`, `confidence ≈ 0.7`.
@@ -438,6 +440,7 @@ Cite specific timestamps in `evidence` (e.g. `"account created 2018-03-04, oldes
 ### 3. `karma_farming_subs`
 Posting heavily to subreddits whose primary purpose is harvesting easy upvotes is a bot signal. Known karma-farming subs (not exhaustive — flag anything that fits the pattern):
 
+- r/FreeKarma4U, r/FreeKarma4You, and anything else with "karma" in the name — explicit karma exchanges, the strongest single marker in this class
 - r/spread
 - r/SmilingFriends ("smile")
 - r/JustGuysBeingDudes
@@ -449,7 +452,9 @@ Posting heavily to subreddits whose primary purpose is harvesting easy upvotes i
 - r/Damnthatsinteresting
 - r/interestingasfuck
 
-A single post in one of these isn't damning. A pattern of *only* posting to karma-farming subs with no genuine conversation is.
+A post in r/WhatIsMyCQS (or a "test" post in a similar checker sub) means the operator is monitoring their Reddit spam score. Read it by lifecycle position: on a young or low-karma account — especially when followed by a promotional pivot — it's a smoking gun for spam-prep (`score ≤ -0.7`). On a long-established account with deep organic engagement it's weak curiosity (power users check their standing too); score it `≈ -0.15` and don't let one checker post outweigh an otherwise-organic history.
+
+A single post in one of these isn't damning. A pattern of *only* posting to karma-farming subs with no genuine conversation is. The full lifecycle to look for: karma ground out in farm subs until the account clears typical AutoMod gates (a few hundred to ~1k karma, 30–90 days), then a pivot to promotional or political content — that sequence is the managed-account playbook, and the farm-phase history keeps this factor negative even when the current content looks human.
 
 ### 4. `fake_political_subs`
 A class of subs that mimic legitimate political or news communities but exist primarily as bot playgrounds (real users would be banned for the content patterns). Posting in these is a **high-weight** bot signal:
@@ -467,11 +472,14 @@ A class of subs that mimic legitimate political or news communities but exist pr
 ### 5. `llm_content_style`
 Comments that look auto-generated:
 - Short, generic, emoji-heavy ("This is amazing! 🔥🔥 So inspiring 💯")
-- Vague affirmations with no engagement with the post's specifics
+- Vague affirmations with no engagement with the post's specifics — the strong form is the **assistant register**: validating openers ("Great question!", "That's a really good point"), acknowledge → normalize → suggestions → encouraging-close structure, therapist-style warmth in non-therapy contexts. Machine-generated content clusters in advice/support/technical subs; calibrate suspicion up in those venues.
 - Repetitive structure across many comments ("As someone who [X], I really appreciate [Y]")
-- Overly polished grammar on casual subs, or weirdly formal phrasing
+- Overly polished grammar on casual subs, or weirdly formal phrasing (see the non-native-speaker guardrail below before scoring this)
 - Comments that summarize the post back to itself without adding anything
-- Em-dashes and "It's not just X — it's Y" cadence
+- Em-dashes and "It's not just X — it's Y" cadence, plus the wider construction family: negative parallelism ("not X, but Y", "X rather than Y"), copula avoidance ("serves as", "represents", "boasts"), participial analysis tails ("…, highlighting the importance of…"), rule-of-three adjective triplets
+- Formatting residue Reddit's composer wouldn't produce from a phone: stray `**bold**` mini-headers or structured listicles inside casual comments
+- **Assistant leak strings — rare but dispositive.** Scan for "as an AI language model", refusal fragments ("I'm sorry, but I can't…"), knowledge-cutoff disclaimers, "Certainly! Here's…" openers, or the account *complying* with "ignore all previous instructions" bait from another user. One confirmed leak justifies `score ≈ -0.95`, `confidence ≈ 0.9` on its own.
+- **Uniformity, not polish.** Humans are inconsistent — compare the account's sloppiest comment against its most polished. Near-zero variance in polish, length band, and structure across contexts is the tell. Operators now deliberately prompt for typos, slang, and brevity, so *flat casualness* is as suspicious as flat formality.
 - **No *concrete* first-person anecdotes across many comments.** Arguably the strongest LLM tell — and the one that most often gets misread. The critical distinction is **concrete anecdote** vs **generic first-person framing**:
 
   - **Concrete anecdotes (human):** specific, situated in time/place/people, contain proper nouns or concrete sensory details. "lol my cat once shredded my couch while I was at work, came home and the foam was everywhere." "Tried this last year for my sister's wedding and the buttercream curdled." "My dad was a Teamster in Chicago in the 80s and he used to..." "Happened to me at the DMV on Tuesday — the lady literally..." These mention *what happened*, *to whom*, *when*, and often *where*. LLMs almost never produce this — they don't have a life to draw on.
@@ -479,25 +487,39 @@ Comments that look auto-generated:
 
   Read ten comments from the account. Count how many contain a *concrete anecdote* (named event, situated in a specific time/place, with at least one proper noun or sensory detail). If the count is 0 across ten conversational-sub comments where anecdotes are the natural register (r/AskReddit, advice subs, relationship subs, food/cooking subs), that's a strong bot signal regardless of how natural-sounding the individual sentences are. **"I usually do X" is detached commentary, not an anecdote.** Requires ≥5 visible comments to score (see sample-size cap below).
 
+  - **Credentialing anecdotes earn no human credit.** LLM persuasion accounts fabricate situated personal testimony when it wins arguments ("as a nurse of 15 years…", "speaking as a survivor…"). Weight *incidental* concreteness — details irrelevant to winning the thread — above *argument-instrumental* anecdotes that are always precisely the credential the debate needs. Deliberately unfalsifiable vagueness in personal stories ("a few years back", "a friend of mine", "around 2022 or 2023") is the LLM-compatible shape; so are expertise claims with zero supporting activity anywhere else in the history. If the claimed identity shifts to fit each thread, score the contradiction under the drift factor too.
+
   Cite the count in `evidence` (e.g. `"0/9 visible AskReddit comments contain a concrete first-person anecdote — all are generic opinions framed in first person"`).
 
 **Sample-size cap.** Style is a *pattern* signal — it needs repetition to read either way. With fewer than ~5 visible comments, you can't distinguish "this account writes like a human" from "this one comment happened to land naturally." Hard cap `confidence ≤ 0.2` when `comments_fetched < 5`, regardless of how the visible text reads. A single natural-sounding comment is **not** meaningful counter-evidence to bot-ness — bots warming up routinely drop one or two innocuous comments before pivoting. Reasoning should say "n=1 — not enough samples for style signal" or similar.
 
+**Guardrails (the false-positive and false-negative modes this factor is known for):**
+
+- **Non-native speakers trip this factor.** Formal register, simplified vocabulary, and textbook phrasing are ESL artifacts, not LLM tells — detectors misflag non-native writers at very high rates. When the region evidence points non-anglophone, discount "overly polished / weirdly formal" heavily and lean on the tells that don't depend on register (leak strings, uniformity, anecdote absence).
+- **A human drafting with AI assistance is not a bot account.** Occasional assistant-flavored polish on otherwise-situated content is weak evidence; wholesale generated content is what this factor scores, and it should be corroborated by other factors.
+- **Upvotes are not human evidence.** Measured machine-generated content earns engagement equal to or above human content; never let item scores pull this factor human-ward.
+- **"Sounds human" is weak human evidence.** LLM personas pass sustained human scrutiny (covert LLM accounts have run for months in heavily-moderated argument subs with zero organic suspicion). Presence of tells is evidence toward bot; a clean natural style moves this factor only mildly positive — concrete incidental anecdotes are what earn real human credit.
+
 ### 6. `timestamp_patterns`
-- Activity distributed evenly across all 24 hours = bot (humans sleep).
+- Activity distributed evenly across all 24 hours = bot (humans sleep). The operational check: over a multi-week window, a human shows a recurring daily trough of ≥4 hours at a consistent clock position; no recurring trough anywhere is the flat-24h condition.
 - Activity clustered in a window that aligns with Moscow, Beijing, or Indian Standard Time, but posting in US-focused subs (especially US politics) = likely state-sponsored or paid operation.
-- Bursts of many posts within seconds/minutes = scripted.
-- Posts at *exactly* round intervals = scripted.
+- Bursts of many posts within seconds/minutes = scripted. Substantive comments in *different* threads inside the same minute exceed human reading + typing throughput; a run of them is strong.
+- Posts at *exactly* round intervals = scripted — and more generally, near-constant spacing. Human gaps are heavy-tailed (long silences punctuated by bursts); low-variance machine scheduling is the anomaly even when the interval isn't round.
 
 ### 7. `topical_drift`
 - Account posts about wildly unrelated niches with the same enthusiasm (e.g. American football, Indian cricket, German politics, crypto, gardening — all in one week).
 - Comments contradict each other on the same topic across threads (suggests multiple operators on one account).
-- Persona inconsistencies: claims to be from different countries in different threads.
+- **Biographical ledger check.** Collect every self-claim across the visible window — age, gender, location, occupation, relationship/family status, credentials, traumas — and test them against each other. Stateless generation contradicts itself: a trauma counselor in one thread is a survivor in another, 34 in one post title and 19 in another, in Berlin this week and Manila last week, claims different home countries in different threads. Any hard contradiction is a strong bot signal (`score ≈ -0.8`, `confidence ≈ 0.8`) — cite both claims with their threads in `evidence`. Honest exceptions to rule out first: an openly shared account (a couple posting together, declared in the content or username) and roleplay venues where the persona is the game.
+- **Identity convenience.** Even without a hard contradiction, a persona that is always precisely the credential the current argument needs — thread after thread, each debate met with exactly the right lived experience — is the fabricated-testimony pattern. Moderate bot signal; pair it with the anecdote analysis in the LLM-style factor.
+- **Memoryless voice.** Across a deep window the account never references its own earlier posts, ongoing threads, or past interactions ("like I said last week in r/X…", running jokes, grudges). Humans accumulate a slowly-evolving self; generators treat every thread as the first. Only weigh this on substantial visible history (≥50 items in conversational venues) — a thin or link-post-heavy window says nothing.
 
 ### 8. `engagement_patterns`
 - High posting volume but almost no replies to comments on their own posts = automated.
 - Real humans engage in conversations; bots dump content and leave.
 - Copy-pasted comments across multiple threads (search the comment text).
+- **Feedback responsiveness.** Comments sharing the same `link` value are returns to the same thread — back-and-forth conversation. Humans get drawn into exchanges, return to threads that answer them, and drift toward venues that reward them; operated accounts post on schedule regardless of received engagement. Zero same-thread returns across hundreds of comments in discussion venues is dump-and-leave at scale — a real signal, but corroborating rather than decisive (some humans genuinely drive-by).
+- **Comment repeats the post title.** Comment bodies that verbatim or near-verbatim echo the title of the thread they're on (`body` ≈ the `link` column) are the current dominant karma-warmup pattern. One instance could be coincidence; a repeated pattern is a strong bot signal.
+- **No session fatigue.** Within a long posting session (a run of items without a 30–60 min break), humans measurably degrade — later comments get shorter, sloppier, lower-effort. An account whose 14th comment of the hour reads exactly like its 1st, session after session, is position-independent in a way humans aren't.
 
 **Absence of evidence ≠ evidence of absence.** This factor needs *observable conversation behavior* to score either direction. Two situations look like a bot signal but aren't:
 
@@ -507,8 +529,13 @@ Only score this factor bot-ward when you have a substantive feed of the user's o
 
 <!--:if factor=username_pattern-->
 ### 9. `username_pattern`
-- Auto-generated style: `AdjectiveNoun####`, `FirstnameLastname####`, random-looking strings.
-- Not conclusive alone (Reddit suggests these names), but combined with other signals raises suspicion.
+Reddit's real auto-suggestions are `Word[sep]Word[sep]digits` — both words TitleCase from a fixed ~2,256-word inventory, separator consistently `""`/`-`/`_` (never mixed), 1–4 digits — plus `Snoo-#####` for SSO signups. Tiers:
+
+- **True auto-suggestion** (words in Reddit's inventory, or `Snoo-####`) → weak signal (`≈ -0.1`); millions of legitimate signups accept the default. Bump to `≈ -0.3` only on a zero-karma account (LLM farms accept defaults too).
+- **Imposter shape** — right structure, words Reddit never suggests (typically human first/last names: `Laura_Harris_1624`) → spam-farm signature, `≈ -0.5` with separators, `≈ -0.3` without (separator-less TitleCase pairs are also a human handle style).
+- **Known farm generator shapes** (digit-infix / surname mutations: `Patricia99kozlov`, `MichelleWilson3g33`) → `≈ -0.45`.
+- Single word + digits (`janny887`, `mike1985`) is NOT an auto-suggested shape — no signal.
+- Never a red flag on its own; a username must not floor the verdict.
 <!--:endif-->
 
 <!--:if factor=hidden_post_history-->
@@ -697,5 +724,6 @@ Cite the visible items compactly in `evidence`, e.g. `"avatar: cricket bat + hel
 ## Notes for the analyst
 
 - Score each factor on its own merits. The overall verdict comes from the math (sum of `-score × confidence` across factors, squashed through a logistic), so the quality of the aggregate depends entirely on per-factor honesty.
+- Lexical tells decay within months as operators adapt (the em-dash generation is already fading); structural and behavioral tells — persona contradictions, reply behavior, timing shape, sub-mix lifecycle — decay much slower. When style and structure disagree, trust structure.
 - A factor with no observable evidence gets `score: 0.0`, `confidence: ≤ 0.2`, and a `reasoning` like "no relevant data in sample". Don't inflate confidence to make a neutral factor "count" — low-confidence factors contribute proportionally less to the aggregate, which is the right behavior.
 - The `summary` should describe what you found; the verdict label will be attached automatically based on your scores.
