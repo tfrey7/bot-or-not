@@ -32,13 +32,24 @@ import {
   summarizeProfile,
 } from "../src/features/investigation/summarize.ts";
 import { investigationCallLlm } from "../src/features/investigation/api.ts";
+import { assemblePrompt } from "../src/features/investigation/assemble_prompt.ts";
+import {
+  DETERMINISTIC_FACTOR_KEYS,
+  scoreDeterministicFactors,
+} from "../src/features/investigation/deterministic_factors.ts";
+import { mergeFactors } from "../src/features/investigation/merge_factors.ts";
+import { FACTORS } from "../src/factors.ts";
 import { extractJson } from "../src/utils/json.ts";
 import { normalizePersona } from "../src/utils/persona.ts";
 import { extractActivityData } from "../src/utils/reddit_activity.ts";
 import { computeVerdict } from "../src/verdict.ts";
 import { inferRegion } from "../src/features/regions/index.ts";
 import { redditorsInferTimezoneFromTimestamps } from "../src/features/redditors/region.ts";
-import type { Factor } from "../src/types.ts";
+import type {
+  BotBouncerStatus,
+  Factor,
+  RedditProfile,
+} from "../src/types.ts";
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const PROMPT_PATH = resolve(REPO_ROOT, "src/features/investigation/prompt.md");
@@ -53,8 +64,11 @@ for (let i = 0; i < args.length; i++) {
     const eqIdx = arg.indexOf("=");
     if (eqIdx > -1) {
       flagValues.set(arg.slice(2, eqIdx), arg.slice(eqIdx + 1));
-    } else if (arg === "--model" && i + 1 < args.length) {
-      flagValues.set("model", args[++i]);
+    } else if (
+      (arg === "--model" || arg === "--fixture") &&
+      i + 1 < args.length
+    ) {
+      flagValues.set(arg.slice(2), args[++i]);
     } else {
       booleanFlags.add(arg);
     }
@@ -66,7 +80,7 @@ const username = positional[0];
 
 if (!username) {
   console.error(
-    "Usage: npm run investigate -- <username> [--json] [--model <id>]"
+    "Usage: npm run investigate -- <username> [--json] [--model <id>] [--fixture <file>]"
   );
   process.exit(1);
 }
@@ -139,7 +153,33 @@ function formatRegion(
   return "(no region inferred)";
 }
 
-async function main(): Promise<void> {
+// Reddit hard-blocks non-browser HTTP clients from some networks, which
+// kills the live-fetch path entirely. A fixture file — profile JSON
+// harvested from a real browser tab (same shape as fetchRedditProfile's
+// result, plus the Bot Bouncer status) — lets the rest of the pipeline
+// run offline from Reddit.
+interface Fixture {
+  profile: RedditProfile;
+  botBouncerStatus?: BotBouncerStatus;
+}
+
+async function loadProfile(): Promise<{
+  profile: RedditProfile;
+  botBouncerStatus: BotBouncerStatus;
+}> {
+  const fixturePath = flagValues.get("fixture");
+
+  if (fixturePath) {
+    log(`[investigate] loading fixture ${fixturePath}...`);
+    const fixture = JSON.parse(
+      readFileSync(resolve(fixturePath), "utf8")
+    ) as Fixture;
+    return {
+      profile: fixture.profile,
+      botBouncerStatus: fixture.botBouncerStatus ?? null,
+    };
+  }
+
   log(`[investigate] fetching reddit data for u/${username}...`);
 
   const [profileSettled, botBouncerSettled] = await Promise.allSettled([
@@ -157,11 +197,17 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
-  const { profile } = profileSettled.value;
-  const botBouncerStatus =
-    botBouncerSettled.status === "fulfilled"
-      ? botBouncerSettled.value.status
-      : null;
+  return {
+    profile: profileSettled.value.profile,
+    botBouncerStatus:
+      botBouncerSettled.status === "fulfilled"
+        ? botBouncerSettled.value.status
+        : null,
+  };
+}
+
+async function main(): Promise<void> {
+  const { profile, botBouncerStatus } = await loadProfile();
 
   const postCount = profile.submitted.data?.children?.length ?? 0;
   const commentCount = profile.comments.data?.children?.length ?? 0;
@@ -177,10 +223,22 @@ async function main(): Promise<void> {
 
   log(`[investigate] calling Claude...`);
 
+  // Mirror runOneDAnalysis: the six deterministic factors are scored in
+  // TS and stripped from the prompt; the LLM only scores the rest.
+  const llmFactorKeys = FACTORS.map((factor) => factor.key).filter(
+    (key) =>
+      !(DETERMINISTIC_FACTOR_KEYS as readonly string[]).includes(key)
+  );
+  const systemPrompt = assemblePrompt(PROMPT, summary, {
+    llmFactorKeys,
+    stripInputConditional: false,
+  });
+  const deterministicFactors = scoreDeterministicFactors(summary);
+
   const avatarUrl = extractSnoovatarUrl(profile);
   const claudeResult = await investigationCallLlm(
     apiKey!,
-    PROMPT,
+    systemPrompt,
     summary,
     "investigation 1D",
     { avatarUrl, ...(modelOverride ? { model: modelOverride } : {}) }
@@ -200,7 +258,7 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
-  const factors = payload.factors as Factor[];
+  const factors = mergeFactors(payload.factors as Factor[], deterministicFactors);
   const persona = normalizePersona(payload.persona);
   const claudeSummary =
     typeof payload.summary === "string" ? payload.summary : "";

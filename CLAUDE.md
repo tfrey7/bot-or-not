@@ -15,7 +15,21 @@ Invoke the `writing-code` Skill (`Skill(writing-code)`) before any Edit/Write/No
 | `npm run deadcode`  | Find unused files, exports, types, and dependencies with [knip](https://knip.dev). Entry points (manifest scripts, `reports.html`, `scripts/`) are configured in `knip.json` — `tsc`/ESLint can't see cross-file unused exports, so this is the only check that catches them. Exits non-zero when it finds something. |
 | `npm run build`     | Build an unsigned extension zip into `web-ext-artifacts/`                                               |
 | `npm run sign`      | Sign and publish to AMO (self-distribution, unlisted). Reads `AMO_API_KEY`/`AMO_API_SECRET` from `.env` |
-| `npm run investigate -- <username> [--json]` | Run the bot/human investigation pipeline against a Reddit username outside the extension. Lets you iterate on the investigation prompt without rebuilding. Reads `CLAUDE_API_KEY` from `.env` (gitignored). |
+| `npm run investigate -- <username> [--json] [--fixture <file>]` | Run the bot/human investigation pipeline against a Reddit username outside the extension. Lets you iterate on the investigation prompt without rebuilding. Reads `CLAUDE_API_KEY` from `.env` (gitignored). Live Reddit fetch no longer works from the CLI (see "Investigation fixtures") — pass `--fixture fixtures/<username>.json` instead. |
+| `npm run harvest [-- user1 user2 …]` | Copy the browser-console fixture harvester to the clipboard (reference set by default). Paste it into a logged-in Reddit tab's devtools console; it downloads `bon-fixtures.json`. |
+| `npm run ingest [-- <path>]` | Split the newest `~/Downloads/bon-fixtures*.json` into per-user `fixtures/<username>.json` files. |
+| `npm run regress [-- user1 …]` | Run every fixtured reference account through the pipeline and diff against the hand-judged expectations in `scripts/reference_accounts.ts`. Run after any prompt or verdict-math change. ~$0.25/account in Claude calls. |
+
+### Investigation fixtures (prompt-iteration loop)
+
+Reddit hard-blocks unauthenticated HTTP at the network level (403 "blocked by network security" for curl, Node, and even logged-out real browsers), so the CLI can't fetch profiles live anymore. The only place Reddit JSON is still fetchable is a same-origin tab riding the operator's logged-in session — and Reddit's CSP blocks `connect-src` to localhost, so the data comes back as a file download, not a POST. The loop that works:
+
+1. `npm run harvest` — puts the console harvester on the clipboard (usernames injected from `scripts/reference_accounts.ts`, or pass your own).
+2. Paste into the devtools console of any logged-in reddit.com tab → `bon-fixtures.json` downloads.
+3. `npm run ingest` — splits it into `fixtures/<username>.json` (gitignored; third-party Reddit content stays out of the repo).
+4. `npm run regress` — pipeline vs. hand-judged expectations, or `npm run investigate -- <user> --fixture fixtures/<user>.json` for one account.
+
+Fixtures are frozen snapshots — that's a feature for regression (only the prompt varies between runs), but re-harvest when an account's recent behavior matters. `scripts/reference_accounts.ts` is the canonical regression set; when the user declares a new known account, add it there with its expected verdict band + persona.
 
 ### Parallel strands
 
