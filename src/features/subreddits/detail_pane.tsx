@@ -2,14 +2,11 @@
 //
 // One screen, no scrolling: title strip + verdict badge + sample-mix
 // counts at the top, persona scatter (filtered to just this sub's
-// sampled authors) below. The scatter reuses the Personas-tab renderer
-// — a vanilla SVG builder hosted via a ref — same archetype anchors,
-// same hover-card behavior, just with a smaller dot set. Clicking a
-// dot opens the operator's user dossier.
+// sampled authors) below. The scatter reuses the Personas-tab component
+// — same archetype anchors, same hover-card behavior, just with a
+// smaller dot set. Clicking a dot opens the operator's user dossier.
 
-import { useEffect, useRef } from "preact/hooks";
-import { personasCollect, personasScatter } from "../personas";
-import type { PersonaPoint } from "../personas";
+import { personasCollect, PersonasScatter } from "../personas";
 import { formatDate } from "../../utils/format_time.ts";
 import type { Report } from "../../types.ts";
 import type {
@@ -176,43 +173,16 @@ function DetailScatter({
 
   return (
     <div class="bon-subreddits-detail-scatter">
-      <ScatterHost
+      <PersonasScatter
         points={points}
-        reportsByUsername={reportsByUsername}
-        onSelectUser={onSelectUser}
+        onSelect={onSelectUser}
+        lookupReport={(username) =>
+          reportsByUsername.get(username.toLowerCase()) ?? null
+        }
       />
       <p class="bon-subreddits-detail-scatter-caption">
         {personaCaption(points, entry.verdict)}
       </p>
     </div>
   );
-}
-
-interface ScatterHostProps {
-  points: PersonaPoint[];
-  reportsByUsername: Map<string, Report>;
-  onSelectUser: (username: string) => void;
-}
-
-// The scatter SVG is built by the Personas feature's vanilla renderer, so
-// it enters the tree imperatively. The host div is display: contents to
-// keep the svg a direct flex item of the scatter card.
-function ScatterHost({
-  points,
-  reportsByUsername,
-  onSelectUser,
-}: ScatterHostProps) {
-  const host = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    host.current?.replaceChildren(
-      personasScatter(points, {
-        onSelect: onSelectUser,
-        lookupReport: (username) =>
-          reportsByUsername.get(username.toLowerCase()) ?? null,
-      })
-    );
-  }, [points, reportsByUsername, onSelectUser]);
-
-  return <div class="bon-subreddits-scatter-host" ref={host} />;
 }
