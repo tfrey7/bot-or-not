@@ -15,11 +15,20 @@ interface ModelPricing {
 
 const MODEL_PRICING: Record<string, ModelPricing> = {
   "claude-opus-4-7": {
-    input: 15,
-    output: 75,
-    cacheRead: 1.5,
-    cacheWrite5m: 18.75,
-    cacheWrite1h: 30,
+    input: 5,
+    output: 25,
+    cacheRead: 0.5,
+    cacheWrite5m: 6.25,
+    cacheWrite1h: 10,
+  },
+
+  // Introductory pricing through 2026-08-31; reverts to 3 / 15 after.
+  "claude-sonnet-5": {
+    input: 2,
+    output: 10,
+    cacheRead: 0.2,
+    cacheWrite5m: 2.5,
+    cacheWrite1h: 4,
   },
   "claude-sonnet-4-6": {
     input: 3,
