@@ -2,6 +2,12 @@
 
 Notable changes to Bot or Not. Signed `.xpi` builds for each version are attached to the matching [GitHub Release](https://github.com/tfrey7/bot-or-not/releases).
 
+## [8.1.0] — 2026-07-02
+- Add Sonnet 5 pricing and correct Opus 4.7 rates
+- Make Claude Sonnet 5 the default analysis model
+- Add fixture-based investigation workflow
+- Refine bot-detection heuristics from external research
+
 ## [8.0.0] — 2026-07-02
 - Port the settings strip and sync panel to Preact
 - Port the Redditors tab to Preact
