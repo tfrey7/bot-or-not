@@ -2,6 +2,9 @@
 
 Notable changes to Bot or Not. Signed `.xpi` builds for each version are attached to the matching [GitHub Release](https://github.com/tfrey7/bot-or-not/releases).
 
+## [8.3.0] — 2026-07-03
+- Evict dormant blocked accounts under slot pressure, with re-block tripwire
+
 ## [8.2.0] — 2026-07-02
 - Preserve deep-link ?user= selection until first reports load
 
