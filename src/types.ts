@@ -483,6 +483,15 @@ export interface ProfileSummary {
 
 // Raw Reddit JSON envelopes we look into. Field set is intentionally
 // open — we only declare the few keys our code touches.
+// Karma snapshot from about.json. Any new post or comment self-upvotes, so
+// a bit-for-bit unchanged triple across probes means the account produced
+// nothing — and nobody voted on its old content either.
+export interface AccountKarma {
+  total: number;
+  link: number;
+  comment: number;
+}
+
 export interface RedditAboutEnvelope {
   data?: {
     name?: string;

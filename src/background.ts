@@ -37,6 +37,8 @@ import {
 import {
   blocklistCleanupGetState,
   blocklistCleanupSweep,
+  blocklistReblock,
+  blocklistTripwireList,
 } from "./features/blocklist-cleanup";
 import { statusRecheckSweep } from "./features/status-recheck";
 import {
@@ -194,6 +196,14 @@ browser.runtime.onMessage.addListener((message: BaseMessage) => {
 
   if (message.type === "get-blocklist-cleanup-state") {
     return blocklistCleanupGetState();
+  }
+
+  if (message.type === "blocklist-tripwire-list") {
+    return blocklistTripwireList();
+  }
+
+  if (message.type === "blocklist-reblock") {
+    return blocklistReblock(message.username as string);
   }
 
   if (message.type === "update-user-status") {

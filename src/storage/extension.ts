@@ -2,12 +2,14 @@
 // inside the extension's three execution contexts.
 
 import type { LlmVendor } from "../llm/index.ts";
-import type { Report, SubredditReport } from "../types.ts";
+import type { AccountKarma, Report, SubredditReport } from "../types.ts";
 import { findReportKey, normalizeReport } from "../utils/history.ts";
 import { slimReport } from "./logic.ts";
 import type {
   ApiKeyMap,
   BlocklistCleanupState,
+  BlocklistProbe,
+  BlocklistWatchEntry,
   LlmSelection,
   ReportUpdater,
   StorageAdapter,
@@ -388,17 +390,67 @@ function normalizeBlocklistCleanupState(value: unknown): BlocklistCleanupState {
     unknown
   >;
 
-  const probedAt: Record<string, number> = {};
+  const probes: Record<string, BlocklistProbe> = {};
+  if (record.probes && typeof record.probes === "object") {
+    for (const [username, entry] of Object.entries(record.probes)) {
+      const probe = normalizeBlocklistProbe(entry);
+      if (probe !== null) {
+        probes[username] = probe;
+      }
+    }
+  }
+
+  // Legacy shape: `probedAt` held a bare confirmed-alive timestamp per
+  // account. Seed a probe from it so those accounts keep their staleness
+  // gating; the karma trail starts on their next probe.
   if (record.probedAt && typeof record.probedAt === "object") {
     for (const [username, at] of Object.entries(record.probedAt)) {
-      if (typeof at === "number") {
-        probedAt[username] = at;
+      if (typeof at === "number" && !(username in probes)) {
+        probes[username] = { at, karma: null, stableSince: at };
       }
     }
   }
 
   const unblocked = Array.isArray(record.unblocked)
-    ? (record.unblocked as unknown[]).filter(
+    ? (record.unblocked as unknown[])
+        .filter(
+          (
+            entry
+          ): entry is { username: string; at: number; reason?: unknown } =>
+            !!entry &&
+            typeof entry === "object" &&
+            typeof (entry as { username?: unknown }).username === "string" &&
+            typeof (entry as { at?: unknown }).at === "number"
+        )
+        .map((entry) => ({
+          username: entry.username,
+          at: entry.at,
+          reason:
+            entry.reason === "dormant"
+              ? ("dormant" as const)
+              : ("dead" as const),
+        }))
+    : [];
+
+  const watchlist: Record<string, BlocklistWatchEntry> = {};
+  if (record.watchlist && typeof record.watchlist === "object") {
+    for (const [username, entry] of Object.entries(record.watchlist)) {
+      const watch = (entry && typeof entry === "object" ? entry : {}) as Record<
+        string,
+        unknown
+      >;
+
+      if (typeof watch.at === "number") {
+        watchlist[username] = {
+          at: watch.at,
+          karma: normalizeAccountKarma(watch.karma),
+        };
+      }
+    }
+  }
+
+  const reblocked = Array.isArray(record.reblocked)
+    ? (record.reblocked as unknown[]).filter(
         (entry): entry is { username: string; at: number } =>
           !!entry &&
           typeof entry === "object" &&
@@ -428,9 +480,46 @@ function normalizeBlocklistCleanupState(value: unknown): BlocklistCleanupState {
                 : 0,
           }
         : null,
-    probedAt,
+    probes,
     unblocked,
+    watchlist,
+    reblocked,
   };
+}
+
+function normalizeBlocklistProbe(value: unknown): BlocklistProbe | null {
+  const record = (value && typeof value === "object" ? value : {}) as Record<
+    string,
+    unknown
+  >;
+
+  if (typeof record.at !== "number") {
+    return null;
+  }
+
+  return {
+    at: record.at,
+    karma: normalizeAccountKarma(record.karma),
+    stableSince:
+      typeof record.stableSince === "number" ? record.stableSince : record.at,
+  };
+}
+
+function normalizeAccountKarma(value: unknown): AccountKarma | null {
+  const record = (value && typeof value === "object" ? value : {}) as Record<
+    string,
+    unknown
+  >;
+
+  if (
+    typeof record.total !== "number" ||
+    typeof record.link !== "number" ||
+    typeof record.comment !== "number"
+  ) {
+    return null;
+  }
+
+  return { total: record.total, link: record.link, comment: record.comment };
 }
 
 function normalizeSyncConfig(value: unknown): SyncConfig {

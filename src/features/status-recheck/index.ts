@@ -48,7 +48,7 @@ async function recheckAccount(username: string): Promise<void> {
 
     return {
       ...current,
-      userStatus: liveness,
+      userStatus: liveness.status,
       userStatusCheckedAt: Date.now(),
     };
   });

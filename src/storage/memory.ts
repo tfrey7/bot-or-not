@@ -31,8 +31,10 @@ export class InMemoryStorage implements StorageAdapter {
   };
   private blocklistCleanup: BlocklistCleanupState = {
     lastSweep: null,
-    probedAt: {},
+    probes: {},
     unblocked: [],
+    watchlist: {},
+    reblocked: [],
   };
 
   async readReports(): Promise<Record<string, Report>> {

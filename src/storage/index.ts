@@ -11,6 +11,8 @@ import { InMemoryStorage } from "./memory.ts";
 import type {
   ApiKeyMap,
   BlocklistCleanupState,
+  BlocklistProbe,
+  BlocklistWatchEntry,
   LlmSelection,
   ReportUpdater,
   StorageAdapter,
@@ -20,6 +22,8 @@ import type {
 export type {
   ApiKeyMap,
   BlocklistCleanupState,
+  BlocklistProbe,
+  BlocklistWatchEntry,
   LlmSelection,
   ReportUpdater,
   SyncConfig,

@@ -10,6 +10,10 @@
 
 import { clientSend, clientSubscribe } from "./client.ts";
 import {
+  blocklistTripwireInit,
+  blocklistTripwireScan,
+} from "./features/blocklist-cleanup";
+import {
   inlineTagsInit,
   inlineTagsMark,
   inlineTagsResetNav,
@@ -49,6 +53,7 @@ function scheduleScan(): void {
   scanScheduled = true;
   requestAnimationFrame(() => {
     scanScheduled = false;
+    blocklistTripwireScan();
     inlineTagsMark();
     passiveHarvestTick();
     profileInjectionTick();
@@ -64,6 +69,7 @@ function startFeatures(): void {
 
   featuresStarted = true;
 
+  blocklistTripwireInit();
   inlineTagsInit();
   passiveHarvestInit();
   profileInjectionInit();

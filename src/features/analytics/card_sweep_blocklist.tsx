@@ -16,7 +16,7 @@ export function SweepBlocklistCard({
   return (
     <ChartCard
       title="Blocklist cleanup"
-      subtitle="daily · unblocks dead accounts to free block-list slots"
+      subtitle="daily · unblocks dead accounts, evicts dormant ones under slot pressure"
     >
       <div>
         {state.lastSweep === null ? (
@@ -32,6 +32,11 @@ export function SweepBlocklistCard({
               ["Probed last sweep", String(state.lastSweep.probedCount)],
               ["Unblocked last sweep", String(state.lastSweep.unblockedCount)],
               ["Slots freed to date", String(state.unblocked.length)],
+              [
+                "Watching for returns",
+                String(Object.keys(state.watchlist).length),
+              ],
+              ["Re-blocked returns", String(state.reblocked.length)],
             ]}
           />
         )}
@@ -55,7 +60,9 @@ function RecentUnblocks({
       {recent.map((entry) => (
         <li key={`${entry.username}-${entry.at}`}>
           <span class="bon-pii-name">{entry.username}</span>
-          <span class="bon-sweep-when">{formatDate(entry.at)}</span>
+          <span class="bon-sweep-when">
+            {entry.reason} · {formatDate(entry.at)}
+          </span>
         </li>
       ))}
     </ul>

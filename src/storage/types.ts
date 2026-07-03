@@ -4,7 +4,7 @@
 // server's HTTP API to host the same code as a website with a real backend.
 
 import type { LlmVendor } from "../llm/index.ts";
-import type { Report, SubredditReport } from "../types.ts";
+import type { AccountKarma, Report, SubredditReport } from "../types.ts";
 
 // Persisted LLM selection. Both fields nullable — `null` means "use the
 // provider's built-in default," so a fresh install (and any user who's
@@ -30,11 +30,13 @@ export interface SyncConfig {
 
 // Blocklist-cleanup sweep bookkeeping. `lastSweep` summarizes the most
 // recent completed pass (null before the first one) and doubles as the
-// daily gate. `probedAt` remembers when each blocked account *without* a
-// report was last confirmed alive (reported accounts carry that on
-// Report.userStatusCheckedAt); keyed by lowercase username, pruned to the
-// current block list each sweep. `unblocked` is the audit trail of accounts
-// the sweep removed from the operator's block list.
+// daily gate. `probes` holds the per-account liveness/karma trail for every
+// blocked account, keyed by lowercase username and pruned to the current
+// block list each sweep. `unblocked` is the audit trail of accounts the
+// sweep removed from the operator's block list; `watchlist` are the ones we
+// still watch for a return to activity (see the tripwire), with the karma
+// snapshot from eviction time as the activity baseline; `reblocked` is the
+// audit trail of watchlisted accounts that came back and were re-blocked.
 interface BlocklistSweepSummary {
   at: number;
   blockedCount: number;
@@ -42,10 +44,29 @@ interface BlocklistSweepSummary {
   unblockedCount: number;
 }
 
+// `stableSince` is when the current karma value was first observed — the
+// span up to `at` is how long the account has provably produced nothing.
+export interface BlocklistProbe {
+  at: number;
+  karma: AccountKarma | null;
+  stableSince: number;
+}
+
+export interface BlocklistWatchEntry {
+  at: number;
+  karma: AccountKarma | null;
+}
+
 export interface BlocklistCleanupState {
   lastSweep: BlocklistSweepSummary | null;
-  probedAt: Record<string, number>;
-  unblocked: Array<{ username: string; at: number }>;
+  probes: Record<string, BlocklistProbe>;
+  unblocked: Array<{
+    username: string;
+    at: number;
+    reason: "dead" | "dormant";
+  }>;
+  watchlist: Record<string, BlocklistWatchEntry>;
+  reblocked: Array<{ username: string; at: number }>;
 }
 
 // Updater for updateReport. Receives the current Report (or null if no

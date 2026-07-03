@@ -1,6 +1,7 @@
-// Reddit I/O for the blocklist cleanup sweep: reading the operator's block
-// list, the identity bits the legacy write API wants, and the unblock POST
-// itself — the only write the extension ever sends to Reddit.
+// Reddit I/O for the blocklist cleanup sweep and its tripwire: reading the
+// operator's block list, the identity bits the legacy write API wants, and
+// the unblock/re-block POSTs — the only writes the extension ever sends to
+// Reddit.
 
 import { QUEUE_PRIORITY } from "../../queue_priority.ts";
 import { redditFetchJson, redditPostForm } from "../../reddit/client.ts";
@@ -104,4 +105,28 @@ export async function postUnblock(
     form,
     QUEUE_PRIORITY.background
   );
+}
+
+// Re-block a watchlisted account that returned to activity. Reddit refuses
+// re-blocks for ~24h after an unblock; the caller treats a failure here as
+// "try again on a later sighting." With api_type=json the endpoint reports
+// refusals as a 200 with an errors array, so that case throws explicitly.
+export async function postBlock(
+  username: string,
+  self: SelfIdentity
+): Promise<void> {
+  const response = await redditPostForm<{ json?: { errors?: unknown[] } }>(
+    "https://www.reddit.com/api/block_user",
+    {
+      name: username,
+      api_type: "json",
+      uh: self.modhash,
+    },
+    QUEUE_PRIORITY.background
+  );
+
+  const errors = response.json?.errors ?? [];
+  if (errors.length > 0) {
+    throw new Error(`block_user refused: ${JSON.stringify(errors)}`);
+  }
 }
