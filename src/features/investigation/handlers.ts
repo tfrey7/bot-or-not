@@ -15,12 +15,14 @@ import PQueue from "p-queue";
 import pRetry, { AbortError } from "p-retry";
 
 import type {
+  Factor,
   Investigation,
   InvestigationResults,
   RedditMetrics,
   Report,
   RunSnapshot,
 } from "../../types.ts";
+import { FACTORS } from "../../factors.ts";
 import {
   readApiKey,
   readLlmSelection,
@@ -40,7 +42,13 @@ import {
   isProfileHidden,
 } from "../../utils/profile_hidden.ts";
 import { clampRetryAfter } from "../../utils/retry_after.ts";
-import { isInvestigationStale } from "../../verdict.ts";
+import {
+  computeVerdict,
+  isInvestigationStale,
+  isRedFlag,
+  RED_FLAG_LIKELY_BOT_COUNT,
+} from "../../verdict.ts";
+import { scoreDeterministicFactors } from "./deterministic_factors.ts";
 import {
   extractSnoovatarUrl,
   gatherProfile,
@@ -94,7 +102,8 @@ export async function investigationSweepOrphans(): Promise<void> {
 }
 
 export async function investigationStart(
-  username: string
+  username: string,
+  autoTriggered = false
 ): Promise<{ ok: boolean; queued?: boolean; error?: string }> {
   if (!username) {
     return { ok: false, error: "missing username" };
@@ -127,6 +136,7 @@ export async function investigationStart(
     queuedAt: Date.now(),
     priority: QUEUE_PRIORITY.interactive,
     attempts: 0,
+    autoTriggered,
   });
   void enqueueInvestigation(username, QUEUE_PRIORITY.interactive);
 
@@ -196,6 +206,7 @@ export async function investigationStartBatch(
         durationMs: null,
         error: null,
         attempts: 0,
+        autoTriggered: true,
         runs: prevRuns,
         redditMetrics: prevInvestigation?.redditMetrics ?? null,
         results: null,
@@ -369,6 +380,34 @@ async function runOneAttempt(
     totalKarma: inputs.summary.account.total_karma,
   });
 
+  // Tier-0 fast track: with this many deterministic red flags,
+  // computeVerdict's floor guarantees a bot-side verdict no matter what the
+  // LLM would add — it could only refine where in the bot band the score
+  // lands. Publish the deterministic verdict and skip the Claude call.
+  // Auto-triggered runs only: a manual run is the operator's escalation
+  // path to the full analysis (persona, region, content signals). Checked
+  // before the hidden-profile park so a hidden account with hard red flags
+  // still reads "bot" instead of "cold trail".
+  const autoTriggered = existingRecord.investigation?.autoTriggered ?? false;
+  const deterministicFactors = scoreDeterministicFactors(inputs.summary);
+  const redFlags = deterministicFactors.filter(isRedFlag);
+  if (autoTriggered && redFlags.length >= RED_FLAG_LIKELY_BOT_COUNT) {
+    const results = fastTrackResults(
+      inputs,
+      deterministicFactors,
+      redFlags,
+      postsFetched,
+      commentsFetched,
+      startedAt
+    );
+
+    console.log(
+      `[Bot or Not] fast-tracked ${username}: ${redFlags.map((factor) => factor.key).join(", ")}`
+    );
+    await persistInvestigationDone(username, inputs, results, hidden);
+    return;
+  }
+
   // A hidden profile exposes almost nothing through Reddit's API. Until the
   // operator harvests a Google dossier there's nothing for the analyzer to
   // work from, so skip the Claude call and park the report at "uncertain".
@@ -409,6 +448,7 @@ async function runOneAttempt(
     model: analysis.model,
     usage: analysis.usage,
     costUsd: analysis.costUsd,
+    fastTracked: false,
     postsFetched,
     commentsFetched,
     accountCreatedAt: inputs.summary.account.created_at,
@@ -416,6 +456,49 @@ async function runOneAttempt(
   };
 
   await persistInvestigationDone(username, inputs, results, hidden);
+}
+
+// Sentinel `model` for a fast-tracked run — no model was called.
+const FAST_TRACK_MODEL = "deterministic";
+
+// Results published straight from the deterministic factors — verdict math
+// stays in computeVerdict, exactly as it would run on these factors after
+// an LLM pass. The summary names the red flags that settled it and points
+// at the manual re-run escalation.
+function fastTrackResults(
+  inputs: GatheredProfile,
+  deterministicFactors: Factor[],
+  redFlags: Factor[],
+  postsFetched: number,
+  commentsFetched: number,
+  startedAt: number
+): InvestigationResults {
+  const derived = computeVerdict(deterministicFactors);
+  const flagLabels = redFlags.map(
+    (factor) =>
+      FACTORS.find((meta) => meta.key === factor.key)?.label ?? factor.key
+  );
+
+  return {
+    runAt: Date.now(),
+    durationMs: Date.now() - startedAt,
+    verdict: derived.verdict,
+    confidence: derived.confidence,
+    botProbability: derived.botProbability,
+    factors: deterministicFactors,
+    persona: null,
+    region: null,
+    demographics: null,
+    summary: `Fast-tracked on deterministic red flags: ${flagLabels.join(" + ")}. These alone guarantee a bot-side verdict, so the AI analysis was skipped. Re-run the investigation for persona, region, and content signals.`,
+    model: FAST_TRACK_MODEL,
+    usage: null,
+    costUsd: null,
+    fastTracked: true,
+    postsFetched,
+    commentsFetched,
+    accountCreatedAt: inputs.summary.account.created_at,
+    accountAgeDays: inputs.summary.account.age_days,
+  };
 }
 
 // Synthetic results for a hidden profile we declined to analyze. Empty
@@ -441,6 +524,7 @@ function hiddenProfileResults(
     model: HIDDEN_PROFILE_MODEL,
     usage: null,
     costUsd: null,
+    fastTracked: false,
     postsFetched,
     commentsFetched,
     accountCreatedAt: inputs.summary.account.created_at,
@@ -557,7 +641,7 @@ export async function investigationAutoOnView(
       return { ok: true, started: false };
     }
 
-    void investigationStart(trimmed);
+    void investigationStart(trimmed, true);
     return { ok: true, started: true };
   } catch (error) {
     console.error("[Bot or Not] auto-investigate-on-view failed", error);
@@ -600,7 +684,7 @@ export async function investigationMaybeAuto(username: string): Promise<void> {
       return;
     }
 
-    await investigationStart(username);
+    await investigationStart(username, true);
   } catch (error) {
     console.error("[Bot or Not] auto-investigate failed", error);
   }
@@ -617,6 +701,7 @@ type InvestigationTransition =
       notBefore?: number | null;
       durationMs?: number | null;
       attempts?: number;
+      autoTriggered?: boolean;
       redditMetrics?: RedditMetrics | null;
     }
   | {
@@ -663,6 +748,7 @@ function applyInvestigationTransition(
   const prevAttempts = prevInvestigation?.attempts ?? 0;
   const prevRedditMetrics = prevInvestigation?.redditMetrics ?? null;
   const prevPriority = prevInvestigation?.priority ?? QUEUE_PRIORITY.bulk;
+  const prevAutoTriggered = prevInvestigation?.autoTriggered ?? false;
 
   // Older records have only the single most-recent investigation stored —
   // seed runs[] from those fields the first time we touch one so historical
@@ -687,6 +773,7 @@ function applyInvestigationTransition(
         durationMs: transition.durationMs ?? null,
         error: null,
         attempts: transition.attempts ?? prevAttempts,
+        autoTriggered: transition.autoTriggered ?? prevAutoTriggered,
         runs: prevRuns,
         redditMetrics: transition.redditMetrics ?? prevRedditMetrics,
         results: null,
@@ -702,6 +789,7 @@ function applyInvestigationTransition(
         durationMs: prevInvestigation?.durationMs ?? null,
         error: null,
         attempts: transition.attempts,
+        autoTriggered: prevAutoTriggered,
         runs: prevRuns,
         redditMetrics: prevRedditMetrics,
         results: null,
@@ -717,6 +805,7 @@ function applyInvestigationTransition(
         durationMs: transition.durationMs,
         error: null,
         attempts: prevAttempts,
+        autoTriggered: prevAutoTriggered,
         runs: prevRuns,
         redditMetrics: transition.redditMetrics,
         results: transition.results,
@@ -732,6 +821,7 @@ function applyInvestigationTransition(
         durationMs: transition.durationMs,
         error: transition.error,
         attempts: prevAttempts,
+        autoTriggered: prevAutoTriggered,
         runs: prevRuns,
         redditMetrics: transition.redditMetrics ?? prevRedditMetrics,
         results: null,

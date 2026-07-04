@@ -42,7 +42,11 @@ import { FACTORS } from "../src/factors.ts";
 import { extractJson } from "../src/utils/json.ts";
 import { normalizePersona } from "../src/utils/persona.ts";
 import { extractActivityData } from "../src/utils/reddit_activity.ts";
-import { computeVerdict } from "../src/verdict.ts";
+import {
+  computeVerdict,
+  isRedFlag,
+  RED_FLAG_LIKELY_BOT_COUNT,
+} from "../src/verdict.ts";
 import { inferRegion } from "../src/features/regions/index.ts";
 import { redditorsInferTimezoneFromTimestamps } from "../src/features/redditors/region.ts";
 import type {
@@ -258,6 +262,13 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
+  // Mirrors the extension's tier-0 fast-track gate: an auto-triggered
+  // investigation with this many deterministic red flags publishes without
+  // the LLM. Reported so regress can spot reference accounts that would
+  // fast-track.
+  const deterministicRedFlags =
+    deterministicFactors.filter(isRedFlag).length;
+
   const factors = mergeFactors(payload.factors as Factor[], deterministicFactors);
   const persona = normalizePersona(payload.persona);
   const claudeSummary =
@@ -284,6 +295,7 @@ async function main(): Promise<void> {
     persona,
     summary: claudeSummary,
     factors,
+    deterministicRedFlags,
     botBouncerStatus,
     region,
     timezone,
@@ -313,6 +325,12 @@ async function main(): Promise<void> {
   }
   if (botBouncerStatus) {
     console.log(`BotBouncer: ${botBouncerStatus}`);
+  }
+  if (deterministicRedFlags > 0) {
+    const wouldFastTrack = deterministicRedFlags >= RED_FLAG_LIKELY_BOT_COUNT;
+    console.log(
+      `Deterministic red flags: ${deterministicRedFlags}${wouldFastTrack ? " — an auto-triggered investigation would fast-track" : ""}`
+    );
   }
   console.log(`Region: ${formatRegion(region, timezone)}`);
 

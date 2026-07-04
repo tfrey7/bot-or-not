@@ -118,6 +118,12 @@ export interface InvestigationResults {
   model: string;
   usage: ClaudeUsage | null;
   costUsd: number | null;
+
+  // True when the verdict was published from the deterministic factors
+  // alone — enough red flags to trip computeVerdict's likely-bot floor, so
+  // the LLM call was skipped. persona/region/demographics are null on such
+  // results; a manual re-run performs the full analysis.
+  fastTracked: boolean;
   postsFetched: number;
   commentsFetched: number;
   accountCreatedAt: string | null;
@@ -147,6 +153,14 @@ interface InvestigationLifecycle {
   startedAt: number | null;
   durationMs: number | null;
   error: string | null;
+
+  // True when this run was kicked off automatically (profile viewed,
+  // user re-reported, subreddit sweep) rather than by an explicit operator
+  // action. Only auto runs may fast-track on deterministic red flags —
+  // a manual run always gets the full LLM analysis, making it the
+  // escalation path for a fast-tracked account. Stamped at queue time and
+  // persisted so the orphan sweep can't change a run's origin.
+  autoTriggered: boolean;
 
   // Count of runs we've started for this investigation (1 = first try in
   // progress, etc.). Bumped when the run transitions to "running". Caps

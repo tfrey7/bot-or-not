@@ -20,6 +20,12 @@ const RED_FLAG_SCORE_THRESHOLD = -0.6;
 const RED_FLAG_CONFIDENCE_THRESHOLD = 0.6;
 const RING_BOT_PROBABILITY_FLOOR = 0.85;
 
+// This many red flags floor botProbability at 0.66 — verdict ≥ likely-bot
+// no matter what every other factor says. Exported (with isRedFlag) so the
+// investigation fast-track gate tests the exact invariant the floor
+// enforces instead of duplicating the thresholds.
+export const RED_FLAG_LIKELY_BOT_COUNT = 2;
+
 import type { Factor, Investigation, Verdict } from "./types.ts";
 
 // An investigation whose status is still "running" past this threshold is
@@ -41,6 +47,17 @@ export function isInvestigationStale(
   }
 
   return Date.now() - investigation.startedAt > STALE_INVESTIGATION_MS;
+}
+
+export function isRedFlag(factor: Factor): boolean {
+  const score = typeof factor?.score === "number" ? factor.score : 0;
+  const confidence =
+    typeof factor?.confidence === "number" ? factor.confidence : 0;
+
+  return (
+    score <= RED_FLAG_SCORE_THRESHOLD &&
+    confidence >= RED_FLAG_CONFIDENCE_THRESHOLD
+  );
 }
 
 export interface VerdictResult {
@@ -74,17 +91,14 @@ export function computeVerdict(
     evidenceSum +=
       contribution > 0 ? contribution * BOT_EVIDENCE_WEIGHT : contribution;
 
-    if (
-      score <= RED_FLAG_SCORE_THRESHOLD &&
-      confidence >= RED_FLAG_CONFIDENCE_THRESHOLD
-    ) {
+    if (isRedFlag(factor)) {
       redFlagCount += 1;
     }
   }
 
   let botProbability = 1 / (1 + Math.exp(-2 * evidenceSum));
 
-  if (redFlagCount >= 2) {
+  if (redFlagCount >= RED_FLAG_LIKELY_BOT_COUNT) {
     botProbability = Math.max(botProbability, 0.66);
   } else if (redFlagCount >= 1) {
     botProbability = Math.max(botProbability, 0.36);

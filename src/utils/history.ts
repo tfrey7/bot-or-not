@@ -230,6 +230,7 @@ function canonicalizeInvestigation(value: unknown): Investigation | null {
         ? investigation.durationMs
         : null,
     error: typeof investigation.error === "string" ? investigation.error : null,
+    autoTriggered: investigation.autoTriggered === true,
     runs: Array.isArray(investigation.runs)
       ? (investigation.runs as RunSnapshot[]).map(canonicalizeRunSnapshot)
       : [],
@@ -281,6 +282,7 @@ function canonicalizeInvestigation(value: unknown): Investigation | null {
       null,
     costUsd:
       typeof resultsSource.costUsd === "number" ? resultsSource.costUsd : null,
+    fastTracked: resultsSource.fastTracked === true,
     postsFetched:
       typeof resultsSource.postsFetched === "number"
         ? resultsSource.postsFetched

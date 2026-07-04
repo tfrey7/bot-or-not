@@ -18,6 +18,7 @@ import { existsSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { RED_FLAG_LIKELY_BOT_COUNT } from "../src/verdict.ts";
 import { REFERENCE_ACCOUNTS } from "./reference_accounts.ts";
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -29,6 +30,7 @@ interface InvestigationResult {
   botProbability: number;
   persona: { label: string; archetypes: Record<string, number> } | null;
   costUsd: number | null;
+  deterministicRedFlags: number;
 }
 
 const requested = process.argv.slice(2);
@@ -77,7 +79,18 @@ for (const account of accounts) {
     (expected) => expected === personaLabel || top2.includes(expected)
   );
 
-  const status = verdictOk && personaOk ? "PASS" : "FAIL";
+  // An auto-triggered run would skip the LLM entirely when the gate trips.
+  // Fine for expected-bot accounts (the fast-tracked verdict lands on the
+  // right side); a hand-judged human or nuanced account tripping it means
+  // the deterministic signals are wrong — fail loudly, don't tune around it.
+  const gateTripped = result.deterministicRedFlags >= RED_FLAG_LIKELY_BOT_COUNT;
+  const gateOk =
+    !gateTripped ||
+    account.expectVerdicts.some(
+      (verdict) => verdict === "bot" || verdict === "likely-bot"
+    );
+
+  const status = verdictOk && personaOk && gateOk ? "PASS" : "FAIL";
   if (status === "FAIL") {
     failures++;
   }
@@ -85,7 +98,8 @@ for (const account of accounts) {
   console.log(
     `${status}  ${account.username.padEnd(16)} verdict=${result.verdict} (${result.botProbability.toFixed(3)})` +
       ` persona=${personaLabel} top2=[${top2.join(", ")}]` +
-      `  expected verdict∈[${account.expectVerdicts.join(", ")}] persona∈[${account.expectPersonas.join(", ")}]`
+      `  expected verdict∈[${account.expectVerdicts.join(", ")}] persona∈[${account.expectPersonas.join(", ")}]` +
+      (gateTripped ? `  fast-track gate: ${result.deterministicRedFlags} red flags${gateOk ? "" : " — NOT expected bot-side"}` : "")
   );
 }
 
