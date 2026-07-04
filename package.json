@@ -12,6 +12,7 @@
     "harvest": "tsx scripts/harvest.ts",
     "ingest": "tsx scripts/ingest-fixtures.ts",
     "regress": "source .env && tsx scripts/regress.ts",
+    "outcomes": "tsx scripts/outcomes.ts",
     "regen-readme": "tsx scripts/regen-readme.ts",
     "screenshots": "tsx scripts/capture-screenshots.ts",
     "format": "prettier --write \"src/**/*.{ts,tsx,js}\"",

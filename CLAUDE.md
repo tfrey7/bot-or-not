@@ -19,6 +19,7 @@ Invoke the `writing-code` Skill (`Skill(writing-code)`) before any Edit/Write/No
 | `npm run harvest [-- user1 user2 …]` | Copy the browser-console fixture harvester to the clipboard (reference set by default). Paste it into a logged-in Reddit tab's devtools console; it downloads `bon-fixtures.json`. |
 | `npm run ingest [-- <path>]` | Split the newest `~/Downloads/bon-fixtures*.json` into per-user `fixtures/<username>.json` files. |
 | `npm run regress [-- user1 …]` | Run every fixtured reference account through the pipeline and diff against the hand-judged expectations in `scripts/reference_accounts.ts`. Run after any prompt or verdict-math change. ~$0.25/account in Claude calls. |
+| `npm run outcomes [-- <backup.json>]` | Verdict-outcome analysis over an exported backup (defaults to the newest `~/Downloads/bot-or-not-backup-*.json`): verdict × account-status table, gone-rate by bot probability and verdict age, factor/persona comparison between Reddit-suspended and still-active suspected bots, longest-surviving bot verdicts. No network or Claude calls — statuses are only as fresh as the export. |
 
 ### Investigation fixtures (prompt-iteration loop)
 
