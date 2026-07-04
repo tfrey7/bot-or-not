@@ -2,6 +2,10 @@
 
 Notable changes to Bot or Not. Signed `.xpi` builds for each version are attached to the matching [GitHub Release](https://github.com/tfrey7/bot-or-not/releases).
 
+## [8.4.0] — 2026-07-04
+- Fast-track auto investigations on deterministic red flags
+- Add verdict-outcome analysis over backup exports (npm run outcomes)
+
 ## [8.3.0] — 2026-07-03
 - Evict dormant blocked accounts under slot pressure, with re-block tripwire
 
