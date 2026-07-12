@@ -98,7 +98,14 @@ export async function redditorsGetReport(
   username: string
 ): Promise<{ report: Report | null; expectedDurationMs: number | null }> {
   const report = await readReport(username);
-  const expectedDurationMs = await memoizedExpectedDurationMs();
+
+  // Only the queued/running progress UI reads the expected duration —
+  // don't pay the full-store assemble behind the memo for idle records.
+  const status = report?.investigation?.status;
+  const expectedDurationMs =
+    status === "queued" || status === "running"
+      ? await memoizedExpectedDurationMs()
+      : null;
 
   return { report, expectedDurationMs };
 }

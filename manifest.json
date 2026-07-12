@@ -6,7 +6,8 @@
   "browser_specific_settings": {
     "gecko": {
       "id": "bot-or-not@timothyfrey",
-      "update_url": "https://tfrey7.github.io/bot-or-not/updates.json"
+      "update_url": "https://tfrey7.github.io/bot-or-not/updates.json",
+      "strict_min_version": "131.0"
     }
   },
   "background": {

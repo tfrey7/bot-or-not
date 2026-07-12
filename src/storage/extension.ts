@@ -3,7 +3,7 @@
 
 import type { LlmVendor } from "../llm/index.ts";
 import type { AccountKarma, Report, SubredditReport } from "../types.ts";
-import { findReportKey, normalizeReport } from "../utils/history.ts";
+import { normalizeReport } from "../utils/history.ts";
 import { slimReport } from "./logic.ts";
 import type {
   ApiKeyMap,
@@ -122,11 +122,31 @@ export class ExtensionStorage implements StorageAdapter {
       return normalizeReport(direct[directKey]);
     }
 
-    // Case-mismatched key or a legacy-only record — fall back to a full
-    // assemble so the case-insensitive lookup still resolves.
-    const reports = await this.readReports();
-    const key = findReportKey(reports, username);
-    return key ? reports[key] : null;
+    const storedKey = await this.findStoredReportKey(username);
+    if (!storedKey) {
+      return null;
+    }
+
+    const stored = await browser.storage.local.get(storedKey);
+    return stored[storedKey] !== undefined
+      ? normalizeReport(stored[storedKey])
+      : null;
+  }
+
+  // Case-insensitive lookup for a case-mismatched record. getKeys() lists
+  // key strings without deserializing values, so a miss — every profile
+  // visit for an unreported user — stays O(key count), not O(store bytes).
+  private async findStoredReportKey(username: string): Promise<string | null> {
+    const keys = await browser.storage.local.getKeys();
+    const target = reportStorageKey(username).toLowerCase();
+
+    for (const key of keys) {
+      if (key.toLowerCase() === target) {
+        return key;
+      }
+    }
+
+    return null;
   }
 
   async updateReport(username: string, updater: ReportUpdater): Promise<void> {
@@ -166,15 +186,11 @@ export class ExtensionStorage implements StorageAdapter {
       current = normalizeReport(direct[directKey]);
       existed = true;
     } else {
-      // A case-mismatched or legacy-blob record won't sit at the direct key —
-      // fall back to a full assemble so the case-insensitive update still
-      // resolves. The common path (exact lowercase key) never reaches here, so
-      // the per-write cost no longer scales with the size of the whole store.
-      const reports = await this.readReports();
-      const key = findReportKey(reports, username);
-      if (key) {
-        existingKey = key;
-        current = reports[key];
+      const storedKey = await this.findStoredReportKey(username);
+      if (storedKey) {
+        const stored = await browser.storage.local.get(storedKey);
+        existingKey = storedKey.slice(REPORT_KEY_PREFIX.length);
+        current = normalizeReport(stored[storedKey]);
         existed = true;
       }
     }

@@ -105,7 +105,11 @@ function buildGoogleButton(username: string): HTMLButtonElement {
   return button;
 }
 
-function buildContainer(username: string, report: Report | null): HTMLElement {
+function buildContainer(
+  username: string,
+  report: Report | null,
+  pending: boolean
+): HTMLElement {
   const container = document.createElement("div");
   container.id = CONTAINER_ID;
   container.className = "bon-profile-injection";
@@ -128,15 +132,20 @@ function buildContainer(username: string, report: Report | null): HTMLElement {
   } else {
     const empty = document.createElement("p");
     empty.className = "bon-profile-injection__empty";
-    empty.textContent =
-      "No Google dossier yet — click Search Google to populate.";
+    empty.textContent = pending
+      ? "Loading dossier…"
+      : "No Google dossier yet — click Search Google to populate.";
     container.appendChild(empty);
   }
 
   return container;
 }
 
-function render(username: string, report: Report | null): void {
+function render(
+  username: string,
+  report: Report | null,
+  pending = false
+): void {
   const h1 = findProfileH1();
   if (!h1) {
     return;
@@ -147,7 +156,7 @@ function render(username: string, report: Report | null): void {
     return;
   }
 
-  const fresh = buildContainer(username, report);
+  const fresh = buildContainer(username, report, pending);
   const existing = document.getElementById(CONTAINER_ID) as HTMLElement | null;
 
   if (existing && !isMisplaced(existing) && existing.parentElement === column) {
@@ -218,9 +227,13 @@ async function refreshIfHarvestChanged(username: string): Promise<void> {
 function ensureInjected(username: string): void {
   if (reportCache.has(username)) {
     render(username, reportCache.get(username) ?? null);
-  } else {
-    void refresh(username);
+    return;
   }
+
+  // The Search Google button needs nothing from the report — paint it
+  // immediately and let the dossier fill in when the fetch lands.
+  render(username, null, true);
+  void refresh(username);
 }
 
 export function profileInjectionTick(): void {
