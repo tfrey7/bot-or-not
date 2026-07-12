@@ -12,10 +12,11 @@
 //     ~100-user subreddit sweep.
 //   bulk — a subreddit analysis enqueuing ~100 users, orphan re-sweeps on
 //     startup, and background harvest trickle.
-//   background — the weekly account-status re-check (features/status-recheck)
-//     and the daily blocklist cleanup (features/blocklist-cleanup). Below bulk
-//     so a ban sweep never delays a real investigation; it only drains when
-//     nothing else wants the Reddit funnel.
+//   background — the weekly account-status re-check (features/status-recheck),
+//     the daily blocklist cleanup (features/blocklist-cleanup), and the
+//     harvest attribution drain. The Reddit client routes this tier through
+//     its own trickle queue (one request per interval, pauses first when the
+//     rate budget runs low), so it never competes with a real investigation.
 export const QUEUE_PRIORITY = {
   interactive: 1,
   bulk: 0,

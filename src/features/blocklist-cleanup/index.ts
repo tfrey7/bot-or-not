@@ -13,6 +13,7 @@ import { fetchAccountLiveness } from "../../reddit/liveness.ts";
 import type { BlocklistProbe, BlocklistWatchEntry } from "../../storage";
 import {
   readBlocklistCleanupState,
+  readMaintenancePaused,
   readReportSummaries,
   updateReport,
   writeBlocklistCleanupState,
@@ -42,6 +43,10 @@ const UNBLOCKED_LOG_CAP = 1000;
 const WATCHLIST_CAP = 1000;
 
 export async function blocklistCleanupSweep(): Promise<void> {
+  if (await readMaintenancePaused()) {
+    return;
+  }
+
   const state = await readBlocklistCleanupState();
   const now = Date.now();
 
@@ -52,6 +57,20 @@ export async function blocklistCleanupSweep(): Promise<void> {
     return;
   }
 
+  // Claim the daily gate before the probes: they drain through the funnel's
+  // background trickle over many minutes, and a worker death mid-sweep must
+  // not cause a full re-list + re-probe on the next wake. Real counts land
+  // in the final write below.
+  await writeBlocklistCleanupState({
+    ...state,
+    lastSweep: {
+      at: now,
+      blockedCount: state.lastSweep?.blockedCount ?? 0,
+      probedCount: 0,
+      unblockedCount: 0,
+    },
+  });
+
   let blocked: BlockedUser[];
   try {
     blocked = await fetchBlockedUsers();
@@ -61,6 +80,8 @@ export async function blocklistCleanupSweep(): Promise<void> {
       error
     );
 
+    // Un-claim so a transient listing failure retries on the next wake.
+    await writeBlocklistCleanupState(state);
     return;
   }
 
@@ -75,7 +96,7 @@ export async function blocklistCleanupSweep(): Promise<void> {
   const results = await Promise.all(
     candidates.map(async (candidate) => ({
       candidate,
-      probe: await fetchAccountLiveness(candidate.username),
+      probe: await fetchAccountLiveness(candidate.username, "blocklist"),
     }))
   );
 

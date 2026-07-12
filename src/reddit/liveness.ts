@@ -8,6 +8,7 @@
 
 import { QUEUE_PRIORITY } from "../queue_priority.ts";
 import { redditFetchJson, RedditRequestError } from "./client.ts";
+import type { RedditSource } from "./telemetry.ts";
 import type { AccountKarma, RedditAboutEnvelope } from "../types.ts";
 
 type AccountLiveness = "active" | "suspended" | "deleted";
@@ -25,17 +26,18 @@ export interface AccountLivenessProbe {
 // sweep rather than recording a wrong status. The funnel has already paused
 // itself on a 429/5xx by the time we see the error.
 export async function fetchAccountLiveness(
-  username: string
+  username: string,
+  source: RedditSource
 ): Promise<AccountLivenessProbe | null> {
   const url = `https://www.reddit.com/user/${encodeURIComponent(
     username
   )}/about.json`;
 
   try {
-    const envelope = await redditFetchJson<RedditAboutEnvelope>(
-      url,
-      QUEUE_PRIORITY.background
-    );
+    const envelope = await redditFetchJson<RedditAboutEnvelope>(url, {
+      source,
+      priority: QUEUE_PRIORITY.background,
+    });
 
     return {
       status: envelope.data?.is_suspended ? "suspended" : "active",

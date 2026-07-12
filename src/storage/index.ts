@@ -5,6 +5,7 @@
 // extension.ts / memory.ts.
 
 import type { LlmVendor } from "../llm/index.ts";
+import type { RedditTelemetryState } from "../reddit/telemetry.ts";
 import type { Report, SubredditReport } from "../types.ts";
 import { ExtensionStorage } from "./extension.ts";
 import { InMemoryStorage } from "./memory.ts";
@@ -15,6 +16,7 @@ import type {
   BlocklistWatchEntry,
   LlmSelection,
   ReportUpdater,
+  StatusRecheckState,
   StorageAdapter,
   SyncConfig,
 } from "./types.ts";
@@ -26,6 +28,7 @@ export type {
   BlocklistWatchEntry,
   LlmSelection,
   ReportUpdater,
+  StatusRecheckState,
   SyncConfig,
 };
 
@@ -130,4 +133,32 @@ export function writeBlocklistCleanupState(
   state: BlocklistCleanupState
 ): Promise<void> {
   return storage.writeBlocklistCleanupState(state);
+}
+
+export function readStatusRecheckState(): Promise<StatusRecheckState> {
+  return storage.readStatusRecheckState();
+}
+
+export function writeStatusRecheckState(
+  state: StatusRecheckState
+): Promise<void> {
+  return storage.writeStatusRecheckState(state);
+}
+
+export function readRedditTelemetry(): Promise<RedditTelemetryState> {
+  return storage.readRedditTelemetry();
+}
+
+export function writeRedditTelemetry(
+  state: RedditTelemetryState
+): Promise<void> {
+  return storage.writeRedditTelemetry(state);
+}
+
+export function readMaintenancePaused(): Promise<boolean> {
+  return storage.readMaintenancePaused();
+}
+
+export function writeMaintenancePaused(value: boolean): Promise<void> {
+  return storage.writeMaintenancePaused(value);
 }

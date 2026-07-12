@@ -49,7 +49,9 @@ export async function subredditFetchAuthors(
       : "";
     const url: string = `https://www.reddit.com/r/${encoded}/new.json?limit=${AUTHOR_PAGE_LIMIT}${afterParam}&raw_json=1`;
 
-    const page: RedditListing = await redditFetchJson<RedditListing>(url);
+    const page: RedditListing = await redditFetchJson<RedditListing>(url, {
+      source: "subreddit",
+    });
     pagesFetched += 1;
 
     const children = page.data?.children ?? [];

@@ -337,3 +337,26 @@
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
+
+/* ---------- Reddit funnel source legend ---------- */
+
+.bon-analytics-source-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35em 1em;
+  margin-top: 0.5em;
+  font-size: 0.75rem;
+  color: var(--bon-muted);
+}
+
+.bon-analytics-source-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4em;
+}
+
+.bon-analytics-source-legend-item i {
+  width: 0.7em;
+  height: 0.7em;
+  border-radius: 2px;
+}

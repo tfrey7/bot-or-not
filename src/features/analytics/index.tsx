@@ -12,8 +12,10 @@
 import { render } from "preact";
 import { useEffect, useMemo, useState } from "preact/hooks";
 import { clientSend } from "../../client.ts";
-import type { BlocklistCleanupState } from "../../storage";
+import type { BlocklistCleanupState, StatusRecheckState } from "../../storage";
 import type { Report } from "../../types.ts";
+import { RedditFunnelCard } from "./card_reddit_funnel.tsx";
+import type { RedditTelemetryPayload } from "./card_reddit_funnel.tsx";
 import { SweepBlocklistCard } from "./card_sweep_blocklist.tsx";
 import { SweepRecheckCard } from "./card_sweep_recheck.tsx";
 import { analyticsActivityChart } from "./chart_activity.ts";
@@ -22,6 +24,7 @@ import { analyticsCostChart } from "./chart_cost.ts";
 import { analyticsLatencyChart } from "./chart_latency.ts";
 import { analyticsRedditLatencyChart } from "./chart_reddit_latency.ts";
 import { analyticsRedditRequestsChart } from "./chart_reddit_requests.ts";
+import { analyticsRedditSourcesChart } from "./chart_reddit_sources.ts";
 import { analyticsCollect } from "./logic.ts";
 import { RunLog } from "./table_run_log.tsx";
 
@@ -44,16 +47,28 @@ function AnalyticsTab({
   const [runLogPage, setRunLogPage] = useState(1);
   const [blocklistState, setBlocklistState] =
     useState<BlocklistCleanupState | null>(null);
+  const [recheckState, setRecheckState] = useState<StatusRecheckState | null>(
+    null
+  );
+  const [funnelData, setFunnelData] = useState<RedditTelemetryPayload | null>(
+    null
+  );
 
   // Refetched whenever the reports array changes identity — same cadence as
   // the rest of the tab's data.
   useEffect(() => {
     void (async () => {
-      setBlocklistState(
-        await clientSend<BlocklistCleanupState>({
+      const [blocklist, recheck, funnel] = await Promise.all([
+        clientSend<BlocklistCleanupState>({
           type: "get-blocklist-cleanup-state",
-        })
-      );
+        }),
+        clientSend<StatusRecheckState>({ type: "get-status-recheck-state" }),
+        clientSend<RedditTelemetryPayload>({ type: "get-reddit-telemetry" }),
+      ]);
+
+      setBlocklistState(blocklist);
+      setRecheckState(recheck);
+      setFunnelData(funnel);
     })();
   }, [reports]);
 
@@ -151,6 +166,24 @@ function AnalyticsTab({
         </div>
       )}
       <header class="bon-analytics-subhead">
+        <h2>Reddit funnel</h2>
+        <p class="bon-analytics-subtitle">
+          Live funnel state and which feature is generating Reddit traffic —
+          background sweeps included, not just investigations.
+        </p>
+      </header>
+      <div class="bon-analytics-charts">
+        {funnelData && <RedditFunnelCard data={funnelData} />}
+        {funnelData && (
+          <UplotCard
+            title="Requests by source"
+            subtitle="per hour · last 48h"
+            runs={funnelData.telemetry}
+            build={analyticsRedditSourcesChart}
+          />
+        )}
+      </div>
+      <header class="bon-analytics-subhead">
         <h2>Background sweeps</h2>
         <p class="bon-analytics-subtitle">
           Self-paced hygiene passes over the Reddit funnel: tombstoning removed
@@ -158,7 +191,7 @@ function AnalyticsTab({
         </p>
       </header>
       <div class="bon-analytics-charts">
-        <SweepRecheckCard reports={reports} />
+        <SweepRecheckCard reports={reports} state={recheckState} />
         {blocklistState && <SweepBlocklistCard state={blocklistState} />}
       </div>
     </section>

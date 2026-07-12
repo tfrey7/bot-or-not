@@ -29,10 +29,10 @@ export async function fetchBlockedUsers(): Promise<BlockedUser[]> {
       url.searchParams.set("after", after);
     }
 
-    const envelope = await redditFetchJson<UserListEnvelope>(
-      url.toString(),
-      QUEUE_PRIORITY.background
-    );
+    const envelope = await redditFetchJson<UserListEnvelope>(url.toString(), {
+      source: "blocklist",
+      priority: QUEUE_PRIORITY.background,
+    });
 
     for (const child of envelope.data?.children ?? []) {
       if (typeof child.name === "string" && child.name.length > 0) {
@@ -66,7 +66,7 @@ export async function fetchSelfIdentity(): Promise<SelfIdentity | null> {
   try {
     const envelope = await redditFetchJson<MeEnvelope>(
       "https://www.reddit.com/api/me.json",
-      QUEUE_PRIORITY.background
+      { source: "blocklist", priority: QUEUE_PRIORITY.background }
     );
 
     if (!envelope.data?.id || !envelope.data.modhash) {
@@ -100,11 +100,10 @@ export async function postUnblock(
     form.id = user.fullname;
   }
 
-  await redditPostForm(
-    "https://www.reddit.com/api/unfriend",
-    form,
-    QUEUE_PRIORITY.background
-  );
+  await redditPostForm("https://www.reddit.com/api/unfriend", form, {
+    source: "blocklist",
+    priority: QUEUE_PRIORITY.background,
+  });
 }
 
 // Re-block a watchlisted account that returned to activity. Reddit refuses
@@ -122,7 +121,7 @@ export async function postBlock(
       api_type: "json",
       uh: self.modhash,
     },
-    QUEUE_PRIORITY.background
+    { source: "blocklist", priority: QUEUE_PRIORITY.background }
   );
 
   const errors = response.json?.errors ?? [];

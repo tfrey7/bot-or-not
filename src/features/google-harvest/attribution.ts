@@ -21,8 +21,14 @@
 import PQueue from "p-queue";
 import pRetry from "p-retry";
 
+import { QUEUE_PRIORITY } from "../../queue_priority.ts";
 import { redditFetchJson, RedditRequestError } from "../../reddit/client.ts";
-import { readReport, readReports, updateReport } from "../../storage";
+import {
+  readMaintenancePaused,
+  readReport,
+  readReports,
+  updateReport,
+} from "../../storage";
 import type { GoogleHarvest, GoogleHarvestPost, Report } from "../../types.ts";
 
 const ATTRIBUTION_CONCURRENCY = 3;
@@ -126,7 +132,10 @@ async function classifyPost(
 
   let body: unknown;
   try {
-    body = await redditFetchJson<unknown>(jsonUrl);
+    body = await redditFetchJson<unknown>(jsonUrl, {
+      source: "attribution",
+      priority: QUEUE_PRIORITY.background,
+    });
   } catch (error) {
     if (error instanceof RedditRequestError) {
       // 404 / 403: the post is gone or we can't see it (deleted, private
@@ -364,6 +373,10 @@ export function googleAttributionDrain(): void {
     scanScheduled = false;
 
     try {
+      if (await readMaintenancePaused()) {
+        return;
+      }
+
       const reports = await readReports();
       const pending = collectPending(reports);
 

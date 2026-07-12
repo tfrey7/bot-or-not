@@ -2,36 +2,60 @@
 // accounts for suspension/deletion, so the reports table can mark dead ones
 // with a tombstone — the active counterpart to the passive content-script
 // detector in features/status-detection. Run once on background startup
-// (after migrations); per-account 7-day gating (logic.ts) self-paces it, so
-// even though the non-persistent background page wakes often, any given
-// account is re-fetched at most weekly.
+// (after migrations). Two gates pace it: a pass-level gate (below) keeps
+// frequent background wakes from firing a probe batch each time, and the
+// per-account 7-day gating (logic.ts) bounds how often any given account is
+// re-fetched.
 
-import { readReportSummaries, updateReport } from "../../storage";
+import {
+  readMaintenancePaused,
+  readReportSummaries,
+  readStatusRecheckState,
+  updateReport,
+  writeStatusRecheckState,
+} from "../../storage";
 import { fetchAccountLiveness } from "../../reddit/liveness.ts";
 import { selectDueAccounts } from "./logic.ts";
 
 export { statusRecheckStats } from "./logic.ts";
 
-export async function statusRecheckSweep(): Promise<void> {
-  // Slim summaries are enough — selection only reads the verdict, userStatus,
-  // and last-checked timestamp, all of which survive the slimming.
-  const reports = await readReportSummaries();
-  const due = selectDueAccounts(reports, Date.now());
+const STATUS_RECHECK_PASS_INTERVAL_MS = 6 * 60 * 60 * 1000;
 
-  if (due.length === 0) {
+export async function statusRecheckSweep(): Promise<void> {
+  if (await readMaintenancePaused()) {
     return;
   }
 
-  console.log(`[Bot or Not] status re-check: ${due.length} account(s) due`);
+  const state = await readStatusRecheckState();
+  const now = Date.now();
 
-  // All probes ride the Reddit funnel (concurrency-capped, rate-limit aware)
-  // at background priority, so firing them together just fills its queue
-  // behind any real investigation.
-  await Promise.all(due.map(recheckAccount));
+  if (
+    state.lastSweepAt !== null &&
+    now - state.lastSweepAt < STATUS_RECHECK_PASS_INTERVAL_MS
+  ) {
+    return;
+  }
+
+  // Slim summaries are enough — selection only reads the verdict, userStatus,
+  // and last-checked timestamp, all of which survive the slimming.
+  const reports = await readReportSummaries();
+  const due = selectDueAccounts(reports, now);
+
+  if (due.length > 0) {
+    console.log(`[Bot or Not] status re-check: ${due.length} account(s) due`);
+
+    // All probes ride the Reddit funnel's background trickle queue, so
+    // firing them together just fills its queue — they drain paced.
+    await Promise.all(due.map(recheckAccount));
+  }
+
+  // Stamped after the probes so a worker death mid-pass leaves the gate
+  // open and the remainder retries on the next wake.
+  await writeStatusRecheckState({ lastSweepAt: now, lastProbed: due.length });
 }
 
 async function recheckAccount(username: string): Promise<void> {
-  const liveness = await fetchAccountLiveness(username);
+  const liveness = await fetchAccountLiveness(username, "status-recheck");
   if (liveness === null) {
     return;
   }

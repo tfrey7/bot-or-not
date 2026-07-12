@@ -2,6 +2,14 @@
 // inside the extension's three execution contexts.
 
 import type { LlmVendor } from "../llm/index.ts";
+import { emptyRedditTelemetry } from "../reddit/telemetry.ts";
+import type {
+  RedditHourlyBucket,
+  RedditPauseEvent,
+  RedditSource,
+  RedditSourceTally,
+  RedditTelemetryState,
+} from "../reddit/telemetry.ts";
 import type { AccountKarma, Report, SubredditReport } from "../types.ts";
 import { normalizeReport } from "../utils/history.ts";
 import { slimReport } from "./logic.ts";
@@ -12,6 +20,7 @@ import type {
   BlocklistWatchEntry,
   LlmSelection,
   ReportUpdater,
+  StatusRecheckState,
   StorageAdapter,
   SyncConfig,
 } from "./types.ts";
@@ -369,6 +378,56 @@ export class ExtensionStorage implements StorageAdapter {
   ): Promise<void> {
     await browser.storage.local.set({ blocklistCleanup: state });
   }
+
+  async readStatusRecheckState(): Promise<StatusRecheckState> {
+    const raw = (await browser.storage.local.get("statusRecheck")) as {
+      statusRecheck?: unknown;
+    };
+
+    const record = (
+      raw.statusRecheck && typeof raw.statusRecheck === "object"
+        ? raw.statusRecheck
+        : {}
+    ) as Record<string, unknown>;
+
+    return {
+      lastSweepAt:
+        typeof record.lastSweepAt === "number" ? record.lastSweepAt : null,
+      lastProbed: typeof record.lastProbed === "number" ? record.lastProbed : 0,
+    };
+  }
+
+  async writeStatusRecheckState(state: StatusRecheckState): Promise<void> {
+    await browser.storage.local.set({ statusRecheck: state });
+  }
+
+  async readRedditTelemetry(): Promise<RedditTelemetryState> {
+    const raw = (await browser.storage.local.get("redditTelemetry")) as {
+      redditTelemetry?: unknown;
+    };
+
+    return normalizeRedditTelemetry(raw.redditTelemetry);
+  }
+
+  async writeRedditTelemetry(state: RedditTelemetryState): Promise<void> {
+    await browser.storage.local.set({ redditTelemetry: state });
+  }
+
+  async readMaintenancePaused(): Promise<boolean> {
+    const raw = (await browser.storage.local.get("maintenancePaused")) as {
+      maintenancePaused?: unknown;
+    };
+
+    return raw.maintenancePaused === true;
+  }
+
+  async writeMaintenancePaused(value: boolean): Promise<void> {
+    if (value) {
+      await browser.storage.local.set({ maintenancePaused: true });
+    } else {
+      await browser.storage.local.remove("maintenancePaused");
+    }
+  }
 }
 
 // Canonicalize a stored subreddit record. Drops entries that don't have a
@@ -536,6 +595,91 @@ function normalizeAccountKarma(value: unknown): AccountKarma | null {
   }
 
   return { total: record.total, link: record.link, comment: record.comment };
+}
+
+function normalizeRedditTelemetry(value: unknown): RedditTelemetryState {
+  if (!value || typeof value !== "object") {
+    return emptyRedditTelemetry();
+  }
+
+  const record = value as Record<string, unknown>;
+
+  const hourly: RedditHourlyBucket[] = [];
+  if (Array.isArray(record.hourly)) {
+    for (const entry of record.hourly) {
+      const bucket = (entry && typeof entry === "object" ? entry : {}) as {
+        hour?: unknown;
+        counts?: unknown;
+      };
+
+      if (typeof bucket.hour !== "number") {
+        continue;
+      }
+
+      const counts: Partial<Record<RedditSource, RedditSourceTally>> = {};
+      if (bucket.counts && typeof bucket.counts === "object") {
+        for (const [source, tally] of Object.entries(bucket.counts)) {
+          const entryTally = (
+            tally && typeof tally === "object" ? tally : {}
+          ) as { ok?: unknown; error?: unknown };
+
+          counts[source as RedditSource] = {
+            ok: typeof entryTally.ok === "number" ? entryTally.ok : 0,
+            error: typeof entryTally.error === "number" ? entryTally.error : 0,
+          };
+        }
+      }
+
+      hourly.push({ hour: bucket.hour, counts });
+    }
+  }
+
+  const pauses: RedditPauseEvent[] = [];
+  if (Array.isArray(record.pauses)) {
+    for (const entry of record.pauses) {
+      const pause = (entry && typeof entry === "object" ? entry : {}) as Record<
+        string,
+        unknown
+      >;
+
+      if (typeof pause.at !== "number") {
+        continue;
+      }
+
+      pauses.push({
+        at: pause.at,
+        reason: typeof pause.reason === "string" ? pause.reason : "unknown",
+        durationMs: typeof pause.durationMs === "number" ? pause.durationMs : 0,
+        budgetRemaining:
+          typeof pause.budgetRemaining === "number"
+            ? pause.budgetRemaining
+            : null,
+        backgroundOnly: pause.backgroundOnly === true,
+      });
+    }
+  }
+
+  const budget = (
+    record.lastBudget && typeof record.lastBudget === "object"
+      ? record.lastBudget
+      : null
+  ) as Record<string, unknown> | null;
+
+  return {
+    hourly,
+    pauses,
+    lastBudget:
+      budget &&
+      typeof budget.remaining === "number" &&
+      typeof budget.resetAt === "number" &&
+      typeof budget.at === "number"
+        ? {
+            remaining: budget.remaining,
+            resetAt: budget.resetAt,
+            at: budget.at,
+          }
+        : null,
+  };
 }
 
 function normalizeSyncConfig(value: unknown): SyncConfig {

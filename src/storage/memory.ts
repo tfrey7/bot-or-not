@@ -3,6 +3,8 @@
 // lifetime, which is all a one-shot script run needs.
 
 import type { LlmVendor } from "../llm/index.ts";
+import { emptyRedditTelemetry } from "../reddit/telemetry.ts";
+import type { RedditTelemetryState } from "../reddit/telemetry.ts";
 import type { Report, SubredditReport } from "../types.ts";
 import { findReportKey } from "../utils/history.ts";
 import { slimReport } from "./logic.ts";
@@ -11,6 +13,7 @@ import type {
   BlocklistCleanupState,
   LlmSelection,
   ReportUpdater,
+  StatusRecheckState,
   StorageAdapter,
   SyncConfig,
 } from "./types.ts";
@@ -36,6 +39,12 @@ export class InMemoryStorage implements StorageAdapter {
     watchlist: {},
     reblocked: [],
   };
+  private statusRecheck: StatusRecheckState = {
+    lastSweepAt: null,
+    lastProbed: 0,
+  };
+  private redditTelemetry: RedditTelemetryState = emptyRedditTelemetry();
+  private maintenancePaused = false;
 
   async readReports(): Promise<Record<string, Report>> {
     return { ...this.reports };
@@ -139,5 +148,29 @@ export class InMemoryStorage implements StorageAdapter {
     state: BlocklistCleanupState
   ): Promise<void> {
     this.blocklistCleanup = { ...state };
+  }
+
+  async readStatusRecheckState(): Promise<StatusRecheckState> {
+    return { ...this.statusRecheck };
+  }
+
+  async writeStatusRecheckState(state: StatusRecheckState): Promise<void> {
+    this.statusRecheck = { ...state };
+  }
+
+  async readRedditTelemetry(): Promise<RedditTelemetryState> {
+    return { ...this.redditTelemetry };
+  }
+
+  async writeRedditTelemetry(state: RedditTelemetryState): Promise<void> {
+    this.redditTelemetry = { ...state };
+  }
+
+  async readMaintenancePaused(): Promise<boolean> {
+    return this.maintenancePaused;
+  }
+
+  async writeMaintenancePaused(value: boolean): Promise<void> {
+    this.maintenancePaused = value;
   }
 }

@@ -1,25 +1,50 @@
-// Single funnel for every background-side fetch against reddit.com. A
-// shared p-queue caps in-flight requests across all callers so they
-// don't 429 each other or the operator's own logged-in Reddit tab.
-// Per-feature queues (investigation concurrency, attribution drain) still
-// gate *what work to schedule*; this only gates *how many HTTP calls are
-// in flight*.
+// Single funnel for every background-side fetch against reddit.com. Two
+// p-queues cap in-flight requests across all callers so they don't 429
+// each other or the operator's own logged-in Reddit tab: interactive/bulk
+// work shares a concurrency-capped queue, while background hygiene traffic
+// (sweeps, attribution) trickles through its own one-at-a-time queue on a
+// fixed interval. Per-feature queues (investigation concurrency,
+// attribution drain) still gate *what work to schedule*; this only gates
+// *how many HTTP calls are in flight*.
 //
 // Rate-limit defense:
 //   1. Proactive floor-trip off Reddit's `x-ratelimit-*` response headers.
-//      When `remaining` drops to REDDIT_BUDGET_FLOOR, pause the queue
-//      until the bucket resets — preempts the 429 we'd otherwise eat.
-//   2. Reactive pause on 429 / 5xx — `queue.pause()` halts dispatch until
-//      the cooldown elapses, then `queue.start()` resumes. State is
-//      mirrored to browser.storage.local under `redditPauseUntil` so UI
-//      surfaces can show a banner via storage.onChanged.
+//      When `remaining` drops to REDDIT_BUDGET_FLOOR, pause both queues
+//      until the bucket resets — preempts the 429 we'd otherwise eat. At
+//      REDDIT_BACKGROUND_RESERVE, only the background queue pauses, so
+//      hygiene passes can never eat the headroom interactive work and the
+//      operator's own session need.
+//   2. Reactive pause on 429 / 5xx — both queues halt dispatch until the
+//      cooldown elapses. State is mirrored to browser.storage.local under
+//      `redditPauseUntil` so UI surfaces can show a banner via
+//      storage.onChanged.
+//
+// Every request is tagged with the feature that issued it; per-source
+// tallies, pause events, and the last-seen budget are folded into the
+// `redditTelemetry` storage slice (debounced) for the metrics tab.
 
 import PQueue from "p-queue";
 
 import { QUEUE_PRIORITY } from "../queue_priority.ts";
 import { shortUrl } from "../utils/format_text.ts";
 import { clampRetryAfter, parseRetryAfter } from "../utils/retry_after.ts";
-import { readRedditPauseUntil, writeRedditPauseUntil } from "../storage";
+import {
+  readRedditPauseUntil,
+  readRedditTelemetry,
+  writeRedditPauseUntil,
+  writeRedditTelemetry,
+} from "../storage";
+import {
+  emptyRedditTelemetry,
+  telemetryRecordBudget,
+  telemetryRecordFetch,
+  telemetryRecordPause,
+} from "./telemetry.ts";
+import type {
+  RedditBudgetSample,
+  RedditSource,
+  RedditTelemetryState,
+} from "./telemetry.ts";
 
 const REDDIT_CONCURRENCY = 4;
 
@@ -29,15 +54,125 @@ const REDDIT_FETCH_TIMEOUT_MS = 30_000;
 
 const REDDIT_BUDGET_FLOOR = 3;
 
+// Below this many remaining requests, background traffic yields the rest
+// of the budget window to interactive work and the operator's own session.
+const REDDIT_BACKGROUND_RESERVE = 20;
+
+// Background requests dispatch at most one per interval — a sweep's burst
+// of probes drains as a trickle instead of a spike.
+const REDDIT_BACKGROUND_INTERVAL_MS = 5_000;
+
+const TELEMETRY_FLUSH_DELAY_MS = 2_000;
+
 interface RedditBudget {
   remaining: number;
   resetAt: number;
 }
 
+export interface RedditRequestOptions {
+  source: RedditSource;
+  priority?: number;
+}
+
+export interface RedditFunnelSnapshot {
+  mainQueued: number;
+  mainRunning: number;
+  backgroundQueued: number;
+  backgroundRunning: number;
+  pausedUntil: number | null;
+  backgroundPausedUntil: number | null;
+}
+
 const queue = new PQueue({ concurrency: REDDIT_CONCURRENCY });
+
+const backgroundQueue = new PQueue({
+  concurrency: 1,
+  interval: REDDIT_BACKGROUND_INTERVAL_MS,
+  intervalCap: 1,
+});
 
 let pausedUntil: number | null = null;
 let pauseClearTimer: ReturnType<typeof setTimeout> | null = null;
+
+let backgroundPausedUntil: number | null = null;
+let backgroundPauseClearTimer: ReturnType<typeof setTimeout> | null = null;
+
+let telemetry: RedditTelemetryState | null = null;
+let telemetryLoad: Promise<void> | null = null;
+let telemetryFlushTimer: ReturnType<typeof setTimeout> | null = null;
+
+// Serializes access to the single in-memory telemetry instance: the mutation
+// runs synchronously once the stored state is loaded, so concurrent record
+// calls can't clobber each other.
+async function withTelemetry(
+  mutate: (state: RedditTelemetryState) => void
+): Promise<void> {
+  if (telemetry === null) {
+    if (telemetryLoad === null) {
+      telemetryLoad = readRedditTelemetry()
+        .then((stored) => {
+          telemetry ??= stored;
+        })
+        .catch((error) => {
+          console.error("[Bot or Not] failed to load Reddit telemetry", error);
+          telemetry ??= emptyRedditTelemetry();
+        });
+    }
+
+    await telemetryLoad;
+  }
+
+  mutate(telemetry!);
+  scheduleTelemetryFlush();
+}
+
+function scheduleTelemetryFlush(): void {
+  if (telemetryFlushTimer !== null) {
+    return;
+  }
+
+  telemetryFlushTimer = setTimeout(() => {
+    telemetryFlushTimer = null;
+    void flushTelemetry();
+  }, TELEMETRY_FLUSH_DELAY_MS);
+}
+
+async function flushTelemetry(): Promise<void> {
+  if (telemetry === null) {
+    return;
+  }
+
+  try {
+    await writeRedditTelemetry(telemetry);
+  } catch (error) {
+    console.error("[Bot or Not] failed to persist Reddit telemetry", error);
+  }
+}
+
+function recordPauseEvent(
+  reason: string,
+  durationMs: number,
+  backgroundOnly: boolean
+): void {
+  void withTelemetry((state) => {
+    telemetryRecordPause(state, {
+      at: Date.now(),
+      reason,
+      durationMs,
+      budgetRemaining: state.lastBudget?.remaining ?? null,
+      backgroundOnly,
+    });
+  }).then(() => {
+    // Pause events are rare and exactly what the operator wants to see —
+    // don't sit on them for the debounce window.
+    if (telemetryFlushTimer !== null) {
+      clearTimeout(telemetryFlushTimer);
+      telemetryFlushTimer = null;
+    }
+
+    void flushTelemetry();
+  });
+}
 
 async function publishPauseState(): Promise<void> {
   try {
@@ -55,6 +190,11 @@ function clearPause(): void {
   }
 
   queue.start();
+
+  if (backgroundPausedUntil === null) {
+    backgroundQueue.start();
+  }
+
   void publishPauseState();
 }
 
@@ -68,6 +208,7 @@ function notePause(retryAfterMs: number | null, reason: string): void {
 
   pausedUntil = newPausedUntil;
   queue.pause();
+  backgroundQueue.pause();
 
   if (pauseClearTimer !== null) {
     clearTimeout(pauseClearTimer);
@@ -78,7 +219,46 @@ function notePause(retryAfterMs: number | null, reason: string): void {
     `[Bot or Not] Reddit ${reason}; pausing all fetches for ${Math.round(delay / 1000)}s`
   );
 
+  recordPauseEvent(reason, delay, false);
   void publishPauseState();
+}
+
+function clearBackgroundPause(): void {
+  backgroundPausedUntil = null;
+  if (backgroundPauseClearTimer !== null) {
+    clearTimeout(backgroundPauseClearTimer);
+    backgroundPauseClearTimer = null;
+  }
+
+  if (pausedUntil === null) {
+    backgroundQueue.start();
+  }
+}
+
+function noteBackgroundPause(retryAfterMs: number, reason: string): void {
+  const delay = clampRetryAfter(retryAfterMs);
+  const newPausedUntil = Date.now() + delay;
+
+  if (
+    backgroundPausedUntil !== null &&
+    backgroundPausedUntil >= newPausedUntil
+  ) {
+    return;
+  }
+
+  backgroundPausedUntil = newPausedUntil;
+  backgroundQueue.pause();
+
+  if (backgroundPauseClearTimer !== null) {
+    clearTimeout(backgroundPauseClearTimer);
+  }
+
+  backgroundPauseClearTimer = setTimeout(clearBackgroundPause, delay);
+  console.warn(
+    `[Bot or Not] Reddit ${reason}; pausing background fetches for ${Math.round(delay / 1000)}s`
+  );
+
+  recordPauseEvent(reason, delay, true);
 }
 
 function parseBudget(headers: Headers): RedditBudget | null {
@@ -106,9 +286,25 @@ function noteBudget(headers: Headers): void {
     return;
   }
 
+  const sample: RedditBudgetSample = {
+    remaining: budget.remaining,
+    resetAt: budget.resetAt,
+    at: Date.now(),
+  };
+
+  void withTelemetry((state) => {
+    telemetryRecordBudget(state, sample);
+  });
+
+  const resetMs = Math.max(0, budget.resetAt - Date.now());
+
   if (budget.remaining <= REDDIT_BUDGET_FLOOR) {
-    const resetMs = Math.max(0, budget.resetAt - Date.now());
     notePause(resetMs, `budget at ${budget.remaining} remaining`);
+  } else if (budget.remaining <= REDDIT_BACKGROUND_RESERVE) {
+    noteBackgroundPause(
+      resetMs,
+      `budget at ${budget.remaining} remaining (background reserve)`
+    );
   }
 }
 
@@ -144,6 +340,7 @@ async function bootstrapPauseState(): Promise<void> {
 
     pausedUntil = stored;
     queue.pause();
+    backgroundQueue.pause();
     pauseClearTimer = setTimeout(clearPause, remaining);
   } catch (error) {
     console.error("[Bot or Not] failed to restore Reddit pause state", error);
@@ -152,11 +349,24 @@ async function bootstrapPauseState(): Promise<void> {
 
 void bootstrapPauseState();
 
+// Live view of the funnel for the metrics tab; persisted telemetry rides
+// alongside it in the `get-reddit-telemetry` response.
+export function redditFunnelSnapshot(): RedditFunnelSnapshot {
+  return {
+    mainQueued: queue.size,
+    mainRunning: queue.pending,
+    backgroundQueued: backgroundQueue.size,
+    backgroundRunning: backgroundQueue.pending,
+    pausedUntil,
+    backgroundPausedUntil,
+  };
+}
+
 export async function redditFetchJson<T = unknown>(
   url: string,
-  priority: number = QUEUE_PRIORITY.bulk
+  options: RedditRequestOptions
 ): Promise<T> {
-  return await enqueueRequest<T>(url, {}, priority);
+  return await enqueueRequest<T>(url, {}, options);
 }
 
 // Form-encoded POST to a legacy `/api/*` write endpoint. Rides the same
@@ -164,7 +374,7 @@ export async function redditFetchJson<T = unknown>(
 export async function redditPostForm<T = unknown>(
   url: string,
   form: Record<string, string>,
-  priority: number = QUEUE_PRIORITY.bulk
+  options: RedditRequestOptions
 ): Promise<T> {
   return await enqueueRequest<T>(
     url,
@@ -173,16 +383,20 @@ export async function redditPostForm<T = unknown>(
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: new URLSearchParams(form).toString(),
     },
-    priority
+    options
   );
 }
 
 async function enqueueRequest<T>(
   url: string,
   init: RequestInit,
-  priority: number
+  options: RedditRequestOptions
 ): Promise<T> {
-  return await queue.add(
+  const priority = options.priority ?? QUEUE_PRIORITY.bulk;
+  const targetQueue =
+    priority <= QUEUE_PRIORITY.background ? backgroundQueue : queue;
+
+  return await targetQueue.add(
     async () => {
       const startedAt = performance.now();
       let succeeded = false;
@@ -219,6 +433,10 @@ async function enqueueRequest<T>(
         succeeded = true;
         return body;
       } finally {
+        void withTelemetry((state) => {
+          telemetryRecordFetch(state, options.source, succeeded, Date.now());
+        });
+
         const elapsedMs = Math.round(performance.now() - startedAt);
         const suffix = succeeded ? "" : " (failed)";
         console.log(

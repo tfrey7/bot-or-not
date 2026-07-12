@@ -5,7 +5,6 @@
 
 import type { ComponentChildren } from "preact";
 import { useEffect, useRef } from "preact/hooks";
-import type { AnalyticsEntry } from "./logic.ts";
 
 export interface ChartCardProps {
   title: string;
@@ -25,14 +24,19 @@ export function ChartCard({ title, subtitle, children }: ChartCardProps) {
   );
 }
 
-export interface UplotCardProps {
+export interface UplotCardProps<T> {
   title: string;
   subtitle?: string;
-  runs: AnalyticsEntry[];
-  build: (runs: AnalyticsEntry[]) => HTMLElement;
+  runs: T;
+  build: (runs: T) => HTMLElement;
 }
 
-export function UplotCard({ title, subtitle, runs, build }: UplotCardProps) {
+export function UplotCard<T>({
+  title,
+  subtitle,
+  runs,
+  build,
+}: UplotCardProps<T>) {
   const host = useRef<HTMLDivElement>(null);
 
   useEffect(() => {

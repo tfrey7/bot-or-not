@@ -269,6 +269,33 @@
           </section>
 
           <section class="bon-settings-section">
+            <p class="bon-settings-section-title">Background maintenance</p>
+            <p class="bon-settings-section-desc">
+              Self-paced hygiene passes that hit Reddit in the background:
+              re-checking suspected bots for suspension, cleaning dead
+              accounts off your block list, and attributing harvested links.
+              Pause them if you're seeing rate limits or want the extension
+              quiet; investigations are unaffected. See the Metrics tab for
+              what they're doing.
+            </p>
+            <div class="bon-settings-toggle-row">
+              <span
+                id="bon-maintenance-status"
+                class="bon-settings-toggle-status"
+                >Loading...</span
+              >
+              <button
+                type="button"
+                id="bon-maintenance-toggle"
+                class="bon-btn"
+                hidden
+              >
+                Pause
+              </button>
+            </div>
+          </section>
+
+          <section class="bon-settings-section">
             <p class="bon-settings-section-title">Google dossier</p>
             <p class="bon-settings-section-desc">
               Optional. When enabled, the extension reads Reddit results from

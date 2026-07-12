@@ -29,6 +29,8 @@ let llmVendorSelect!: HTMLSelectElement;
 let llmModelSelect!: HTMLSelectElement;
 let hidePiiStatus!: HTMLElement;
 let hidePiiToggle!: HTMLButtonElement;
+let maintenanceStatus!: HTMLElement;
+let maintenanceToggle!: HTMLButtonElement;
 
 interface LlmSelectionPayload {
   vendor: LlmVendor | null;
@@ -272,6 +274,45 @@ async function toggleHidePii(): Promise<void> {
   }
 }
 
+function renderMaintenanceState(paused: boolean): void {
+  maintenanceToggle.hidden = false;
+
+  if (paused) {
+    maintenanceStatus.textContent = "Paused.";
+    maintenanceStatus.className = "bon-settings-toggle-status";
+    maintenanceToggle.textContent = "Resume";
+  } else {
+    maintenanceStatus.textContent = "Running.";
+    maintenanceStatus.className =
+      "bon-settings-toggle-status bon-settings-toggle-status--on";
+    maintenanceToggle.textContent = "Pause";
+  }
+}
+
+async function refreshMaintenanceState(): Promise<void> {
+  try {
+    const { paused } = await clientSend<{ paused: boolean }>({
+      type: "get-maintenance-paused",
+    });
+    renderMaintenanceState(!!paused);
+  } catch {
+    maintenanceStatus.textContent = "Failed to read maintenance state.";
+    maintenanceToggle.hidden = true;
+  }
+}
+
+async function toggleMaintenance(): Promise<void> {
+  maintenanceToggle.disabled = true;
+
+  try {
+    const next = maintenanceToggle.textContent !== "Resume";
+    await clientSend({ type: "set-maintenance-paused", value: next });
+    renderMaintenanceState(next);
+  } finally {
+    maintenanceToggle.disabled = false;
+  }
+}
+
 async function refreshGooglePermissionState(): Promise<void> {
   try {
     const granted = await googleHarvestIsGranted();
@@ -333,6 +374,12 @@ export function settingsInit(): void {
   hidePiiToggle = document.getElementById(
     "bon-hide-pii-toggle"
   ) as HTMLButtonElement;
+  maintenanceStatus = document.getElementById(
+    "bon-maintenance-status"
+  ) as HTMLElement;
+  maintenanceToggle = document.getElementById(
+    "bon-maintenance-toggle"
+  ) as HTMLButtonElement;
 
   apiKeyStatus.textContent = "Loading...";
   apiKeyStatus.className = "bon-settings-status";
@@ -340,6 +387,7 @@ export function settingsInit(): void {
   void loadLlmSelection().then(() => settingsRefreshApiKeyStatus());
   void refreshGooglePermissionState();
   void refreshHidePiiState();
+  void refreshMaintenanceState();
 
   llmVendorSelect.addEventListener("change", () => {
     // Switching vendor invalidates the current model choice — re-render
@@ -376,6 +424,10 @@ export function settingsInit(): void {
 
   hidePiiToggle.addEventListener("click", () => {
     void toggleHidePii();
+  });
+
+  maintenanceToggle.addEventListener("click", () => {
+    void toggleMaintenance();
   });
 
   // about:addons lets users revoke optional permissions out-of-band; mirror

@@ -54,6 +54,9 @@ import {
   syncStatus,
 } from "./features/sync";
 import { runMigrations } from "./migrations";
+import { redditFunnelSnapshot } from "./reddit/client.ts";
+import type { RedditFunnelSnapshot } from "./reddit/client.ts";
+import type { RedditTelemetryState } from "./reddit/telemetry.ts";
 import type { Report } from "./types.ts";
 import {
   clearAllApiKeys,
@@ -61,9 +64,13 @@ import {
   readApiKey,
   readHidePii,
   readLlmSelection,
+  readMaintenancePaused,
+  readRedditTelemetry,
+  readStatusRecheckState,
   writeApiKey,
   writeHidePii,
   writeLlmSelection,
+  writeMaintenancePaused,
   type ApiKeyMap,
 } from "./storage";
 import { LLM_VENDORS, sniffVendor, type LlmVendor } from "./llm/index.ts";
@@ -196,6 +203,22 @@ browser.runtime.onMessage.addListener((message: BaseMessage) => {
 
   if (message.type === "get-blocklist-cleanup-state") {
     return blocklistCleanupGetState();
+  }
+
+  if (message.type === "get-reddit-telemetry") {
+    return handleGetRedditTelemetry();
+  }
+
+  if (message.type === "get-status-recheck-state") {
+    return readStatusRecheckState();
+  }
+
+  if (message.type === "get-maintenance-paused") {
+    return readMaintenancePaused().then((paused) => ({ paused }));
+  }
+
+  if (message.type === "set-maintenance-paused") {
+    return writeMaintenancePaused(!!message.value).then(() => ({ ok: true }));
   }
 
   if (message.type === "blocklist-tripwire-list") {
@@ -565,6 +588,21 @@ async function openReportsTab(username?: string): Promise<void> {
   } catch (error) {
     console.error("[Bot or Not] openReportsTab failed", error);
   }
+}
+
+// Persisted funnel telemetry plus a live snapshot of the queues. The
+// persisted half can lag the wire by the client's flush debounce (~2s).
+async function handleGetRedditTelemetry(): Promise<{
+  telemetry: RedditTelemetryState;
+  snapshot: RedditFunnelSnapshot;
+  maintenancePaused: boolean;
+}> {
+  const [telemetry, maintenancePaused] = await Promise.all([
+    readRedditTelemetry(),
+    readMaintenancePaused(),
+  ]);
+
+  return { telemetry, snapshot: redditFunnelSnapshot(), maintenancePaused };
 }
 
 // One bit per vendor: do we have a key on file? Used by the settings UI

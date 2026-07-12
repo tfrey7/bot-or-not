@@ -55,7 +55,7 @@ export async function blocklistReblock(
 
   lastAttemptAt.set(key, now);
 
-  const probe = await fetchAccountLiveness(username);
+  const probe = await fetchAccountLiveness(username, "blocklist");
   if (probe === null || probe.status !== "active") {
     return { blocked: false };
   }

@@ -4,6 +4,7 @@
 // server's HTTP API to host the same code as a website with a real backend.
 
 import type { LlmVendor } from "../llm/index.ts";
+import type { RedditTelemetryState } from "../reddit/telemetry.ts";
 import type { AccountKarma, Report, SubredditReport } from "../types.ts";
 
 // Persisted LLM selection. Both fields nullable — `null` means "use the
@@ -69,6 +70,14 @@ export interface BlocklistCleanupState {
   reblocked: Array<{ username: string; at: number }>;
 }
 
+// Pass-level bookkeeping for the weekly status re-check sweep. `lastSweepAt`
+// doubles as the gate that keeps frequent background wakes from firing a
+// probe batch each time; `lastProbed` is how many accounts the last pass hit.
+export interface StatusRecheckState {
+  lastSweepAt: number | null;
+  lastProbed: number;
+}
+
 // Updater for updateReport. Receives the current Report (or null if no
 // record exists for this username) and returns the next one. Return null to
 // delete the record; return the current value untouched to no-op the write.
@@ -126,4 +135,15 @@ export interface StorageAdapter {
 
   readBlocklistCleanupState(): Promise<BlocklistCleanupState>;
   writeBlocklistCleanupState(state: BlocklistCleanupState): Promise<void>;
+
+  readStatusRecheckState(): Promise<StatusRecheckState>;
+  writeStatusRecheckState(state: StatusRecheckState): Promise<void>;
+
+  readRedditTelemetry(): Promise<RedditTelemetryState>;
+  writeRedditTelemetry(state: RedditTelemetryState): Promise<void>;
+
+  // Operator kill switch for the background hygiene passes (status re-check,
+  // blocklist cleanup, attribution drain). Investigations are unaffected.
+  readMaintenancePaused(): Promise<boolean>;
+  writeMaintenancePaused(value: boolean): Promise<void>;
 }

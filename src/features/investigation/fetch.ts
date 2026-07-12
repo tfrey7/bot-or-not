@@ -98,7 +98,11 @@ async function measureFetch<T>(
   const start = performance.now();
 
   try {
-    const data = await redditFetchJson<T>(url, priority);
+    const data = await redditFetchJson<T>(url, {
+      source: "investigation",
+      priority,
+    });
+
     return {
       data,
       retryAfterMs: null,
