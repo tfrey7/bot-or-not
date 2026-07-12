@@ -2,6 +2,10 @@
 
 Notable changes to Bot or Not. Signed `.xpi` builds for each version are attached to the matching [GitHub Release](https://github.com/tfrey7/bot-or-not/releases).
 
+## [8.5.0] — 2026-07-12
+- Reddit funnel telemetry, background trickle pacing, and maintenance kill switch
+- Fix slow Search Google button on profile pages
+
 ## [8.4.0] — 2026-07-04
 - Fast-track auto investigations on deterministic red flags
 - Add verdict-outcome analysis over backup exports (npm run outcomes)
