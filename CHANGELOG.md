@@ -2,6 +2,10 @@
 
 Notable changes to Bot or Not. Signed `.xpi` builds for each version are attached to the matching [GitHub Release](https://github.com/tfrey7/bot-or-not/releases).
 
+## [9.1.0] — 2026-07-25
+- Convert shipped artwork to WebP, cutting the xpi from 16 MB to 3.3 MB
+- Add gold layer: subreddit_fingerprints (TF-IDF attention vectors)
+
 ## [9.0.1] — 2026-07-25
 - Make notebooks the canonical pipeline, run via Jobs API
 - Resolve confirm-modal elements at init, not module scope
