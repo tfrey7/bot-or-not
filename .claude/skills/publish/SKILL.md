@@ -5,7 +5,9 @@ description: Publish a new version of the extension — version bump, sign, upda
 
 # Publish a new version
 
-Operates on `main` once all desired features have been shipped. Commit message convention is `Publish X.Y.Z: <one-line summary>` (historically these said `Ship X.Y.Z:` — old vocabulary). Per the user's standing preference, run the pipeline as a backgrounded Bash chain so the session stays responsive.
+Operates on `main` once all desired features have been shipped. Commit message convention is `Publish X.Y.Z: <one-line summary>` (historically these said `Ship X.Y.Z:` — old vocabulary). Per the user's standing preference, run the pipeline as a backgrounded Bash chain so the session stays responsive. **Chain the steps with `&&`, not `set -e`** — `set -e` does not reliably abort in the eval'd shell context, and a sign failure must not let the commit/tag/push steps run (this caused a partial publish once).
+
+**If `npm run sign` fails with "Version X.Y.Z already exists":** a previous interrupted run's upload reached AMO. Don't re-upload — check the version's file status via the AMO API (JWT auth from `AMO_API_KEY`/`AMO_API_SECRET` in `.env`) and, once `public`, download the signed file to `web-ext-artifacts/fe5aa4514b5d4cb3aa94-X.Y.Z.xpi`, then continue from step 3.
 
 1. Bump the version in **both** `manifest.json` and `package.json` (keep them in sync).
 2. Run `npm run sign`.
