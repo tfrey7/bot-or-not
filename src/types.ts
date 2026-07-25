@@ -213,6 +213,15 @@ export interface ActivityData {
   // and will be missing it; renderers must tolerate undefined.
   postSubreddits?: string[];
   commentSubreddits?: string[];
+
+  // Parallel to postTimestamps / commentTimestamps — bare Reddit thread ID
+  // (no "t3_" prefix) each item belongs to: the post's own ID, or the
+  // link_id of the thread a comment sits under. "" if Reddit didn't surface
+  // one. Not rendered anywhere; exported in backups for thread-level
+  // co-occurrence analysis. Older stored snapshots predate this field and
+  // will be missing it; consumers must tolerate undefined.
+  postThreadIds?: string[];
+  commentThreadIds?: string[];
   subredditCounts: Record<string, number>;
   scriptSignals: Record<string, number>;
   languageSignals: Record<string, number>;

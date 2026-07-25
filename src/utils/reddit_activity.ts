@@ -5,6 +5,7 @@ import { scanTextSignals } from "../features/regions";
 import type { ActivityData, RedditActivityFetch } from "../types.ts";
 
 interface RedditPost {
+  id?: string;
   subreddit?: string;
   subreddit_name_prefixed?: string;
   created_utc?: number;
@@ -12,6 +13,7 @@ interface RedditPost {
   selftext?: string;
 }
 interface RedditComment {
+  link_id?: string;
   subreddit?: string;
   subreddit_name_prefixed?: string;
   created_utc?: number;
@@ -37,6 +39,7 @@ export function extractActivityData(
 
   const postTimestamps: number[] = [];
   const postSubreddits: string[] = [];
+  const postThreadIds: string[] = [];
 
   for (const post of posts) {
     if (!post.created_utc) {
@@ -45,10 +48,12 @@ export function extractActivityData(
 
     postTimestamps.push(post.created_utc * 1000);
     postSubreddits.push(itemSub(post));
+    postThreadIds.push(post.id ?? "");
   }
 
   const commentTimestamps: number[] = [];
   const commentSubreddits: string[] = [];
+  const commentThreadIds: string[] = [];
 
   for (const comment of comments) {
     if (!comment.created_utc) {
@@ -57,6 +62,7 @@ export function extractActivityData(
 
     commentTimestamps.push(comment.created_utc * 1000);
     commentSubreddits.push(itemSub(comment));
+    commentThreadIds.push((comment.link_id ?? "").replace(/^t3_/, ""));
   }
 
   const subredditCounts: Record<string, number> = {};
@@ -90,6 +96,8 @@ export function extractActivityData(
     commentTimestamps,
     postSubreddits,
     commentSubreddits,
+    postThreadIds,
+    commentThreadIds,
     subredditCounts,
     scriptSignals: scanned.scripts,
     languageSignals: scanned.languages,
