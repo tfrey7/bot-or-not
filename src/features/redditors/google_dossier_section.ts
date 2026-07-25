@@ -15,6 +15,7 @@
 import type { GoogleHarvest, GoogleHarvestPost } from "../../types.ts";
 import { formatDate } from "../../utils/format_time.ts";
 import { investigationResults } from "../../utils/history.ts";
+import { googleHarvestCountFresh } from "../google-harvest";
 import type { ReportRow } from "./logic.ts";
 
 const POST_LIMIT = 30;
@@ -28,7 +29,7 @@ export function redditorsGoogleDossierSection(
   }
 
   const lastRunAt = investigationResults(report.investigation)?.runAt ?? 0;
-  const freshPosts = redditorsGoogleDossierCountFresh(harvest, lastRunAt);
+  const freshPosts = googleHarvestCountFresh(harvest, lastRunAt);
 
   const wrap = document.createElement("div");
   wrap.className = "bon-detail-wrap bon-google-dossier";
@@ -43,29 +44,6 @@ export function redditorsGoogleDossierSection(
   wrap.appendChild(buildPostsDisclosure(harvest.posts, lastRunAt));
 
   return wrap;
-}
-
-// Posts captured strictly after the most recent investigation ran. With
-// lastRunAt == 0 (no investigation yet), everything counts as fresh.
-// Exported so the Investigate button can combine this with the passive
-// count without recomputing the definition independently.
-export function redditorsGoogleDossierCountFresh(
-  harvest: GoogleHarvest | null,
-  lastRunAt: number
-): number {
-  if (!harvest) {
-    return 0;
-  }
-
-  let n = 0;
-
-  for (const post of harvest.posts) {
-    if (post.firstSeenAt > lastRunAt) {
-      n++;
-    }
-  }
-
-  return n;
 }
 
 function buildPostsDisclosure(
@@ -106,7 +84,7 @@ function buildTitleRow(
     badge.className = "bon-google-dossier__stale-badge";
     badge.textContent = `${freshPosts} new since last analysis`;
     badge.title =
-      "Re-investigate to feed these new items into the verdict. Each run costs money — your call when.";
+      "Re-investigate to feed these new items into the verdict — after a Google harvest this happens automatically once the search session goes quiet for ~30s. Each run costs money.";
     titleRow.appendChild(badge);
   }
 

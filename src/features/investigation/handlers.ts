@@ -61,7 +61,7 @@ const AUTO_INVESTIGATE_FRESHNESS_MS = 60 * 60 * 1000;
 // Shown as the investigation summary when a hidden profile is parked without
 // running the analyzer — see runOneAttempt.
 const HIDDEN_PROFILE_SUMMARY =
-  "This profile is hidden — almost nothing is public despite an established account, so there's not enough to analyze. Harvest a Google dossier for this user (search their username on Google), then re-run the investigation.";
+  "This profile is hidden — almost nothing is public despite an established account, so there's not enough to analyze. Harvest a Google dossier for this user (search their username on Google); once the harvest goes quiet for ~30s, the investigation re-runs automatically.";
 
 // Reddit throttling is handled globally by the shared Reddit client. This
 // cap just controls how many investigations overlap their Claude calls.

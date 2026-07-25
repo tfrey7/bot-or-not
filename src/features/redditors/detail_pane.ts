@@ -11,10 +11,8 @@ import {
   redditorsRenderInvestigateButton,
 } from "./cell_actions.ts";
 import { redditorsRenderGoogleSearchButton } from "./cell_google_search.ts";
-import {
-  redditorsGoogleDossierCountFresh,
-  redditorsGoogleDossierSection,
-} from "./google_dossier_section.ts";
+import { googleHarvestCountFresh } from "../google-harvest";
+import { redditorsGoogleDossierSection } from "./google_dossier_section.ts";
 import { redditorsInvestigationDetail } from "./investigation_detail.ts";
 import { redditorsIsUserNotFoundError } from "./investigation_user_not_found.ts";
 import type { ReportRow } from "./logic.ts";
@@ -73,7 +71,7 @@ export function redditorsDetailPane(
   // re-investigation incorporates every new item regardless of origin.
   const lastRunAt = investigationResults(investigation)?.runAt ?? 0;
   const freshHarvestCount =
-    redditorsGoogleDossierCountFresh(report.googleHarvest, lastRunAt) +
+    googleHarvestCountFresh(report.googleHarvest, lastRunAt) +
     redditorsPassiveHarvestCountFresh(report.passiveHarvest, lastRunAt);
 
   const actions = userNotFound

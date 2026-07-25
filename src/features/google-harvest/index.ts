@@ -13,6 +13,13 @@
 
 export { googleAttributionDrain } from "./attribution.ts";
 
+export {
+  googleHarvestAutoInvestigateOnAlarm,
+  googleHarvestAutoInvestigateSchedule,
+} from "./auto_investigate.ts";
+
+export { googleHarvestCountFresh } from "./freshness.ts";
+
 export { googleHarvestMerge } from "./merge.ts";
 
 export type { ScrapedPost } from "./parse.ts";

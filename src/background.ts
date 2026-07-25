@@ -1,6 +1,10 @@
 import { aiCommandHandle, aiCommandReset } from "./features/ai-command";
 import { analyticsGetReports } from "./features/analytics";
-import { googleAttributionDrain } from "./features/google-harvest";
+import {
+  googleAttributionDrain,
+  googleHarvestAutoInvestigateOnAlarm,
+  googleHarvestAutoInvestigateSchedule,
+} from "./features/google-harvest";
 import type { ScrapedPost } from "./features/google-harvest";
 import {
   investigationAutoOnView,
@@ -115,6 +119,7 @@ void runMigrations().then(() => {
 
 browser.alarms.onAlarm.addListener(syncOnAlarm);
 browser.alarms.onAlarm.addListener(blocklistSweepOnAlarm);
+browser.alarms.onAlarm.addListener(googleHarvestAutoInvestigateOnAlarm);
 blocklistSweepAlarmInit();
 browser.storage.onChanged.addListener(syncHandleStorageChange);
 
@@ -438,6 +443,10 @@ browser.runtime.onMessage.addListener((message: BaseMessage) => {
         // sub-post / comment URLs. Independent of investigation runs —
         // the dossier just keeps refining itself in the background.
         googleAttributionDrain();
+
+        // Re-arm the quiet-window clock; once the harvest session goes
+        // quiet with new material on file, the investigation auto-runs.
+        googleHarvestAutoInvestigateSchedule(username);
         return result;
       }
     );
