@@ -47,6 +47,10 @@ Project-specific bits:
 
 Invoke the `publish` skill (`Skill(publish)`) — it holds the full version-bump → sign → updates.json/CHANGELOG → tag → push → GitHub-release procedure.
 
+### Databricks analysis pipeline
+
+`databricks/` holds a medallion-architecture pipeline (Databricks practice ground) that loads backup exports into a `bot_or_not` Unity Catalog — see `databricks/README.md`. To refresh it from the latest export, invoke the `load-export` skill (`Skill(load-export)`).
+
 ## Architecture
 
 Three execution contexts, communicating via `browser.runtime.sendMessage`:

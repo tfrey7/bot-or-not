@@ -20,3 +20,4 @@ dev/
 .strand.json
 docs/screenshots/fixture.json
 fixtures/
+databricks/data/
