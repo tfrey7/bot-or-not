@@ -25,7 +25,7 @@ databricks auth login --host https://dbc-635c7a74-39c2.cloud.databricks.com
 3. `./databricks/ingest.sh` — creates catalog `bot_or_not` (override with
    `BON_CATALOG`, e.g. if the workspace disallows catalog creation), uploads the
    JSONL to the `bronze.raw` volume, and syncs `notebooks/` into the workspace.
-4. `./databricks/run_pipeline.sh` — rebuilds the tables bronze → silver → gold.
+4. `./databricks/run_pipeline.py` — rebuilds the tables bronze → silver → gold.
 
 Bronze ingestion is incremental: `COPY INTO` tracks which volume files
 `bronze.reports` has already loaded, so each run parses only newly uploaded
@@ -48,7 +48,7 @@ fresh export refreshes every tile.
 - `ingest.sh` — catalog/schema/volume bootstrap + JSONL upload.
 - `sql.sh` — shared warehouse lookup + `run_sql` helper for the bootstrap DDL
   (sourced, not run).
-- `run_pipeline.sh` — the single pipeline entry point: syncs `notebooks/` into
+- `run_pipeline.py` — the single pipeline entry point: syncs `notebooks/` into
   the workspace and submits a one-off Databricks job run with one task per
   layer (bronze → silver → gold). New layers get added as tasks here.
 - `publish_dashboard.sh` — create-or-update + publish the overview dashboard

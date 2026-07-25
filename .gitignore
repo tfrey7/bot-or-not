@@ -21,3 +21,4 @@ dev/
 docs/screenshots/fixture.json
 fixtures/
 databricks/data/
+__pycache__/

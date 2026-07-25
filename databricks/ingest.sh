@@ -24,4 +24,4 @@ run_sql "CREATE VOLUME IF NOT EXISTS $CATALOG.bronze.raw"
 echo "Uploading $(basename "$JSONL")..."
 databricks fs cp "$JSONL" "dbfs:/Volumes/$CATALOG/bronze/raw/$(basename "$JSONL")" --overwrite
 
-echo "Done. Run ./databricks/run_pipeline.sh to rebuild the tables."
+echo "Done. Run ./databricks/run_pipeline.py to rebuild the tables."

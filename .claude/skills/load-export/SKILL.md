@@ -22,7 +22,7 @@ architecture (bronze accumulates snapshots; silver computes current state).
    - If it fails with an auth error, the CLI login has expired. Ask the user to run
      `! databricks auth login --host https://dbc-635c7a74-39c2.cloud.databricks.com`
      (interactive browser flow), then rerun the script.
-4. **Run the pipeline**: `./databricks/run_pipeline.sh` — rebuilds every medallion
+4. **Run the pipeline**: `./databricks/run_pipeline.py` — rebuilds every medallion
    layer from the volume upward (bronze, then silver, then any layers added
    later); each stage prints its sanity counts.
 5. **Report** the sanity counts to the user, noting how many snapshots bronze now
