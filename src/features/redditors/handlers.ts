@@ -13,7 +13,7 @@ import {
   readReportSummaries,
   readReports,
   updateReport,
-  writeReports,
+  updateReports,
 } from "../../storage";
 import {
   dedupeHistory,
@@ -175,7 +175,7 @@ export async function redditorsGetAll(): Promise<{
 }
 
 export async function redditorsClearAll(): Promise<{ ok: boolean }> {
-  await writeReports({});
+  await updateReports(() => ({}));
   return { ok: true };
 }
 
@@ -254,39 +254,37 @@ export async function redditorsUpdatePostStatus(
   permalink: string,
   status: string
 ): Promise<void> {
-  const reports = await readReports();
+  await updateReports((reports) => {
+    let updated = false;
 
-  let updated = false;
+    for (const [username, existing] of Object.entries(reports)) {
+      let changed = false;
 
-  for (const [username, existing] of Object.entries(reports)) {
-    let changed = false;
+      const newHistory = existing.history.map((entry) => {
+        if (
+          entry.permalink &&
+          entry.permalink === permalink &&
+          entry.status !== status
+        ) {
+          changed = true;
+          return {
+            ...entry,
+            status,
+            statusCheckedAt: Date.now(),
+          };
+        }
 
-    const newHistory = existing.history.map((entry) => {
-      if (
-        entry.permalink &&
-        entry.permalink === permalink &&
-        entry.status !== status
-      ) {
-        changed = true;
-        return {
-          ...entry,
-          status,
-          statusCheckedAt: Date.now(),
-        };
+        return entry;
+      });
+
+      if (changed) {
+        reports[username] = { ...existing, history: newHistory };
+        updated = true;
       }
-
-      return entry;
-    });
-
-    if (changed) {
-      reports[username] = { ...existing, history: newHistory };
-      updated = true;
     }
-  }
 
-  if (updated) {
-    await writeReports(reports);
-  }
+    return updated ? reports : null;
+  });
 }
 
 const PERSONA_LABEL_SET = new Set<string>(PERSONA_LABELS);
@@ -406,46 +404,56 @@ export async function redditorsLinkRing(
     return { ok: false, error: "need-at-least-two" };
   }
 
-  const reports = await readReports();
-  const keys: string[] = [];
+  let outcome: { ok: boolean; ringId?: string; error?: string } = {
+    ok: false,
+    error: "unknown",
+  };
 
-  for (const username of cleaned) {
-    const key = findReportKey(reports, username);
-    if (!key) {
-      return { ok: false, error: `unknown-user:${username}` };
+  await updateReports((reports) => {
+    const keys: string[] = [];
+
+    for (const username of cleaned) {
+      const key = findReportKey(reports, username);
+      if (!key) {
+        outcome = { ok: false, error: `unknown-user:${username}` };
+        return null;
+      }
+
+      keys.push(key);
     }
 
-    keys.push(key);
-  }
+    const existingRingIds = new Set<string>();
 
-  const existingRingIds = new Set<string>();
-
-  for (const key of keys) {
-    const ringId = reports[key].ringId;
-    if (ringId) {
-      existingRingIds.add(ringId);
-    }
-  }
-
-  if (existingRingIds.size > 1) {
-    return { ok: false, error: "multiple-existing-rings" };
-  }
-
-  const ringId =
-    existingRingIds.size === 1
-      ? [...existingRingIds][0]
-      : generateRingId(collectExistingRingIds(reports));
-
-  for (const key of keys) {
-    if (reports[key].ringId === ringId) {
-      continue;
+    for (const key of keys) {
+      const ringId = reports[key].ringId;
+      if (ringId) {
+        existingRingIds.add(ringId);
+      }
     }
 
-    reports[key] = { ...reports[key], ringId };
-  }
+    if (existingRingIds.size > 1) {
+      outcome = { ok: false, error: "multiple-existing-rings" };
+      return null;
+    }
 
-  await writeReports(reports);
-  return { ok: true, ringId };
+    const ringId =
+      existingRingIds.size === 1
+        ? [...existingRingIds][0]
+        : generateRingId(collectExistingRingIds(reports));
+
+    for (const key of keys) {
+      if (reports[key].ringId === ringId) {
+        continue;
+      }
+
+      reports[key] = { ...reports[key], ringId };
+    }
+
+    outcome = { ok: true, ringId };
+    return reports;
+  });
+
+  return outcome;
 }
 
 export async function redditorsUnlinkRing(
@@ -459,26 +467,25 @@ export async function redditorsUnlinkRing(
     return { ok: false, error: "no-usernames" };
   }
 
-  const reports = await readReports();
-  let changed = false;
+  await updateReports((reports) => {
+    let changed = false;
 
-  for (const username of cleaned) {
-    const key = findReportKey(reports, username);
-    if (!key) {
-      continue;
+    for (const username of cleaned) {
+      const key = findReportKey(reports, username);
+      if (!key) {
+        continue;
+      }
+
+      if (reports[key].ringId === null) {
+        continue;
+      }
+
+      reports[key] = { ...reports[key], ringId: null };
+      changed = true;
     }
 
-    if (reports[key].ringId === null) {
-      continue;
-    }
-
-    reports[key] = { ...reports[key], ringId: null };
-    changed = true;
-  }
-
-  if (changed) {
-    await writeReports(reports);
-  }
+    return changed ? reports : null;
+  });
 
   return { ok: true };
 }

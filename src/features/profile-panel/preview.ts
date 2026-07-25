@@ -102,7 +102,7 @@ export function panelBuildPreview(
 
   if (summary) {
     const summaryEl = document.createElement("p");
-    summaryEl.className = "bon-profile-panel__summary";
+    summaryEl.className = "bon-profile-panel__summary bon-pii";
     summaryEl.appendChild(linkifyReddit(summary, linkifyPanelOptions()));
     preview.appendChild(summaryEl);
   }

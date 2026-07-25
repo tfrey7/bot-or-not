@@ -63,7 +63,7 @@ Three execution contexts, communicating via `browser.runtime.sendMessage`:
 
 - Triggered automatically when a user is reported, or on demand from the reports page.
 - `src/features/investigation/prompt.md` is the system prompt sent to Claude. Editing it changes how factors are scored.
-- Claude returns one `{score, confidence, reasoning, evidence}` object per factor (bot↔human axis, `-1` = strong human, `+1` = strong bot), plus a top-level `persona: { label, reasoning, archetypes }` block and a top-level `region` block.
+- Claude returns one `{score, confidence, reasoning, evidence}` object per factor (bot↔human axis, `-1` = strong bot, `+1` = strong human), plus a top-level `persona: { label, reasoning, archetypes }` block and a top-level `region` block.
 - `src/verdict.ts` aggregates deterministically from the factor scores into a `botProbability` and bins it into one of 5 verdict labels. Re-running the aggregator on stored factor scores must reproduce the same verdict — **verdict logic lives only in `verdict.ts`**; don't bake it into the prompt or the background. The actual math (weights, floors, bands) is documented at the top of that file.
 - **Persona is an LLM pick, not derived from factor math.** The bot↔human scalar and the persona answer different questions: archetypes describe flavors of *human* behavior, so a human-archetype persona is consistent with a positive (human-leaning) verdict. `bot` is a valid label but not a radar axis — the bot↔human scalar already answers that.
 
@@ -71,7 +71,7 @@ Three execution contexts, communicating via `browser.runtime.sendMessage`:
 
 - `src/factors.ts` is the **canonical list** of both factors and persona archetypes — keys, labels, and ordering.
 - `src/features/investigation/prompt.md` must list factors in the same order with the same keys, and must produce `persona.archetypes` with the same archetype keys.
-- If you add/remove/rename a factor or archetype in `factors.ts`, update `prompt.md` so Claude's output matches what the UI expects. (And add a migration under `src/migrations/` if stored data needs rewriting — see `crank_to_zealot.ts` for the pattern.)
+- If you add/remove/rename a factor or archetype in `factors.ts`, update `prompt.md` so Claude's output matches what the UI expects. (And add a migration under `src/migrations/` if stored data needs rewriting — see `persona_rename_2026.ts` for the pattern.)
 
 ### Storage shape
 
@@ -83,7 +83,7 @@ Two top-level keys in `browser.storage.local`: `reports` (keyed by username) and
 - All source files are TypeScript ES modules — Vite bundles each entry point so content scripts can use `import` despite the manifest treating them as classic scripts.
 - Shared domain types live in `src/types.ts`. Import them with the `.ts` extension (Vite + `allowImportingTsExtensions` handles it).
 - **Profile-page / DOM injection is idempotent.** Check for the container ID before injecting. Reddit is an SPA and re-renders constantly; a single shared `MutationObserver` in `src/content_script.ts` fans tick work out to each feature per animation frame. Features should be cheap to re-tick.
-- On background startup, investigations stuck mid-flight are swept to `status: "error"` — the previous worker died (web-ext reload, browser restart, service-worker eviction) and won't be back to finish them.
+- On background startup, investigations stuck mid-flight (`queued` or `running`) are re-enqueued — the previous worker died (web-ext reload, browser restart, service-worker eviction) and won't be back to finish them, so the new worker picks them up.
 - Inline username tags are keyed by **lowercase** username (Reddit's routing is case-insensitive).
 
 ## Privacy / PII redaction
@@ -103,6 +103,8 @@ Two marker classes, picked by what's being hidden:
 | Reddit avatars | covered automatically when the surrounding `<a>` to `/user/` or `/u/` is tagged |
 | Cake day + karma (the pair is a near-unique fingerprint) | `bon-pii` |
 | Investigation factor bullets / signal lists (criteria we use to rate someone may itself violate a subreddit's rules) | `bon-pii` (on the `<ul>` of bullets, not the section container — keep "Human signals" / "Bot signals" headings legible) |
+| User-authored content excerpts (post titles, snippets, body text — e.g. Google dossier and passive-harvest sections) | `bon-pii` |
+| Operator notes about a user | `bon-pii` |
 | Anything else that could identify a specific Reddit user or expose our scoring rationale | `bon-pii-name` for username tokens, `bon-pii` otherwise |
 
 **When you add a new category of identifying data, extend this table so future agents don't miss it.**

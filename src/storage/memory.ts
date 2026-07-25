@@ -12,6 +12,7 @@ import type {
   ApiKeyMap,
   BlocklistCleanupState,
   LlmSelection,
+  ReportsMutator,
   ReportUpdater,
   StatusRecheckState,
   StorageAdapter,
@@ -61,8 +62,14 @@ export class InMemoryStorage implements StorageAdapter {
     return out;
   }
 
-  async writeReports(reports: Record<string, Report>): Promise<void> {
-    this.reports = { ...reports };
+  async updateReports(mutator: ReportsMutator): Promise<void> {
+    const next = await mutator({ ...this.reports });
+
+    if (next === null) {
+      return;
+    }
+
+    this.reports = { ...next };
   }
 
   async readReport(username: string): Promise<Report | null> {
@@ -103,6 +110,10 @@ export class InMemoryStorage implements StorageAdapter {
 
   async writeApiKey(vendor: LlmVendor, key: string): Promise<void> {
     this.apiKeys[vendor] = key;
+  }
+
+  async clearApiKey(vendor: LlmVendor): Promise<void> {
+    delete this.apiKeys[vendor];
   }
 
   async clearAllApiKeys(): Promise<void> {

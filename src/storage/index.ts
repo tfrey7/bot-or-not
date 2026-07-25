@@ -16,6 +16,7 @@ import type {
   BlocklistSweepSummary,
   BlocklistWatchEntry,
   LlmSelection,
+  ReportsMutator,
   ReportUpdater,
   StatusRecheckState,
   StorageAdapter,
@@ -29,6 +30,7 @@ export type {
   BlocklistSweepSummary,
   BlocklistWatchEntry,
   LlmSelection,
+  ReportsMutator,
   ReportUpdater,
   StatusRecheckState,
   SyncConfig,
@@ -54,8 +56,8 @@ export function readReportSummaries(): Promise<Record<string, Report>> {
   return storage.readReportSummaries();
 }
 
-export function writeReports(reports: Record<string, Report>): Promise<void> {
-  return storage.writeReports(reports);
+export function updateReports(mutator: ReportsMutator): Promise<void> {
+  return storage.updateReports(mutator);
 }
 
 export function readReport(username: string): Promise<Report | null> {
@@ -89,6 +91,10 @@ export function readAllApiKeys(): Promise<ApiKeyMap> {
 
 export function writeApiKey(vendor: LlmVendor, key: string): Promise<void> {
   return storage.writeApiKey(vendor, key);
+}
+
+export function clearApiKey(vendor: LlmVendor): Promise<void> {
+  return storage.clearApiKey(vendor);
 }
 
 export function clearAllApiKeys(): Promise<void> {

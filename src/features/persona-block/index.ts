@@ -62,7 +62,7 @@ export function buildPersonaBlock(
   const summaryText = options.summary ?? persona.reasoning;
   if (summaryText) {
     const summary = document.createElement("p");
-    summary.className = "bon-persona-summary";
+    summary.className = "bon-persona-summary bon-pii";
     summary.appendChild(linkifyReddit(summaryText));
     block.appendChild(summary);
   }

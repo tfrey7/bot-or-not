@@ -8,7 +8,12 @@
 import { clientSend, clientSubscribe } from "../../client.ts";
 import { cssEscape } from "../../utils/format_text.ts";
 import { buildRingChip } from "../../utils/ring_chip.ts";
-import { inlineTagsCloseFlyout, inlineTagsOpenFlyout } from "./flyout.ts";
+import {
+  inlineTagsCloseFlyout,
+  inlineTagsFlyoutAnchor,
+  inlineTagsFlyoutReanchor,
+  inlineTagsOpenFlyout,
+} from "./flyout.ts";
 import {
   inlineTagIsAvatarLink,
   inlineTagLabel,
@@ -71,9 +76,7 @@ async function loadUserTags(): Promise<void> {
     }
   }
 
-  for (const key of changedKeys) {
-    refreshUserTag(key);
-  }
+  refreshUserTags(changedKeys);
 }
 
 function sameTagInfo(a: UserTagInfo, b: UserTagInfo): boolean {
@@ -375,22 +378,44 @@ export function inlineTagsMark(): void {
     });
 }
 
-function refreshUserTag(username: string): void {
-  const key = username.toLowerCase();
+// One document pass for the whole batch of changed usernames — a coalesced
+// reports-changed event can carry many changed tags at once, and a per-user
+// full-document sweep would multiply the scan cost by the batch size.
+function refreshUserTags(keys: Set<string>): void {
+  if (keys.size === 0) {
+    return;
+  }
+
+  // If the open flyout's anchor pill is about to be rebuilt, remember its
+  // DOM slot so the replacement pill (inserted into the same slot by the
+  // mark pass) can be handed back to the flyout.
+  const openAnchor = inlineTagsFlyoutAnchor();
+  let openAnchorParent: Element | null = null;
+  let openAnchorPrevious: Element | null = null;
+
+  for (const tag of document.querySelectorAll<HTMLElement>(".bon-user-tag")) {
+    const tagKey = tag.dataset.bonTagFor;
+    if (!tagKey || !keys.has(tagKey)) {
+      continue;
+    }
+
+    if (tag === openAnchor) {
+      openAnchorParent = tag.parentElement;
+      openAnchorPrevious = tag.previousElementSibling;
+    }
+
+    const next = tag.nextElementSibling;
+    if (next?.classList.contains("bon-ring-chip")) {
+      next.remove();
+    }
+
+    tag.remove();
+  }
 
   document
-    .querySelectorAll(`.bon-user-tag[data-bon-tag-for="${cssEscape(key)}"]`)
-    .forEach((tag) => {
-      const next = tag.nextElementSibling;
-      if (next?.classList.contains("bon-ring-chip")) {
-        next.remove();
-      }
-
-      tag.remove();
-    });
-
-  document
-    .querySelectorAll<HTMLAnchorElement>('a[href*="/user/"], a[href*="/u/"]')
+    .querySelectorAll<HTMLAnchorElement>(
+      'a[data-bon-marked][href*="/user/"], a[data-bon-marked][href*="/u/"]'
+    )
     .forEach((anchor) => {
       const href = anchor.getAttribute("href");
       if (!href) {
@@ -398,7 +423,7 @@ function refreshUserTag(username: string): void {
       }
 
       const match = href.match(/\/(?:user|u)\/([^/?#]+)/i);
-      if (!match || match[1].toLowerCase() !== key) {
+      if (!match || !keys.has(match[1].toLowerCase())) {
         return;
       }
 
@@ -406,6 +431,21 @@ function refreshUserTag(username: string): void {
     });
 
   inlineTagsMark();
+
+  if (openAnchor && !openAnchor.isConnected) {
+    const replacement = (
+      openAnchorPrevious
+        ? openAnchorPrevious.nextElementSibling
+        : openAnchorParent?.firstElementChild
+    ) as HTMLElement | null;
+
+    const samePill =
+      !!replacement &&
+      replacement.classList.contains("bon-user-tag") &&
+      replacement.dataset.bonTagFor === openAnchor.dataset.bonTagFor;
+
+    inlineTagsFlyoutReanchor(samePill ? replacement : null);
+  }
 }
 
 function resetAndMarkAll(): void {
@@ -434,7 +474,7 @@ export function inlineTagsBumpReport(username: string): void {
     botBouncerStatus: existing?.botBouncerStatus ?? null,
     userStatus: existing?.userStatus ?? null,
   });
-  refreshUserTag(username);
+  refreshUserTags(new Set([key]));
 }
 
 // Called by the content-script orchestrator on SPA navigation. Closes any

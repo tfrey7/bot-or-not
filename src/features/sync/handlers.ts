@@ -7,9 +7,10 @@ import type { Report } from "../../types.ts";
 import {
   readReports,
   readSyncConfig,
-  writeReports,
+  updateReports,
   writeSyncConfig,
 } from "../../storage";
+import { normalizeReport } from "../../utils/history.ts";
 import {
   syncBuildBackup,
   syncMergeReports,
@@ -30,15 +31,27 @@ export async function syncExport(): Promise<{ payload: SyncBackupPayload }> {
 }
 
 interface ImportRequest {
-  reports: Record<string, Report>;
+  reports: Record<string, unknown>;
 }
 
 export async function syncImport(
   request: ImportRequest
 ): Promise<{ ok: true; stats: MergeStats }> {
-  const local = await readReports();
-  const { reports, stats } = syncMergeReports(local, request.reports);
-  await writeReports(reports);
+  // Message payloads cross the runtime boundary untyped — normalize each
+  // record here rather than trusting the sender's shape.
+  const incoming: Record<string, Report> = {};
+
+  for (const [username, value] of Object.entries(request.reports ?? {})) {
+    incoming[username] = normalizeReport(value);
+  }
+
+  let stats!: MergeStats;
+
+  await updateReports((local) => {
+    const result = syncMergeReports(local, incoming);
+    stats = result.stats;
+    return result.reports;
+  });
 
   return { ok: true, stats };
 }

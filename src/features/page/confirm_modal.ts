@@ -4,6 +4,7 @@
 
 const modal = document.getElementById("bon-confirm-modal") as HTMLElement;
 const modalText = document.getElementById("bon-modal-text") as HTMLElement;
+modalText.classList.add("bon-pii");
 const cancelBtn = document.getElementById(
   "bon-cancel-clear"
 ) as HTMLButtonElement;

@@ -5,7 +5,7 @@
 // src/reddit/client.ts) and the investigation queue stops promoting
 // queued records to running.
 
-import { clientSubscribe } from "../../client.ts";
+import { clientSend, clientSubscribe } from "../../client.ts";
 
 interface QueuePauseDeps {
   pauseEl: HTMLElement;
@@ -33,12 +33,11 @@ async function refresh(deps: QueuePauseDeps): Promise<void> {
   const wasActive = queuePauseIsActive();
 
   try {
-    const raw = (await browser.storage.local.get("redditPauseUntil")) as {
-      redditPauseUntil?: number;
-    };
+    const { pausedUntil } = await clientSend<{ pausedUntil: number | null }>({
+      type: "get-reddit-pause",
+    });
 
-    currentPausedUntil =
-      typeof raw.redditPauseUntil === "number" ? raw.redditPauseUntil : null;
+    currentPausedUntil = pausedUntil;
   } catch (error) {
     console.error("[Bot or Not] failed to read Reddit pause state", error);
     currentPausedUntil = null;

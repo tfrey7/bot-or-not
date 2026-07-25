@@ -9,6 +9,7 @@
 // alongside the LLM-scored ones in `merge_factors.ts`.
 
 import type { Factor, ProfileSummary } from "../../types.ts";
+import { isProfileHidden } from "../../utils/profile_hidden.ts";
 import { AUTOGEN_WORDS } from "./autogen_words.ts";
 
 export const DETERMINISTIC_FACTOR_KEYS = [
@@ -140,7 +141,11 @@ function scoreHiddenPostHistory(summary: ProfileSummary): Factor {
   const visibleItems = postsFetched + commentsFetched;
   const totalKarma = summary.account.total_karma ?? 0;
   const ageDays = summary.account.age_days ?? null;
-  const effectivelyHidden = visibleItems <= 5 && totalKarma >= 1000;
+  const effectivelyHidden = isProfileHidden({
+    postsFetched,
+    commentsFetched,
+    totalKarma: summary.account.total_karma,
+  });
 
   if (!effectivelyHidden) {
     if (visibleItems > 5) {

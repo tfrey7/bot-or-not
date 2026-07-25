@@ -61,6 +61,9 @@ export function linkifyReddit(
     link.textContent = match[0];
 
     if (kind === "u") {
+      // `?user=` / moz-extension hrefs miss the CSS `/user/` auto-cover,
+      // so username links carry the redaction class explicitly.
+      link.classList.add("bon-pii-name");
       link.href = userHref(name);
       if (userLinkTarget) {
         link.target = userLinkTarget;

@@ -5,7 +5,10 @@
 
 import { ARCHETYPES } from "../../factors.ts";
 import type { PersonaLabel, UserNotes } from "../../types.ts";
-import { linkifyReddit } from "../../utils/linkify_reddit.ts";
+import {
+  linkifyPanelOptions,
+  linkifyReddit,
+} from "../../utils/linkify_reddit.ts";
 
 const ARCHETYPE_META: Record<string, { label: string; hue: number }> =
   Object.fromEntries(
@@ -76,8 +79,8 @@ export function panelBuildNotesStrip(
 
   if (note !== "") {
     const noteEl = document.createElement("p");
-    noteEl.className = "bon-panel-notes__note";
-    noteEl.appendChild(linkifyReddit(note));
+    noteEl.className = "bon-panel-notes__note bon-pii";
+    noteEl.appendChild(linkifyReddit(note, linkifyPanelOptions()));
     wrap.appendChild(noteEl);
   }
 

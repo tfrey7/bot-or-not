@@ -42,6 +42,7 @@ interface AnthropicResponse {
   content?: AnthropicContentBlock[];
   usage?: ClaudeUsage;
   model?: string;
+  stop_reason?: string;
 }
 
 function toAnthropicContent(parts: LlmContentPart[]): AnthropicContentBlock[] {
@@ -139,6 +140,15 @@ export class AnthropicProvider implements LlmProvider {
     }
 
     const payload = (await response.json()) as AnthropicResponse;
+
+    // A max_tokens cutoff would otherwise surface downstream as a
+    // misleading "could not parse verdict JSON".
+    if (payload.stop_reason === "max_tokens") {
+      throw new Error(
+        `Anthropic response truncated at max_tokens (${label}) — raise the token cap or trim the prompt`
+      );
+    }
+
     const blocks = payload.content ?? [];
     const text = blocks
       .filter((block) => block.type === "text")

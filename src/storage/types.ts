@@ -95,6 +95,14 @@ export type ReportUpdater = (
   current: Report | null
 ) => Report | null | Promise<Report | null>;
 
+// Mutator for updateReports. Receives the full current map and returns the
+// desired full map — records absent from the result are deleted. Return null
+// to no-op without writing. Runs inside the report mutation lock, so keep it
+// fast and pure: do network work before calling updateReports, not inside.
+export type ReportsMutator = (
+  current: Record<string, Report>
+) => Record<string, Report> | null | Promise<Record<string, Report> | null>;
+
 export interface StorageAdapter {
   readReports(): Promise<Record<string, Report>>;
 
@@ -107,17 +115,18 @@ export interface StorageAdapter {
   // A server-backed adapter would implement this as a projected query.
   readReportSummaries(): Promise<Record<string, Report>>;
 
-  writeReports(reports: Record<string, Report>): Promise<void>;
+  // Bulk read-modify-write of the whole report map, serialized on the same
+  // mutation lock as updateReport, so a bulk rewrite can never clobber or
+  // delete records written concurrently by single-record updates.
+  updateReports(mutator: ReportsMutator): Promise<void>;
 
   // Single-record read. Case-insensitive on username to match the way the
   // report map is keyed in practice (lowercase going forward, mixed-case
   // legacy data still on disk).
   readReport(username: string): Promise<Report | null>;
 
-  // Atomically updates one record under a per-username lock. Concurrent
-  // calls for the same username run strictly in order; calls for different
-  // usernames run independently. Bulk writers via writeReports() are not
-  // coordinated with this lock — they remain the danger-zone path.
+  // Atomically updates one record. All report mutations share one lock and
+  // run strictly in order.
   updateReport(username: string, updater: ReportUpdater): Promise<void>;
 
   readSubreddits(): Promise<Record<string, SubredditReport>>;
@@ -126,6 +135,7 @@ export interface StorageAdapter {
   readApiKey(vendor: LlmVendor): Promise<string>;
   readAllApiKeys(): Promise<ApiKeyMap>;
   writeApiKey(vendor: LlmVendor, key: string): Promise<void>;
+  clearApiKey(vendor: LlmVendor): Promise<void>;
   clearAllApiKeys(): Promise<void>;
 
   readLlmSelection(): Promise<LlmSelection>;

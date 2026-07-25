@@ -179,7 +179,7 @@ function buildItem(item: PassiveHarvestItem, lastRunAt: number): HTMLLIElement {
   }
 
   const titleLink = document.createElement("a");
-  titleLink.className = "bon-passive-harvest__item-title";
+  titleLink.className = "bon-passive-harvest__item-title bon-pii";
   titleLink.href = `https://www.reddit.com${item.permalink}`;
   titleLink.target = "_blank";
   titleLink.rel = "noopener noreferrer";
@@ -219,7 +219,7 @@ function buildItem(item: PassiveHarvestItem, lastRunAt: number): HTMLLIElement {
   // the full excerpt clipped to BODY_CLIP.
   if (item.bodyExcerpt) {
     const body = document.createElement("div");
-    body.className = "bon-passive-harvest__item-body";
+    body.className = "bon-passive-harvest__item-body bon-pii";
     body.textContent =
       item.bodyExcerpt.length > BODY_CLIP
         ? `${item.bodyExcerpt.slice(0, BODY_CLIP)}…`

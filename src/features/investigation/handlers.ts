@@ -29,7 +29,7 @@ import {
   readReport,
   readReports,
   updateReport,
-  writeReports,
+  updateReports,
 } from "../../storage";
 import {
   findReportKey,
@@ -93,7 +93,22 @@ export async function investigationSweepOrphans(): Promise<void> {
         investigation.status === "queued" ||
         investigation.status === "running"
       ) {
-        void enqueueInvestigation(username, QUEUE_PRIORITY.bulk);
+        // Honor a 429 cooldown that was pending when the previous worker
+        // died — re-running the moment the worker restarts would hammer the
+        // upstream that asked us to back off.
+        const notBefore =
+          investigation.status === "queued"
+            ? (investigation.notBefore ?? 0)
+            : 0;
+        const waitMs = Math.max(0, notBefore - Date.now());
+
+        if (waitMs > 0) {
+          setTimeout(() => {
+            void enqueueInvestigation(username, QUEUE_PRIORITY.bulk);
+          }, waitMs);
+        } else {
+          void enqueueInvestigation(username, QUEUE_PRIORITY.bulk);
+        }
       }
     }
   } catch (error) {
@@ -163,62 +178,62 @@ export async function investigationStartBatch(
     return { ok: false, error: "no-api-key" };
   }
 
-  const reports = await readReports();
   const toEnqueue: string[] = [];
-  let dirty = false;
   const now = Date.now();
 
-  for (const username of usernames) {
-    if (!username) {
-      continue;
-    }
+  await updateReports((reports) => {
+    let dirty = false;
 
-    const key = findReportKey(reports, username) ?? username;
-    const existing = reports[key] ?? normalizeReport(undefined);
-    const prevInvestigation = existing.investigation;
+    for (const username of usernames) {
+      if (!username) {
+        continue;
+      }
 
-    // Already queued/running: skip the storage stamp (mirrors the
-    // single-user shortcut in investigationStart). Still re-enqueue
-    // into PQueue in case the in-memory queue lost it.
-    if (
-      prevInvestigation?.status === "queued" ||
-      prevInvestigation?.status === "running"
-    ) {
+      const key = findReportKey(reports, username) ?? username;
+      const existing = reports[key] ?? normalizeReport(undefined);
+      const prevInvestigation = existing.investigation;
+
+      // Already queued/running: skip the storage stamp (mirrors the
+      // single-user shortcut in investigationStart). Still re-enqueue
+      // into PQueue in case the in-memory queue lost it.
+      if (
+        prevInvestigation?.status === "queued" ||
+        prevInvestigation?.status === "running"
+      ) {
+        toEnqueue.push(username);
+        continue;
+      }
+
+      const seedFromLegacy =
+        prevInvestigation?.status === "done" &&
+        (prevInvestigation.runs?.length ?? 0) === 0;
+      const prevRuns: RunSnapshot[] = seedFromLegacy
+        ? [snapshotRun(prevInvestigation, "done")]
+        : (prevInvestigation?.runs ?? []);
+
+      reports[key] = {
+        ...existing,
+        investigation: {
+          status: "queued",
+          queuedAt: now,
+          priority: QUEUE_PRIORITY.bulk,
+          notBefore: null,
+          startedAt: null,
+          durationMs: null,
+          error: null,
+          attempts: 0,
+          autoTriggered: true,
+          runs: prevRuns,
+          redditMetrics: prevInvestigation?.redditMetrics ?? null,
+          results: null,
+        },
+      };
+      dirty = true;
       toEnqueue.push(username);
-      continue;
     }
 
-    const seedFromLegacy =
-      prevInvestigation?.status === "done" &&
-      (prevInvestigation.runs?.length ?? 0) === 0;
-    const prevRuns: RunSnapshot[] = seedFromLegacy
-      ? [snapshotRun(prevInvestigation, "done")]
-      : (prevInvestigation?.runs ?? []);
-
-    reports[key] = {
-      ...existing,
-      investigation: {
-        status: "queued",
-        queuedAt: now,
-        priority: QUEUE_PRIORITY.bulk,
-        notBefore: null,
-        startedAt: null,
-        durationMs: null,
-        error: null,
-        attempts: 0,
-        autoTriggered: true,
-        runs: prevRuns,
-        redditMetrics: prevInvestigation?.redditMetrics ?? null,
-        results: null,
-      },
-    };
-    dirty = true;
-    toEnqueue.push(username);
-  }
-
-  if (dirty) {
-    await writeReports(reports);
-  }
+    return dirty ? reports : null;
+  });
 
   for (const username of toEnqueue) {
     void enqueueInvestigation(username, QUEUE_PRIORITY.bulk);
@@ -238,10 +253,15 @@ async function enqueueInvestigation(
 
   inFlight.add(key);
 
+  // Never rejects: every caller fires this with `void`, so a rejection here
+  // would be unhandled and the record would stay "queued" until the next
+  // worker restart's orphan sweep.
   try {
     await queue.add(() => runInvestigationLifecycle(username, priority), {
       priority,
     });
+  } catch (error) {
+    console.error(`[Bot or Not] investigation ${username} never ran`, error);
   } finally {
     inFlight.delete(key);
   }
@@ -251,22 +271,28 @@ async function runInvestigationLifecycle(
   username: string,
   priority: number
 ): Promise<void> {
-  const selection = await readLlmSelection();
-  const vendor = selection.vendor ?? "anthropic";
-  const apiKey = await readApiKey(vendor);
-  if (!apiKey) {
-    await setInvestigationState(username, {
-      status: "error",
-      error: "no-api-key",
-      durationMs: null,
-    });
-
-    return;
-  }
-
   const lifecycleStartedAt = Date.now();
 
+  // Refunded upstream-load failures, counted so a long Reddit outage can't
+  // park this queue slot in a fail→sleep→retry loop forever. Past the cap,
+  // failures consume the normal attempt budget and the run reaches a
+  // terminal error.
+  let upstreamFailures = 0;
+
   try {
+    const selection = await readLlmSelection();
+    const vendor = selection.vendor ?? "anthropic";
+    const apiKey = await readApiKey(vendor);
+    if (!apiKey) {
+      await setInvestigationState(username, {
+        status: "error",
+        error: "no-api-key",
+        durationMs: null,
+      });
+
+      return;
+    }
+
     await pRetry(
       async (attemptNumber) => {
         const attemptStartedAt = Date.now();
@@ -284,6 +310,16 @@ async function runInvestigationLifecycle(
             throw new AbortError(error as Error);
           }
 
+          // A rejected LLM key won't become valid by retrying; surface a
+          // readable error immediately instead of burning ~90s of backoff.
+          if (isLlmAuthError(error)) {
+            throw new AbortError(
+              new Error(
+                `The ${vendor} API rejected the configured key (HTTP ${readHttpStatus(error)}). Check the key in Settings.`
+              )
+            );
+          }
+
           throw error;
         }
       },
@@ -295,15 +331,20 @@ async function runInvestigationLifecycle(
         maxTimeout: 0,
 
         // 429 / 5xx are upstream-load signals, not investigation failures.
-        // Refund the attempt so a Reddit outage can't burn the operator's
-        // retry budget — the Reddit client's global pause handles waiting.
-        shouldConsumeRetry: ({ error }) => !isUpstreamLoad(error),
+        // Refund the attempt (up to the cap) so a Reddit outage can't burn
+        // the operator's retry budget — the Reddit client's global pause
+        // handles waiting.
+        shouldConsumeRetry: ({ error }) => {
+          if (!isUpstreamLoad(error)) {
+            return true;
+          }
+
+          upstreamFailures += 1;
+          return upstreamFailures > UPSTREAM_FAILURE_CAP;
+        },
 
         onFailedAttempt: async ({ error, attemptNumber }) => {
-          const retryAfterMs = readRetryAfterMs(error);
-          const delayMs = clampRetryAfter(
-            retryAfterMs ?? defaultBackoffMs(attemptNumber)
-          );
+          const delayMs = retryDelayMs(error, attemptNumber);
           const notBefore = Date.now() + delayMs;
           const message = String(
             (error as { message?: string })?.message ?? error
@@ -335,12 +376,22 @@ async function runInvestigationLifecycle(
 
     console.error(`[Bot or Not] investigation ${username} failed:`, error);
 
-    await setInvestigationState(username, {
-      status: "error",
-      error: message,
-      durationMs,
-      ...redditMetricsPatch(error),
-    });
+    // The terminal write must not itself escape — this function's callers
+    // fire-and-forget, so a rejection here would leave the record stuck in
+    // "running" until the next worker restart.
+    try {
+      await setInvestigationState(username, {
+        status: "error",
+        error: message,
+        durationMs,
+        ...redditMetricsPatch(error),
+      });
+    } catch (writeError) {
+      console.error(
+        `[Bot or Not] failed to record error state for ${username}`,
+        writeError
+      );
+    }
   }
 }
 
@@ -576,6 +627,8 @@ async function persistInvestigationDone(
   });
 }
 
+const UPSTREAM_FAILURE_CAP = 20;
+
 function isUpstreamLoad(error: unknown): boolean {
   if (!(error instanceof RedditFetchError)) {
     return false;
@@ -585,11 +638,44 @@ function isUpstreamLoad(error: unknown): boolean {
   return status === 429 || (status !== null && status >= 500);
 }
 
+function readHttpStatus(error: unknown): number | null {
+  const value = (error as { httpStatus?: number | null } | null)?.httpStatus;
+  return typeof value === "number" ? value : null;
+}
+
+// LLM auth failure — 401/403 from a provider, as opposed to a Reddit fetch
+// (where 403 means a suspended account, not a bad key).
+function isLlmAuthError(error: unknown): boolean {
+  if (error instanceof RedditFetchError) {
+    return false;
+  }
+
+  const status = readHttpStatus(error);
+  return status === 401 || status === 403;
+}
+
 function readRetryAfterMs(error: unknown): number | null {
   const value = (error as { retryAfterMs?: number | null } | null)
     ?.retryAfterMs;
 
   return typeof value === "number" && value > 0 ? value : null;
+}
+
+// The 30s–15min clamp exists to protect the shared Reddit budget; a non-Reddit
+// failure without an explicit Retry-After (e.g. an LLM schema-parse miss)
+// retries on plain exponential backoff instead of waiting out the floor.
+function retryDelayMs(error: unknown, attemptNumber: number): number {
+  const retryAfterMs = readRetryAfterMs(error);
+
+  if (retryAfterMs !== null) {
+    return clampRetryAfter(retryAfterMs);
+  }
+
+  if (error instanceof RedditFetchError) {
+    return clampRetryAfter(defaultBackoffMs(attemptNumber));
+  }
+
+  return defaultBackoffMs(attemptNumber);
 }
 
 function defaultBackoffMs(attemptNumber: number): number {

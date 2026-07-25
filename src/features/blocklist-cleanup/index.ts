@@ -120,6 +120,31 @@ export async function blocklistCleanupSweep(): Promise<void> {
     return;
   }
 
+  try {
+    await runSweep(state, blocked, now);
+  } catch (error) {
+    console.warn(
+      "[Bot or Not] blocklist cleanup: sweep failed mid-pass",
+      error
+    );
+
+    // Un-claim the daily gate so the failure retries on the next wake
+    // instead of silently skipping a day.
+    const current = await readBlocklistCleanupState();
+    await writeBlocklistCleanupState({
+      ...current,
+      lastSweep: state.lastSweep,
+    });
+  }
+}
+
+// Everything after the gate claim and block-list fetch. A throw anywhere in
+// here bubbles to blocklistCleanupSweep, which un-claims the gate.
+async function runSweep(
+  state: BlocklistCleanupState,
+  blocked: BlockedUser[],
+  now: number
+): Promise<void> {
   const reports = await readReportSummaries();
   const probes = pruneProbes(state.probes, blocked);
   const { candidates, dueCount } = selectSweepCandidates(

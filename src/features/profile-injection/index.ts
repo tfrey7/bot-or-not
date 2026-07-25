@@ -224,6 +224,21 @@ async function refreshIfHarvestChanged(username: string): Promise<void> {
   render(username, report);
 }
 
+// reports-changed carries no usernames, so any cached entry other than the
+// profile currently on screen could be stale — drop them so a revisit
+// refetches instead of replaying an old snapshot (e.g. "No Google dossier
+// yet" after a harvest landed elsewhere). The on-screen user keeps its
+// signature so refreshIfHarvestChanged can still skip no-op re-renders;
+// eviction also stops the caches growing per profile visited.
+function evictCachedReports(except: string | null): void {
+  for (const username of [...reportCache.keys()]) {
+    if (username !== except) {
+      reportCache.delete(username);
+      harvestSignatureCache.delete(username);
+    }
+  }
+}
+
 function ensureInjected(username: string): void {
   if (reportCache.has(username)) {
     render(username, reportCache.get(username) ?? null);
@@ -269,6 +284,8 @@ export function profileInjectionInit(): void {
     }
 
     const username = currentProfileUsername();
+    evictCachedReports(username);
+
     if (!username) {
       return;
     }

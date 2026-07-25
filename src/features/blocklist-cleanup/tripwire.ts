@@ -68,12 +68,19 @@ export function blocklistTripwireScan(): void {
 }
 
 async function reportSighting(username: string, key: string): Promise<void> {
-  const { blocked } = await clientSend<{ blocked: boolean }>({
-    type: "blocklist-reblock",
-    username,
-  });
+  try {
+    const { blocked } = await clientSend<{ blocked: boolean }>({
+      type: "blocklist-reblock",
+      username,
+    });
 
-  if (blocked) {
-    watchKeys.delete(key);
+    if (blocked) {
+      watchKeys.delete(key);
+    }
+  } catch (error) {
+    console.warn(
+      `[Bot or Not] tripwire: sighting report failed for ${username}`,
+      error
+    );
   }
 }

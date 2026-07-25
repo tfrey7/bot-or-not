@@ -18,6 +18,7 @@
 
 import { FACTORS } from "../../factors.ts";
 import type { ProfileSummary } from "../../types.ts";
+import { isProfileHidden } from "../../utils/profile_hidden.ts";
 
 // `llmFactorKeys` is the set of factor keys the LLM should score. Factors
 // NOT in this set have their section removed from the prompt and are
@@ -76,10 +77,11 @@ function keepAllConditions(): SectionConditions {
 function deriveConditions(summary: ProfileSummary): SectionConditions {
   const googleHarvest = summary.google_harvest != null;
   const passiveHarvest = summary.passive_harvest != null;
-  const totalKarma = summary.account.total_karma ?? 0;
-  const visibleItems =
-    summary.activity.posts_fetched + summary.activity.comments_fetched;
-  const hiddenProfile = visibleItems <= 5 && totalKarma >= 1000;
+  const hiddenProfile = isProfileHidden({
+    postsFetched: summary.activity.posts_fetched,
+    commentsFetched: summary.activity.comments_fetched,
+    totalKarma: summary.account.total_karma,
+  });
   const avatar = summary.avatar.customized === true;
 
   return {

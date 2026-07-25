@@ -11,16 +11,19 @@ let lastUserStatusReported: string | null = null;
 const reportedPostPermalinks = new Set<string>();
 const reportedBotBouncerKeys = new Set<string>();
 
-// document.body.textContent scans are O(body size). On big comment threads
-// the body can be multiple MB, and the orchestrator fires us once per
-// animation frame — so we throttle the textContent-backed detectors to one
-// scan per second. The detected message may not be in the DOM on the first
-// scan, so we can't go "once and done" — but per-second is cheap and still
-// catches late renders within the page lifetime. resetNav() resets these
-// on SPA navigation.
+// document.body.textContent scans are O(body size) — on big comment threads
+// the body can be multiple MB — and the shreddit-post detectors walk every
+// post on the page. The orchestrator fires us once per animation frame, so
+// every detector is throttled to one scan per second. A detection target may
+// not be in the DOM on the first scan (and post attributes like
+// removed-by-category can flip later), so we can't go "once and done" — but
+// per-second is cheap and still catches late renders within the page
+// lifetime. resetNav() resets these on SPA navigation.
 const STATUS_SCAN_THROTTLE_MS = 1000;
 let lastUserStatusScanAt = 0;
 let lastStandalonePostScanAt = 0;
+let lastPostScanAt = 0;
+let lastBotBouncerScanAt = 0;
 
 function detectUserStatus(): void {
   const profileMatch = window.location.pathname.match(
@@ -86,6 +89,13 @@ function reportPostStatus(
 }
 
 function detectPostStatuses(): void {
+  const now = Date.now();
+  if (now - lastPostScanAt < STATUS_SCAN_THROTTLE_MS) {
+    return;
+  }
+
+  lastPostScanAt = now;
+
   document.querySelectorAll("shreddit-post").forEach((post) => {
     const permalink = post.getAttribute("permalink");
     if (!permalink) {
@@ -148,6 +158,13 @@ function detectStandalonePostStatus(): void {
 }
 
 function detectBotBouncerStatuses(): void {
+  const now = Date.now();
+  if (now - lastBotBouncerScanAt < STATUS_SCAN_THROTTLE_MS) {
+    return;
+  }
+
+  lastBotBouncerScanAt = now;
+
   document.querySelectorAll("shreddit-post").forEach((post) => {
     const subreddit = (
       post.getAttribute("subreddit-prefixed-name") ||
@@ -223,4 +240,6 @@ export function statusDetectionResetNav(): void {
   reportedBotBouncerKeys.clear();
   lastUserStatusScanAt = 0;
   lastStandalonePostScanAt = 0;
+  lastPostScanAt = 0;
+  lastBotBouncerScanAt = 0;
 }

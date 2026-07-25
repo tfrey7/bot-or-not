@@ -107,7 +107,10 @@ export async function subredditAnalyze(
   // alternative would emit ~3 storage ops × 100 users per analyze click,
   // which pegs the background SW and stalls the reports page until the
   // burst settles.
-  await investigationStartBatch(enqueuedUsernames);
+  const batch = await investigationStartBatch(enqueuedUsernames);
+  if (!batch.ok) {
+    return { ok: false, error: batch.error ?? "enqueue-failed" };
+  }
 
   return {
     ok: true,

@@ -33,6 +33,13 @@ export function DetailHost(props: DetailHostProps) {
   const selectedUsernameRef = useRef<string | null>(null);
   selectedUsernameRef.current = props.selected?.username ?? null;
 
+  // Responses can land out of order — the fetch while an investigation is
+  // running resolves slower than the one after it's done, and the username
+  // guard alone can't tell two fetches for the same user apart. Only the
+  // latest issued fetch may paint; the fingerprint gate would otherwise pin
+  // the stale render in place.
+  const fetchSequenceRef = useRef(0);
+
   useEffect(() => {
     const report = props.selected;
 
@@ -72,6 +79,7 @@ export function DetailHost(props: DetailHostProps) {
     summary: ReportRow,
     queueAhead: number
   ): Promise<void> {
+    const sequence = ++fetchSequenceRef.current;
     let full: Report | null = null;
 
     try {
@@ -84,7 +92,10 @@ export function DetailHost(props: DetailHostProps) {
       console.error("[Bot or Not] failed to load dossier", error);
     }
 
-    if (selectedUsernameRef.current !== summary.username) {
+    if (
+      sequence !== fetchSequenceRef.current ||
+      selectedUsernameRef.current !== summary.username
+    ) {
       return;
     }
 

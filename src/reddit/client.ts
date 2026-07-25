@@ -324,7 +324,11 @@ export class RedditRequestError extends Error {
   }
 }
 
-async function bootstrapPauseState(): Promise<void> {
+// Restores a rate-limit pause persisted by a previous worker. Called from
+// background startup only — this module is also bundled into the content
+// script and reports page, and a module-scope call here would do storage
+// I/O (including a write) in those contexts on every import.
+export async function redditRestorePersistedPause(): Promise<void> {
   try {
     const stored = await readRedditPauseUntil();
 
@@ -334,20 +338,32 @@ async function bootstrapPauseState(): Promise<void> {
 
     const remaining = stored - Date.now();
     if (remaining <= 0) {
-      await writeRedditPauseUntil(null);
+      if (pausedUntil === null) {
+        await writeRedditPauseUntil(null);
+      }
+
+      return;
+    }
+
+    // A pause set live in this session (e.g. a 429 during startup) may
+    // already run longer than the persisted one — never shorten it.
+    if (pausedUntil !== null && pausedUntil >= stored) {
       return;
     }
 
     pausedUntil = stored;
     queue.pause();
     backgroundQueue.pause();
+
+    if (pauseClearTimer !== null) {
+      clearTimeout(pauseClearTimer);
+    }
+
     pauseClearTimer = setTimeout(clearPause, remaining);
   } catch (error) {
     console.error("[Bot or Not] failed to restore Reddit pause state", error);
   }
 }
-
-void bootstrapPauseState();
 
 // Live view of the funnel for the metrics tab; persisted telemetry rides
 // alongside it in the `get-reddit-telemetry` response.

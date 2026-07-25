@@ -192,10 +192,9 @@ function Dot({ point, onSelect, lookupReport }: DotProps) {
         <circle cx={cx} cy={cy} r={r + 3} class="bon-personas-dot-halo" />
       )}
       <circle cx={cx} cy={cy} r={r} class="bon-personas-dot-fill" fill={fill} />
-      {/* Native tooltip is the keyboard-friendly fallback / a11y surface;
-          the hover card layered above does the rich preview when a pointer
-          is in play. */}
-      <title>{formatTooltip(point)}</title>
+      {/* No native <title>: its browser tooltip shows the username in a
+          surface the PII-redaction CSS can't reach. The hover card (opened
+          on hover and focus) and the aria-label cover the same info. */}
     </g>
   );
 }

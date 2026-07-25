@@ -168,11 +168,11 @@ Respond with **only** a JSON object (no prose, no markdown fences) matching this
     "reasoning": "ONE short clause — why this persona fits best",
     "archetypes": {
       "superfan": 0.0,
-      "farmer": 0.0,
-      "cam_model": 0.0,
-      "politics": 0.0,
       "shill": 0.0,
-      "doomer": 0.0
+      "farmer": 0.0,
+      "doomer": 0.0,
+      "cam_model": 0.0,
+      "politics": 0.0
     }
   },
   "factors": [
@@ -392,7 +392,7 @@ Compare when the account was **created** against when the visible activity actua
 
 **Pattern A″ — young-account age baseline (default tier when no specific shape fires).** Real humans usually create an account for a specific reason and either lurk briefly or post about that reason. Bot accounts that survive past day one are typically being warmed up — three to four weeks of innocuous activity before pivoting is a common shape. When neither Pattern A nor Pattern A′ specifically matches but the account is still young, score on raw age:
 
-- ≤30 days old + any visible activity → `score ≈ -0.6`, `confidence ≈ 0.7`. Red-flag tier (floors the verdict at `uncertain`). Activity that clearly fits a genuine new-user shape — specific question + first-person voice + personal stake in a niche sub the user identifies with — can pull this back via Pattern A′'s escape valve.
+- ≤30 days old + any visible activity → `score ≈ -0.6`, `confidence ≈ 0.7`. Red-flag tier — strong enough that this factor alone forces a bot-leaning overall verdict. Activity that clearly fits a genuine new-user shape — specific question + first-person voice + personal stake in a niche sub the user identifies with — can pull this back via Pattern A′'s escape valve.
 - 31–365 days old → `score ≈ -0.3`, `confidence ≈ 0.5`. Moderate tilt; one factor among many. Combined with auto-username, engagement-bait-dominated sub mix, LLM cadence, or no first-person voice across many comments, the aggregate verdict compounds bot-ward.
 - ≥1 year old → `score ≈ 0.0` baseline. Defer to Pattern B's dormancy check; otherwise leave near neutral.
 
@@ -680,7 +680,7 @@ Scoring guidance:
   - **"No funnel link in profile or comments" is NOT a counter-signal.** Pre-launch, mid-launch, and audience-building accounts have identical posting shapes. The structural fingerprint is the signal.
   - **"The operator's voice sounds genuinely passionate about the niche" is NOT a counter-signal.** OF/cam operators choose niches they personally care about (or can plausibly cosplay as caring about) because that's how the audience-building works. Genuine-sounding voice is *expected* under this archetype, not disqualifying.
 
-  The misread to avoid is softening to ~-0.25 because individual comments read human. Owning the venue you post your own appearance content in is the editorial-check-bypass that *defines* the archetype, regardless of how human the comments read. This is a red-flag tier (score ≤ -0.6, confidence ≥ 0.6) — it floors the verdict at `uncertain` and combined with any other red flag pushes to `likely-bot`. Example: founder-mod of r/<smallfashionsub> (≤1k subs), 99/107 visible items in that sub, all own outfit photos — that's this tier even if she also writes thoughtful replies about earth-tone palettes and 1950s Italian fashion.
+  The misread to avoid is softening to ~-0.25 because individual comments read human. Owning the venue you post your own appearance content in is the editorial-check-bypass that *defines* the archetype, regardless of how human the comments read. This is a red-flag tier — a score this strongly negative at high confidence forces a bot-leaning overall verdict on its own, and combined with any other red flag forces it further bot-ward. Example: founder-mod of r/<smallfashionsub> (≤1k subs), 99/107 visible items in that sub, all own outfit photos — that's this tier even if she also writes thoughtful replies about earth-tone palettes and 1950s Italian fashion.
 - Own-content-only with total absence of other-life posting (every visible item is the operator's own photos/products in 1–2 niche subs; nothing in conversational/hobby/news subs) → `score ≈ -0.7`, `confidence ≈ 0.75`, even without explicit funnel links or founder-mod role.
 - **Indie creator with niche-relevant product + genuine niche engagement** — operator built a tool/app/game/store rooted in a niche they're passionate about, cross-promotes it across themed subs, AND also contributes substantive non-promo content to the broader niche (data analyses, technique answers, mainstream-sub posts not tied to the product) → `score ≈ -0.3`, `confidence ≈ 0.5`. The bot↔human factor stays mild because the user is plainly human and engaged. **On the persona side this is `Superfan + Shill`** — score the superfan axis for the niche obsession (typically `0.7–0.9`) AND the shill axis for the sustained self-promotion (typically `0.5–0.7`). Don't let visible non-promo engagement zero out the shill axis, and don't let founder-mod of the product's own sub push the factor into the `-0.75` OF/cam-model tier — that tier is for personal-appearance monetization, not indie products.
 - Mixed but not indie-creator-shaped: visible promo but also genuine niche discussion (e.g. an artist posts their work but also discusses other artists' work and answers technique questions) → `score ≈ -0.3`, `confidence ≈ 0.5`.

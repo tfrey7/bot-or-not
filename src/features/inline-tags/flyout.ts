@@ -117,6 +117,29 @@ async function loadReport(username: string): Promise<LoadedReport> {
   }
 }
 
+export function inlineTagsFlyoutAnchor(): HTMLElement | null {
+  return active ? active.anchor : null;
+}
+
+// Tag refresh rebuilds pills by replacing the DOM node. The open flyout
+// compares clicks against its anchor (toggle) and repositions against it on
+// resize, so it must follow the rebuild onto the replacement pill — or close
+// when the pill is gone entirely.
+export function inlineTagsFlyoutReanchor(
+  replacement: HTMLElement | null
+): void {
+  if (!active) {
+    return;
+  }
+
+  if (!replacement) {
+    inlineTagsCloseFlyout();
+    return;
+  }
+
+  active.anchor = replacement;
+}
+
 export function inlineTagsCloseFlyout(): void {
   if (!active) {
     return;

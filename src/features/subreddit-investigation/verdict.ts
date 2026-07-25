@@ -4,7 +4,7 @@
 // stays accurate as individual investigations complete in the background.
 //
 // The rule (kept deliberately simple per design):
-//   - Bot-leaning user = verdict in {bot, likely-bot}, EXCEPT an `app` persona
+//   - Bot-leaning user = isSuspectedBot(verdict), EXCEPT an `app` persona
 //     (transparent automation) doesn't count — a sub full of news-feed apps
 //     isn't "compromised by bots."
 //   - Subreddit is compromised iff botLeaningCount / doneCount >= 0.5.
@@ -28,8 +28,8 @@ import type {
 } from "../../types.ts";
 import { findReportKey } from "../../utils/history.ts";
 import { isAppPersona } from "../../utils/verdict_display.ts";
+import { isSuspectedBot } from "../../verdict.ts";
 
-const BOT_LEANING_VERDICTS = new Set<Verdict>(["bot", "likely-bot"]);
 const COMPROMISED_FRACTION = 0.5;
 
 type SubredditSampleStatus = Investigation["status"] | "missing";
@@ -77,7 +77,7 @@ export function subredditDeriveVerdict(
       doneCount++;
       const verdict = investigation.results.verdict;
       if (
-        BOT_LEANING_VERDICTS.has(verdict) &&
+        isSuspectedBot(verdict) &&
         !isAppPersona(investigation.results.persona)
       ) {
         botLeaningCount++;

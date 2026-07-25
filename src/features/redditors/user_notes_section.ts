@@ -61,7 +61,7 @@ export function redditorsUserNotesSection(report: ReportRow): HTMLDivElement {
   wrap.appendChild(controls);
 
   const textarea = document.createElement("textarea");
-  textarea.className = "bon-user-notes__textarea";
+  textarea.className = "bon-user-notes__textarea bon-pii";
   textarea.placeholder =
     "What did you spot? Why you flagged this one, anything to remember next time you see them…";
   textarea.value = userNotes?.note ?? "";

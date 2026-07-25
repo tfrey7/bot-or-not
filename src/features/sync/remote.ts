@@ -11,10 +11,10 @@
 
 import type { Report } from "../../types.ts";
 import {
-  readReports,
   readSyncConfig,
-  writeReports,
+  updateReports,
   writeSyncConfig,
+  type SyncConfig,
 } from "../../storage";
 import {
   syncBuildBackup,
@@ -27,6 +27,10 @@ import {
 const GITHUB_API = "https://api.github.com";
 const BACKUP_FILENAME = "bot-or-not-backup.json";
 const GIST_DESCRIPTION = "Bot or Not — automatic sync (do not edit by hand)";
+
+// A hung connection would otherwise leave the `reconciling` flag set forever
+// and silently disable sync until the worker restarts.
+const FETCH_TIMEOUT_MS = 30_000;
 
 interface GistFile {
   content?: string;
@@ -82,6 +86,7 @@ export async function createSyncGist(token: string): Promise<string> {
       public: false,
       files: { [BACKUP_FILENAME]: { content: JSON.stringify(payload) } },
     }),
+    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
   });
 
   if (!res.ok) {
@@ -102,6 +107,7 @@ async function pullRemote(
 ): Promise<Record<string, Report>> {
   const res = await fetch(`${GITHUB_API}/gists/${gistId}`, {
     headers: authHeaders(token),
+    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
   });
 
   if (!res.ok) {
@@ -119,7 +125,11 @@ async function pullRemote(
   // GitHub inlines file content only up to ~1 MB; larger files come back
   // flagged truncated with a raw_url pointing at the full blob.
   if (file.truncated && file.raw_url) {
-    const rawRes = await fetch(file.raw_url, { headers: authHeaders(token) });
+    const rawRes = await fetch(file.raw_url, {
+      headers: authHeaders(token),
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+    });
+
     if (!rawRes.ok) {
       throw new Error(await githubError(rawRes, "read gist content"));
     }
@@ -150,6 +160,7 @@ async function pushRemote(
     body: JSON.stringify({
       files: { [BACKUP_FILENAME]: { content: JSON.stringify(payload) } },
     }),
+    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
   });
 
   if (!res.ok) {
@@ -170,12 +181,24 @@ export async function syncReconcile(): Promise<MergeStats> {
 
   try {
     const remote = await pullRemote(gistId, token);
-    const local = await readReports();
-    const { reports: merged, stats } = syncMergeReports(local, remote);
 
-    if (stats.added.length > 0 || stats.merged.length > 0) {
-      await writeReports(merged);
-    }
+    // The merge runs inside the report mutation lock so it sees a snapshot no
+    // concurrent single-record write can invalidate; returning null skips the
+    // bulk rewrite when nothing changed locally.
+    let merged: Record<string, Report> = {};
+    let stats!: MergeStats;
+
+    await updateReports((local) => {
+      const result = syncMergeReports(local, remote);
+      merged = result.reports;
+      stats = result.stats;
+
+      if (stats.added.length === 0 && stats.merged.length === 0) {
+        return null;
+      }
+
+      return merged;
+    });
 
     const payload = syncBuildBackup({
       reports: merged,
@@ -183,15 +206,22 @@ export async function syncReconcile(): Promise<MergeStats> {
     });
     await pushRemote(gistId, token, payload);
 
-    await writeSyncConfig({
-      ...config,
-      lastSyncedAt: Date.now(),
-      lastError: null,
-    });
+    await stampSyncConfig({ lastSyncedAt: Date.now(), lastError: null });
 
     return stats;
   } catch (error) {
-    await writeSyncConfig({ ...config, lastError: (error as Error).message });
+    await stampSyncConfig({ lastError: (error as Error).message });
     throw error;
   }
+}
+
+// Outcome fields are stamped onto a freshly-read config, not the snapshot
+// from the start of the cycle — the operator may have changed or cleared the
+// token/gist while the cycle was in flight, and writing the snapshot back
+// would resurrect it.
+async function stampSyncConfig(
+  outcome: Partial<Pick<SyncConfig, "lastSyncedAt" | "lastError">>
+): Promise<void> {
+  const fresh = await readSyncConfig();
+  await writeSyncConfig({ ...fresh, ...outcome });
 }

@@ -168,7 +168,7 @@ function buildPostItem(
   }
 
   const titleLink = document.createElement("a");
-  titleLink.className = "bon-google-dossier__post-title";
+  titleLink.className = "bon-google-dossier__post-title bon-pii";
   titleLink.href = post.url;
   titleLink.target = "_blank";
   titleLink.rel = "noopener noreferrer";
@@ -202,7 +202,7 @@ function buildPostItem(
 
   if (post.snippetText) {
     const snippet = document.createElement("div");
-    snippet.className = "bon-google-dossier__post-snippet";
+    snippet.className = "bon-google-dossier__post-snippet bon-pii";
     snippet.textContent = post.snippetText;
     item.appendChild(snippet);
   }

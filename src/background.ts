@@ -60,17 +60,22 @@ import {
   syncStatus,
 } from "./features/sync";
 import { runMigrations } from "./migrations";
-import { redditFunnelSnapshot } from "./reddit/client.ts";
+import {
+  redditFunnelSnapshot,
+  redditRestorePersistedPause,
+} from "./reddit/client.ts";
 import type { RedditFunnelSnapshot } from "./reddit/client.ts";
 import type { RedditTelemetryState } from "./reddit/telemetry.ts";
 import type { Report } from "./types.ts";
 import {
   clearAllApiKeys,
+  clearApiKey,
   readAllApiKeys,
   readApiKey,
   readHidePii,
   readLlmSelection,
   readMaintenancePaused,
+  readRedditPauseUntil,
   readRedditTelemetry,
   readStatusRecheckState,
   writeApiKey,
@@ -88,6 +93,8 @@ console.log("[Bot or Not] background loaded");
 void bootstrapDevClaudeApiKey();
 
 void bootstrapDevReportsTab();
+
+void redditRestorePersistedPause();
 
 void runMigrations().then(() => {
   // Migrations run first so everything below reads the finalized per-key
@@ -181,10 +188,43 @@ interface BaseMessage {
   [k: string]: unknown;
 }
 
+// Messages that configure secrets, rewrite the store wholesale, or change
+// operator settings. Only extension pages (the reports page) send them;
+// content scripts run inside third-party pages and must not be able to
+// reach these even if that page ecosystem finds a way to trigger sends.
+const PRIVILEGED_MESSAGES = new Set([
+  "set-api-key",
+  "clear-api-keys",
+  "set-llm-selection",
+  "set-hide-pii",
+  "set-maintenance-paused",
+  "clear-all-reports",
+  "delete-report",
+  "sync-export",
+  "sync-import",
+  "sync-status",
+  "sync-create-gist",
+  "sync-configure",
+  "sync-now",
+  "sync-disable",
+]);
+
+function isExtensionPageSender(sender: browser.runtime.MessageSender): boolean {
+  return sender.url?.startsWith(browser.runtime.getURL("")) === true;
+}
+
 // Routes each incoming message to its handler. Pure dispatch — every
 // branch unpacks fields from the BaseMessage shape and calls a typed
 // handler. Domain logic lives in the feature modules, not here.
-browser.runtime.onMessage.addListener((message: BaseMessage) => {
+browser.runtime.onMessage.addListener((message: BaseMessage, sender) => {
+  if (PRIVILEGED_MESSAGES.has(message.type) && !isExtensionPageSender(sender)) {
+    console.warn(
+      `[Bot or Not] dropped privileged message "${message.type}" from ${sender.url ?? "unknown sender"}`
+    );
+
+    return Promise.resolve({ ok: false, error: "not-allowed" });
+  }
+
   if (message.type === "report-user") {
     return redditorsRecordReport(
       message.username as string,
@@ -230,6 +270,10 @@ browser.runtime.onMessage.addListener((message: BaseMessage) => {
 
   if (message.type === "get-maintenance-paused") {
     return readMaintenancePaused().then((paused) => ({ paused }));
+  }
+
+  if (message.type === "get-reddit-pause") {
+    return readRedditPauseUntil().then((pausedUntil) => ({ pausedUntil }));
   }
 
   if (message.type === "set-maintenance-paused") {
@@ -375,7 +419,7 @@ browser.runtime.onMessage.addListener((message: BaseMessage) => {
 
   if (message.type === "sync-import") {
     return syncImport({
-      reports: (message.reports as Record<string, Report>) ?? {},
+      reports: (message.reports as Record<string, unknown>) ?? {},
     });
   }
 
@@ -532,9 +576,7 @@ async function handleSetApiKey(
   // separate, explicit message.
   if (!key) {
     if (hintedVendor) {
-      const map = await readAllApiKeys();
-      delete map[hintedVendor];
-      await browser.storage.local.set({ apiKeys: map });
+      await clearApiKey(hintedVendor);
     }
 
     const map = await readAllApiKeys();

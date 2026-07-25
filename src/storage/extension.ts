@@ -20,6 +20,7 @@ import type {
   BlocklistSweepSummary,
   BlocklistWatchEntry,
   LlmSelection,
+  ReportsMutator,
   ReportUpdater,
   StatusRecheckState,
   StorageAdapter,
@@ -87,10 +88,12 @@ export class ExtensionStorage implements StorageAdapter {
     return out;
   }
 
-  // Bulk replace — the danger-zone path (see updateReport). Sets every
-  // provided record under its own key in one call (one onChanged) and
-  // removes any per-key records no longer in the map.
-  async writeReports(reports: Record<string, Report>): Promise<void> {
+  // Bulk replace. Sets every provided record under its own key in one call
+  // (one onChanged) and removes any per-key records no longer in the map.
+  // Only ever runs inside the report mutation chain (see updateReports) —
+  // calling it outside the chain would let a stale snapshot clobber or
+  // delete records written concurrently.
+  private async replaceReports(reports: Record<string, Report>): Promise<void> {
     const raw = (await browser.storage.local.get(null)) as Record<
       string,
       unknown
@@ -119,11 +122,20 @@ export class ExtensionStorage implements StorageAdapter {
     }
   }
 
-  // Tail of the per-username update chain. Each updateReport call appends a
-  // task to the entry's promise and replaces the entry with the new tail.
-  // Map entry is evicted when its tail resolves and no further work has
-  // been queued on top of it.
-  private reportUpdateChains = new Map<string, Promise<unknown>>();
+  // Tail of the report mutation chain. Every report write — single-record
+  // updates and bulk rewrites alike — appends here, so a bulk
+  // read-modify-write can never interleave with a concurrent single-record
+  // update and resurrect a stale snapshot of it.
+  private reportMutationChain: Promise<unknown> = Promise.resolve();
+
+  // Swallow upstream errors for the *chain*: a prior caller's failure
+  // shouldn't poison subsequent mutations. Each caller still receives its
+  // own rejection via the returned promise.
+  private enqueueReportMutation<T>(task: () => Promise<T>): Promise<T> {
+    const next = this.reportMutationChain.catch(() => undefined).then(task);
+    this.reportMutationChain = next;
+    return next;
+  }
 
   async readReport(username: string): Promise<Report | null> {
     const directKey = reportStorageKey(username);
@@ -160,25 +172,22 @@ export class ExtensionStorage implements StorageAdapter {
   }
 
   async updateReport(username: string, updater: ReportUpdater): Promise<void> {
-    const lockKey = username.toLowerCase();
-    const previous = this.reportUpdateChains.get(lockKey) ?? Promise.resolve();
+    await this.enqueueReportMutation(() =>
+      this.applyReportUpdate(username, updater)
+    );
+  }
 
-    // Swallow upstream errors for the *chain*: a prior caller's failure
-    // shouldn't poison subsequent updates. The original caller already
-    // received its own rejection via its own `await next` below.
-    const next = previous
-      .catch(() => undefined)
-      .then(() => this.applyReportUpdate(username, updater));
+  async updateReports(mutator: ReportsMutator): Promise<void> {
+    await this.enqueueReportMutation(async () => {
+      const current = await this.readReports();
+      const next = await mutator(current);
 
-    this.reportUpdateChains.set(lockKey, next);
-
-    try {
-      await next;
-    } finally {
-      if (this.reportUpdateChains.get(lockKey) === next) {
-        this.reportUpdateChains.delete(lockKey);
+      if (next === null) {
+        return;
       }
-    }
+
+      await this.replaceReports(next);
+    });
   }
 
   private async applyReportUpdate(
@@ -276,6 +285,17 @@ export class ExtensionStorage implements StorageAdapter {
     const map = await this.readAllApiKeys();
     map[vendor] = key;
     await browser.storage.local.set({ apiKeys: map });
+  }
+
+  async clearApiKey(vendor: LlmVendor): Promise<void> {
+    const map = await this.readAllApiKeys();
+    delete map[vendor];
+
+    if (Object.keys(map).length === 0) {
+      await browser.storage.local.remove("apiKeys");
+    } else {
+      await browser.storage.local.set({ apiKeys: map });
+    }
   }
 
   async clearAllApiKeys(): Promise<void> {

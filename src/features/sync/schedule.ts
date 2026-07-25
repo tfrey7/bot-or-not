@@ -1,7 +1,7 @@
 // Background-only orchestration for automatic sync: the periodic pull alarm,
 // the debounced push-on-local-change, and the startup reconcile. All triggers
 // funnel through runReconcile, which serializes cycles and — via the module
-// `reconciling` flag — keeps a reconcile's own writeReports (which fires
+// `reconciling` flag — keeps a reconcile's own bulk report write (which fires
 // storage.onChanged) from re-triggering the change listener into a loop.
 
 import { readSyncConfig } from "../../storage";
@@ -14,6 +14,7 @@ const CHANGE_DEBOUNCE_MS = 10_000;
 const REPORT_KEY_PREFIX = "report:";
 
 let reconciling = false;
+let pendingChange = false;
 let syncEnabled = false;
 let changeTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -33,6 +34,15 @@ export async function runReconcile(reason: string): Promise<MergeStats> {
     return stats;
   } finally {
     reconciling = false;
+
+    // A report change that landed mid-cycle missed this cycle's merge; re-arm
+    // the debounce instead of letting it wait for the next alarm. The cycle's
+    // own write can trip this too — that follow-up reconcile no-op-merges and
+    // stops, so it costs one round-trip, not a loop.
+    if (pendingChange) {
+      pendingChange = false;
+      armChangeTimer();
+    }
   }
 }
 
@@ -84,7 +94,7 @@ export function syncHandleStorageChange(
   changes: Record<string, browser.storage.StorageChange>,
   areaName: string
 ): void {
-  if (areaName !== "local" || !syncEnabled || reconciling) {
+  if (areaName !== "local" || !syncEnabled) {
     return;
   }
 
@@ -96,6 +106,15 @@ export function syncHandleStorageChange(
     return;
   }
 
+  if (reconciling) {
+    pendingChange = true;
+    return;
+  }
+
+  armChangeTimer();
+}
+
+function armChangeTimer(): void {
   if (changeTimer) {
     clearTimeout(changeTimer);
   }

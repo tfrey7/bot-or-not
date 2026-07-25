@@ -34,10 +34,24 @@ async function loadHiddenUsernames(): Promise<void> {
     type: "get-hidden-usernames",
   });
 
-  hiddenUsernames = new Set(
+  const next = new Set(
     (response?.usernames ?? []).map((name) => name.toLowerCase())
   );
+
+  const gainedMembers = [...next].some((name) => !hiddenUsernames.has(name));
+
+  hiddenUsernames = next;
   hiddenUsernamesLoaded = true;
+
+  // Elements get stamped data-bon-harvested on first inspection even when
+  // their author isn't hidden, so already-rendered items by a newly hidden
+  // user would be skipped forever. Clearing the markers once per gain lets
+  // the next tick re-inspect the whole page.
+  if (gainedMembers) {
+    document
+      .querySelectorAll("[data-bon-harvested]")
+      .forEach((el) => el.removeAttribute("data-bon-harvested"));
+  }
 }
 
 function scheduleFlush(): void {

@@ -166,6 +166,7 @@ export function redditorsProfileSection(
     const contributions = posts + comments;
     if (contributions > 0) {
       const item = document.createElement("span");
+      item.className = "bon-pii";
       item.title = `${posts} post${posts === 1 ? "" : "s"} · ${comments} comment${comments === 1 ? "" : "s"} visible on profile`;
       item.textContent = `${contributions.toLocaleString()} contribution${contributions === 1 ? "" : "s"}`;
       appendMetaItem(meta, item);

@@ -61,7 +61,7 @@ export function panelBuildPersonaStrip(
   const summaryText = options.summary ?? persona.reasoning;
   if (summaryText) {
     const summary = document.createElement("p");
-    summary.className = "bon-panel-persona__summary";
+    summary.className = "bon-panel-persona__summary bon-pii";
     summary.appendChild(linkifyReddit(summaryText, linkifyPanelOptions()));
     wrap.appendChild(summary);
   }

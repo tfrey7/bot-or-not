@@ -21,7 +21,8 @@ export function pagination(opts: PaginationOpts): HTMLElement {
 
   const caption = document.createElement("span");
   caption.className = "bon-pagination-caption";
-  caption.textContent = `${firstIndex}–${lastIndex} of ${totalItems}`;
+  caption.textContent =
+    totalItems === 0 ? "0 of 0" : `${firstIndex}–${lastIndex} of ${totalItems}`;
   wrap.appendChild(caption);
 
   const controls = document.createElement("div");

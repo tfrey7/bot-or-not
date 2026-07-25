@@ -69,7 +69,7 @@ export function redditorsInvestigationDetail(
     }
 
     const errorBlock = document.createElement("div");
-    errorBlock.className = "bon-verdict-error";
+    errorBlock.className = "bon-verdict-error bon-pii";
     errorBlock.textContent = `Investigation failed: ${investigation.error ?? "unknown error"}`;
     wrap.appendChild(errorBlock);
     return wrap;
@@ -108,7 +108,7 @@ export function redditorsInvestigationDetail(
 
   if (summary) {
     const summaryEl = document.createElement("p");
-    summaryEl.className = "bon-verdict-summary";
+    summaryEl.className = "bon-verdict-summary bon-pii";
     summaryEl.appendChild(linkifyReddit(summary));
     wrap.appendChild(summaryEl);
   }
@@ -132,7 +132,7 @@ function buildColdTrailPanel(summary: string): HTMLDivElement {
   panel.appendChild(figure);
 
   const message = document.createElement("p");
-  message.className = "bon-cold-trail-panel__body";
+  message.className = "bon-cold-trail-panel__body bon-pii";
   message.textContent = summary;
   panel.appendChild(message);
 
