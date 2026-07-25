@@ -14,7 +14,10 @@
 # MAGIC | `silver.report_events` | one row per operator report click, thread ID parsed from the permalink |
 # MAGIC
 # MAGIC Timestamps in the payload are unix **milliseconds** throughout.
-# MAGIC Headless copy of this build: `databricks/rebuild_silver.sh` — keep in sync.
+# MAGIC
+# MAGIC Every table reads only `bronze.reports` — none depends on another — so the
+# MAGIC cells below register each build's SQL and a final cell runs them all
+# MAGIC concurrently.
 
 # COMMAND ----------
 
@@ -23,6 +26,8 @@ catalog = dbutils.widgets.get("catalog")
 spark.sql(f"USE CATALOG {catalog}")
 spark.sql("CREATE SCHEMA IF NOT EXISTS silver")
 
+table_sql = {}
+
 # COMMAND ----------
 
 # MAGIC %md
@@ -30,7 +35,7 @@ spark.sql("CREATE SCHEMA IF NOT EXISTS silver")
 
 # COMMAND ----------
 
-spark.sql("""
+table_sql["users"] = """
 CREATE OR REPLACE TABLE silver.users AS
 WITH ranked AS (
   SELECT *,
@@ -60,7 +65,7 @@ SELECT
   report:investigation:results:costUsd::double                   AS investigation_cost_usd
 FROM ranked
 WHERE recency = 1
-""")
+"""
 
 # COMMAND ----------
 
@@ -69,7 +74,7 @@ WHERE recency = 1
 
 # COMMAND ----------
 
-spark.sql("""
+table_sql["user_snapshots"] = """
 CREATE OR REPLACE TABLE silver.user_snapshots AS
 SELECT
   username,
@@ -84,7 +89,7 @@ SELECT
   report:investigation:results:botProbability::double  AS bot_probability,
   to_timestamp(report:investigation:results:runAt::bigint / 1000) AS investigated_at
 FROM bronze.reports
-""")
+"""
 
 # COMMAND ----------
 
@@ -93,7 +98,7 @@ FROM bronze.reports
 
 # COMMAND ----------
 
-spark.sql("""
+table_sql["factors"] = """
 CREATE OR REPLACE TABLE silver.factors AS
 WITH ranked AS (
   SELECT *,
@@ -109,7 +114,7 @@ SELECT
 FROM ranked,
   LATERAL variant_explode(report:investigation:results:factors) AS factor
 WHERE recency = 1
-""")
+"""
 
 # COMMAND ----------
 
@@ -123,7 +128,7 @@ WHERE recency = 1
 
 # COMMAND ----------
 
-spark.sql("""
+table_sql["activity_events"] = """
 CREATE OR REPLACE TABLE silver.activity_events AS
 WITH events AS (
   SELECT
@@ -148,7 +153,7 @@ SELECT DISTINCT
   to_timestamp(ts / 1000)      AS occurred_at,
   lower(nullif(subreddit, '')) AS subreddit
 FROM events
-""")
+"""
 
 # COMMAND ----------
 
@@ -157,7 +162,7 @@ FROM events
 
 # COMMAND ----------
 
-spark.sql("""
+table_sql["report_events"] = """
 CREATE OR REPLACE TABLE silver.report_events AS
 SELECT DISTINCT
   username,
@@ -169,7 +174,22 @@ SELECT DISTINCT
   entry.value:kind::string                                               AS item_kind
 FROM bronze.reports,
   LATERAL variant_explode(report:history) AS entry
-""")
+"""
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ### Run all five builds concurrently
+
+# COMMAND ----------
+
+from concurrent.futures import ThreadPoolExecutor
+
+with ThreadPoolExecutor(max_workers=len(table_sql)) as executor:
+    builds = {name: executor.submit(spark.sql, sql) for name, sql in table_sql.items()}
+
+for name, build in builds.items():
+    build.result()
 
 # COMMAND ----------
 

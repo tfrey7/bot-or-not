@@ -23,10 +23,13 @@ databricks auth login --host https://dbc-635c7a74-39c2.cloud.databricks.com
 3. `./databricks/ingest.sh` — creates catalog `bot_or_not` (override with
    `BON_CATALOG`, e.g. if the workspace disallows catalog creation), uploads the
    JSONL to the `bronze.raw` volume, and syncs `notebooks/` into the workspace.
-4. Run the `01_bronze_ingest` notebook in Databricks to (re)build `bronze.reports`.
+4. `./databricks/run_pipeline.sh` — rebuilds the tables bronze → silver → gold.
 
-The bronze rebuild is a full replace — fine at current export sizes; switching
-to incremental Auto Loader ingestion is a future exercise.
+Bronze ingestion is incremental: `COPY INTO` tracks which volume files
+`bronze.reports` has already loaded, so each run parses only newly uploaded
+snapshots. `DROP TABLE bronze.reports` and rerun to force a full re-ingest.
+Silver and gold are full rebuilds from bronze; the five silver tables build
+concurrently.
 
 ## Files
 
@@ -36,9 +39,9 @@ to incremental Auto Loader ingestion is a future exercise.
   (sourced, not run).
 - `run_pipeline.sh` — the single pipeline entry point: syncs `notebooks/` into
   the workspace and submits a one-off Databricks job run with one task per
-  layer (bronze → silver). New layers get added as tasks here.
+  layer (bronze → silver → gold). New layers get added as tasks here.
 - `notebooks/` — the **canonical** transformation code (`01_bronze_ingest`,
-  `02_silver_build`). Each notebook ends with `dbutils.notebook.exit(...)`
+  `02_silver_build`, `03_gold_build`). Each notebook ends with `dbutils.notebook.exit(...)`
   returning its sanity counts to the pipeline runner; the same notebooks are
   runnable interactively in the workspace.
 
