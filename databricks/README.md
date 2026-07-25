@@ -3,8 +3,9 @@
 Medallion-architecture practice ground: loads Bot or Not backup exports into
 Databricks and (eventually) derives coordination-network graphs from them.
 
-- **Bronze** — raw export rows, one per user, report payload as VARIANT.
-- **Silver** — normalized tables: `users`, `verdicts`, `factors`, `activity_events`, `report_events`. (planned)
+- **Bronze** — raw export rows, one per user per snapshot, report payload as VARIANT.
+- **Silver** — normalized tables: `users` (latest per user), `user_snapshots`
+  (longitudinal), `factors`, `activity_events`, `report_events`.
 - **Gold** — co-occurrence edge tables + graph metrics for ring discovery. (planned)
 
 ## One-time setup
@@ -30,9 +31,11 @@ to incremental Auto Loader ingestion is a future exercise.
 
 - `prepare_export.py` — local reshape: export JSON object → JSONL lines.
 - `ingest.sh` — catalog/schema/volume bootstrap + upload + notebook sync.
-- `rebuild_bronze.sh` — headless `bronze.reports` rebuild + sanity counts via the
-  SQL Statements API. Same CTAS as the notebook — keep the two in sync.
-- `notebooks/01_bronze_ingest.py` — interactive copy of the bronze build.
+- `sql.sh` — shared warehouse lookup + `run_sql` helper (sourced, not run).
+- `rebuild_bronze.sh` / `rebuild_silver.sh` — headless table rebuilds + sanity
+  counts via the SQL Statements API. Same SQL as the notebooks — keep in sync.
+- `notebooks/` — interactive copies of the builds (`01_bronze_ingest`,
+  `02_silver_build`).
 
-The `load-export` Claude skill wraps steps 1–4 (prepare → upload → rebuild →
-sanity report) so a session can run the whole refresh on request.
+The `load-export` Claude skill wraps the whole refresh (prepare → upload →
+bronze → silver → sanity report) so a session can run it on request.

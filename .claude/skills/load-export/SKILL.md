@@ -25,7 +25,10 @@ architecture (bronze accumulates snapshots; silver computes current state).
 4. **Rebuild bronze**: `./databricks/rebuild_bronze.sh` — headless rebuild of
    `bronze.reports` from every snapshot in the volume; prints total rows, snapshot
    count, distinct users, and done-investigation count.
-5. **Report** the sanity counts to the user, noting how many snapshots bronze now
+5. **Rebuild silver**: `./databricks/rebuild_silver.sh` — rebuilds the normalized
+   tables (`users`, `user_snapshots`, `factors`, `activity_events`,
+   `report_events`) from bronze; prints per-table counts.
+6. **Report** the sanity counts to the user, noting how many snapshots bronze now
    holds. If distinct-user count didn't grow versus the previous load, say so —
    that usually means the newest download predates the last load.
 

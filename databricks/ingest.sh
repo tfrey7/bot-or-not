@@ -14,15 +14,8 @@ if [[ -z "$JSONL" ]]; then
   exit 1
 fi
 
-WAREHOUSE_ID="$(databricks warehouses list --output json | python3 -c "import json,sys; print(json.load(sys.stdin)[0]['id'])")"
+source "$SCRIPT_DIR/sql.sh"
 echo "Using SQL warehouse $WAREHOUSE_ID, catalog $CATALOG"
-
-run_sql() {
-  databricks api post /api/2.0/sql/statements --json "$(python3 -c "
-import json, sys
-print(json.dumps({'statement': sys.argv[1], 'warehouse_id': sys.argv[2], 'wait_timeout': '50s'}))
-" "$1" "$WAREHOUSE_ID")" > /dev/null
-}
 
 run_sql "CREATE CATALOG IF NOT EXISTS $CATALOG"
 run_sql "CREATE SCHEMA IF NOT EXISTS $CATALOG.bronze"
