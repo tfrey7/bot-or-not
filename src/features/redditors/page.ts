@@ -201,9 +201,8 @@ export async function redditorsRenderReportsPage(): Promise<void> {
 
 // Publish the sticky header+tabs block's measured height as a CSS variable
 // so .bon-split-detail can pin itself flush against the bottom of the sticky
-// shell. The shell's height varies — it grows when the command status line
-// appears and when the header wraps at narrow widths — so observe rather
-// than measure once.
+// shell. The shell's height varies — it grows when the header wraps at
+// narrow widths — so observe rather than measure once.
 function initStickyShellMeasurement(): void {
   const shell = document.querySelector<HTMLElement>(".bon-sticky-shell");
   if (!shell) {

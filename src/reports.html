@@ -37,29 +37,6 @@
             </div>
           </div>
 
-          <div class="bon-header-command">
-            <div class="bon-command-bar" id="bon-command-bar">
-              <span class="bon-command-bar-prefix" aria-hidden="true">✦</span>
-              <input
-                type="search"
-                id="bon-search"
-                class="bon-command-bar-input"
-                placeholder="Try: investigate u/alice"
-                autocomplete="off"
-              />
-              <span class="bon-command-bar-hint" aria-hidden="true">
-                <kbd
-                  class="bon-command-bar-hint-key bon-command-bar-hint-key--focus"
-                  >/</kbd
-                >
-                <kbd
-                  class="bon-command-bar-hint-key bon-command-bar-hint-key--submit"
-                  >↵</kbd
-                >
-              </span>
-            </div>
-            <p class="bon-command-status" id="bon-command-status" hidden></p>
-          </div>
         </header>
 
         <nav class="bon-tabs" role="tablist" aria-label="Page sections">
@@ -138,17 +115,6 @@
         id="bon-panel-redditors"
         aria-labelledby="bon-tab-redditors"
       >
-        <div class="bon-agent-filter" id="bon-agent-filter" hidden>
-          <span id="bon-agent-filter-label"></span>
-          <button
-            type="button"
-            id="bon-agent-filter-clear"
-            class="bon-link-btn"
-          >
-            Clear filter
-          </button>
-        </div>
-
         <!-- Preact root — the redditors feature renders the split here. -->
         <div class="bon-split" id="bon-split"></div>
       </section>
@@ -208,7 +174,7 @@
             <p class="bon-settings-section-title">LLM backend</p>
             <p class="bon-settings-section-desc">
               Pick the provider, model, and matching API key used for
-              investigations and the AI command bar.
+              investigations.
             </p>
             <div class="bon-settings-field">
               <label class="bon-settings-label" for="bon-llm-vendor-select"

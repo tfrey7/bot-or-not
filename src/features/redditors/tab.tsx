@@ -11,7 +11,6 @@ import type { Report } from "../../types.ts";
 import { computeExpectedDurationMs } from "../../utils/expected_duration.ts";
 import { pagination } from "../../utils/pagination.ts";
 import { Vanilla } from "../../utils/vanilla.tsx";
-import { pageInitCommandBar, type PageCommandBarHandle } from "../page";
 import { REGION_INFO } from "../regions";
 import { ActiveSection } from "./active_section.tsx";
 import { DetailHost } from "./detail_host.tsx";
@@ -72,7 +71,6 @@ interface RedditorsTabProps {
 function RedditorsTab({ handle, onStructuralChange }: RedditorsTabProps) {
   const reportsRef = useRef<ReportRow[]>([]);
   const expectedDurationRef = useRef<number | null>(null);
-  const commandBarRef = useRef<PageCommandBarHandle | null>(null);
   const pollingRef = useRef<ReturnType<typeof redditorsInitPolling> | null>(
     null
   );
@@ -83,9 +81,6 @@ function RedditorsTab({ handle, onStructuralChange }: RedditorsTabProps) {
     readSelectedUsernameFromUrl
   );
   const [botsOnly, setBotsOnly] = useState(false);
-  const [agentFilter, setAgentFilter] = useState<ReadonlySet<string> | null>(
-    null
-  );
   const [loadError, setLoadError] = useState<string | null>(null);
 
   // Set when the selection came from the URL (deep link) or another tab's
@@ -143,29 +138,6 @@ function RedditorsTab({ handle, onStructuralChange }: RedditorsTabProps) {
       },
     });
 
-    commandBarRef.current = pageInitCommandBar({
-      searchInput: document.getElementById("bon-search") as HTMLInputElement,
-      agentFilterEl: document.getElementById("bon-agent-filter") as HTMLElement,
-      agentFilterLabelEl: document.getElementById(
-        "bon-agent-filter-label"
-      ) as HTMLElement,
-      agentFilterClearBtn: document.getElementById(
-        "bon-agent-filter-clear"
-      ) as HTMLButtonElement,
-      getReports: () => reportsRef.current,
-      onAgentFilterChange: () => {
-        setCurrentPage(1);
-        setAgentFilter(commandBarRef.current?.getAgentFilter() ?? null);
-      },
-      onNavigateToUser: (username) => {
-        handle.navigateToUser(username);
-      },
-      onCommandReload: async () => {
-        setCurrentPage(1);
-        await load();
-      },
-    });
-
     queuePauseInit({
       pauseEl: document.getElementById("bon-queue-pause") as HTMLElement,
       onChange: bumpVersion,
@@ -205,12 +177,8 @@ function RedditorsTab({ handle, onStructuralChange }: RedditorsTabProps) {
     }
   }
 
-  const filtered = agentFilter
-    ? allReports.filter((report) => agentFilter.has(report.username))
-    : allReports;
-
-  const activeRows = filtered.filter(redditorsIsActiveRow);
-  const allDoneRows = filtered.filter(
+  const activeRows = allReports.filter(redditorsIsActiveRow);
+  const allDoneRows = allReports.filter(
     (report) => !redditorsIsActiveRow(report)
   );
   const doneRows = botsOnly
@@ -321,10 +289,8 @@ function RedditorsTab({ handle, onStructuralChange }: RedditorsTabProps) {
       ?.scrollIntoView({ block: "start" });
   });
 
-  // The banner's count text derives from the freshly-painted list; the
-  // polling timer only needs to run while something is queued or running.
+  // The polling timer only needs to run while something is queued or running.
   useEffect(() => {
-    commandBarRef.current?.renderAgentFilterBanner();
     pollingRef.current?.ensurePolling();
   });
 
@@ -387,7 +353,7 @@ function RedditorsTab({ handle, onStructuralChange }: RedditorsTabProps) {
         {loadError ? (
           <LoadError message={loadError} />
         ) : (
-          isEmpty && <EmptyState botsOnly={botsOnly} filtered={!!agentFilter} />
+          isEmpty && <EmptyState botsOnly={botsOnly} />
         )}
       </div>
       <DetailHost
@@ -408,20 +374,12 @@ function RedditorsTab({ handle, onStructuralChange }: RedditorsTabProps) {
   );
 }
 
-function EmptyState({
-  botsOnly,
-  filtered,
-}: {
-  botsOnly: boolean;
-  filtered: boolean;
-}) {
+function EmptyState({ botsOnly }: { botsOnly: boolean }) {
   let text =
     "No reports yet. Flag a Reddit user from their profile page to start tracking.";
 
   if (botsOnly) {
     text = "No suspected bots among your reports.";
-  } else if (filtered) {
-    text = "No reports match the active filter.";
   }
 
   return (

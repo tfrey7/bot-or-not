@@ -1,4 +1,3 @@
-import { aiCommandHandle, aiCommandReset } from "./features/ai-command";
 import { analyticsGetReports } from "./features/analytics";
 import {
   googleAttributionDrain,
@@ -370,11 +369,6 @@ browser.runtime.onMessage.addListener((message: BaseMessage) => {
     );
   }
 
-  if (message.type === "ai-command-reset") {
-    aiCommandReset();
-    return Promise.resolve({ ok: true });
-  }
-
   if (message.type === "sync-export") {
     return syncExport();
   }
@@ -451,124 +445,6 @@ browser.runtime.onMessage.addListener((message: BaseMessage) => {
       }
     );
   }
-});
-
-// Port channel for the AI command bar. Streamed progress events from the
-// agent (tool calls, text deltas, cost) get posted back through the port as
-// they happen; the modal stitches them into a live action log. The reports
-// page disconnects the port when the operator hits Cancel/Esc — we treat
-// that as an abort signal for the in-flight Claude call.
-browser.runtime.onConnect.addListener((port) => {
-  if (port.name !== "ai-command") {
-    return;
-  }
-
-  const controller = new AbortController();
-  let started = false;
-  let confirmSeq = 0;
-  const pendingConfirms = new Map<number, (approved: boolean) => void>();
-
-  const safePost = (message: unknown): void => {
-    try {
-      port.postMessage(message);
-    } catch {
-      // Port already closed — drop the event.
-    }
-  };
-
-  const resolveAllConfirms = (approved: boolean): void => {
-    for (const resolve of pendingConfirms.values()) {
-      resolve(approved);
-    }
-
-    pendingConfirms.clear();
-  };
-
-  port.onDisconnect.addListener(() => {
-    if (!controller.signal.aborted) {
-      controller.abort();
-    }
-
-    // The UI is gone — any awaiting confirm requests would otherwise hang
-    // forever. Treat the disconnect as a deny so the agent dispatcher
-    // returns an error and the agent loop wraps up cleanly.
-    resolveAllConfirms(false);
-  });
-
-  port.onMessage.addListener(
-    (message: {
-      type?: string;
-      input?: string;
-      id?: number;
-      approved?: boolean;
-    }) => {
-      if (message?.type === "ai-command:confirm-reply") {
-        const id = message.id;
-        if (typeof id !== "number") {
-          return;
-        }
-
-        const resolve = pendingConfirms.get(id);
-        if (resolve) {
-          pendingConfirms.delete(id);
-          resolve(!!message.approved);
-        }
-
-        return;
-      }
-
-      if (message?.type !== "ai-command:start") {
-        return;
-      }
-
-      if (started) {
-        return;
-      }
-
-      started = true;
-
-      void aiCommandHandle(message.input ?? "", {
-        onProgress: (event) => safePost({ kind: "progress", event }),
-        signal: controller.signal,
-        requestConfirm: ({ tool, input }) =>
-          new Promise<boolean>((resolve) => {
-            if (controller.signal.aborted) {
-              resolve(false);
-              return;
-            }
-
-            const id = ++confirmSeq;
-            pendingConfirms.set(id, resolve);
-            safePost({
-              kind: "confirm-request",
-              id,
-              tool,
-              input,
-            });
-          }),
-      })
-        .then((result) => {
-          safePost({ kind: "result", result });
-        })
-        .catch((error: unknown) => {
-          safePost({
-            kind: "error",
-            error: String(
-              (error as { message?: string })?.message ??
-                error ??
-                "unknown error"
-            ),
-          });
-        })
-        .finally(() => {
-          try {
-            port.disconnect();
-          } catch {
-            // Already gone.
-          }
-        });
-    }
-  );
 });
 
 browser.action.onClicked.addListener(() => {

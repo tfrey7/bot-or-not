@@ -141,18 +141,6 @@ table.bon-table {
   user-select: none;
 }
 
-.bon-agent-filter {
-  display: flex;
-  align-items: baseline;
-  gap: 0.6em;
-  font-family: var(--bon-font-sans);
-  font-size: 0.85rem;
-  color: var(--bon-muted);
-  margin: 0 0 0.9em;
-}
-.bon-agent-filter[hidden] {
-  display: none;
-}
 .bon-list-filter {
   margin: 0 0 0.6em;
 }
