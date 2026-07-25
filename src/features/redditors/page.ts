@@ -7,7 +7,7 @@
 // src/reports.ts when the page loads.
 
 import { clientSend, clientSubscribe } from "../../client.ts";
-import { renderAnalyticsTab } from "../analytics";
+import { renderAnalyticsLoading, renderAnalyticsTab } from "../analytics";
 import { renderFieldGuideTab, renderPersonasTab } from "../personas";
 import { subredditsMountTab } from "../subreddits";
 import { renderSync } from "../sync";
@@ -66,9 +66,16 @@ export async function redditorsRenderReportsPage(): Promise<void> {
   let fullReports: ReportRow[] | null = null;
   let fullReportsDirty = true;
 
+  // The metrics tab reads only run history and verdict fields, so it gets
+  // its own slim fetch — ~10× fewer bytes across the message boundary than
+  // the full records the other heavy tabs need.
+  let analyticsReports: ReportRow[] | null = null;
+  let analyticsReportsDirty = true;
+
   const tab = redditorsMountTab(splitEl, {
     onStructuralChange: () => {
       fullReportsDirty = true;
+      analyticsReportsDirty = true;
       void renderHeavyTab(tabs.current());
     },
   });
@@ -118,13 +125,39 @@ export async function redditorsRenderReportsPage(): Promise<void> {
     return fullReports;
   }
 
+  async function ensureAnalyticsReports(): Promise<ReportRow[]> {
+    if (fullReports && !fullReportsDirty) {
+      return fullReports;
+    }
+
+    if (analyticsReports && !analyticsReportsDirty) {
+      return analyticsReports;
+    }
+
+    const { reports = {} } = await clientSend<{
+      reports?: Record<string, Report>;
+    }>({ type: "get-analytics-reports" });
+
+    analyticsReports = Object.entries(reports).map(([username, data]) => ({
+      username,
+      ...data,
+    }));
+    analyticsReportsDirty = false;
+
+    return analyticsReports;
+  }
+
   // Render one tab's content on demand. The Redditors component is always
   // live off the summary path; every other tab is painted only while it's
   // the one on screen, so hundreds of records don't get projected into
   // charts/scatter/SVG on every poll tick behind a hidden panel.
   async function renderHeavyTab(target: PageTab): Promise<void> {
     if (target === "metrics") {
-      const reports = await ensureFullReports();
+      if (analyticsContainer && analyticsContainer.childElementCount === 0) {
+        renderAnalyticsLoading(analyticsContainer);
+      }
+
+      const reports = await ensureAnalyticsReports();
       renderAnalyticsTab(reports, analyticsContainer);
       return;
     }

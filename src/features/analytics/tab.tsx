@@ -39,6 +39,21 @@ export function renderAnalyticsTab(
   render(<AnalyticsTab reports={reports} />, container);
 }
 
+// Painted synchronously on tab activation so the panel is never blank while
+// the reports payload crosses the message boundary.
+export function renderAnalyticsLoading(container: HTMLElement | null): void {
+  if (!container) {
+    return;
+  }
+
+  render(
+    <section class="bon-analytics">
+      <div class="bon-analytics-empty">Loading investigation metrics…</div>
+    </section>,
+    container
+  );
+}
+
 function AnalyticsTab({
   reports,
 }: {

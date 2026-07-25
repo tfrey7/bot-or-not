@@ -1,4 +1,5 @@
 import { aiCommandHandle, aiCommandReset } from "./features/ai-command";
+import { analyticsGetReports } from "./features/analytics";
 import { googleAttributionDrain } from "./features/google-harvest";
 import type { ScrapedPost } from "./features/google-harvest";
 import {
@@ -205,6 +206,10 @@ browser.runtime.onMessage.addListener((message: BaseMessage) => {
 
   if (message.type === "get-reports-summary") {
     return redditorsGetSummaries();
+  }
+
+  if (message.type === "get-analytics-reports") {
+    return analyticsGetReports();
   }
 
   if (message.type === "get-blocklist-cleanup-state") {
