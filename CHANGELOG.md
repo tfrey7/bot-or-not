@@ -2,6 +2,16 @@
 
 Notable changes to Bot or Not. Signed `.xpi` builds for each version are attached to the matching [GitHub Release](https://github.com/tfrey7/bot-or-not/releases).
 
+## [8.6.0] — 2026-07-25
+- Move publish and feature-ify procedures into project skills
+- Auto-run investigation when a Google harvest goes quiet
+- Fix slow metrics-tab initial load: paint shell immediately, slim the payload
+- Bump GH Actions: setup-node v7
+- Bump eslint-plugin-boundaries v6.0.2 → v7.1.0
+- Bump typescript v6.0.3 → v7.0.2 (native compiler)
+- Bump patch/minor deps across the board
+- Free real blocklist headroom: adaptive probes, 850 target, hourly alarm
+
 ## [8.5.0] — 2026-07-12
 - Reddit funnel telemetry, background trickle pacing, and maintenance kill switch
 - Fix slow Search Google button on profile pages
