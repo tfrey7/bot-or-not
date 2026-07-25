@@ -217,7 +217,7 @@ body {
 /* Header + tab nav stick together as one block. Wrapping them in a single
    sticky shell avoids the two-sibling sticky problem (both can't pin at
    top: 0 — the second would slide under the first) and lets the header
-   grow vertically when the command status appears without us hardcoding a
+   grow vertically when it wraps at narrow widths without us hardcoding a
    tab-offset. */
 .bon-sticky-shell {
   position: sticky;
@@ -240,21 +240,21 @@ body {
   gap: 0.4em;
   min-width: 0;
 }
-.bon-header-command {
+.bon-header-search {
   margin-left: auto;
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: stretch;
   justify-content: center;
-  gap: 0.35em;
   min-width: 0;
-  flex: 0 1 28em;
+  flex: 0 1 24em;
 }
 @media (max-width: 56em) {
   .bon-header {
     flex-wrap: wrap;
   }
-  .bon-header-command {
+  .bon-header-search {
     flex-basis: 100%;
     margin-left: 0;
   }

@@ -1,0 +1,111 @@
+/* Header user search — the bar itself plus the typeahead dropdown. The
+   .bon-header-search wrapper (positioned in app.css) is the anchor the
+   dropdown hangs from. */
+
+.bon-search-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+  padding: 0.4em 0.55em 0.4em 0.65em;
+  border: 1px solid var(--bon-border-strong);
+  border-radius: 0.45em;
+  background: var(--bon-surface);
+  box-shadow: var(--bon-shadow-sm);
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s;
+}
+.bon-search-bar:focus-within {
+  border-color: var(--bon-accent);
+  box-shadow: 0 0 0 3px var(--bon-accent-soft);
+}
+.bon-search-bar-prefix {
+  font-size: 0.95rem;
+  line-height: 1;
+  color: var(--bon-muted);
+  flex-shrink: 0;
+  transition: color 0.15s;
+}
+.bon-search-bar:focus-within .bon-search-bar-prefix {
+  color: var(--bon-accent);
+}
+.bon-search-bar-input {
+  flex: 1;
+  min-width: 0;
+  padding: 0.1em 0;
+  border: none;
+  background: transparent;
+  color: var(--bon-text);
+  font-size: 0.82rem;
+  /* Hide the type=search cancel button so the wrapper border stays visually clean. */
+  appearance: textfield;
+}
+.bon-search-bar-input::-webkit-search-cancel-button {
+  appearance: none;
+}
+.bon-search-bar-input::placeholder {
+  color: var(--bon-muted-soft);
+}
+.bon-search-bar-input:focus {
+  outline: none;
+}
+.bon-search-bar-hint-key {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.3em;
+  padding: 0.08em 0.32em;
+  border: 1px solid var(--bon-border);
+  border-radius: 0.25em;
+  background: var(--bon-bg-tint);
+  font-size: 0.68rem;
+  color: var(--bon-muted);
+  line-height: 1;
+  flex-shrink: 0;
+}
+.bon-search-bar:focus-within .bon-search-bar-hint-key {
+  display: none;
+}
+
+.bon-search-suggestions {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  margin: 0.3em 0 0;
+  padding: 0.25em;
+  list-style: none;
+  background: var(--bon-surface);
+  border: 1px solid var(--bon-border-strong);
+  border-radius: 0.45em;
+  box-shadow: var(--bon-shadow-md);
+  max-height: 18em;
+  overflow-y: auto;
+}
+.bon-search-suggestions[hidden] {
+  display: none;
+}
+.bon-search-suggestion {
+  display: flex;
+  align-items: baseline;
+  gap: 0.35em;
+  padding: 0.4em 0.55em;
+  border-radius: 0.3em;
+  font-size: 0.82rem;
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+.bon-search-suggestion:hover,
+.bon-search-suggestion--active {
+  background: var(--bon-accent-soft);
+}
+.bon-search-suggestion--investigate {
+  color: var(--bon-accent);
+}
+.bon-search-suggestion--notice {
+  color: var(--bon-muted);
+  cursor: default;
+}
+.bon-search-suggestion--notice:hover {
+  background: none;
+}

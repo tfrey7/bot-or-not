@@ -37,6 +37,7 @@ const REGION_LABELS: Record<string, string> = Object.fromEntries(
 export interface RedditorsTabHandle {
   navigateToUser(username: string): void;
   reload(): Promise<void>;
+  getReportUsernames(): string[];
 }
 
 export interface RedditorsTabOptions {
@@ -50,6 +51,7 @@ export function redditorsMountTab(
   const handle: RedditorsTabHandle = {
     navigateToUser: () => {},
     reload: async () => {},
+    getReportUsernames: () => [],
   };
 
   render(
@@ -122,6 +124,9 @@ function RedditorsTab({ handle, onStructuralChange }: RedditorsTabProps) {
   };
 
   handle.reload = load;
+
+  handle.getReportUsernames = () =>
+    reportsRef.current.map((report) => report.username);
 
   useEffect(() => {
     pollingRef.current = redditorsInitPolling({

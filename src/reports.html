@@ -37,6 +37,33 @@
             </div>
           </div>
 
+          <div class="bon-header-search">
+            <div class="bon-search-bar" id="bon-search-bar">
+              <span class="bon-search-bar-prefix" aria-hidden="true">⌕</span>
+              <input
+                type="search"
+                id="bon-search"
+                class="bon-search-bar-input"
+                placeholder="Find a redditor"
+                autocomplete="off"
+                role="combobox"
+                aria-expanded="false"
+                aria-autocomplete="list"
+                aria-controls="bon-search-suggestions"
+                aria-label="Find a redditor"
+              />
+              <span class="bon-search-bar-hint" aria-hidden="true">
+                <kbd class="bon-search-bar-hint-key">/</kbd>
+              </span>
+            </div>
+            <ul
+              class="bon-search-suggestions"
+              id="bon-search-suggestions"
+              role="listbox"
+              aria-label="Matching redditors"
+              hidden
+            ></ul>
+          </div>
         </header>
 
         <nav class="bon-tabs" role="tablist" aria-label="Page sections">

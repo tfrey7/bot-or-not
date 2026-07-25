@@ -15,6 +15,7 @@ import type { Report } from "../../types.ts";
 import { piiBlurInit } from "../../utils/pii_blur.ts";
 import {
   pageInitConfirmModal,
+  pageInitSearchBar,
   pageInitTabs,
   pageInstallDevBadge,
   type PageTab,
@@ -90,6 +91,15 @@ export async function redditorsRenderReportsPage(): Promise<void> {
     onConfirm: () => {
       void tab.reload();
     },
+  });
+
+  pageInitSearchBar({
+    input: document.getElementById("bon-search") as HTMLInputElement,
+    suggestionsEl: document.getElementById(
+      "bon-search-suggestions"
+    ) as HTMLElement,
+    getUsernames: () => tab.getReportUsernames(),
+    onNavigateToUser: navigateToUser,
   });
 
   settingsInit();
