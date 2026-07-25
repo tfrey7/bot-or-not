@@ -45,20 +45,7 @@ Project-specific bits:
 
 ### Publish a new version
 
-Operates on `main` once all desired features have been shipped. Commit message convention is `Publish X.Y.Z: <one-line summary>` (historically these said `Ship X.Y.Z:` — old vocabulary).
-
-1. Bump the version in **both** `manifest.json` and `package.json` (keep them in sync).
-2. Run `npm run sign`.
-3. Run `npm run updates-json` to append the new version to `updates.json` (auto-update manifest for self-hosted installs) and prepend a section to `CHANGELOG.md` (bullets are the per-feature commits since the previous tag). Both files are rewritten by the script — no manual editing.
-4. Commit (`manifest.json`, `package.json`, `updates.json`, `CHANGELOG.md`).
-5. Tag the commit: `git tag vX.Y.Z` (matching the version you bumped to).
-6. Push: `git push && git push origin vX.Y.Z` (push the tag explicitly rather than `--tags` so stray local tags don't leak).
-7. Create the GitHub release with the signed `.xpi` attached:
-   `gh release create vX.Y.Z web-ext-artifacts/*-X.Y.Z.xpi --title "vX.Y.Z" --generate-notes`
-
-The `.xpi` lives in GitHub Releases (versioned, doesn't bloat the repo); `updates.json` lives at the repo root and is served by GitHub Pages at `https://tfrey7.github.io/bot-or-not/updates.json`. Firefox polls that URL for installed unlisted copies and auto-updates within ~24h. The `update_url` baked into `manifest.json` is what wires the two together.
-
-**One-time setup:** GitHub Pages must be enabled (repo Settings → Pages → Deploy from `main` branch, `/` root) for the auto-update URL to resolve.
+Invoke the `publish` skill (`Skill(publish)`) — it holds the full version-bump → sign → updates.json/CHANGELOG → tag → push → GitHub-release procedure.
 
 ## Architecture
 
@@ -126,13 +113,7 @@ General file-role rules (`index.ts`, `logic.ts`, `data.ts`, `<widget>.ts`; avoid
 
 ### Refactoring guidelines (when asked to "feature-ify" something)
 
-1. Survey the file to identify the seams (one widget = one render function = one file).
-2. `git mv` the main file into `src/features/<feature>/index.ts` to preserve history.
-3. Pull pure data into `logic.ts` / `data.ts` first — these are the easiest extractions.
-4. Pull each widget into its own file, exporting one render function named for the widget.
-5. Slim `index.ts` to an orchestrator: data-load → call each widget → assemble. Keep page chrome (header/empty/footnote) inline if tiny.
-6. Update any `import` sites in `background.ts` / `content_script.ts` / `reports.html` to point at the new feature path.
-7. Run `npm run typecheck && npm run lint && npm run format && npm run build`. Done.
+Invoke the `feature-ify` skill (`Skill(feature-ify)`) — it holds the step-by-step procedure for splitting a file into a feature directory.
 
 ## Project-specific conventions
 
