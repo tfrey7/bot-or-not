@@ -35,6 +35,7 @@ print(json.dumps({
     'tasks': [
         task('bronze', '01_bronze_ingest'),
         task('silver', '02_silver_build', depends_on='bronze'),
+        task('gold', '03_gold_build', depends_on='silver'),
     ],
 }))
 " "$WORKSPACE_DIR" "$CATALOG")"

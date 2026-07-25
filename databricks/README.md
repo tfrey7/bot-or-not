@@ -6,7 +6,8 @@ Databricks and (eventually) derives coordination-network graphs from them.
 - **Bronze** — raw export rows, one per user per snapshot, report payload as VARIANT.
 - **Silver** — normalized tables: `users` (latest per user), `user_snapshots`
   (longitudinal), `factors`, `activity_events`, `report_events`.
-- **Gold** — co-occurrence edge tables + graph metrics for ring discovery. (planned)
+- **Gold** — coordination-network features: `subreddit_fingerprints` (TF-IDF
+  attention vectors). Planned: similarity edges, ring candidates.
 
 ## One-time setup
 
