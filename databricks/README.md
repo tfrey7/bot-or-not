@@ -32,6 +32,8 @@ to incremental Auto Loader ingestion is a future exercise.
 - `prepare_export.py` — local reshape: export JSON object → JSONL lines.
 - `ingest.sh` — catalog/schema/volume bootstrap + upload + notebook sync.
 - `sql.sh` — shared warehouse lookup + `run_sql` helper (sourced, not run).
+- `run_pipeline.sh` — full rebuild, bronze upward; the single pipeline entry
+  point (new layers get added here).
 - `rebuild_bronze.sh` / `rebuild_silver.sh` — headless table rebuilds + sanity
   counts via the SQL Statements API. Same SQL as the notebooks — keep in sync.
 - `notebooks/` — interactive copies of the builds (`01_bronze_ingest`,
