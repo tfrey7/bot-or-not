@@ -4,12 +4,12 @@
 
 import type { ArchetypeKey } from "../../types.ts";
 
-import medallionSuperfan from "../../../assets/persona-icons/noir-medallion-superfan.png";
-import medallionShill from "../../../assets/persona-icons/noir-medallion-shill.png";
-import medallionFarmer from "../../../assets/persona-icons/noir-medallion-farmer.png";
-import medallionDoomer from "../../../assets/persona-icons/noir-medallion-doomer.png";
-import medallionCamModel from "../../../assets/persona-icons/noir-medallion-cam_model.png";
-import medallionPolitics from "../../../assets/persona-icons/noir-medallion-politics.png";
+import medallionSuperfan from "../../../assets/persona-icons/noir-medallion-superfan.webp";
+import medallionShill from "../../../assets/persona-icons/noir-medallion-shill.webp";
+import medallionFarmer from "../../../assets/persona-icons/noir-medallion-farmer.webp";
+import medallionDoomer from "../../../assets/persona-icons/noir-medallion-doomer.webp";
+import medallionCamModel from "../../../assets/persona-icons/noir-medallion-cam_model.webp";
+import medallionPolitics from "../../../assets/persona-icons/noir-medallion-politics.webp";
 
 export const PERSONA_MEDALLIONS: Record<ArchetypeKey, string> = {
   superfan: medallionSuperfan,

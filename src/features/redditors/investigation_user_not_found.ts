@@ -17,7 +17,7 @@ export function redditorsUserNotFoundPanel(username: string): HTMLDivElement {
 
   const figure = document.createElement("img");
   figure.className = "bon-user-not-found__art";
-  figure.src = browser.runtime.getURL("icons/chromes-empty-dossier.png");
+  figure.src = browser.runtime.getURL("icons/chromes-empty-dossier.webp");
   figure.alt =
     "Sherlock Chromes looking baffled at an empty dossier folder with only a question mark inside";
   wrap.appendChild(figure);

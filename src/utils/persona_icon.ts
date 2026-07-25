@@ -46,11 +46,11 @@ export function personaIcon(
   const comboKey = personaComboKey(persona);
   if (comboKey && KNOWN_BLENDS.has(comboKey)) {
     const fileSlug = comboKey.replace("+", "_");
-    return browser.runtime.getURL(`icons/persona/${fileSlug}.png`);
+    return browser.runtime.getURL(`icons/persona/${fileSlug}.webp`);
   }
 
   if (KNOWN_PRIMARIES.has(persona.label)) {
-    return browser.runtime.getURL(`icons/persona/${persona.label}.png`);
+    return browser.runtime.getURL(`icons/persona/${persona.label}.webp`);
   }
 
   return null;

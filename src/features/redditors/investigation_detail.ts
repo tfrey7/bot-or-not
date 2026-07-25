@@ -126,7 +126,7 @@ function buildColdTrailPanel(summary: string): HTMLDivElement {
 
   const figure = document.createElement("img");
   figure.className = "bon-cold-trail-panel__art";
-  figure.src = browser.runtime.getURL("icons/chromes-cold-trail.png");
+  figure.src = browser.runtime.getURL("icons/chromes-cold-trail.webp");
   figure.alt =
     "Sherlock Chromes bursting into an empty room as the suspect's shadow slips out a lit doorway — no evidence left behind";
   panel.appendChild(figure);
@@ -145,7 +145,7 @@ function buildQueuedPanel(notBefore: number | null): HTMLDivElement {
 
   const figure = document.createElement("img");
   figure.className = "bon-queued-panel__art";
-  figure.src = browser.runtime.getURL("icons/chromes-pocket-watch.png");
+  figure.src = browser.runtime.getURL("icons/chromes-pocket-watch.webp");
   figure.alt =
     "Sherlock Chromes leaning against a foggy gas-lamp lamppost, checking a brass pocket watch";
   panel.appendChild(figure);
