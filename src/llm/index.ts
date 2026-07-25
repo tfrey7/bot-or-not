@@ -52,13 +52,4 @@ export function sniffVendor(apiKey: string): LlmVendor {
   return "anthropic";
 }
 
-export type {
-  LlmAction,
-  LlmContentPart,
-  LlmMessage,
-  LlmProgressEvent,
-  LlmProvider,
-  LlmTool,
-  LlmToolDispatch,
-  LlmVendor,
-} from "./provider.ts";
+export type { LlmContentPart, LlmProvider, LlmVendor } from "./provider.ts";

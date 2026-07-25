@@ -30,8 +30,6 @@ export {
   redditorsUnlinkRing,
 } from "./handlers.ts";
 
-export { redditorsComputeRegionForReport } from "./region.ts";
-
 export { redditorsGoogleDossierSection } from "./google_dossier_section.ts";
 
 export type { ReportRow } from "./logic.ts";
