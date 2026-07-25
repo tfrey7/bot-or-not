@@ -17,6 +17,7 @@ import type {
   ApiKeyMap,
   BlocklistCleanupState,
   BlocklistProbe,
+  BlocklistSweepSummary,
   BlocklistWatchEntry,
   LlmSelection,
   ReportUpdater,
@@ -534,31 +535,54 @@ function normalizeBlocklistCleanupState(value: unknown): BlocklistCleanupState {
       )
     : [];
 
-  const sweep = (
-    record.lastSweep && typeof record.lastSweep === "object"
-      ? record.lastSweep
-      : null
-  ) as Record<string, unknown> | null;
+  const history = Array.isArray(record.history)
+    ? (record.history as unknown[])
+        .map(normalizeBlocklistSweepSummary)
+        .filter((entry): entry is BlocklistSweepSummary => entry !== null)
+    : [];
 
   return {
-    lastSweep:
-      sweep && typeof sweep.at === "number"
-        ? {
-            at: sweep.at,
-            blockedCount:
-              typeof sweep.blockedCount === "number" ? sweep.blockedCount : 0,
-            probedCount:
-              typeof sweep.probedCount === "number" ? sweep.probedCount : 0,
-            unblockedCount:
-              typeof sweep.unblockedCount === "number"
-                ? sweep.unblockedCount
-                : 0,
-          }
-        : null,
+    lastSweep: normalizeBlocklistSweepSummary(record.lastSweep),
+    history,
     probes,
     unblocked,
     watchlist,
     reblocked,
+  };
+}
+
+function normalizeBlocklistSweepSummary(
+  value: unknown
+): BlocklistSweepSummary | null {
+  const record = (value && typeof value === "object" ? value : {}) as Record<
+    string,
+    unknown
+  >;
+
+  if (typeof record.at !== "number") {
+    return null;
+  }
+
+  const count = (key: string): number =>
+    typeof record[key] === "number" ? (record[key] as number) : 0;
+
+  return {
+    at: record.at,
+    blockedCount: count("blockedCount"),
+    probeBudget: count("probeBudget"),
+    dueCount: count("dueCount"),
+    probedCount: count("probedCount"),
+    aliveCount: count("aliveCount"),
+
+    // Pre-split summaries only recorded a combined unblock total; folding it
+    // into the dead bucket keeps historical freed counts from reading as 0.
+    unblockedDead:
+      typeof record.unblockedDead === "number"
+        ? record.unblockedDead
+        : count("unblockedCount"),
+    unblockedDormant: count("unblockedDormant"),
+    trackedCount: count("trackedCount"),
+    matureCount: count("matureCount"),
   };
 }
 

@@ -7,19 +7,36 @@ import type { AccountKarma, Report } from "../../types.ts";
 // alive, leave it alone for a week before probing again.
 const LIVENESS_STALE_MS = 7 * 24 * 60 * 60 * 1000;
 
-// Reddit hits per sweep are capped so a 1000-account first run drains over
-// several days instead of firing a thousand probes at once. Whatever isn't
-// reached stays due (its timestamp didn't move) for the next sweep.
-const MAX_PROBES_PER_SWEEP = 100;
+// The probe budget scales so the whole list is covered in this many sweeps —
+// comfortably inside the staleness window. A fixed cap of 100/day couldn't
+// cover 1000 accounts on a weekly cadence (needs ~143/day), so the
+// lowest-priority third of the list never even started a karma trail.
+const PROBE_COVERAGE_SWEEPS = 5;
 
-// An account whose karma hasn't moved across this span of weekly probes has
+const MIN_PROBES_PER_SWEEP = 100;
+
+// Ceiling keeps a sweep's trickle time bounded (~20 min at one probe / 5s).
+const MAX_PROBES_PER_SWEEP = 250;
+
+// An account whose karma hasn't moved across this span of probes has
 // produced nothing and drawn no votes — a ban on it protects nothing.
 const DORMANCY_MS = 42 * 24 * 60 * 60 * 1000;
 
-// Dormant accounts are only evicted under slot pressure — a ban costs
-// nothing until the 1000-cap list is nearly full, so below this count every
-// dormant account keeps its slot.
-const BLOCKLIST_PRESSURE_THRESHOLD = 950;
+// Eviction aims for real headroom under the 1000-slot cap, not survival at
+// it: above this count, eviction-ready dormant accounts probed this sweep
+// are unblocked until the list is back down to the target. The freed band
+// absorbs a heavy blocking day; the tripwire re-blocks anything that wakes
+// back up.
+export const BLOCKLIST_TARGET_COUNT = 850;
+
+export function sweepProbeBudget(blockedCount: number): number {
+  const forFullCoverage = Math.ceil(blockedCount / PROBE_COVERAGE_SWEEPS);
+
+  return Math.min(
+    MAX_PROBES_PER_SWEEP,
+    Math.max(MIN_PROBES_PER_SWEEP, forFullCoverage)
+  );
+}
 
 export interface BlockedUser {
   username: string;
@@ -79,7 +96,7 @@ export function selectSweepCandidates(
   reports: Record<string, Report>,
   probes: Record<string, BlocklistProbe>,
   now: number
-): SweepCandidate[] {
+): { candidates: SweepCandidate[]; dueCount: number } {
   const reportsByLower = new Map<string, Report>();
 
   for (const [username, report] of Object.entries(reports)) {
@@ -139,21 +156,48 @@ export function selectSweepCandidates(
     return a.probedAt - b.probedAt;
   });
 
-  return [...knownDead, ...stale.map((entry) => entry.candidate)].slice(
-    0,
-    MAX_PROBES_PER_SWEEP
-  );
+  const due = [...knownDead, ...stale.map((entry) => entry.candidate)];
+
+  return {
+    candidates: due.slice(0, sweepProbeBudget(blocked.length)),
+    dueCount: due.length,
+  };
+}
+
+// Pipeline depth for the sweep telemetry: how many accounts have a karma
+// streak spanning any time at all, and how many have already matured into
+// eviction candidates.
+export function streakStats(probes: Record<string, BlocklistProbe>): {
+  tracked: number;
+  mature: number;
+} {
+  let tracked = 0;
+  let mature = 0;
+
+  for (const probe of Object.values(probes)) {
+    const streak = karmaStreakMs(probe);
+
+    if (streak > 0) {
+      tracked++;
+    }
+
+    if (streak >= DORMANCY_MS) {
+      mature++;
+    }
+  }
+
+  return { tracked, mature };
 }
 
 // Dormant accounts to evict this sweep, only ever from the set probed alive
 // this very sweep (so every eviction rests on a fresh probe) and only as
-// many as needed to get the list back under the pressure threshold.
+// many as needed to get the list back down to the headroom target.
 // Longest-frozen first — those are the safest evictions.
 export function selectDormantEvictions(
   blockedCount: number,
   probedAlive: Array<{ candidate: SweepCandidate; probe: BlocklistProbe }>
 ): Array<{ candidate: SweepCandidate; probe: BlocklistProbe }> {
-  const excess = blockedCount - BLOCKLIST_PRESSURE_THRESHOLD;
+  const excess = blockedCount - BLOCKLIST_TARGET_COUNT;
 
   if (excess <= 0) {
     return [];

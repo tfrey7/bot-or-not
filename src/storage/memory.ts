@@ -34,6 +34,7 @@ export class InMemoryStorage implements StorageAdapter {
   };
   private blocklistCleanup: BlocklistCleanupState = {
     lastSweep: null,
+    history: [],
     probes: {},
     unblocked: [],
     watchlist: {},

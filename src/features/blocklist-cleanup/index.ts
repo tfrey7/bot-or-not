@@ -1,16 +1,21 @@
 // Daily background sweep that frees slots in the operator's 1000-cap Reddit
 // block list. Cross-references the blocked accounts against stored reports,
 // probes the stale/unknown ones for liveness and karma, unblocks any account
-// Reddit has since suspended or deleted, and — only when the list is under
-// slot pressure — evicts accounts whose karma has been frozen long enough to
-// prove dormancy. An unblock only ever rests on a fresh about.json probe
+// Reddit has since suspended or deleted, and — once the list is over the
+// headroom target — evicts accounts whose karma has been frozen long enough
+// to prove dormancy. An unblock only ever rests on a fresh about.json probe
 // from this very sweep — stored statuses (which may be DOM-scraped) merely
 // prioritize who gets probed first, never authorize a write on their own.
 // Every eviction lands on the watchlist so the content-script tripwire can
 // re-block the account if it returns to activity.
 
 import { fetchAccountLiveness } from "../../reddit/liveness.ts";
-import type { BlocklistProbe, BlocklistWatchEntry } from "../../storage";
+import type {
+  BlocklistCleanupState,
+  BlocklistProbe,
+  BlocklistSweepSummary,
+  BlocklistWatchEntry,
+} from "../../storage";
 import {
   readBlocklistCleanupState,
   readMaintenancePaused,
@@ -25,6 +30,8 @@ import {
   recordProbe,
   selectDormantEvictions,
   selectSweepCandidates,
+  streakStats,
+  sweepProbeBudget,
 } from "./logic.ts";
 
 export {
@@ -33,14 +40,42 @@ export {
   blocklistTripwireList,
 } from "./handlers.ts";
 export { blocklistTripwireInit, blocklistTripwireScan } from "./tripwire.ts";
+export { BLOCKLIST_TARGET_COUNT } from "./logic.ts";
 
 // The sweep starts by refetching the whole block list (up to 10 pages), so
 // unlike the per-account-gated status re-check it needs its own gate to keep
 // frequent background wakes from re-listing daily traffic for nothing.
 const BLOCKLIST_SWEEP_INTERVAL_MS = 24 * 60 * 60 * 1000;
 
+// Startup alone can't be the trigger: content-script traffic keeps the
+// background alive for days at a time, so without an alarm the "daily"
+// sweep only ran at browser-restart cadence. The hourly tick just re-checks
+// the daily gate above.
+const SWEEP_ALARM_NAME = "bon-blocklist-sweep";
+const SWEEP_ALARM_PERIOD_MINUTES = 60;
+
+// Probe results flush to storage in batches: a full sweep takes many
+// minutes on the background trickle, and a worker death mid-sweep must keep
+// the karma trail accumulated so far instead of losing the day.
+const PROBE_FLUSH_BATCH = 20;
+
 const UNBLOCKED_LOG_CAP = 1000;
 const WATCHLIST_CAP = 1000;
+const SWEEP_HISTORY_CAP = 90;
+
+export function blocklistSweepAlarmInit(): void {
+  browser.alarms.create(SWEEP_ALARM_NAME, {
+    periodInMinutes: SWEEP_ALARM_PERIOD_MINUTES,
+  });
+}
+
+export function blocklistSweepOnAlarm(alarm: browser.alarms.Alarm): void {
+  if (alarm.name !== SWEEP_ALARM_NAME) {
+    return;
+  }
+
+  void blocklistCleanupSweep();
+}
 
 export async function blocklistCleanupSweep(): Promise<void> {
   if (await readMaintenancePaused()) {
@@ -60,15 +95,10 @@ export async function blocklistCleanupSweep(): Promise<void> {
   // Claim the daily gate before the probes: they drain through the funnel's
   // background trickle over many minutes, and a worker death mid-sweep must
   // not cause a full re-list + re-probe on the next wake. Real counts land
-  // in the final write below.
+  // in the batch flushes and the final write below.
   await writeBlocklistCleanupState({
     ...state,
-    lastSweep: {
-      at: now,
-      blockedCount: state.lastSweep?.blockedCount ?? 0,
-      probedCount: 0,
-      unblockedCount: 0,
-    },
+    lastSweep: emptySummary(now, state.lastSweep?.blockedCount ?? 0),
   });
 
   let blocked: BlockedUser[];
@@ -81,82 +111,91 @@ export async function blocklistCleanupSweep(): Promise<void> {
     );
 
     // Un-claim so a transient listing failure retries on the next wake.
-    await writeBlocklistCleanupState(state);
+    const current = await readBlocklistCleanupState();
+    await writeBlocklistCleanupState({
+      ...current,
+      lastSweep: state.lastSweep,
+    });
+
     return;
   }
 
   const reports = await readReportSummaries();
   const probes = pruneProbes(state.probes, blocked);
-  const candidates = selectSweepCandidates(blocked, reports, probes, now);
-
-  console.log(
-    `[Bot or Not] blocklist cleanup: ${blocked.length} blocked account(s), ${candidates.length} due for a liveness probe`
+  const { candidates, dueCount } = selectSweepCandidates(
+    blocked,
+    reports,
+    probes,
+    now
   );
 
-  const results = await Promise.all(
-    candidates.map(async (candidate) => ({
-      candidate,
-      probe: await fetchAccountLiveness(candidate.username, "blocklist"),
-    }))
+  const summary = emptySummary(now, blocked.length);
+  summary.probeBudget = sweepProbeBudget(blocked.length);
+  summary.dueCount = dueCount;
+
+  console.log(
+    `[Bot or Not] blocklist cleanup: ${blocked.length} blocked account(s), ${dueCount} due for a liveness probe, probing ${candidates.length}`
   );
 
   const dead: SweepCandidate[] = [];
   const alive: Array<{ candidate: SweepCandidate; probe: BlocklistProbe }> = [];
-  let karmaVisibleCount = 0;
 
-  for (const { candidate, probe } of results) {
-    if (probe === null) {
-      continue;
+  for (let start = 0; start < candidates.length; start += PROBE_FLUSH_BATCH) {
+    const batch = candidates.slice(start, start + PROBE_FLUSH_BATCH);
+    const results = await Promise.all(
+      batch.map(async (candidate) => ({
+        candidate,
+        probe: await fetchAccountLiveness(candidate.username, "blocklist"),
+      }))
+    );
+
+    summary.probedCount += batch.length;
+
+    for (const { candidate, probe } of results) {
+      if (probe === null) {
+        continue;
+      }
+
+      const key = candidate.username.toLowerCase();
+
+      if (candidate.hasReport) {
+        await updateReport(candidate.username, (current) => {
+          if (!current) {
+            return null;
+          }
+
+          return {
+            ...current,
+            userStatus: probe.status,
+            userStatusCheckedAt: Date.now(),
+          };
+        });
+      }
+
+      if (probe.status !== "active") {
+        dead.push(candidate);
+        continue;
+      }
+
+      const recorded = recordProbe(probes[key], probe.karma, now);
+      probes[key] = recorded;
+      alive.push({ candidate, probe: recorded });
     }
 
-    const key = candidate.username.toLowerCase();
+    summary.aliveCount = alive.length;
+    applyStreakStats(summary, probes);
 
-    if (probe.karma !== null) {
-      karmaVisibleCount++;
-    }
-
-    if (candidate.hasReport) {
-      await updateReport(candidate.username, (current) => {
-        if (!current) {
-          return null;
-        }
-
-        return {
-          ...current,
-          userStatus: probe.status,
-          userStatusCheckedAt: Date.now(),
-        };
-      });
-    }
-
-    if (probe.status !== "active") {
-      dead.push(candidate);
-      continue;
-    }
-
-    const recorded = recordProbe(probes[key], probe.karma, now);
-    probes[key] = recorded;
-    alive.push({ candidate, probe: recorded });
+    const current = await readBlocklistCleanupState();
+    await writeBlocklistCleanupState({
+      ...current,
+      probes,
+      lastSweep: { ...summary },
+    });
   }
 
   console.log(
-    `[Bot or Not] blocklist cleanup: ${alive.length} probe(s) came back active, karma visible on ${karmaVisibleCount}`
+    `[Bot or Not] blocklist cleanup: ${alive.length} probe(s) came back active, ${summary.matureCount} account(s) eviction-ready`
   );
-
-  const unblocked = [...state.unblocked];
-  const watchlist = { ...state.watchlist };
-  let unblockedCount = 0;
-
-  // Operator re-blocked a watched account by hand — stop watching it.
-  const blockedKeys = new Set(
-    blocked.map((user) => user.username.toLowerCase())
-  );
-
-  for (const key of Object.keys(watchlist)) {
-    if (blockedKeys.has(key)) {
-      delete watchlist[key];
-    }
-  }
 
   const dormant = selectDormantEvictions(blocked.length - dead.length, alive);
   const evictions: Array<{
@@ -176,6 +215,9 @@ export async function blocklistCleanupSweep(): Promise<void> {
     })),
   ];
 
+  const newUnblocked: BlocklistCleanupState["unblocked"] = [];
+  const newWatches: Record<string, BlocklistWatchEntry> = {};
+
   if (evictions.length > 0) {
     const self = await fetchSelfIdentity();
 
@@ -190,13 +232,19 @@ export async function blocklistCleanupSweep(): Promise<void> {
         try {
           await postUnblock(candidate, self);
           delete probes[key];
-          unblocked.push({
+          newUnblocked.push({
             username: candidate.username,
             at: Date.now(),
             reason,
           });
-          watchlist[key] = watch ?? { at: now, karma: null };
-          unblockedCount++;
+          newWatches[key] = watch ?? { at: now, karma: null };
+
+          if (reason === "dead") {
+            summary.unblockedDead++;
+          } else {
+            summary.unblockedDormant++;
+          }
+
           console.log(
             `[Bot or Not] blocklist cleanup: unblocked ${candidate.username} — ${
               reason === "dead"
@@ -214,18 +262,59 @@ export async function blocklistCleanupSweep(): Promise<void> {
     }
   }
 
+  applyStreakStats(summary, probes);
+
+  // Final write re-reads state so tripwire re-blocks that landed mid-sweep
+  // (watchlist removals, reblocked entries) aren't clobbered.
+  const final = await readBlocklistCleanupState();
+  const watchlist = { ...final.watchlist };
+
+  // Operator re-blocked a watched account by hand — stop watching it. Runs
+  // before this sweep's evictions merge in, so their fresh watches survive.
+  const blockedKeys = new Set(
+    blocked.map((user) => user.username.toLowerCase())
+  );
+
+  for (const key of Object.keys(watchlist)) {
+    if (blockedKeys.has(key)) {
+      delete watchlist[key];
+    }
+  }
+
+  Object.assign(watchlist, newWatches);
+
   await writeBlocklistCleanupState({
-    lastSweep: {
-      at: now,
-      blockedCount: blocked.length,
-      probedCount: candidates.length,
-      unblockedCount,
-    },
+    lastSweep: summary,
+    history: [...final.history, summary].slice(-SWEEP_HISTORY_CAP),
     probes,
-    unblocked: unblocked.slice(-UNBLOCKED_LOG_CAP),
+    unblocked: [...final.unblocked, ...newUnblocked].slice(-UNBLOCKED_LOG_CAP),
     watchlist: pruneWatchlist(watchlist),
-    reblocked: state.reblocked,
+    reblocked: final.reblocked,
   });
+}
+
+function emptySummary(at: number, blockedCount: number): BlocklistSweepSummary {
+  return {
+    at,
+    blockedCount,
+    probeBudget: 0,
+    dueCount: 0,
+    probedCount: 0,
+    aliveCount: 0,
+    unblockedDead: 0,
+    unblockedDormant: 0,
+    trackedCount: 0,
+    matureCount: 0,
+  };
+}
+
+function applyStreakStats(
+  summary: BlocklistSweepSummary,
+  probes: Record<string, BlocklistProbe>
+): void {
+  const streaks = streakStats(probes);
+  summary.trackedCount = streaks.tracked;
+  summary.matureCount = streaks.mature;
 }
 
 function pruneWatchlist(

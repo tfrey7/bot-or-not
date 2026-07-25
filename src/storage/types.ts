@@ -30,19 +30,28 @@ export interface SyncConfig {
 }
 
 // Blocklist-cleanup sweep bookkeeping. `lastSweep` summarizes the most
-// recent completed pass (null before the first one) and doubles as the
-// daily gate. `probes` holds the per-account liveness/karma trail for every
-// blocked account, keyed by lowercase username and pruned to the current
-// block list each sweep. `unblocked` is the audit trail of accounts the
-// sweep removed from the operator's block list; `watchlist` are the ones we
-// still watch for a return to activity (see the tripwire), with the karma
-// snapshot from eviction time as the activity baseline; `reblocked` is the
-// audit trail of watchlisted accounts that came back and were re-blocked.
-interface BlocklistSweepSummary {
+// recent pass (null before the first one), doubles as the daily gate, and is
+// updated in place as the sweep progresses so a worker death leaves a
+// visible partial record. `history` keeps completed summaries so trends
+// (pressure, probe backlog, eviction pipeline depth) are visible over time.
+// `probes` holds the per-account liveness/karma trail for every blocked
+// account, keyed by lowercase username and pruned to the current block list
+// each sweep. `unblocked` is the audit trail of accounts the sweep removed
+// from the operator's block list; `watchlist` are the ones we still watch
+// for a return to activity (see the tripwire), with the karma snapshot from
+// eviction time as the activity baseline; `reblocked` is the audit trail of
+// watchlisted accounts that came back and were re-blocked.
+export interface BlocklistSweepSummary {
   at: number;
   blockedCount: number;
+  probeBudget: number;
+  dueCount: number;
   probedCount: number;
-  unblockedCount: number;
+  aliveCount: number;
+  unblockedDead: number;
+  unblockedDormant: number;
+  trackedCount: number;
+  matureCount: number;
 }
 
 // `stableSince` is when the current karma value was first observed — the
@@ -60,6 +69,7 @@ export interface BlocklistWatchEntry {
 
 export interface BlocklistCleanupState {
   lastSweep: BlocklistSweepSummary | null;
+  history: BlocklistSweepSummary[];
   probes: Record<string, BlocklistProbe>;
   unblocked: Array<{
     username: string;

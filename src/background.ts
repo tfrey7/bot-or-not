@@ -38,6 +38,8 @@ import {
   blocklistCleanupGetState,
   blocklistCleanupSweep,
   blocklistReblock,
+  blocklistSweepAlarmInit,
+  blocklistSweepOnAlarm,
   blocklistTripwireList,
 } from "./features/blocklist-cleanup";
 import { statusRecheckSweep } from "./features/status-recheck";
@@ -99,7 +101,9 @@ void runMigrations().then(() => {
   void statusRecheckSweep();
 
   // Same tier: unblock suspended/deleted accounts to free slots in the
-  // operator's 1000-cap Reddit block list. Self-gated to one pass per day.
+  // operator's 1000-cap Reddit block list. Self-gated to one pass per day;
+  // the hourly alarm below re-checks the gate in long-lived sessions where
+  // the background never restarts.
   void blocklistCleanupSweep();
 
   // Bring automatic sync online: create the pull alarm and do a first
@@ -109,6 +113,8 @@ void runMigrations().then(() => {
 });
 
 browser.alarms.onAlarm.addListener(syncOnAlarm);
+browser.alarms.onAlarm.addListener(blocklistSweepOnAlarm);
+blocklistSweepAlarmInit();
 browser.storage.onChanged.addListener(syncHandleStorageChange);
 
 // In dev builds running from a strand worktree, Firefox is the human-facing
