@@ -2,6 +2,17 @@
 
 Notable changes to Bot or Not. Signed `.xpi` builds for each version are attached to the matching [GitHub Release](https://github.com/tfrey7/bot-or-not/releases).
 
+## [9.0.0] — 2026-07-25
+- Route the load-export skill through a single run_pipeline.sh entry point
+- Add silver layer: users, user_snapshots, factors, activity_events, report_events
+- Fix full-project code-review findings
+- Add Databricks bronze pipeline for backup exports + load-export skill
+- Store per-item thread IDs in investigation activity data
+- Prune LLM tool-loop plumbing left dead by the AI command removal
+- Add a user search with typeahead to the reports header
+- Remove the AI command bar, chat modal, and agent
+- publish skill: chain with && not set -e; document AMO duplicate-version recovery
+
 ## [8.6.0] — 2026-07-25
 - Move publish and feature-ify procedures into project skills
 - Auto-run investigation when a Google harvest goes quiet
