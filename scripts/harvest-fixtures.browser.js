@@ -10,14 +10,19 @@
 // POST: everything lands in one bon-fixtures.json, which `npm run ingest`
 // splits into fixtures/<username>.json.
 //
-// Mirrors src/features/investigation/fetch.ts: about + submitted +
-// comments (paginated to 500) + moderated per user, plus the Bot Bouncer
-// search. Items are slimmed to the fields the pipeline reads.
+// Mirrors src/features/investigation/fetch.ts (about + submitted +
+// comments + moderated per user, plus the Bot Bouncer search), but digs
+// deeper than the extension: Reddit serves at most ~1000 items per
+// listing, and each sort order is its own listing — so posts and comments
+// are fetched under new, top, and controversial and unioned. The extra
+// sorts recover old items that fell off the newest-1000 horizon. Items
+// are slimmed to the fields the pipeline reads.
 
 (async () => {
   const USERNAMES = /* __USERNAMES__ */ [];
 
-  const FETCH_LIMIT = 500;
+  const FETCH_LIMIT = 1000;
+  const SORTS = ["new", "top", "controversial"];
   const PAGE_LIMIT = 100;
   const BODY_CAP = 800;
   const DELAY_MS = 300;
@@ -77,30 +82,41 @@
   }
 
   async function fetchListing(pathBase, slim) {
-    const children = [];
-    let cursor = null;
+    const uniqueByName = new Map();
 
-    while (children.length < FETCH_LIMIT) {
-      const pageLimit = Math.min(PAGE_LIMIT, FETCH_LIMIT - children.length);
-      const after = cursor ? `&after=${encodeURIComponent(cursor)}` : "";
-      const page = await getJson(
-        `${pathBase}?limit=${pageLimit}${after}&raw_json=1`
-      );
+    for (const sort of SORTS) {
+      let cursor = null;
+      let served = 0;
 
-      const pageChildren = page.data?.children ?? [];
-      for (const child of pageChildren) {
-        if (child.data) {
-          children.push({ data: slim(child.data) });
+      while (served < FETCH_LIMIT) {
+        const pageLimit = Math.min(PAGE_LIMIT, FETCH_LIMIT - served);
+        const after = cursor ? `&after=${encodeURIComponent(cursor)}` : "";
+        const page = await getJson(
+          `${pathBase}?limit=${pageLimit}&sort=${sort}&t=all${after}&raw_json=1`
+        );
+
+        const pageChildren = page.data?.children ?? [];
+        for (const child of pageChildren) {
+          if (child.data && !uniqueByName.has(child.data.name)) {
+            uniqueByName.set(child.data.name, child.data);
+          }
+        }
+        served += pageChildren.length;
+
+        cursor = page.data?.after ?? null;
+        if (!cursor || pageChildren.length === 0) {
+          break;
         }
       }
 
-      cursor = page.data?.after ?? null;
-      if (!cursor || pageChildren.length === 0) {
-        break;
-      }
+      log(`  ${pathBase} sort=${sort}: ${uniqueByName.size} unique so far`);
     }
 
-    return { data: { after: cursor, children } };
+    const children = [...uniqueByName.values()]
+      .sort((a, b) => b.created_utc - a.created_utc)
+      .map((data) => ({ data: slim(data) }));
+
+    return { data: { after: null, children } };
   }
 
   async function fetchBotBouncerStatus(username) {
