@@ -2,6 +2,10 @@
 
 Notable changes to Bot or Not. Signed `.xpi` builds for each version are attached to the matching [GitHub Release](https://github.com/tfrey7/bot-or-not/releases).
 
+## [9.0.1] — 2026-07-25
+- Make notebooks the canonical pipeline, run via Jobs API
+- Resolve confirm-modal elements at init, not module scope
+
 ## [9.0.0] — 2026-07-25
 - Route the load-export skill through a single run_pipeline.sh entry point
 - Add silver layer: users, user_snapshots, factors, activity_events, report_events
