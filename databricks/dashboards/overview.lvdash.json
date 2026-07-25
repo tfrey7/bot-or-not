@@ -25,8 +25,11 @@
       "name": "recent_confirmed_bots",
       "displayName": "Recent confirmed bots",
       "queryLines": [
-        "SELECT username, verdict, round(bot_probability, 2) AS bot_probability,\n",
-        "  persona_label, user_status, investigated_at\n",
+        "SELECT\n",
+        "  username AS `Username`,\n",
+        "  initcap(replace(persona_label, '_', ' ')) AS `Persona`,\n",
+        "  initcap(user_status) AS `Status`,\n",
+        "  date_format(investigated_at, 'MMM d, yyyy') AS `Detected`\n",
         "FROM silver.users\n",
         "WHERE verdict IN ('bot', 'likely-bot')\n",
         "  AND user_status IN ('deleted', 'suspended')\n",
@@ -73,6 +76,81 @@
         "GROUP BY subreddit\n",
         "ORDER BY reports DESC\n",
         "LIMIT 10\n"
+      ]
+    },
+    {
+      "name": "region_verdict_mix",
+      "displayName": "Verdict mix by region",
+      "queryLines": [
+        "SELECT region_code,\n",
+        "  stack(3,\n",
+        "    'bot-side', bot_side,\n",
+        "    'uncertain', uncertain,\n",
+        "    'human-side', human_side) AS (side, users)\n",
+        "FROM gold.region_verdicts\n",
+        "WHERE users >= 10\n"
+      ]
+    },
+    {
+      "name": "region_bot_rate",
+      "displayName": "Bot rate by region",
+      "queryLines": [
+        "SELECT region_code, round(bot_rate * 100, 0) AS bot_pct\n",
+        "FROM gold.region_verdicts\n",
+        "WHERE users >= 10\n"
+      ]
+    },
+    {
+      "name": "bot_account_subreddits",
+      "displayName": "Subreddits with most bot accounts",
+      "queryLines": [
+        "SELECT subreddit, bot_accounts\n",
+        "FROM gold.subreddit_bot_share\n",
+        "ORDER BY bot_accounts DESC\n",
+        "LIMIT 12\n"
+      ]
+    },
+    {
+      "name": "bot_saturated_subreddits",
+      "displayName": "Most bot-saturated subreddits",
+      "queryLines": [
+        "SELECT\n",
+        "  concat('r/', subreddit) AS `Subreddit`,\n",
+        "  tracked_users AS `Tracked users`,\n",
+        "  bot_accounts AS `Bot accounts`,\n",
+        "  concat(cast(round(bot_share * 100, 0) AS int), '%') AS `Bot share`\n",
+        "FROM gold.subreddit_bot_share\n",
+        "WHERE tracked_users >= 15\n",
+        "ORDER BY bot_share DESC\n",
+        "LIMIT 15\n"
+      ]
+    },
+    {
+      "name": "region_bot_subreddits",
+      "displayName": "Where each region's bots post",
+      "queryLines": [
+        "WITH ranked AS (\n",
+        "  SELECT users.region_code, events.subreddit,\n",
+        "    count(DISTINCT events.username) AS bot_accounts,\n",
+        "    ROW_NUMBER() OVER (\n",
+        "      PARTITION BY users.region_code\n",
+        "      ORDER BY count(DISTINCT events.username) DESC, events.subreddit\n",
+        "    ) AS rank\n",
+        "  FROM silver.activity_events events\n",
+        "  JOIN silver.users users USING (username)\n",
+        "  WHERE users.verdict IN ('bot', 'likely-bot')\n",
+        "    AND users.region_code IS NOT NULL\n",
+        "    AND events.subreddit IS NOT NULL\n",
+        "  GROUP BY users.region_code, events.subreddit\n",
+        ")\n",
+        "SELECT\n",
+        "  region_code AS `Region`,\n",
+        "  concat('r/', subreddit) AS `Subreddit`,\n",
+        "  bot_accounts AS `Bot accounts`\n",
+        "FROM ranked\n",
+        "WHERE rank <= 5\n",
+        "  AND region_code IN (SELECT region_code FROM gold.region_verdicts WHERE bot_side >= 5)\n",
+        "ORDER BY `Region`, `Bot accounts` DESC\n"
       ]
     }
   ],
@@ -177,6 +255,7 @@
                 "x": {
                   "fieldName": "verdict",
                   "scale": { "type": "categorical", "sort": { "by": "y-reversed" } },
+                  "axis": { "hideTitle": true },
                   "displayName": "Verdict"
                 },
                 "y": {
@@ -198,12 +277,10 @@
                 "query": {
                   "datasetName": "recent_confirmed_bots",
                   "fields": [
-                    { "name": "username", "expression": "`username`" },
-                    { "name": "verdict", "expression": "`verdict`" },
-                    { "name": "bot_probability", "expression": "`bot_probability`" },
-                    { "name": "persona_label", "expression": "`persona_label`" },
-                    { "name": "user_status", "expression": "`user_status`" },
-                    { "name": "investigated_at", "expression": "`investigated_at`" }
+                    { "name": "Username", "expression": "`Username`" },
+                    { "name": "Persona", "expression": "`Persona`" },
+                    { "name": "Status", "expression": "`Status`" },
+                    { "name": "Detected", "expression": "`Detected`" }
                   ],
                   "disaggregated": true
                 }
@@ -215,12 +292,10 @@
               "frame": { "showTitle": true, "title": "Recent confirmed bots" },
               "encodings": {
                 "columns": [
-                  { "fieldName": "username" },
-                  { "fieldName": "verdict" },
-                  { "fieldName": "bot_probability" },
-                  { "fieldName": "persona_label" },
-                  { "fieldName": "user_status" },
-                  { "fieldName": "investigated_at" }
+                  { "fieldName": "Username" },
+                  { "fieldName": "Persona" },
+                  { "fieldName": "Status" },
+                  { "fieldName": "Detected" }
                 ]
               },
               "data": { "queryName": "main_query" }
@@ -257,6 +332,7 @@
                 "y": {
                   "fieldName": "persona_label",
                   "scale": { "type": "categorical", "sort": { "by": "x-reversed" } },
+                  "axis": { "hideTitle": true },
                   "displayName": "Persona"
                 }
               }
@@ -289,6 +365,7 @@
                 "x": {
                   "fieldName": "verdict",
                   "scale": { "type": "categorical", "sort": { "by": "y-reversed" } },
+                  "axis": { "hideTitle": true },
                   "displayName": "Verdict"
                 },
                 "y": {
@@ -298,7 +375,14 @@
                 },
                 "color": {
                   "fieldName": "user_status",
-                  "scale": { "type": "categorical" },
+                  "scale": {
+                    "type": "categorical",
+                    "mappings": [
+                      { "value": "active", "color": "#077A9D" },
+                      { "value": "deleted", "color": "#FFAB00" },
+                      { "value": "suspended", "color": "#CB2E5F" }
+                    ]
+                  },
                   "displayName": "Account status"
                 }
               }
@@ -330,6 +414,7 @@
                 "x": {
                   "fieldName": "week",
                   "scale": { "type": "temporal" },
+                  "axis": { "hideTitle": true },
                   "displayName": "Week"
                 },
                 "y": {
@@ -371,12 +456,211 @@
                 "y": {
                   "fieldName": "subreddit",
                   "scale": { "type": "categorical", "sort": { "by": "x-reversed" } },
+                  "axis": { "hideTitle": true },
                   "displayName": "Subreddit"
                 }
               }
             }
           },
           "position": { "x": 3, "y": 15, "width": 3, "height": 6 }
+        }
+      ]
+    },
+    {
+      "name": "geography",
+      "displayName": "Geography",
+      "layout": [
+        {
+          "widget": {
+            "name": "chart_region_verdict_mix",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "region_verdict_mix",
+                  "fields": [
+                    { "name": "region_code", "expression": "`region_code`" },
+                    { "name": "side", "expression": "`side`" },
+                    { "name": "users", "expression": "`users`" }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "frame": { "showTitle": true, "title": "Verdict mix by region (10+ verdicts)" },
+              "encodings": {
+                "x": {
+                  "fieldName": "region_code",
+                  "scale": { "type": "categorical", "sort": { "by": "y-reversed" } },
+                  "axis": { "hideTitle": true },
+                  "displayName": "Region"
+                },
+                "y": {
+                  "fieldName": "users",
+                  "scale": { "type": "quantitative" },
+                  "displayName": "Users"
+                },
+                "color": {
+                  "fieldName": "side",
+                  "scale": {
+                    "type": "categorical",
+                    "mappings": [
+                      { "value": "bot-side", "color": "#CB2E5F" },
+                      { "value": "uncertain", "color": "#919191" },
+                      { "value": "human-side", "color": "#077A9D" }
+                    ]
+                  },
+                  "displayName": "Verdict side"
+                }
+              }
+            }
+          },
+          "position": { "x": 0, "y": 0, "width": 3, "height": 6 }
+        },
+        {
+          "widget": {
+            "name": "chart_region_bot_rate",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "region_bot_rate",
+                  "fields": [
+                    { "name": "region_code", "expression": "`region_code`" },
+                    { "name": "bot_pct", "expression": "`bot_pct`" }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "frame": { "showTitle": true, "title": "Bot rate by region (10+ verdicts)" },
+              "encodings": {
+                "x": {
+                  "fieldName": "bot_pct",
+                  "scale": { "type": "quantitative" },
+                  "displayName": "Bot-side %"
+                },
+                "y": {
+                  "fieldName": "region_code",
+                  "scale": { "type": "categorical", "sort": { "by": "x-reversed" } },
+                  "axis": { "hideTitle": true },
+                  "displayName": "Region"
+                }
+              }
+            }
+          },
+          "position": { "x": 3, "y": 0, "width": 3, "height": 6 }
+        },
+        {
+          "widget": {
+            "name": "chart_bot_account_subreddits",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "bot_account_subreddits",
+                  "fields": [
+                    { "name": "subreddit", "expression": "`subreddit`" },
+                    { "name": "bot_accounts", "expression": "`bot_accounts`" }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "frame": { "showTitle": true, "title": "Subreddits with most bot accounts" },
+              "encodings": {
+                "x": {
+                  "fieldName": "bot_accounts",
+                  "scale": { "type": "quantitative" },
+                  "displayName": "Bot accounts"
+                },
+                "y": {
+                  "fieldName": "subreddit",
+                  "scale": { "type": "categorical", "sort": { "by": "x-reversed" } },
+                  "axis": { "hideTitle": true },
+                  "displayName": "Subreddit"
+                }
+              }
+            }
+          },
+          "position": { "x": 0, "y": 6, "width": 3, "height": 6 }
+        },
+        {
+          "widget": {
+            "name": "table_bot_saturated_subreddits",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "bot_saturated_subreddits",
+                  "fields": [
+                    { "name": "Subreddit", "expression": "`Subreddit`" },
+                    { "name": "Tracked users", "expression": "`Tracked users`" },
+                    { "name": "Bot accounts", "expression": "`Bot accounts`" },
+                    { "name": "Bot share", "expression": "`Bot share`" }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "table",
+              "frame": { "showTitle": true, "title": "Most bot-saturated subreddits (15+ tracked users)" },
+              "encodings": {
+                "columns": [
+                  { "fieldName": "Subreddit" },
+                  { "fieldName": "Tracked users" },
+                  { "fieldName": "Bot accounts" },
+                  { "fieldName": "Bot share" }
+                ]
+              },
+              "data": { "queryName": "main_query" }
+            }
+          },
+          "position": { "x": 3, "y": 6, "width": 3, "height": 6 }
+        },
+        {
+          "widget": {
+            "name": "table_region_bot_subreddits",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "region_bot_subreddits",
+                  "fields": [
+                    { "name": "Region", "expression": "`Region`" },
+                    { "name": "Subreddit", "expression": "`Subreddit`" },
+                    { "name": "Bot accounts", "expression": "`Bot accounts`" }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "table",
+              "frame": { "showTitle": true, "title": "Where each region's bots post (top 5 subs, regions with 5+ bots)" },
+              "encodings": {
+                "columns": [
+                  { "fieldName": "Region" },
+                  { "fieldName": "Subreddit" },
+                  { "fieldName": "Bot accounts" }
+                ]
+              },
+              "data": { "queryName": "main_query" }
+            }
+          },
+          "position": { "x": 0, "y": 12, "width": 6, "height": 8 }
         }
       ]
     }

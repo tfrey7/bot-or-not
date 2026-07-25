@@ -6,8 +6,10 @@ Databricks and (eventually) derives coordination-network graphs from them.
 - **Bronze** — raw export rows, one per user per snapshot, report payload as VARIANT.
 - **Silver** — normalized tables: `users` (latest per user), `user_snapshots`
   (longitudinal), `factors`, `activity_events`, `report_events`.
-- **Gold** — coordination-network features: `subreddit_fingerprints` (TF-IDF
-  attention vectors). Planned: similarity edges, ring candidates.
+- **Gold** — analysis features: `subreddit_fingerprints` (TF-IDF attention
+  vectors), `region_verdicts` (verdict mix per AI-inferred region),
+  `subreddit_bot_share` (bot saturation per subreddit). Planned: similarity
+  edges, ring candidates.
 
 ## One-time setup
 
