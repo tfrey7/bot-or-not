@@ -30,14 +30,16 @@ to incremental Auto Loader ingestion is a future exercise.
 ## Files
 
 - `prepare_export.py` — local reshape: export JSON object → JSONL lines.
-- `ingest.sh` — catalog/schema/volume bootstrap + upload + notebook sync.
-- `sql.sh` — shared warehouse lookup + `run_sql` helper (sourced, not run).
-- `run_pipeline.sh` — full rebuild, bronze upward; the single pipeline entry
-  point (new layers get added here).
-- `rebuild_bronze.sh` / `rebuild_silver.sh` — headless table rebuilds + sanity
-  counts via the SQL Statements API. Same SQL as the notebooks — keep in sync.
-- `notebooks/` — interactive copies of the builds (`01_bronze_ingest`,
-  `02_silver_build`).
+- `ingest.sh` — catalog/schema/volume bootstrap + JSONL upload.
+- `sql.sh` — shared warehouse lookup + `run_sql` helper for the bootstrap DDL
+  (sourced, not run).
+- `run_pipeline.sh` — the single pipeline entry point: syncs `notebooks/` into
+  the workspace and submits a one-off Databricks job run with one task per
+  layer (bronze → silver). New layers get added as tasks here.
+- `notebooks/` — the **canonical** transformation code (`01_bronze_ingest`,
+  `02_silver_build`). Each notebook ends with `dbutils.notebook.exit(...)`
+  returning its sanity counts to the pipeline runner; the same notebooks are
+  runnable interactively in the workspace.
 
 The `load-export` Claude skill wraps the whole refresh (prepare → upload →
 bronze → silver → sanity report) so a session can run it on request.

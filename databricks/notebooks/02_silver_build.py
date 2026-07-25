@@ -174,22 +174,6 @@ FROM bronze.reports,
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ### Sanity checks
-
-# COMMAND ----------
-
-display(spark.sql("""
-SELECT
-  (SELECT count(*) FROM silver.users)           AS users,
-  (SELECT count(*) FROM silver.user_snapshots)  AS user_snapshots,
-  (SELECT count(*) FROM silver.factors)         AS factors,
-  (SELECT count(*) FROM silver.activity_events) AS activity_events,
-  (SELECT count(*) FROM silver.report_events)   AS report_events
-"""))
-
-# COMMAND ----------
-
-# MAGIC %md
 # MAGIC First longitudinal query — status changes between snapshots:
 
 # COMMAND ----------
@@ -205,3 +189,23 @@ FROM ordered
 WHERE previous_status IS NOT NULL AND user_status <> previous_status
 ORDER BY exported_at DESC
 """))
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ### Sanity counts — returned to the pipeline runner as the notebook result
+
+# COMMAND ----------
+
+import json
+
+counts = spark.sql("""
+SELECT
+  (SELECT count(*) FROM silver.users)           AS users,
+  (SELECT count(*) FROM silver.user_snapshots)  AS user_snapshots,
+  (SELECT count(*) FROM silver.factors)         AS factors,
+  (SELECT count(*) FROM silver.activity_events) AS activity_events,
+  (SELECT count(*) FROM silver.report_events)   AS report_events
+""").first().asDict()
+
+dbutils.notebook.exit(json.dumps(counts))

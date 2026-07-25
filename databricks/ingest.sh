@@ -24,7 +24,4 @@ run_sql "CREATE VOLUME IF NOT EXISTS $CATALOG.bronze.raw"
 echo "Uploading $(basename "$JSONL")..."
 databricks fs cp "$JSONL" "dbfs:/Volumes/$CATALOG/bronze/raw/$(basename "$JSONL")" --overwrite
 
-echo "Syncing notebooks into the workspace..."
-databricks workspace import-dir "$SCRIPT_DIR/notebooks" "/Workspace/Users/tfrey7@gmail.com/bot-or-not" --overwrite
-
-echo "Done. Open /Workspace/Users/tfrey7@gmail.com/bot-or-not/01_bronze_ingest in Databricks and run it."
+echo "Done. Run ./databricks/run_pipeline.sh to rebuild the tables."

@@ -18,7 +18,7 @@ spark.sql(f"USE CATALOG {catalog}")
 
 # COMMAND ----------
 
-spark.sql("""
+spark.sql(f"""
 CREATE OR REPLACE TABLE bronze.reports AS
 SELECT
   data:username::string        AS username,
@@ -28,7 +28,7 @@ SELECT
   _metadata.file_path          AS source_file,
   current_timestamp()          AS ingested_at
 FROM read_files(
-  '/Volumes/' || current_catalog() || '/bronze/raw/',
+  '/Volumes/{catalog}/bronze/raw/',
   format => 'json',
   singleVariantColumn => 'data'
 )
@@ -37,18 +37,7 @@ FROM read_files(
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ### Sanity checks — row count and a peek at variant extraction
-
-# COMMAND ----------
-
-display(spark.sql("""
-SELECT
-  count(*)                                                          AS users,
-  count_if(report:investigation IS NOT NULL)                        AS with_investigation,
-  count_if(report:investigation:status::string = 'done')            AS investigations_done,
-  count_if(report:activityData IS NOT NULL)                         AS with_activity_data
-FROM bronze.reports
-"""))
+# MAGIC ### A peek at variant extraction — top accounts by bot probability
 
 # COMMAND ----------
 
@@ -63,3 +52,23 @@ WHERE report:investigation:status::string = 'done'
 ORDER BY bot_probability DESC
 LIMIT 20
 """))
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ### Sanity counts — returned to the pipeline runner as the notebook result
+
+# COMMAND ----------
+
+import json
+
+counts = spark.sql("""
+SELECT
+  count(*)                                               AS total_rows,
+  count(DISTINCT source_file)                            AS snapshots,
+  count(DISTINCT username)                               AS distinct_users,
+  count_if(report:investigation:status::string = 'done') AS investigations_done
+FROM bronze.reports
+""").first().asDict()
+
+dbutils.notebook.exit(json.dumps(counts))
