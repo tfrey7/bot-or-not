@@ -2,15 +2,14 @@
 // Wire-up takes a callback that re-runs `load()` after a destructive
 // action completes.
 
-const modal = document.getElementById("bon-confirm-modal") as HTMLElement;
-const modalText = document.getElementById("bon-modal-text") as HTMLElement;
-modalText.classList.add("bon-pii");
-const cancelBtn = document.getElementById(
-  "bon-cancel-clear"
-) as HTMLButtonElement;
-const confirmBtn = document.getElementById(
-  "bon-confirm-clear"
-) as HTMLButtonElement;
+// Resolved in pageInitConfirmModal, not at module scope — this module is
+// reachable from the background bundle via the redditors barrel, and any
+// top-level DOM dereference would crash the background at load time
+// (the modal elements only exist in reports.html).
+let modal: HTMLElement;
+let modalText: HTMLElement;
+let cancelBtn: HTMLButtonElement;
+let confirmBtn: HTMLButtonElement;
 
 let pendingConfirmAction: (() => Promise<unknown> | unknown) | null = null;
 let pendingCancelAction: (() => void) | null = null;
@@ -73,6 +72,14 @@ export function pageInitConfirmModal({
 }: {
   onConfirm: () => Promise<void> | void;
 }): void {
+  modal = document.getElementById("bon-confirm-modal") as HTMLElement;
+  modalText = document.getElementById("bon-modal-text") as HTMLElement;
+  modalText.classList.add("bon-pii");
+  cancelBtn = document.getElementById("bon-cancel-clear") as HTMLButtonElement;
+  confirmBtn = document.getElementById(
+    "bon-confirm-clear"
+  ) as HTMLButtonElement;
+
   cancelBtn.addEventListener("click", () => closeConfirmModal());
 
   modal.addEventListener("click", (event) => {
