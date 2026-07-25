@@ -1,0 +1,384 @@
+{
+  "datasets": [
+    {
+      "name": "headline_counts",
+      "displayName": "Headline counts",
+      "queryLines": [
+        "SELECT\n",
+        "  count(*) AS users_tracked,\n",
+        "  count_if(verdict IN ('bot', 'likely-bot')) AS bot_side_verdicts,\n",
+        "  count_if(user_status IN ('suspended', 'deleted')) AS gone_accounts\n",
+        "FROM silver.users\n"
+      ]
+    },
+    {
+      "name": "verdict_distribution",
+      "displayName": "Verdict distribution",
+      "queryLines": [
+        "SELECT verdict, count(*) AS users\n",
+        "FROM silver.users\n",
+        "WHERE verdict IS NOT NULL\n",
+        "GROUP BY verdict\n"
+      ]
+    },
+    {
+      "name": "recent_confirmed_bots",
+      "displayName": "Recent confirmed bots",
+      "queryLines": [
+        "SELECT username, verdict, round(bot_probability, 2) AS bot_probability,\n",
+        "  persona_label, user_status, investigated_at\n",
+        "FROM silver.users\n",
+        "WHERE verdict IN ('bot', 'likely-bot')\n",
+        "  AND user_status IN ('deleted', 'suspended')\n",
+        "ORDER BY investigated_at DESC\n",
+        "LIMIT 10\n"
+      ]
+    },
+    {
+      "name": "persona_distribution",
+      "displayName": "Persona distribution",
+      "queryLines": [
+        "SELECT persona_label, count(*) AS users\n",
+        "FROM silver.users\n",
+        "WHERE persona_label IS NOT NULL\n",
+        "GROUP BY persona_label\n"
+      ]
+    },
+    {
+      "name": "verdict_outcomes",
+      "displayName": "Verdict outcomes",
+      "queryLines": [
+        "SELECT verdict, user_status, count(*) AS users\n",
+        "FROM silver.users\n",
+        "WHERE verdict IS NOT NULL AND user_status IS NOT NULL\n",
+        "GROUP BY verdict, user_status\n"
+      ]
+    },
+    {
+      "name": "reports_weekly",
+      "displayName": "Reports per week",
+      "queryLines": [
+        "SELECT date_trunc('week', reported_at) AS week, count(*) AS reports\n",
+        "FROM silver.report_events\n",
+        "GROUP BY week\n"
+      ]
+    },
+    {
+      "name": "top_reported_subreddits",
+      "displayName": "Top reported subreddits",
+      "queryLines": [
+        "SELECT subreddit, count(*) AS reports\n",
+        "FROM silver.report_events\n",
+        "WHERE subreddit IS NOT NULL\n",
+        "GROUP BY subreddit\n",
+        "ORDER BY reports DESC\n",
+        "LIMIT 10\n"
+      ]
+    }
+  ],
+  "pages": [
+    {
+      "name": "overview",
+      "displayName": "Overview",
+      "layout": [
+        {
+          "widget": {
+            "name": "counter_users_tracked",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "headline_counts",
+                  "fields": [{ "name": "users_tracked", "expression": "`users_tracked`" }],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "frame": { "showTitle": true, "title": "Users tracked" },
+              "encodings": {
+                "value": { "fieldName": "users_tracked", "displayName": "Users tracked" }
+              }
+            }
+          },
+          "position": { "x": 0, "y": 0, "width": 2, "height": 3 }
+        },
+        {
+          "widget": {
+            "name": "counter_bot_side_verdicts",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "headline_counts",
+                  "fields": [{ "name": "bot_side_verdicts", "expression": "`bot_side_verdicts`" }],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "frame": { "showTitle": true, "title": "Bot-side verdicts" },
+              "encodings": {
+                "value": { "fieldName": "bot_side_verdicts", "displayName": "Bot-side verdicts" }
+              }
+            }
+          },
+          "position": { "x": 2, "y": 0, "width": 2, "height": 3 }
+        },
+        {
+          "widget": {
+            "name": "counter_gone_accounts",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "headline_counts",
+                  "fields": [{ "name": "gone_accounts", "expression": "`gone_accounts`" }],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "frame": { "showTitle": true, "title": "Suspended or deleted" },
+              "encodings": {
+                "value": { "fieldName": "gone_accounts", "displayName": "Suspended or deleted" }
+              }
+            }
+          },
+          "position": { "x": 4, "y": 0, "width": 2, "height": 3 }
+        },
+        {
+          "widget": {
+            "name": "chart_verdicts",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "verdict_distribution",
+                  "fields": [
+                    { "name": "verdict", "expression": "`verdict`" },
+                    { "name": "users", "expression": "`users`" }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "frame": { "showTitle": true, "title": "Verdict distribution" },
+              "encodings": {
+                "x": {
+                  "fieldName": "verdict",
+                  "scale": { "type": "categorical", "sort": { "by": "y-reversed" } },
+                  "displayName": "Verdict"
+                },
+                "y": {
+                  "fieldName": "users",
+                  "scale": { "type": "quantitative" },
+                  "displayName": "Users"
+                }
+              }
+            }
+          },
+          "position": { "x": 0, "y": 3, "width": 3, "height": 6 }
+        },
+        {
+          "widget": {
+            "name": "table_recent_confirmed_bots",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "recent_confirmed_bots",
+                  "fields": [
+                    { "name": "username", "expression": "`username`" },
+                    { "name": "verdict", "expression": "`verdict`" },
+                    { "name": "bot_probability", "expression": "`bot_probability`" },
+                    { "name": "persona_label", "expression": "`persona_label`" },
+                    { "name": "user_status", "expression": "`user_status`" },
+                    { "name": "investigated_at", "expression": "`investigated_at`" }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "table",
+              "frame": { "showTitle": true, "title": "Recent confirmed bots" },
+              "encodings": {
+                "columns": [
+                  { "fieldName": "username" },
+                  { "fieldName": "verdict" },
+                  { "fieldName": "bot_probability" },
+                  { "fieldName": "persona_label" },
+                  { "fieldName": "user_status" },
+                  { "fieldName": "investigated_at" }
+                ]
+              },
+              "data": { "queryName": "main_query" }
+            }
+          },
+          "position": { "x": 3, "y": 3, "width": 3, "height": 6 }
+        },
+        {
+          "widget": {
+            "name": "chart_personas",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "persona_distribution",
+                  "fields": [
+                    { "name": "persona_label", "expression": "`persona_label`" },
+                    { "name": "users", "expression": "`users`" }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "frame": { "showTitle": true, "title": "Persona distribution" },
+              "encodings": {
+                "x": {
+                  "fieldName": "users",
+                  "scale": { "type": "quantitative" },
+                  "displayName": "Users"
+                },
+                "y": {
+                  "fieldName": "persona_label",
+                  "scale": { "type": "categorical", "sort": { "by": "x-reversed" } },
+                  "displayName": "Persona"
+                }
+              }
+            }
+          },
+          "position": { "x": 0, "y": 9, "width": 3, "height": 6 }
+        },
+        {
+          "widget": {
+            "name": "chart_outcomes",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "verdict_outcomes",
+                  "fields": [
+                    { "name": "verdict", "expression": "`verdict`" },
+                    { "name": "user_status", "expression": "`user_status`" },
+                    { "name": "users", "expression": "`users`" }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "frame": { "showTitle": true, "title": "Account status by verdict" },
+              "encodings": {
+                "x": {
+                  "fieldName": "verdict",
+                  "scale": { "type": "categorical", "sort": { "by": "y-reversed" } },
+                  "displayName": "Verdict"
+                },
+                "y": {
+                  "fieldName": "users",
+                  "scale": { "type": "quantitative" },
+                  "displayName": "Users"
+                },
+                "color": {
+                  "fieldName": "user_status",
+                  "scale": { "type": "categorical" },
+                  "displayName": "Account status"
+                }
+              }
+            }
+          },
+          "position": { "x": 3, "y": 9, "width": 3, "height": 6 }
+        },
+        {
+          "widget": {
+            "name": "chart_reports_weekly",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "reports_weekly",
+                  "fields": [
+                    { "name": "week", "expression": "`week`" },
+                    { "name": "reports", "expression": "`reports`" }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "line",
+              "frame": { "showTitle": true, "title": "Operator reports per week" },
+              "encodings": {
+                "x": {
+                  "fieldName": "week",
+                  "scale": { "type": "temporal" },
+                  "displayName": "Week"
+                },
+                "y": {
+                  "fieldName": "reports",
+                  "scale": { "type": "quantitative" },
+                  "displayName": "Reports"
+                }
+              }
+            }
+          },
+          "position": { "x": 0, "y": 15, "width": 3, "height": 6 }
+        },
+        {
+          "widget": {
+            "name": "chart_top_subreddits",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "top_reported_subreddits",
+                  "fields": [
+                    { "name": "subreddit", "expression": "`subreddit`" },
+                    { "name": "reports", "expression": "`reports`" }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "frame": { "showTitle": true, "title": "Top reported subreddits" },
+              "encodings": {
+                "x": {
+                  "fieldName": "reports",
+                  "scale": { "type": "quantitative" },
+                  "displayName": "Reports"
+                },
+                "y": {
+                  "fieldName": "subreddit",
+                  "scale": { "type": "categorical", "sort": { "by": "x-reversed" } },
+                  "displayName": "Subreddit"
+                }
+              }
+            }
+          },
+          "position": { "x": 3, "y": 15, "width": 3, "height": 6 }
+        }
+      ]
+    }
+  ]
+}

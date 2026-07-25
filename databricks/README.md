@@ -31,6 +31,15 @@ snapshots. `DROP TABLE bronze.reports` and rerun to force a full re-ingest.
 Silver and gold are full rebuilds from bronze; the five silver tables build
 concurrently.
 
+## Dashboard
+
+`./databricks/publish_dashboard.sh` creates-or-updates the "Bot or Not —
+Overview" AI/BI dashboard from `dashboards/overview.lvdash.json` and publishes
+it with embedded credentials. The JSON file is the canonical definition; edits
+made in the Databricks UI are overwritten on the next run. The published
+dashboard reads the silver tables live, so re-running the pipeline after a
+fresh export refreshes every tile.
+
 ## Files
 
 - `prepare_export.py` — local reshape: export JSON object → JSONL lines.
@@ -40,6 +49,8 @@ concurrently.
 - `run_pipeline.sh` — the single pipeline entry point: syncs `notebooks/` into
   the workspace and submits a one-off Databricks job run with one task per
   layer (bronze → silver → gold). New layers get added as tasks here.
+- `publish_dashboard.sh` — create-or-update + publish the overview dashboard
+  from `dashboards/overview.lvdash.json`.
 - `notebooks/` — the **canonical** transformation code (`01_bronze_ingest`,
   `02_silver_build`, `03_gold_build`). Each notebook ends with `dbutils.notebook.exit(...)`
   returning its sanity counts to the pipeline runner; the same notebooks are
