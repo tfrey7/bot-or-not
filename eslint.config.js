@@ -21,31 +21,27 @@ export default tseslint.config(
         {
           type: "feature",
           pattern: "src/features/*",
-          mode: "folder",
           capture: ["name"],
         },
-        {
-          // Catch-all for everything else under src/ — entry points,
-          // shared utils, top-level domain modules. Unconstrained by
-          // the rule below; declared only so dependencies originating
-          // here aren't classified as "unknown" and skipped.
-          type: "other",
-          pattern: "src/**/*",
-          mode: "file",
-        },
       ],
+
+      // Catch-all for everything else under src/ — entry points,
+      // shared utils, top-level domain modules. Unconstrained by
+      // the rule below; declared only so dependencies originating
+      // here aren't classified as "unknown" and skipped.
+      "boundaries/files": [{ pattern: "src/**/*", category: "other" }],
     },
     rules: {
       "boundaries/dependencies": [
         "error",
         {
           default: "allow",
-          rules: [
+          policies: [
             {
-              to: { type: "feature" },
-              disallow: { to: { internalPath: "!(index.*)" } },
+              to: { element: { type: "feature" } },
+              disallow: { to: { fileInternalPath: "!(index.*)" } },
               message:
-                "Cross-feature imports must terminate at the feature's index.ts (file ${to.internalPath} is feature-internal).",
+                "Cross-feature imports must terminate at the feature's index.ts (file {{to.fileInternalPath}} is feature-internal).",
             },
           ],
         },
