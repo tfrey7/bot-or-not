@@ -1,6 +1,9 @@
 // Background-sweeps card summarizing the daily blocklist cleanup: last
-// sweep stats, the recent-sweep trend, and the most recently freed slots.
+// sweep stats, the recent-sweep trend, the most recently freed slots, and
+// the manual trigger for an immediate comprehensive sweep.
 
+import { useState } from "preact/hooks";
+import { clientSend } from "../../client.ts";
 import { BLOCKLIST_TARGET_COUNT } from "../blocklist-cleanup";
 import type {
   BlocklistCleanupState,
@@ -59,8 +62,45 @@ export function SweepBlocklistCard({
         {state.unblocked.length > 0 && (
           <RecentUnblocks unblocked={state.unblocked} />
         )}
+        <SweepNowButton />
       </div>
     </ChartCard>
+  );
+}
+
+function SweepNowButton() {
+  const [status, setStatus] = useState<string | null>(null);
+
+  async function run(): Promise<void> {
+    setStatus("Starting…");
+
+    const result = await clientSend<{
+      started: boolean;
+      reason: "paused" | "already-running" | null;
+    }>({ type: "run-blocklist-sweep" });
+
+    if (result.started) {
+      setStatus(
+        "Sweep running — every blocked account gets a fresh probe. It drains on the background trickle over many minutes; stats above update as batches land."
+      );
+    } else if (result.reason === "paused") {
+      setStatus("Not started — background maintenance is paused.");
+    } else {
+      setStatus("A sweep is already running.");
+    }
+  }
+
+  return (
+    <div class="bon-sweep-now">
+      <button
+        class="bon-btn"
+        title="Probe every blocked account now, ignoring the daily gate and probe budget"
+        onClick={() => void run()}
+      >
+        Run comprehensive sweep
+      </button>
+      {status && <span class="bon-sweep-now-status">{status}</span>}
+    </div>
   );
 }
 

@@ -42,6 +42,7 @@ import {
   blocklistCleanupGetState,
   blocklistCleanupSweep,
   blocklistReblock,
+  blocklistRunComprehensiveSweep,
   blocklistSweepAlarmInit,
   blocklistSweepOnAlarm,
   blocklistTripwireList,
@@ -198,6 +199,7 @@ const PRIVILEGED_MESSAGES = new Set([
   "set-llm-selection",
   "set-hide-pii",
   "set-maintenance-paused",
+  "run-blocklist-sweep",
   "clear-all-reports",
   "delete-report",
   "sync-export",
@@ -286,6 +288,10 @@ browser.runtime.onMessage.addListener((message: BaseMessage, sender) => {
 
   if (message.type === "blocklist-reblock") {
     return blocklistReblock(message.username as string);
+  }
+
+  if (message.type === "run-blocklist-sweep") {
+    return blocklistRunComprehensiveSweep();
   }
 
   if (message.type === "update-user-status") {

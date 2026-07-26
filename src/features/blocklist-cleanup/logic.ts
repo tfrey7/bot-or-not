@@ -90,12 +90,15 @@ export function recordProbe(
 // throwaways get abandoned; high-karma accounts are ongoing operations),
 // oldest check first as the tiebreak. `reports` may be keyed with any
 // casing; blocked names come in Reddit's canonical casing, so matching is
-// by lowercase.
+// by lowercase. Comprehensive mode (the operator-triggered sweep) drops
+// both the staleness gate and the probe budget: every blocked account is
+// a candidate.
 export function selectSweepCandidates(
   blocked: BlockedUser[],
   reports: Record<string, Report>,
   probes: Record<string, BlocklistProbe>,
-  now: number
+  now: number,
+  comprehensive = false
 ): { candidates: SweepCandidate[]; dueCount: number } {
   const reportsByLower = new Map<string, Report>();
 
@@ -132,7 +135,11 @@ export function selectSweepCandidates(
     // userStatusCheckedAt — the status re-check keeps that fresh for
     // reported accounts, which would starve their karma streaks here.
     const probe = probes[key];
-    if (probe !== undefined && now - probe.at < LIVENESS_STALE_MS) {
+    if (
+      !comprehensive &&
+      probe !== undefined &&
+      now - probe.at < LIVENESS_STALE_MS
+    ) {
       continue;
     }
 
@@ -159,7 +166,9 @@ export function selectSweepCandidates(
   const due = [...knownDead, ...stale.map((entry) => entry.candidate)];
 
   return {
-    candidates: due.slice(0, sweepProbeBudget(blocked.length)),
+    candidates: comprehensive
+      ? due
+      : due.slice(0, sweepProbeBudget(blocked.length)),
     dueCount: due.length,
   };
 }

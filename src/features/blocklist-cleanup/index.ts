@@ -77,6 +77,11 @@ export function blocklistSweepOnAlarm(alarm: browser.alarms.Alarm): void {
   void blocklistCleanupSweep();
 }
 
+// One sweep at a time: the operator-triggered comprehensive pass bypasses
+// the daily gate, so the gate alone can no longer prevent overlap with the
+// alarm-driven sweep (or a double click).
+let sweepInFlight = false;
+
 export async function blocklistCleanupSweep(): Promise<void> {
   if (await readMaintenancePaused()) {
     return;
@@ -92,49 +97,90 @@ export async function blocklistCleanupSweep(): Promise<void> {
     return;
   }
 
-  // Claim the daily gate before the probes: they drain through the funnel's
-  // background trickle over many minutes, and a worker death mid-sweep must
-  // not cause a full re-list + re-probe on the next wake. Real counts land
-  // in the batch flushes and the final write below.
-  await writeBlocklistCleanupState({
-    ...state,
-    lastSweep: emptySummary(now, state.lastSweep?.blockedCount ?? 0),
-  });
+  await sweep(state, now, false);
+}
 
-  let blocked: BlockedUser[];
-  try {
-    blocked = await fetchBlockedUsers();
-  } catch (error) {
-    console.warn(
-      "[Bot or Not] blocklist cleanup: block list fetch failed",
-      error
-    );
+// Operator-triggered from the analytics card: runs immediately (no daily
+// gate) and probes every blocked account instead of the budgeted stale
+// slice. Resolves once the sweep is underway — completion takes many
+// minutes on the background trickle, so the caller only learns whether it
+// started.
+export async function blocklistRunComprehensiveSweep(): Promise<{
+  started: boolean;
+  reason: "paused" | "already-running" | null;
+}> {
+  if (sweepInFlight) {
+    return { started: false, reason: "already-running" };
+  }
 
-    // Un-claim so a transient listing failure retries on the next wake.
-    const current = await readBlocklistCleanupState();
-    await writeBlocklistCleanupState({
-      ...current,
-      lastSweep: state.lastSweep,
-    });
+  if (await readMaintenancePaused()) {
+    return { started: false, reason: "paused" };
+  }
 
+  const state = await readBlocklistCleanupState();
+  void sweep(state, Date.now(), true);
+
+  return { started: true, reason: null };
+}
+
+async function sweep(
+  state: BlocklistCleanupState,
+  now: number,
+  comprehensive: boolean
+): Promise<void> {
+  if (sweepInFlight) {
     return;
   }
 
-  try {
-    await runSweep(state, blocked, now);
-  } catch (error) {
-    console.warn(
-      "[Bot or Not] blocklist cleanup: sweep failed mid-pass",
-      error
-    );
+  sweepInFlight = true;
 
-    // Un-claim the daily gate so the failure retries on the next wake
-    // instead of silently skipping a day.
-    const current = await readBlocklistCleanupState();
+  try {
+    // Claim the daily gate before the probes: they drain through the
+    // funnel's background trickle over many minutes, and a worker death
+    // mid-sweep must not cause a full re-list + re-probe on the next wake.
+    // Real counts land in the batch flushes and the final write below.
     await writeBlocklistCleanupState({
-      ...current,
-      lastSweep: state.lastSweep,
+      ...state,
+      lastSweep: emptySummary(now, state.lastSweep?.blockedCount ?? 0),
     });
+
+    let blocked: BlockedUser[];
+    try {
+      blocked = await fetchBlockedUsers();
+    } catch (error) {
+      console.warn(
+        "[Bot or Not] blocklist cleanup: block list fetch failed",
+        error
+      );
+
+      // Un-claim so a transient listing failure retries on the next wake.
+      const current = await readBlocklistCleanupState();
+      await writeBlocklistCleanupState({
+        ...current,
+        lastSweep: state.lastSweep,
+      });
+
+      return;
+    }
+
+    try {
+      await runSweep(state, blocked, now, comprehensive);
+    } catch (error) {
+      console.warn(
+        "[Bot or Not] blocklist cleanup: sweep failed mid-pass",
+        error
+      );
+
+      // Un-claim the daily gate so the failure retries on the next wake
+      // instead of silently skipping a day.
+      const current = await readBlocklistCleanupState();
+      await writeBlocklistCleanupState({
+        ...current,
+        lastSweep: state.lastSweep,
+      });
+    }
+  } finally {
+    sweepInFlight = false;
   }
 }
 
@@ -143,7 +189,8 @@ export async function blocklistCleanupSweep(): Promise<void> {
 async function runSweep(
   state: BlocklistCleanupState,
   blocked: BlockedUser[],
-  now: number
+  now: number,
+  comprehensive: boolean
 ): Promise<void> {
   const reports = await readReportSummaries();
   const probes = pruneProbes(state.probes, blocked);
@@ -151,15 +198,18 @@ async function runSweep(
     blocked,
     reports,
     probes,
-    now
+    now,
+    comprehensive
   );
 
   const summary = emptySummary(now, blocked.length);
-  summary.probeBudget = sweepProbeBudget(blocked.length);
+  summary.probeBudget = comprehensive
+    ? candidates.length
+    : sweepProbeBudget(blocked.length);
   summary.dueCount = dueCount;
 
   console.log(
-    `[Bot or Not] blocklist cleanup: ${blocked.length} blocked account(s), ${dueCount} due for a liveness probe, probing ${candidates.length}`
+    `[Bot or Not] blocklist cleanup${comprehensive ? " (comprehensive)" : ""}: ${blocked.length} blocked account(s), ${dueCount} due for a liveness probe, probing ${candidates.length}`
   );
 
   const dead: SweepCandidate[] = [];
