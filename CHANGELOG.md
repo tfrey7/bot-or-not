@@ -2,6 +2,11 @@
 
 Notable changes to Bot or Not. Signed `.xpi` builds for each version are attached to the matching [GitHub Release](https://github.com/tfrey7/bot-or-not/releases).
 
+## [9.3.0] — 2026-07-26
+- Evict blocked accounts under 1000 karma from the block list
+- Move inline Python out of the databricks shell scripts
+- Add install-into-Firefox as the final publish step
+
 ## [9.2.0] — 2026-07-26
 - Add manual comprehensive blocklist sweep button to the analytics card
 - Add Reported posts section to the dossier detail pane
