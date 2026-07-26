@@ -2,6 +2,15 @@
 
 Notable changes to Bot or Not. Signed `.xpi` builds for each version are attached to the matching [GitHub Release](https://github.com/tfrey7/bot-or-not/releases).
 
+## [9.2.0] — 2026-07-26
+- Add manual comprehensive blocklist sweep button to the analytics card
+- Add Reported posts section to the dossier detail pane
+- Convert run_pipeline.sh to Python
+- Add Geography dashboard page backed by region/subreddit gold tables
+- Deepen fixture harvester: union new/top/controversial sorts at Reddit's 1000-item listing cap
+- Add overview AI/BI dashboard with create-or-update publishing
+- Speed up the pipeline: incremental bronze ingest, parallel silver builds
+
 ## [9.1.0] — 2026-07-25
 - Convert shipped artwork to WebP, cutting the xpi from 16 MB to 3.3 MB
 - Add gold layer: subreddit_fingerprints (TF-IDF attention vectors)
