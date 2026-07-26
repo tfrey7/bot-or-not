@@ -50,6 +50,9 @@ export interface BlocklistSweepSummary {
   aliveCount: number;
   unblockedDead: number;
   unblockedDormant: number;
+
+  // Older stored summaries predate this field.
+  unblockedLowKarma?: number;
   trackedCount: number;
   matureCount: number;
 }
@@ -74,7 +77,7 @@ export interface BlocklistCleanupState {
   unblocked: Array<{
     username: string;
     at: number;
-    reason: "dead" | "dormant";
+    reason: "dead" | "dormant" | "low-karma";
   }>;
   watchlist: Record<string, BlocklistWatchEntry>;
   reblocked: Array<{ username: string; at: number }>;

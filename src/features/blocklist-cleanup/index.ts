@@ -26,9 +26,11 @@ import {
 import { fetchBlockedUsers, fetchSelfIdentity, postUnblock } from "./fetch.ts";
 import type { BlockedUser, SweepCandidate } from "./logic.ts";
 import {
+  LOW_KARMA_EVICTION_MAX,
   pruneProbes,
   recordProbe,
   selectDormantEvictions,
+  selectLowKarmaEvictions,
   selectSweepCandidates,
   streakStats,
   sweepProbeBudget,
@@ -40,7 +42,7 @@ export {
   blocklistTripwireList,
 } from "./handlers.ts";
 export { blocklistTripwireInit, blocklistTripwireScan } from "./tripwire.ts";
-export { BLOCKLIST_TARGET_COUNT } from "./logic.ts";
+export { BLOCKLIST_TARGET_COUNT, LOW_KARMA_EVICTION_MAX } from "./logic.ts";
 
 // The sweep starts by refetching the whole block list (up to 10 pages), so
 // unlike the per-account-gated status re-check it needs its own gate to keep
@@ -272,16 +274,30 @@ async function runSweep(
     `[Bot or Not] blocklist cleanup: ${alive.length} probe(s) came back active, ${summary.matureCount} account(s) eviction-ready`
   );
 
-  const dormant = selectDormantEvictions(blocked.length - dead.length, alive);
+  const lowKarma = selectLowKarmaEvictions(alive);
+  const lowKarmaKeys = new Set(
+    lowKarma.map((entry) => entry.candidate.username.toLowerCase())
+  );
+  const dormant = selectDormantEvictions(
+    blocked.length - dead.length - lowKarma.length,
+    alive.filter(
+      (entry) => !lowKarmaKeys.has(entry.candidate.username.toLowerCase())
+    )
+  );
   const evictions: Array<{
     candidate: SweepCandidate;
-    reason: "dead" | "dormant";
+    reason: "dead" | "dormant" | "low-karma";
     watch: BlocklistWatchEntry | null;
   }> = [
     ...dead.map((candidate) => ({
       candidate,
       reason: "dead" as const,
       watch: null,
+    })),
+    ...lowKarma.map((entry) => ({
+      candidate: entry.candidate,
+      reason: "low-karma" as const,
+      watch: { at: now, karma: entry.probe.karma },
     })),
     ...dormant.map((entry) => ({
       candidate: entry.candidate,
@@ -316,16 +332,21 @@ async function runSweep(
 
           if (reason === "dead") {
             summary.unblockedDead++;
+          } else if (reason === "low-karma") {
+            summary.unblockedLowKarma = (summary.unblockedLowKarma ?? 0) + 1;
           } else {
             summary.unblockedDormant++;
           }
 
+          const reasonText =
+            reason === "dead"
+              ? "account is gone"
+              : reason === "low-karma"
+                ? `alive but under ${LOW_KARMA_EVICTION_MAX} karma`
+                : "dormant under slot pressure";
+
           console.log(
-            `[Bot or Not] blocklist cleanup: unblocked ${candidate.username} — ${
-              reason === "dead"
-                ? "account is gone"
-                : "dormant under slot pressure"
-            }, slot freed`
+            `[Bot or Not] blocklist cleanup: unblocked ${candidate.username} — ${reasonText}, slot freed`
           );
         } catch (error) {
           console.warn(
@@ -378,6 +399,7 @@ function emptySummary(at: number, blockedCount: number): BlocklistSweepSummary {
     aliveCount: 0,
     unblockedDead: 0,
     unblockedDormant: 0,
+    unblockedLowKarma: 0,
     trackedCount: 0,
     matureCount: 0,
   };

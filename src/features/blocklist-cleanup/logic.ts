@@ -29,6 +29,12 @@ const DORMANCY_MS = 42 * 24 * 60 * 60 * 1000;
 // back up.
 export const BLOCKLIST_TARGET_COUNT = 850;
 
+// An account still under this much total karma isn't worth a slot in the
+// 1000-cap block list — throwaways and warmup-phase accounts sit here, and
+// the tripwire re-blocks any that return to activity. Unlike dormancy
+// eviction this applies regardless of slot pressure.
+export const LOW_KARMA_EVICTION_MAX = 1000;
+
 export function sweepProbeBudget(blockedCount: number): number {
   const forFullCoverage = Math.ceil(blockedCount / PROBE_COVERAGE_SWEEPS);
 
@@ -196,6 +202,19 @@ export function streakStats(probes: Record<string, BlocklistProbe>): {
   }
 
   return { tracked, mature };
+}
+
+// Alive accounts whose freshly-probed karma sits under the low-karma line.
+// Like every eviction, rests on a probe from this very sweep — a stored
+// karma number never authorizes an unblock.
+export function selectLowKarmaEvictions(
+  probedAlive: Array<{ candidate: SweepCandidate; probe: BlocklistProbe }>
+): Array<{ candidate: SweepCandidate; probe: BlocklistProbe }> {
+  return probedAlive.filter(
+    (entry) =>
+      entry.probe.karma !== null &&
+      entry.probe.karma.total < LOW_KARMA_EVICTION_MAX
+  );
 }
 
 // Dormant accounts to evict this sweep, only ever from the set probed alive

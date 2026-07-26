@@ -4,7 +4,10 @@
 
 import { useState } from "preact/hooks";
 import { clientSend } from "../../client.ts";
-import { BLOCKLIST_TARGET_COUNT } from "../blocklist-cleanup";
+import {
+  BLOCKLIST_TARGET_COUNT,
+  LOW_KARMA_EVICTION_MAX,
+} from "../blocklist-cleanup";
 import type {
   BlocklistCleanupState,
   BlocklistSweepSummary,
@@ -24,7 +27,7 @@ export function SweepBlocklistCard({
   return (
     <ChartCard
       title="Blocklist cleanup"
-      subtitle={`daily · unblocks dead accounts, evicts dormant ones down to ${BLOCKLIST_TARGET_COUNT}`}
+      subtitle={`daily · unblocks dead and sub-${LOW_KARMA_EVICTION_MAX}-karma accounts, evicts dormant ones down to ${BLOCKLIST_TARGET_COUNT}`}
     >
       <div>
         {state.lastSweep === null ? (
@@ -47,7 +50,7 @@ export function SweepBlocklistCard({
               ],
               [
                 "Freed last sweep",
-                `${state.lastSweep.unblockedDead} dead · ${state.lastSweep.unblockedDormant} dormant`,
+                `${state.lastSweep.unblockedDead} dead · ${state.lastSweep.unblockedLowKarma ?? 0} low-karma · ${state.lastSweep.unblockedDormant} dormant`,
               ],
               ["Slots freed to date", String(state.unblocked.length)],
               [
@@ -114,8 +117,10 @@ function RecentSweeps({ history }: { history: BlocklistSweepSummary[] }) {
           <span>{sweep.blockedCount} blocked</span>
           <span class="bon-sweep-when">
             probed {sweep.probedCount} · freed{" "}
-            {sweep.unblockedDead + sweep.unblockedDormant} ·{" "}
-            {formatDate(sweep.at)}
+            {sweep.unblockedDead +
+              sweep.unblockedDormant +
+              (sweep.unblockedLowKarma ?? 0)}{" "}
+            · {formatDate(sweep.at)}
           </span>
         </li>
       ))}
