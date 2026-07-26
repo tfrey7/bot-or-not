@@ -11,12 +11,7 @@ DASHBOARD_FILE="$SCRIPT_DIR/dashboards/overview.lvdash.json"
 
 source "$SCRIPT_DIR/sql.sh"
 
-DASHBOARD_ID="$(databricks lakeview list --output json | python3 -c "
-import json, sys
-dashboards = json.load(sys.stdin)
-matches = [d for d in dashboards if d.get('display_name') == sys.argv[1]]
-print(matches[0]['dashboard_id'] if matches else '')
-" "$DISPLAY_NAME")"
+DASHBOARD_ID="$(databricks lakeview list --output json | python3 "$SCRIPT_DIR/dashboard_id.py" "$DISPLAY_NAME")"
 
 if [[ -z "$DASHBOARD_ID" ]]; then
   echo "Creating dashboard \"$DISPLAY_NAME\"..."
@@ -25,7 +20,7 @@ if [[ -z "$DASHBOARD_ID" ]]; then
     --serialized-dashboard "$(cat "$DASHBOARD_FILE")" \
     --warehouse-id "$WAREHOUSE_ID" \
     --dataset-catalog "$CATALOG" \
-    --output json | python3 -c "import json,sys; print(json.load(sys.stdin)['dashboard_id'])")"
+    --output json | python3 "$SCRIPT_DIR/json_get.py" dashboard_id)"
 else
   echo "Updating dashboard \"$DISPLAY_NAME\" ($DASHBOARD_ID)..."
   databricks lakeview update "$DASHBOARD_ID" \
@@ -40,5 +35,5 @@ databricks lakeview publish "$DASHBOARD_ID" \
   --warehouse-id "$WAREHOUSE_ID" \
   --output json > /dev/null
 
-HOST="$(databricks auth describe --output json | python3 -c "import json,sys; print(json.load(sys.stdin)['details']['host'])")"
+HOST="$(databricks auth describe --output json | python3 "$SCRIPT_DIR/json_get.py" details.host)"
 echo "Published: $HOST/dashboardsv3/$DASHBOARD_ID/published"
