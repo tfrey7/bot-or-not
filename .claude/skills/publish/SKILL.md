@@ -17,6 +17,9 @@ Operates on `main` once all desired features have been shipped. Commit message c
 6. Push: `git push && git push origin vX.Y.Z` (push the tag explicitly rather than `--tags` so stray local tags don't leak).
 7. Create the GitHub release with the signed `.xpi` attached:
    `gh release create vX.Y.Z web-ext-artifacts/*-X.Y.Z.xpi --title "vX.Y.Z" --generate-notes`
+8. Install the new version into the operator's Firefox (don't wait for the ~24h auto-update poll):
+   `open -a Firefox web-ext-artifacts/fe5aa4514b5d4cb3aa94-X.Y.Z.xpi`
+   This runs after the background chain completes (it needs the signed file and a human to click "Add" in the doorhanger, so it doesn't belong inside the chain). Tell the user to confirm the prompt, and mention re-granting in `about:addons` if the release added new `host_permissions` (Firefox doesn't auto-grant those on update).
 
 The `.xpi` lives in GitHub Releases (versioned, doesn't bloat the repo); `updates.json` lives at the repo root and is served by GitHub Pages at `https://tfrey7.github.io/bot-or-not/updates.json`. Firefox polls that URL for installed unlisted copies and auto-updates within ~24h. The `update_url` baked into `manifest.json` is what wires the two together.
 
