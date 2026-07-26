@@ -21,6 +21,7 @@ import {
   redditorsPassiveHarvestSection,
 } from "./passive_harvest_section.ts";
 import { redditorsProfileSection } from "./profile_section.ts";
+import { redditorsReportedPostsSection } from "./reported_posts_section.ts";
 import { redditorsUserNotesSection } from "./user_notes_section.ts";
 
 export interface DetailPaneOptions {
@@ -95,6 +96,14 @@ export function redditorsDetailPane(
       username,
     })
   );
+
+  // Report history stays visible even for deleted/suspended users — "their
+  // post got removed and then the account vanished" is exactly the outcome
+  // the operator wants to look back on.
+  const reportedPosts = redditorsReportedPostsSection(report);
+  if (reportedPosts) {
+    fragment.appendChild(reportedPosts);
+  }
 
   if (!userNotFound) {
     // Google dossier — operator-curated context (not AI-derived). Returns
