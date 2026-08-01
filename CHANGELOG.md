@@ -2,6 +2,9 @@
 
 Notable changes to Bot or Not. Signed `.xpi` builds for each version are attached to the matching [GitHub Release](https://github.com/tfrey7/bot-or-not/releases).
 
+## [9.4.1] — 2026-08-01
+- Anchor the profile dossier under the status message on banned pages
+
 ## [9.4.0] — 2026-08-01
 - Add Reported tab: all reported posts across users with takedown status
 
