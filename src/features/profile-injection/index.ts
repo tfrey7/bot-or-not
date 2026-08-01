@@ -61,16 +61,11 @@ function findContentColumn(h1: HTMLHeadingElement): HTMLElement | null {
     cursor = cursor.parentElement;
   }
 
-  // Fallback: walk up to <main> or shreddit-app and pin to its first child.
-  const main = h1.closest(
-    'main, [role="main"], shreddit-app'
-  ) as HTMLElement | null;
-
-  if (main) {
-    return (main.firstElementChild as HTMLElement | null) ?? main;
-  }
-
-  return null;
+  // No profile tabs — banned/suspended interstitials render a bare status
+  // message instead of the profile chrome. Anchor to the message's own
+  // block so the dossier lands beneath it rather than at the top of
+  // whatever <main>'s first child happens to be.
+  return h1.parentElement;
 }
 
 function isMisplaced(container: HTMLElement): boolean {
