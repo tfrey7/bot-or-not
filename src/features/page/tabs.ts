@@ -7,6 +7,7 @@ const PAGE_TABS = [
   "personas",
   "fieldguide",
   "subreddits",
+  "reported",
   "settings",
 ] as const;
 export type PageTab = (typeof PAGE_TABS)[number];

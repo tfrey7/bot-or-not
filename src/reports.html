@@ -16,6 +16,7 @@
     <link rel="stylesheet" href="features/analytics/analytics.css" />
     <link rel="stylesheet" href="features/personas/personas.css" />
     <link rel="stylesheet" href="features/subreddits/subreddits.css" />
+    <link rel="stylesheet" href="features/reported-posts/reported_posts.css" />
     <link rel="stylesheet" href="features/settings/settings.css" />
     <link rel="stylesheet" href="features/sync/sync.css" />
   </head>
@@ -116,6 +117,17 @@
             class="bon-tab"
             role="tab"
             aria-selected="false"
+            aria-controls="bon-panel-reported"
+            id="bon-tab-reported"
+            data-tab="reported"
+          >
+            Reported
+          </button>
+          <button
+            type="button"
+            class="bon-tab"
+            role="tab"
+            aria-selected="false"
             aria-controls="bon-panel-metrics"
             id="bon-tab-metrics"
             data-tab="metrics"
@@ -185,6 +197,16 @@
       >
         <!-- Preact root — the subreddits feature renders the split here. -->
         <div class="bon-split" id="bon-subreddits-split"></div>
+      </section>
+
+      <section
+        class="bon-tab-panel"
+        role="tabpanel"
+        id="bon-panel-reported"
+        aria-labelledby="bon-tab-reported"
+        hidden
+      >
+        <div id="bon-reported-container"></div>
       </section>
 
       <section

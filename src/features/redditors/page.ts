@@ -9,6 +9,7 @@
 import { clientSend, clientSubscribe } from "../../client.ts";
 import { renderAnalyticsLoading, renderAnalyticsTab } from "../analytics";
 import { renderFieldGuideTab, renderPersonasTab } from "../personas";
+import { renderReportedPostsTab } from "../reported-posts";
 import { subredditsMountTab } from "../subreddits";
 import { renderSync } from "../sync";
 import type { Report } from "../../types.ts";
@@ -41,6 +42,9 @@ export async function redditorsRenderReportsPage(): Promise<void> {
   ) as HTMLElement | null;
   const subredditsSplitEl = document.getElementById(
     "bon-subreddits-split"
+  ) as HTMLElement | null;
+  const reportedContainer = document.getElementById(
+    "bon-reported-container"
   ) as HTMLElement | null;
   const settingsStripContainer = document.getElementById(
     "bon-settings-strip"
@@ -184,6 +188,15 @@ export async function redditorsRenderReportsPage(): Promise<void> {
     if (target === "fieldguide") {
       const reports = await ensureFullReports();
       renderFieldGuideTab(reports, fieldGuideContainer, {
+        onSelectUser: navigateToUser,
+      });
+
+      return;
+    }
+
+    if (target === "reported") {
+      const reports = await ensureFullReports();
+      renderReportedPostsTab(reports, reportedContainer, {
         onSelectUser: navigateToUser,
       });
 
