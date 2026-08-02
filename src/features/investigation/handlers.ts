@@ -49,6 +49,7 @@ import {
   RED_FLAG_LIKELY_BOT_COUNT,
 } from "../../verdict.ts";
 import { scoreDeterministicFactors } from "./deterministic_factors.ts";
+import { REDDIT_DEEP_FETCH_LIMIT } from "./fetch.ts";
 import {
   extractSnoovatarUrl,
   gatherProfile,
@@ -118,7 +119,8 @@ export async function investigationSweepOrphans(): Promise<void> {
 
 export async function investigationStart(
   username: string,
-  autoTriggered = false
+  autoTriggered = false,
+  deepDive = false
 ): Promise<{ ok: boolean; queued?: boolean; error?: string }> {
   if (!username) {
     return { ok: false, error: "missing username" };
@@ -152,6 +154,7 @@ export async function investigationStart(
     priority: QUEUE_PRIORITY.interactive,
     attempts: 0,
     autoTriggered,
+    deepDive,
   });
   void enqueueInvestigation(username, QUEUE_PRIORITY.interactive);
 
@@ -223,6 +226,7 @@ export async function investigationStartBatch(
           error: null,
           attempts: 0,
           autoTriggered: true,
+          deepDive: false,
           runs: prevRuns,
           redditMetrics: prevInvestigation?.redditMetrics ?? null,
           results: null,
@@ -403,10 +407,12 @@ async function runOneAttempt(
 ): Promise<void> {
   const existingRecord =
     (await readReport(username)) ?? normalizeReport(undefined);
+  const deepDive = existingRecord.investigation?.deepDive === true;
 
   const inputs = await gatherProfile(
     username,
     {
+      ...(deepDive ? { fetchLimit: REDDIT_DEEP_FETCH_LIMIT } : {}),
       ...(existingRecord.botBouncerStatus
         ? { botBouncerStatus: existingRecord.botBouncerStatus }
         : {}),
@@ -788,6 +794,7 @@ type InvestigationTransition =
       durationMs?: number | null;
       attempts?: number;
       autoTriggered?: boolean;
+      deepDive?: boolean;
       redditMetrics?: RedditMetrics | null;
     }
   | {
@@ -835,6 +842,7 @@ function applyInvestigationTransition(
   const prevRedditMetrics = prevInvestigation?.redditMetrics ?? null;
   const prevPriority = prevInvestigation?.priority ?? QUEUE_PRIORITY.bulk;
   const prevAutoTriggered = prevInvestigation?.autoTriggered ?? false;
+  const prevDeepDive = prevInvestigation?.deepDive ?? false;
 
   // Older records have only the single most-recent investigation stored —
   // seed runs[] from those fields the first time we touch one so historical
@@ -860,6 +868,7 @@ function applyInvestigationTransition(
         error: null,
         attempts: transition.attempts ?? prevAttempts,
         autoTriggered: transition.autoTriggered ?? prevAutoTriggered,
+        deepDive: transition.deepDive ?? prevDeepDive,
         runs: prevRuns,
         redditMetrics: transition.redditMetrics ?? prevRedditMetrics,
         results: null,
@@ -876,6 +885,7 @@ function applyInvestigationTransition(
         error: null,
         attempts: transition.attempts,
         autoTriggered: prevAutoTriggered,
+        deepDive: prevDeepDive,
         runs: prevRuns,
         redditMetrics: prevRedditMetrics,
         results: null,
@@ -892,6 +902,7 @@ function applyInvestigationTransition(
         error: null,
         attempts: prevAttempts,
         autoTriggered: prevAutoTriggered,
+        deepDive: prevDeepDive,
         runs: prevRuns,
         redditMetrics: transition.redditMetrics,
         results: transition.results,
@@ -908,6 +919,7 @@ function applyInvestigationTransition(
         error: transition.error,
         attempts: prevAttempts,
         autoTriggered: prevAutoTriggered,
+        deepDive: prevDeepDive,
         runs: prevRuns,
         redditMetrics: transition.redditMetrics ?? prevRedditMetrics,
         results: null,

@@ -162,6 +162,12 @@ interface InvestigationLifecycle {
   // persisted so the orphan sweep can't change a run's origin.
   autoTriggered: boolean;
 
+  // True when the operator requested a Deep Dive: the Reddit fetch
+  // paginates to the API's 1000-item ceiling per listing instead of the
+  // default 500. Stamped at queue time and persisted so a worker restart
+  // keeps the requested depth; reset on the next ordinary enqueue.
+  deepDive: boolean;
+
   // Count of runs we've started for this investigation (1 = first try in
   // progress, etc.). Bumped when the run transitions to "running". Caps
   // out at INVESTIGATION_MAX_ATTEMPTS — failures past that stay as

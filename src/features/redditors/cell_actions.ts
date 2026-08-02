@@ -129,6 +129,57 @@ export function redditorsRenderInvestigateButton(
   return button;
 }
 
+// Secondary launcher: same run, but the Reddit fetch paginates to the
+// API's 1000-item ceiling per listing instead of the default 500. Hidden
+// while a run is queued/in flight — the primary button owns those states.
+export function redditorsRenderDeepDiveButton(
+  username: string,
+  investigation: Investigation | null | undefined,
+  {
+    onNoApiKey,
+    onInvestigate,
+  }: Pick<InvestigateButtonOpts, "onNoApiKey" | "onInvestigate">
+): HTMLButtonElement | null {
+  const queued = investigation?.status === "queued";
+  const running =
+    investigation?.status === "running" && !isInvestigationStale(investigation);
+
+  if (queued || running) {
+    return null;
+  }
+
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "bon-btn";
+  button.textContent = "Deep Dive";
+  button.title =
+    "Investigate with the deepest Reddit fetch — up to 1000 posts + 1000 comments (slower, heavier on Reddit)";
+  button.setAttribute("aria-label", button.title);
+
+  button.addEventListener("click", async () => {
+    button.disabled = true;
+    button.textContent = "Starting…";
+    onInvestigate?.();
+    try {
+      const response = await clientSend<{ ok?: boolean; error?: string }>({
+        type: "investigate-user",
+        username,
+        deepDive: true,
+      });
+
+      if (response?.ok === false && response.error === "no-api-key") {
+        onNoApiKey?.();
+      }
+    } catch (error) {
+      console.error("[Bot or Not] deep dive failed", error);
+      button.disabled = false;
+      button.textContent = "Deep Dive";
+    }
+  });
+
+  return button;
+}
+
 export function redditorsRenderDeleteButton(
   username: string
 ): HTMLButtonElement {

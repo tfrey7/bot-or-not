@@ -67,6 +67,10 @@ export interface GatherProfileExtra {
   botBouncerCheckedAt?: number;
   googleHarvest?: GoogleHarvest;
   passiveHarvest?: PassiveHarvest;
+
+  // Listing depth for the Reddit fetch. Defaults to REDDIT_FETCH_LIMIT;
+  // Deep Dive runs pass REDDIT_DEEP_FETCH_LIMIT.
+  fetchLimit?: number;
 }
 
 export interface GatheredProfile {
@@ -102,9 +106,10 @@ export async function gatherProfile(
   priority: number = QUEUE_PRIORITY.bulk
 ): Promise<GatheredProfile> {
   const wallStart = performance.now();
+  const fetchLimit = extra.fetchLimit ?? REDDIT_FETCH_LIMIT;
 
   const [profileSettled, botBouncerSettled] = await Promise.allSettled([
-    fetchRedditProfile(username, priority),
+    fetchRedditProfile(username, priority, fetchLimit),
     fetchBotBouncerStatus(username, priority),
   ]);
 
@@ -153,8 +158,9 @@ export async function gatherProfile(
     ...(botBouncerCheckedAt != null ? { botBouncerCheckedAt } : {}),
     ...(extra.googleHarvest ? { googleHarvest: extra.googleHarvest } : {}),
     ...(extra.passiveHarvest ? { passiveHarvest: extra.passiveHarvest } : {}),
+    fetchLimit,
   });
-  const activityData = extractActivityData(profile, REDDIT_FETCH_LIMIT);
+  const activityData = extractActivityData(profile, fetchLimit);
 
   return {
     summary,

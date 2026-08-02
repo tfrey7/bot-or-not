@@ -372,7 +372,11 @@ browser.runtime.onMessage.addListener((message: BaseMessage, sender) => {
   }
 
   if (message.type === "investigate-user") {
-    return investigationStart(message.username as string);
+    return investigationStart(
+      message.username as string,
+      false,
+      message.deepDive === true
+    );
   }
 
   if (message.type === "auto-investigate-on-view") {

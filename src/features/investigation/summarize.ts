@@ -71,6 +71,9 @@ export interface SummarizeExtra {
   botBouncerCheckedAt?: number;
   googleHarvest?: GoogleHarvest;
   passiveHarvest?: PassiveHarvest;
+
+  // Listing depth the profile was fetched at — drives sample_capped.
+  fetchLimit?: number;
 }
 
 export function summarizeProfile(
@@ -101,7 +104,11 @@ export function summarizeProfile(
     .filter(hasCommentContent);
 
   const moderatorRemovals = countRemovals(posts, comments);
-  const postingRate = computePostingRate(posts, comments);
+  const postingRate = computePostingRate(
+    posts,
+    comments,
+    extra.fetchLimit ?? REDDIT_FETCH_LIMIT
+  );
   const moderatedSubreddits = summarizeModerated(raw.moderated?.data);
   const topSubreddits = countTopSubreddits(posts, comments);
   const avatarCustomized = hasCustomSnoovatar(aboutData.snoovatar_img);
@@ -358,7 +365,8 @@ const RECENT_POSTING_WINDOW_DAYS = 30;
 
 function computePostingRate(
   posts: RawPost[],
-  comments: RawComment[]
+  comments: RawComment[],
+  fetchLimit: number
 ): PostingRate | null {
   const allTimestamps: number[] = [];
 
@@ -392,9 +400,7 @@ function computePostingRate(
       (recentCount / Math.max(recentWindowDays, 1 / 24)).toFixed(2)
     ),
     sample_size: allTimestamps.length,
-    sample_capped:
-      posts.length >= REDDIT_FETCH_LIMIT ||
-      comments.length >= REDDIT_FETCH_LIMIT,
+    sample_capped: posts.length >= fetchLimit || comments.length >= fetchLimit,
   };
 }
 

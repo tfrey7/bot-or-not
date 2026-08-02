@@ -7,6 +7,7 @@
 import { investigationResults } from "../../utils/history.ts";
 import { redditorsActivitySection } from "./activity_section.ts";
 import {
+  redditorsRenderDeepDiveButton,
   redditorsRenderDeleteButton,
   redditorsRenderInvestigateButton,
 } from "./cell_actions.ts";
@@ -76,6 +77,13 @@ export function redditorsDetailPane(
     googleHarvestCountFresh(report.googleHarvest, lastRunAt) +
     redditorsPassiveHarvestCountFresh(report.passiveHarvest, lastRunAt);
 
+  const deepDiveButton = userNotFound
+    ? null
+    : redditorsRenderDeepDiveButton(username, investigation, {
+        onNoApiKey,
+        onInvestigate,
+      });
+
   const actions = userNotFound
     ? [redditorsRenderGoogleSearchButton(username)]
     : [
@@ -86,6 +94,7 @@ export function redditorsDetailPane(
           onNoApiKey,
           onInvestigate,
         }),
+        ...(deepDiveButton ? [deepDiveButton] : []),
         redditorsRenderGoogleSearchButton(username),
       ];
 

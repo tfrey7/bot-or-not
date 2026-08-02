@@ -39,6 +39,11 @@ const REDDIT_PAGE_LIMIT = 100;
 // pressure when a sub kicks off 100 fresh investigations at once.
 export const REDDIT_FETCH_LIMIT = 500;
 
+// Deep Dive target: Reddit's hard per-listing ceiling. Only operator-
+// requested runs go this deep — the doubled Reddit pressure is fine for a
+// single account but not for a 100-user subreddit sweep.
+export const REDDIT_DEEP_FETCH_LIMIT = 1000;
+
 export class RedditFetchError extends Error {
   metrics: RedditMetrics;
   httpStatus: number | null;
@@ -259,7 +264,8 @@ export interface RedditProfileResult {
 
 export async function fetchRedditProfile(
   username: string,
-  priority: number = QUEUE_PRIORITY.bulk
+  priority: number = QUEUE_PRIORITY.bulk,
+  fetchLimit: number = REDDIT_FETCH_LIMIT
 ): Promise<RedditProfileResult> {
   const encodedUsername = encodeURIComponent(username);
   const [about, submitted, comments, moderated] = await Promise.all([
@@ -271,13 +277,13 @@ export async function fetchRedditProfile(
     measureFetchListingPaginated(
       "submitted",
       `https://www.reddit.com/user/${encodedUsername}/submitted.json`,
-      REDDIT_FETCH_LIMIT,
+      fetchLimit,
       priority
     ),
     measureFetchListingPaginated(
       "comments",
       `https://www.reddit.com/user/${encodedUsername}/comments.json`,
-      REDDIT_FETCH_LIMIT,
+      fetchLimit,
       priority
     ),
     measureFetch<RedditModeratedList>(

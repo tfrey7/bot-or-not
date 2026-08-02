@@ -231,6 +231,7 @@ function canonicalizeInvestigation(value: unknown): Investigation | null {
         : null,
     error: typeof investigation.error === "string" ? investigation.error : null,
     autoTriggered: investigation.autoTriggered === true,
+    deepDive: investigation.deepDive === true,
     runs: Array.isArray(investigation.runs)
       ? (investigation.runs as RunSnapshot[]).map(canonicalizeRunSnapshot)
       : [],
