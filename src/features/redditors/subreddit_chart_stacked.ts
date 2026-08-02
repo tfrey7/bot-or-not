@@ -13,11 +13,14 @@ import type { ActivityData } from "../../types.ts";
 const BUCKET_COUNT = 96;
 const TOP_N = 7;
 const CHART_HEIGHT = 240;
-const GLOW_BLUR_PX = 7;
 const TEAR_TEETH = 8;
 const TEAR_DEPTH_PX = 4;
 const RAMP_SHADE_ALPHA = 0.09;
 const TRUNCATED_SHADE_ALPHA = 0.07;
+const BAR_WIDTH_RATIO = 0.85;
+const OTHER_BAR_ALPHA = 0.6;
+const BAR_ALPHA = 0.95;
+const DIMMED_BAR_ALPHA = 0.18;
 
 const SERIES_COLOR_VARS = [
   "--bon-stamp-red",
@@ -29,6 +32,11 @@ const SERIES_COLOR_VARS = [
   "--bon-stamp-slate",
 ];
 const OTHER_COLOR_VAR = "--bon-stamp-charcoal";
+
+interface StackLayer {
+  entry: SubredditChartSeries;
+  color: string;
+}
 
 function readCssVar(name: string): string {
   return getComputedStyle(document.documentElement)
@@ -45,12 +53,34 @@ function formatTearTooltip(
   return `Account created ${created} — earlier history not available from the Reddit API. Visible activity starts ${visible}.`;
 }
 
-export function redditorsSubredditChartOverlaid(
+function layerLabel(entry: SubredditChartSeries): string {
+  return entry.label === "other" ? "other" : `r/${entry.label}`;
+}
+
+// Busiest sub first, "other" always last — the reading order for the legend
+// and the tooltip (the stack itself draws bottom-up in this same order, so
+// legend rows top-to-bottom don't match bar segments top-to-bottom; matching
+// totals-descending wins for scanability).
+function sortForDisplay(layers: StackLayer[]): StackLayer[] {
+  return [...layers].sort((a, b) => {
+    if (a.entry.isOther && !b.entry.isOther) {
+      return 1;
+    }
+
+    if (!a.entry.isOther && b.entry.isOther) {
+      return -1;
+    }
+
+    return b.entry.total - a.entry.total;
+  });
+}
+
+export function redditorsSubredditChartStacked(
   activityData: ActivityData,
   accountCreatedAt: number | null
 ): HTMLDivElement {
   const wrap = document.createElement("div");
-  wrap.className = "bon-sub-chart bon-sub-chart--overlaid";
+  wrap.className = "bon-sub-chart bon-sub-chart--stacked";
 
   const title = document.createElement("p");
   title.className = "bon-detail-title";
@@ -105,22 +135,22 @@ export function redditorsSubredditChartOverlaid(
     TOP_N
   );
 
-  // "Other" first so the top subs paint over it; preserve the original
-  // index so the swatch colors line up with the legend.
-  const ordered: { entry: SubredditChartSeries; color: string }[] = [];
-
-  for (const entry of series) {
-    if (entry.isOther) {
-      ordered.push({ entry, color: readCssVar(OTHER_COLOR_VAR) });
-    }
-  }
+  // Stack bottom-up: top-ranked subs first so they sit on the baseline where
+  // their shape is easiest to read, "other" as the cap on top.
+  const stack: StackLayer[] = [];
 
   series.forEach((entry, index) => {
     if (!entry.isOther) {
       const varName = SERIES_COLOR_VARS[index % SERIES_COLOR_VARS.length];
-      ordered.push({ entry, color: readCssVar(varName) });
+      stack.push({ entry, color: readCssVar(varName) });
     }
   });
+
+  for (const entry of series) {
+    if (entry.isOther) {
+      stack.push({ entry, color: readCssVar(OTHER_COLOR_VAR) });
+    }
+  }
 
   const bucketWidth = (rangeEnd - rangeStart) / BUCKET_COUNT;
   const xs: number[] = new Array(BUCKET_COUNT);
@@ -129,10 +159,28 @@ export function redditorsSubredditChartOverlaid(
     xs[i] = Math.round((rangeStart + (i + 0.5) * bucketWidth) / 1000);
   }
 
-  const data: uPlot.AlignedData = [
-    xs,
-    ...ordered.map((item) => item.entry.bucketCounts),
-  ];
+  const hidden = new Set<string>();
+  let focusedLabel: string | null = null;
+
+  // uPlot only sees the running totals — they drive the y-scale and the
+  // cursor index. The bars themselves are painted from the raw per-layer
+  // counts in the draw hook below.
+  const buildStackedData = (): uPlot.AlignedData => {
+    const cumulative = new Array<number>(BUCKET_COUNT).fill(0);
+    const rows: number[][] = [];
+
+    for (const layer of stack) {
+      if (!hidden.has(layer.entry.label)) {
+        for (let i = 0; i < BUCKET_COUNT; i++) {
+          cumulative[i] += layer.entry.bucketCounts[i];
+        }
+      }
+
+      rows.push(cumulative.slice());
+    }
+
+    return [xs, ...rows] as uPlot.AlignedData;
+  };
 
   const mutedColor = readCssVar("--bon-muted");
   const borderColor = readCssVar("--bon-border");
@@ -141,18 +189,21 @@ export function redditorsSubredditChartOverlaid(
 
   const uplotSeries: uPlot.Series[] = [
     {},
-    ...ordered.map((item): uPlot.Series => ({
-      label: item.entry.label === "other" ? "other" : `r/${item.entry.label}`,
-      stroke: item.color,
-      width: item.entry.isOther ? 1.2 : 1.8,
-      alpha: item.entry.isOther ? 0.55 : 1,
+    ...stack.map((layer): uPlot.Series => ({
+      label: layerLabel(layer.entry),
+      stroke: layer.color,
+      paths: () => null,
       points: { show: false },
     })),
   ];
 
+  const body = document.createElement("div");
+  body.className = "bon-sub-chart-body";
+  wrap.appendChild(body);
+
   const host = document.createElement("div");
   host.className = "bon-sub-chart-uplot";
-  wrap.appendChild(host);
+  body.appendChild(host);
 
   const tooltip = document.createElement("div");
   tooltip.className = "bon-sub-chart-tooltip";
@@ -164,10 +215,9 @@ export function redditorsSubredditChartOverlaid(
     height: CHART_HEIGHT,
     legend: { show: false },
     cursor: {
-      points: { size: 6 },
-      focus: { prox: 24 },
+      y: false,
+      points: { show: false },
     },
-    focus: { alpha: 0.25 },
     series: uplotSeries,
     scales: {
       x: { time: true },
@@ -240,31 +290,59 @@ export function redditorsSubredditChartOverlaid(
           }
         },
       ],
-      drawSeries: [
-        (u, seriesIdx) => {
-          if (seriesIdx === 0) {
-            return;
-          }
-
-          const s = u.series[seriesIdx] as uPlot.Series & {
-            _paths?: { stroke?: Path2D | null } | null;
-          };
-
-          if (!s.show || !s._paths || !s._paths.stroke) {
-            return;
-          }
-
+      draw: [
+        (u) => {
           const ctx = u.ctx;
-          const pxr = uPlot.pxRatio;
+          const colWidth =
+            BUCKET_COUNT > 1
+              ? Math.abs(
+                  u.valToPos(xs[1], "x", true) - u.valToPos(xs[0], "x", true)
+                )
+              : u.bbox.width;
+          const barWidth = Math.max(1, colWidth * BAR_WIDTH_RATIO);
+
           ctx.save();
-          ctx.shadowBlur = GLOW_BLUR_PX * pxr;
-          ctx.shadowColor = s.stroke as string;
-          ctx.strokeStyle = s.stroke as string;
-          ctx.lineWidth = (s.width ?? 1) * pxr;
-          ctx.lineCap = "round";
-          ctx.lineJoin = "round";
-          ctx.globalAlpha = (s.alpha as number | undefined) ?? 1;
-          ctx.stroke(s._paths.stroke);
+          ctx.beginPath();
+          ctx.rect(u.bbox.left, u.bbox.top, u.bbox.width, u.bbox.height);
+          ctx.clip();
+
+          for (let i = 0; i < BUCKET_COUNT; i++) {
+            const xCenter = u.valToPos(xs[i], "x", true);
+            let stackBase = 0;
+
+            for (const layer of stack) {
+              if (hidden.has(layer.entry.label)) {
+                continue;
+              }
+
+              const value = layer.entry.bucketCounts[i];
+
+              if (value <= 0) {
+                continue;
+              }
+
+              const yBottom = u.valToPos(stackBase, "y", true);
+              const yTop = u.valToPos(stackBase + value, "y", true);
+              const dimmed =
+                focusedLabel !== null && focusedLabel !== layer.entry.label;
+
+              ctx.globalAlpha = dimmed
+                ? DIMMED_BAR_ALPHA
+                : layer.entry.isOther
+                  ? OTHER_BAR_ALPHA
+                  : BAR_ALPHA;
+              ctx.fillStyle = layer.color;
+              ctx.fillRect(
+                xCenter - barWidth / 2,
+                yTop,
+                barWidth,
+                Math.max(1, yBottom - yTop)
+              );
+
+              stackBase += value;
+            }
+          }
+
           ctx.restore();
         },
       ],
@@ -293,19 +371,11 @@ export function redditorsSubredditChartOverlaid(
           dateRow.textContent = new Date(xVal * 1000).toLocaleDateString();
           tooltip.appendChild(dateRow);
 
-          const rows = [...ordered].sort((a, b) => {
-            if (a.entry.isOther && !b.entry.isOther) {
-              return 1;
+          for (const { entry, color } of sortForDisplay(stack)) {
+            if (hidden.has(entry.label)) {
+              continue;
             }
 
-            if (!a.entry.isOther && b.entry.isOther) {
-              return -1;
-            }
-
-            return b.entry.total - a.entry.total;
-          });
-
-          for (const { entry, color } of rows) {
             const value = entry.bucketCounts[idx];
             const row = document.createElement("div");
             row.className = "bon-sub-chart-tooltip__row";
@@ -317,8 +387,7 @@ export function redditorsSubredditChartOverlaid(
 
             const label = document.createElement("span");
             label.className = "bon-sub-chart-tooltip__label";
-            label.textContent =
-              entry.label === "other" ? "other" : `r/${entry.label}`;
+            label.textContent = layerLabel(entry);
             row.appendChild(label);
 
             const count = document.createElement("span");
@@ -382,7 +451,7 @@ export function redditorsSubredditChartOverlaid(
     },
   };
 
-  const plot = new uPlot(opts, data, host);
+  const plot = new uPlot(opts, buildStackedData(), host);
 
   const ro = new ResizeObserver((entries) => {
     for (const entry of entries) {
@@ -398,7 +467,17 @@ export function redditorsSubredditChartOverlaid(
     host.title = formatTearTooltip(truncatedStart, earliestEvent);
   }
 
-  wrap.appendChild(buildLegend(ordered));
+  body.appendChild(
+    buildLegend(stack, hidden, {
+      onToggle: () => {
+        plot.setData(buildStackedData());
+      },
+      onFocus: (label) => {
+        focusedLabel = label;
+        plot.redraw();
+      },
+    })
+  );
 
   const notes = buildAnnotationNotes(
     rampWindows,
@@ -461,29 +540,20 @@ function buildAnnotationNotes(
 }
 
 function buildLegend(
-  ordered: { entry: SubredditChartSeries; color: string }[]
+  stack: StackLayer[],
+  hidden: Set<string>,
+  handlers: {
+    onToggle: () => void;
+    onFocus: (label: string | null) => void;
+  }
 ): HTMLUListElement {
   const legend = document.createElement("ul");
   legend.className = "bon-sub-chart-legend";
 
-  // Restore the natural top-1, top-2, … order in the legend (the chart draws
-  // "other" first so it sits under the headline subs, but readers expect
-  // legends to lead with the busiest sub).
-  const display = [...ordered].sort((a, b) => {
-    if (a.entry.isOther && !b.entry.isOther) {
-      return 1;
-    }
-
-    if (!a.entry.isOther && b.entry.isOther) {
-      return -1;
-    }
-
-    return b.entry.total - a.entry.total;
-  });
-
-  for (const { entry, color } of display) {
+  for (const { entry, color } of sortForDisplay(stack)) {
     const item = document.createElement("li");
     item.className = "bon-sub-chart-legend-item";
+    item.title = "Click to toggle, hover to highlight";
 
     const swatch = document.createElement("span");
     swatch.className = "bon-sub-chart-swatch";
@@ -492,13 +562,37 @@ function buildLegend(
 
     const label = document.createElement("span");
     label.className = "bon-sub-chart-legend-label";
-    label.textContent = entry.label === "other" ? "other" : `r/${entry.label}`;
+    label.textContent = layerLabel(entry);
     item.appendChild(label);
 
     const count = document.createElement("span");
     count.className = "bon-sub-chart-legend-count";
     count.textContent = String(entry.total);
     item.appendChild(count);
+
+    item.addEventListener("click", () => {
+      if (hidden.has(entry.label)) {
+        hidden.delete(entry.label);
+      } else {
+        hidden.add(entry.label);
+      }
+
+      item.classList.toggle(
+        "bon-sub-chart-legend-item--off",
+        hidden.has(entry.label)
+      );
+      handlers.onToggle();
+    });
+
+    item.addEventListener("mouseenter", () => {
+      if (!hidden.has(entry.label)) {
+        handlers.onFocus(entry.label);
+      }
+    });
+
+    item.addEventListener("mouseleave", () => {
+      handlers.onFocus(null);
+    });
 
     legend.appendChild(item);
   }

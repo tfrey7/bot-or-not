@@ -1,8 +1,8 @@
 /* ============================================================
-   Big multi-series subreddit charts. Two visualizations of the
-   same data live here so we can compare and pick one — overlaid
-   lines and stacked area. Top 5 subs get distinct colors; the
-   long tail collapses into a muted "other" series.
+   Stacked-bar subreddit contributions chart. Top subs get
+   distinct colors; the long tail collapses into a muted "other"
+   layer capping the stack. Legend sits to the right of the plot,
+   one sub per line — click toggles a layer, hover highlights it.
    ============================================================ */
 
 .bon-sub-chart {
@@ -13,10 +13,16 @@
 .bon-sub-chart .bon-detail-title {
   margin-bottom: 0.5em;
 }
+.bon-sub-chart-body {
+  display: flex;
+  gap: 1em;
+  align-items: flex-start;
+  max-width: 640px;
+}
 .bon-sub-chart-uplot {
   position: relative;
-  width: 100%;
-  max-width: 640px;
+  flex: 1 1 auto;
+  min-width: 0;
 }
 .bon-sub-chart-uplot .uplot,
 .bon-sub-chart-uplot .u-wrap {
@@ -77,17 +83,33 @@
 .bon-sub-chart-legend {
   list-style: none;
   padding: 0;
-  margin: 0.5em 0 0;
+  margin: 0;
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.4em 1em;
+  flex-direction: column;
+  gap: 0.3em;
+  flex: 0 0 auto;
+  max-width: 13em;
   font-size: 0.75rem;
   color: var(--bon-text-soft);
 }
 .bon-sub-chart-legend-item {
-  display: inline-flex;
+  display: flex;
   align-items: center;
   gap: 0.35em;
+  cursor: pointer;
+  user-select: none;
+  transition:
+    opacity 0.15s,
+    transform 0.15s;
+}
+.bon-sub-chart-legend-item:hover {
+  color: var(--bon-text);
+}
+.bon-sub-chart-legend-item--off {
+  opacity: 0.4;
+}
+.bon-sub-chart-legend-item--off .bon-sub-chart-legend-label {
+  text-decoration: line-through;
 }
 .bon-sub-chart-swatch {
   display: inline-block;

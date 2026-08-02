@@ -5,7 +5,7 @@
 
 import { redditorsCalendarHeatmap } from "./calendar_heatmap.ts";
 import { redditorsHourSection } from "./hour_heatmap.ts";
-import { redditorsSubredditChartOverlaid } from "./subreddit_chart_overlaid.ts";
+import { redditorsSubredditChartStacked } from "./subreddit_chart_stacked.ts";
 import type { ReportRow } from "./logic.ts";
 
 export function redditorsActivitySection(report: ReportRow): HTMLDivElement {
@@ -72,7 +72,7 @@ export function redditorsActivitySection(report: ReportRow): HTMLDivElement {
   wrap.appendChild(redditorsCalendarHeatmap(timestamps, activityData));
   wrap.appendChild(redditorsHourSection(timestamps));
   wrap.appendChild(
-    redditorsSubredditChartOverlaid(activityData, report.createdAt)
+    redditorsSubredditChartStacked(activityData, report.createdAt)
   );
 
   return wrap;
