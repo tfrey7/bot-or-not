@@ -348,6 +348,12 @@ function countRemovals(
 // REDDIT_FETCH_LIMIT items per kind; the window between the oldest
 // and newest item tells us how fast they accumulated. A heavy farmer can
 // hit 50+/day sustained — well above what a normal human (even a Superfan) does.
+//
+// The full-window average dilutes a recent ramp on an old account (38/day
+// for a fortnight averages to <2/day against years of quiet history), so
+// a second rate is computed over the trailing window as well.
+const RECENT_POSTING_WINDOW_DAYS = 30;
+
 function computePostingRate(
   posts: RawPost[],
   comments: RawComment[]
@@ -368,10 +374,20 @@ function computePostingRate(
   const oldest = Math.min(...allTimestamps);
   const windowDays = Math.max(newest - oldest, 1) / 86_400_000;
 
+  const recentCutoff = newest - RECENT_POSTING_WINDOW_DAYS * 86_400_000;
+  const recentCount = allTimestamps.filter(
+    (timestamp) => timestamp >= recentCutoff
+  ).length;
+  const recentWindowDays = Math.min(windowDays, RECENT_POSTING_WINDOW_DAYS);
+
   return {
     visible_window_days: Number(windowDays.toFixed(2)),
     visible_items_per_day: Number(
       (allTimestamps.length / Math.max(windowDays, 1 / 24)).toFixed(2)
+    ),
+    recent_window_days: Number(recentWindowDays.toFixed(2)),
+    recent_items_per_day: Number(
+      (recentCount / Math.max(recentWindowDays, 1 / 24)).toFixed(2)
     ),
     sample_size: allTimestamps.length,
     sample_capped:

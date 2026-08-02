@@ -243,7 +243,7 @@ Output a top-level `region` block with your best guess at where this account is 
 
 Use **every** signal available:
 
-- **Country-coded subs.** Heavy participation in `r/india`, `r/Pakistan`, `r/brasil`, `r/de`, `r/AskARussian`, etc. is conclusive — same rule as the per-factor region guidance above. **Exception: US and Israel subs (`r/USA`, `r/AskAnAmerican`, `r/Israel`, `r/IsraelPolitics`, etc.) attract heavy diaspora and sympathizer participation — posting there does NOT establish residency on its own.** Treat them as topical interest, not country-of-residence evidence; require corroboration from another signal (US-specific spelling/units, US timezone, Hebrew script, self-references, etc.) before claiming US or IL.
+- **Country-coded subs.** Heavy participation in `r/india`, `r/Pakistan`, `r/brasil`, `r/de`, `r/AskARussian`, etc. is conclusive — same rule as the per-factor region guidance above. **Exception: subs for countries at the center of international causes attract heavy diaspora and sympathizer participation — posting there does NOT establish residency on its own.** This covers US subs (`r/USA`, `r/AskAnAmerican`), Israel subs (`r/Israel`, `r/IsraelPolitics`), and Ukraine subs (`r/ukraine`, `r/UkraineWarVideoReport`, `r/ukraina`, and similar war-support subs — most of whose posters are non-Ukrainian supporters). Treat them as topical interest, not country-of-residence evidence; require corroboration from another signal (country-specific spelling/units, timezone contradiction, Hebrew/Ukrainian Cyrillic script, self-references, etc.) before claiming US, IL, or UA.
 - **Script / language in writing.** Devanagari → IN, Cyrillic → RU/UA, hiragana → JP, etc. Hinglish slang, Brazilian Portuguese, Tagalog, etc.
 - **Self-references.** "I'm from X", "here in Y", "us [country/region]ers", mentions of local landmarks, cities, holidays.
 - **Cultural / topical focus.** NFL/NBA/MLB → US; cricket/IPL → IN/PK; Premier League → GB; AFL → AU; specific national political figures, parties, news events.
@@ -421,6 +421,8 @@ Cite both timestamps in `evidence` for Pattern B (e.g., `"account created 2026-0
 ### 2. `dormant_account_revival`
 Accounts that were created years ago but went dormant for a long stretch and then *suddenly* became active are a classic sold/compromised/farmed-account pattern. Real humans drift between bursts of activity too, but the combination of (long dormancy + sudden volume + posting in subreddits the account never used before) is hard to explain organically.
 
+A dormancy gap is **not required** for a handover. Accounts get sold, shared, or hijacked *while active* — the seller keeps posting right up to the transfer, so the timeline is continuous. The fingerprint of a live handoff is a **regime change** inside an unbroken history: `posting_rate.recent_items_per_day` many-fold above the lifetime `visible_items_per_day` baseline, often with a topical-mix shift (e.g. political share jumping) riding the volume ramp. Run the continuity-seam check across the ramp boundary exactly as you would across a dormancy gap.
+
 Look at:
 - The gap between `account.created_at` and the full visible posting window. Use `activity.posting_rate.visible_window_days` (computed over the full Reddit fetch, up to 500 + 500 items) — **not** the date range of `posts.rows` / `comments.rows`, which are trimmed to the most-recent 300 each and would understate the window for high-volume accounts. If `visible_window_days` covers only a few days or weeks but the account is years old, that's a strong dormancy signal — there's nothing else in the full sample.
 - Whether the recent burst is concentrated (e.g. 50+ items within the last week of a 5-year-old account).
@@ -432,7 +434,9 @@ Look at:
 Scoring guidance:
 - Old account (≥1 year) + recent activity window ≤30 days + concentrated burst → `score ≈ -0.7`, `confidence ≈ 0.7`.
 - Same but recent activity also looks topically incongruent → `score ≈ -0.85`, `confidence ≈ 0.8`.
-- Old account with continuous activity over years → `score ≈ +0.5`, `confidence ≈ 0.6` (genuine long-term human signal).
+- Old account with continuous activity over years **at broadly stable volume and topical character** → `score ≈ +0.5`, `confidence ≈ 0.6` (genuine long-term human signal). **Hard gate on this credit: if `recent_items_per_day` is ≥5× the lifetime `visible_items_per_day` baseline, the positive score is off the table — this factor must not score above `0.0`, regardless of how continuous or stylistically consistent the history is.** Account marketplaces sell exactly that continuity; a 10×+ usage multiplication is the one thing the previous owner's history cannot explain.
+- Old account with continuous history but a recent volume regime change (recent rate ≳5× the lifetime baseline) + topical-mix shift or a stylistic seam at the ramp → `score ≈ -0.5`, `confidence ≈ 0.5` (live-handoff shape).
+- Same regime change but the seam check finds genuine continuity (same voice, same niches, the ramp reads as one person's usage exploding — a new habit, unemployment, an event in their niche) → `score ≈ 0.0`, `confidence ≤ 0.3`. The gate above still applies — no positive score; note the continuity in `reasoning` and let other factors decide.
 - Young account (<6 months) → not applicable; `score: 0.0`, `confidence ≤ 0.2`, reasoning: "account too young for dormancy analysis".
 
 Cite specific timestamps in `evidence` (e.g. `"account created 2018-03-04, oldest visible post 2026-04-29 — ~8yr gap"`).
@@ -616,15 +620,18 @@ Sheer **posts-per-day** is one of the cleanest bot/farmer signals. There's a har
 Use `activity.posting_rate` from the input:
 - `visible_items_per_day` = (posts + comments fetched) / (timespan of those items in days). This is the rate over the *visible window*, not lifetime — it's the relevant signal because dormant-then-revived accounts shouldn't get a free pass for old inactivity.
 - `visible_window_days` = how long the fetched sample spans. A short window with a maxed-out sample (e.g. 200 items in 2 days) is what catches farmers.
+- `recent_items_per_day` / `recent_window_days` = the same rate over the trailing ≤30 days ending at the newest visible item. On an old continuously-active account, the full-window average dilutes a recent ramp to nothing (38/day for a fortnight reads as <2/day against years of history) — the recent rate is what exposes it.
 - `sample_capped: true` means we hit the Reddit fetch limit (500 posts and/or 500 comments) — the actual rate could be *higher* than what's shown.
 
-Scoring guidance:
-- `visible_items_per_day` ≥ 100 → `score ≈ -0.85`, `confidence ≈ 0.85`. No human sustains this.
-- `visible_items_per_day` 50–100 → `score ≈ -0.6`, `confidence ≈ 0.7`. Possible but vanishingly rare for organic users.
-- `visible_items_per_day` 25–50 → `score ≈ -0.35`, `confidence ≈ 0.5`. Suspicious but possible for a true power user — weigh with engagement evidence.
-- `visible_items_per_day` 10–25 → `score ≈ -0.1`, `confidence ≈ 0.4`. Active human territory; mild signal at most.
-- `visible_items_per_day` < 10 → `score ≈ +0.3`, `confidence ≈ 0.5`. Normal human pace.
-- `visible_items_per_day` < 2 → `score ≈ +0.5`, `confidence ≈ 0.6`. Casual user.
+**Band on the hotter of the two rates** — `max(visible_items_per_day, recent_items_per_day)`. The human credit in the low bands requires *both* windows to be quiet; a recent ramp forfeits it no matter how long and calm the account's earlier history is.
+
+Scoring guidance (rate = the max above):
+- rate ≥ 100 → `score ≈ -0.85`, `confidence ≈ 0.85`. No human sustains this.
+- rate 50–100 → `score ≈ -0.6`, `confidence ≈ 0.7`. Possible but vanishingly rare for organic users.
+- rate 25–50 → `score ≈ -0.35`, `confidence ≈ 0.5`. Suspicious but possible for a true power user — weigh with engagement evidence.
+- rate 10–25 → `score ≈ -0.1`, `confidence ≈ 0.4`. Active human territory; mild signal at most.
+- rate < 10 → `score ≈ +0.3`, `confidence ≈ 0.5`. Normal human pace.
+- rate < 2 → `score ≈ +0.5`, `confidence ≈ 0.6`. Casual user.
 - `posting_rate: null` (hidden history or fewer than 2 items) → `score: 0.0`, `confidence ≤ 0.2`, reasoning: "not enough timestamps to measure rate".
 
 If `sample_capped: true`, treat the rate as a **lower bound** and nudge the score and confidence slightly more bot-ward. Cite the literal rate and window in `evidence` (e.g. `"posting_rate: 73 items/day over 2.7 days (sample capped)"`).

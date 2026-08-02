@@ -422,6 +422,14 @@ export interface ModeratorRemovals {
 export interface PostingRate {
   visible_window_days: number;
   visible_items_per_day: number;
+
+  // Rate over the RECENT_POSTING_WINDOW_DAYS trailing the newest visible
+  // item (newest-anchored so frozen fixtures and gone-quiet accounts
+  // still measure their own activity, not the wall clock). Catches a
+  // ramp on an old account that the full-window average dilutes away.
+  recent_window_days: number;
+  recent_items_per_day: number;
+
   sample_size: number;
   sample_capped: boolean;
 }

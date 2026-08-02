@@ -394,9 +394,18 @@ function scorePostingVolume(summary: ProfileSummary): Factor {
     };
   }
 
-  const perDay = rate.visible_items_per_day;
+  const fullWindowPerDay = rate.visible_items_per_day;
+  const recentPerDay = rate.recent_items_per_day;
   const capped = rate.sample_capped;
   const window = rate.visible_window_days;
+
+  // Band on whichever window is hotter: the full-window average catches
+  // sustained farmers (and is the higher one when the sample is capped),
+  // the recent-window rate catches a ramp on an old account that years of
+  // quiet history would otherwise average away. Human credit for a low
+  // band thus requires BOTH windows to be quiet.
+  const perDay = Math.max(fullWindowPerDay, recentPerDay);
+  const recentDrove = recentPerDay > fullWindowPerDay;
 
   let score: number;
   let confidence: number;
@@ -435,13 +444,17 @@ function scorePostingVolume(summary: ProfileSummary): Factor {
     cappedNote = " (sample capped — rate is a lower bound)";
   }
 
+  const windowNote = recentDrove
+    ? ` — recent ${rate.recent_window_days}-day window, ${fullWindowPerDay}/day lifetime average`
+    : "";
+
   return {
     key: "posting_volume",
     score,
     confidence,
-    reasoning: `Posting rate in ${band} band${cappedNote}.`,
+    reasoning: `Posting rate in ${band} band${windowNote}${cappedNote}.`,
     evidence: [
-      `posting_rate: ${perDay} items/day over ${window} days${capped ? " (sample capped)" : ""}`,
+      `posting_rate: ${fullWindowPerDay} items/day over ${window} days, ${recentPerDay}/day over recent ${rate.recent_window_days} days${capped ? " (sample capped)" : ""}`,
     ],
   };
 }
