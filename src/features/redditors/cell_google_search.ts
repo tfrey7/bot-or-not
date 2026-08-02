@@ -17,9 +17,10 @@ export function redditorsRenderGoogleSearchButton(
     `Capture into the dossier requires enabling Google dossier in Settings.`;
 
   button.addEventListener("click", () => {
-    // Quote the username so Google treats it as an exact phrase — without it,
-    // word-like handles ("candy", "willy") drown in unrelated reddit.com hits.
-    const query = encodeURIComponent(`"${username}" site:reddit.com`);
+    // Quote the username so Google treats it as an exact phrase, and prefix
+    // u/ so only Reddit user references match — a bare word-like handle
+    // ("candy", "willy") drowns in unrelated reddit.com hits.
+    const query = encodeURIComponent(`"u/${username}" site:reddit.com`);
     const url = `https://www.google.com/search?q=${query}`;
     window.open(url, "_blank", "noopener");
   });

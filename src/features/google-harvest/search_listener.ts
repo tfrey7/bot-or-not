@@ -9,13 +9,13 @@ import { clientSend } from "../../client.ts";
 import { googleHarvestParse } from "./parse.ts";
 import { googleHarvestScrape } from "./scrape.ts";
 
-// `"<word>" site:reddit.com` (or unquoted, for back-compat with old launcher
-// links and manual searches) — single token before `site:`, no embedded
-// spaces. Anchored so unrelated searches (e.g. "user reviews site:reddit.com
-// tutorials") don't activate the harvester. Reddit usernames are
-// [A-Za-z0-9_-], so the optional surrounding quotes never appear inside the
-// captured group.
-const QUERY_RE = /^"?([^"\s]+)"?\s+site:reddit\.com\s*$/i;
+// `"u/<word>" site:reddit.com` (quotes and u/ prefix both optional, for
+// back-compat with old launcher links and manual searches) — single token
+// before `site:`, no embedded spaces. Anchored so unrelated searches (e.g.
+// "user reviews site:reddit.com tutorials") don't activate the harvester.
+// Reddit usernames are [A-Za-z0-9_-], so neither the quotes nor the prefix
+// slash can appear inside the captured group.
+const QUERY_RE = /^"?(?:u\/)?([^"\s]+)"?\s+site:reddit\.com\s*$/i;
 
 function readUsernameFromQuery(): string | null {
   const query = new URLSearchParams(window.location.search).get("q");
