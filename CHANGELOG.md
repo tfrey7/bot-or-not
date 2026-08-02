@@ -2,6 +2,10 @@
 
 Notable changes to Bot or Not. Signed `.xpi` builds for each version are attached to the matching [GitHub Release](https://github.com/tfrey7/bot-or-not/releases).
 
+## [10.1.0] — 2026-08-02
+- Bar whole-account bot/human rulings from investigation prose
+- Track a hash-sampled control cohort in the status re-check sweep
+
 ## [10.0.0] — 2026-08-02
 - Metrics: verdict-outcomes calibration card
 - Add ring detection: similar-accounts dossier section
