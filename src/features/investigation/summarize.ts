@@ -20,6 +20,7 @@ import type {
   ModeratedSubreddits,
   ModeratorRemovals,
   PassiveHarvest,
+  HourHistograms,
   PostingRate,
   ProfileSummary,
   RedditProfile,
@@ -126,6 +127,7 @@ export function summarizeProfile(
       top_subreddits: topSubreddits,
       moderator_removals: moderatorRemovals,
       posting_rate: postingRate,
+      hour_histograms_utc: computeHourHistograms(posts, comments),
       moderated_subreddits: moderatedSubreddits,
     },
     external_signals: {
@@ -394,6 +396,42 @@ function computePostingRate(
       posts.length >= REDDIT_FETCH_LIMIT ||
       comments.length >= REDDIT_FETCH_LIMIT,
   };
+}
+
+function computeHourHistograms(
+  posts: RawPost[],
+  comments: RawComment[]
+): HourHistograms | null {
+  const timestamps: number[] = [];
+
+  for (const item of [...posts, ...comments]) {
+    if (typeof item.created_utc === "number") {
+      timestamps.push(item.created_utc);
+    }
+  }
+
+  if (timestamps.length === 0) {
+    return null;
+  }
+
+  const newest = Math.max(...timestamps);
+  const recentCutoff = newest - RECENT_POSTING_WINDOW_DAYS * 86_400;
+  const lifetime = new Array<number>(24).fill(0);
+  const recent = new Array<number>(24).fill(0);
+  const prior = new Array<number>(24).fill(0);
+
+  for (const timestamp of timestamps) {
+    const hour = Math.floor(timestamp / 3600) % 24;
+    lifetime[hour]++;
+
+    if (timestamp >= recentCutoff) {
+      recent[hour]++;
+    } else {
+      prior[hour]++;
+    }
+  }
+
+  return { lifetime, recent, prior };
 }
 
 // Moderated subreddits. Reddit returns {kind: "ModeratedList", data: [...]}

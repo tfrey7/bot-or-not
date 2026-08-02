@@ -434,6 +434,12 @@ export interface PostingRate {
   sample_capped: boolean;
 }
 
+export interface HourHistograms {
+  lifetime: number[];
+  recent: number[];
+  prior: number[];
+}
+
 export interface ModeratedSubreddit {
   sub: string;
   subscribers: number | null;
@@ -488,6 +494,15 @@ export interface ProfileSummary {
     top_subreddits: TopSubreddit[];
     moderator_removals: ModeratorRemovals;
     posting_rate: PostingRate | null;
+
+    // Visible posts+comments counted by UTC hour-of-day (index 0 =
+    // 00:00–00:59 UTC), split at the same trailing window as posting_rate
+    // so an active-window migration is visible next to a volume ramp — a
+    // lifetime aggregate lets years of history drown out a recent shift.
+    // Precomputed because deriving hour bands from hundreds of raw
+    // epoch-minute timestamps is exactly the kind of arithmetic the model
+    // silently skips.
+    hour_histograms_utc: HourHistograms | null;
     moderated_subreddits: ModeratedSubreddits;
   };
   external_signals: {
