@@ -392,6 +392,11 @@ export function redditorsSubredditChartStacked(
             }
 
             const value = entry.bucketCounts[idx];
+
+            if (value === 0) {
+              continue;
+            }
+
             const row = document.createElement("div");
             row.className = "bon-sub-chart-tooltip__row";
 
@@ -418,15 +423,27 @@ export function redditorsSubredditChartStacked(
           const overLeft = u.over.offsetLeft;
           const overTop = u.over.offsetTop;
           const tooltipWidth = tooltip.offsetWidth;
+          const tooltipHeight = tooltip.offsetHeight;
           const hostWidth = host.clientWidth;
+          const hostHeight = host.clientHeight;
           let posX = overLeft + left + 14;
 
           if (posX + tooltipWidth > hostWidth - 4) {
             posX = overLeft + left - tooltipWidth - 14;
           }
 
+          // The chart body clips overflow, so flip above the cursor when the
+          // tooltip would run past the bottom edge, then clamp inside.
+          let posY = overTop + top + 12;
+
+          if (posY + tooltipHeight > hostHeight - 4) {
+            posY = overTop + top - tooltipHeight - 12;
+          }
+
+          posY = Math.min(Math.max(4, posY), hostHeight - tooltipHeight - 4);
+
           tooltip.style.left = `${Math.max(4, posX)}px`;
-          tooltip.style.top = `${overTop + top + 12}px`;
+          tooltip.style.top = `${posY}px`;
         },
       ],
       drawAxes: [
