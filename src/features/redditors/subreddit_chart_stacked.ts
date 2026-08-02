@@ -553,7 +553,7 @@ function buildLegend(
   for (const { entry, color } of sortForDisplay(stack)) {
     const item = document.createElement("li");
     item.className = "bon-sub-chart-legend-item";
-    item.title = "Click to toggle, hover to highlight";
+    item.title = `${layerLabel(entry)} — click to toggle, hover to highlight`;
 
     const swatch = document.createElement("span");
     swatch.className = "bon-sub-chart-swatch";
