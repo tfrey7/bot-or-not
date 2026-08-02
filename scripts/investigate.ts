@@ -38,6 +38,7 @@ import {
   scoreDeterministicFactors,
 } from "../src/features/investigation/deterministic_factors.ts";
 import { mergeFactors } from "../src/features/investigation/merge_factors.ts";
+import { applyRegimeChangeGate } from "../src/features/investigation/regime_change.ts";
 import { FACTORS } from "../src/factors.ts";
 import { extractJson } from "../src/utils/json.ts";
 import { normalizePersona } from "../src/utils/persona.ts";
@@ -269,7 +270,10 @@ async function main(): Promise<void> {
   const deterministicRedFlags =
     deterministicFactors.filter(isRedFlag).length;
 
-  const factors = mergeFactors(payload.factors as Factor[], deterministicFactors);
+  const factors = applyRegimeChangeGate(
+    mergeFactors(payload.factors as Factor[], deterministicFactors),
+    summary
+  );
   const persona = normalizePersona(payload.persona);
   const claudeSummary =
     typeof payload.summary === "string" ? payload.summary : "";

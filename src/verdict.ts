@@ -5,10 +5,19 @@
 //   evidenceSum = Σ (-score × confidence), with bot contributions weighted 1.5×
 //                 so a few strong red flags aren't drowned by a sea of "no signal"
 //                 weak-positive factors.
-//   botProbability = 1 / (1 + exp(-2 × evidenceSum))
-//   Red-flag floor: any factor with score ≤ -0.6 AND confidence ≥ 0.6 is a red flag.
-//                   ≥1 red flag floors botProbability at 0.36 (verdict ≥ uncertain);
-//                   ≥2 red flags floor it at 0.66 (verdict ≥ likely-bot).
+//   botProbability = sigmoid(2 × evidenceSum / sqrt(Σ confidence))
+//                 The sqrt(Σ confidence) normalizer keeps many correlated
+//                 mid-strength factors from saturating the sigmoid — without
+//                 it nearly every account reads 0.9+ "confident" regardless
+//                 of how contested the evidence actually is.
+//   Red-flag floor: each factor contributes a flag strength that ramps
+//                   smoothly from 0 (score -0.45, confidence 0.45) to 1
+//                   (score ≤ -0.6 AND confidence ≥ 0.6 — the historical
+//                   step thresholds), so an LLM coin-flip between -0.59 and
+//                   -0.60 no longer flips the verdict. Total strength 1
+//                   floors botProbability at 0.36 (verdict ≥ uncertain),
+//                   2 floors it at 0.66 (verdict ≥ likely-bot), interpolated
+//                   linearly in between.
 //   Ring floor: operator-curated ring membership floors botProbability at 0.85
 //               (verdict ≥ bot). Claude only sees one account at a time, so
 //               coordination signal can only come from the operator.
@@ -18,7 +27,10 @@
 const BOT_EVIDENCE_WEIGHT = 1.5;
 const RED_FLAG_SCORE_THRESHOLD = -0.6;
 const RED_FLAG_CONFIDENCE_THRESHOLD = 0.6;
+const RED_FLAG_RAMP_WIDTH = 0.15;
 const RING_BOT_PROBABILITY_FLOOR = 0.85;
+const SINGLE_FLAG_FLOOR = 0.36;
+const DOUBLE_FLAG_FLOOR = 0.66;
 
 // This many red flags floor botProbability at 0.66 — verdict ≥ likely-bot
 // no matter what every other factor says. Exported (with isRedFlag) so the
@@ -60,6 +72,26 @@ export function isRedFlag(factor: Factor): boolean {
   );
 }
 
+// 1.0 at the historical step thresholds and above; fades to 0 across
+// RED_FLAG_RAMP_WIDTH below them, so near-threshold factors contribute
+// partial flag strength instead of none.
+function redFlagStrength(score: number, confidence: number): number {
+  const rampUp = (value: number, fullAt: number): number => {
+    return Math.min(
+      1,
+      Math.max(
+        0,
+        (value - (fullAt - RED_FLAG_RAMP_WIDTH)) / RED_FLAG_RAMP_WIDTH
+      )
+    );
+  };
+
+  const scoreStrength = rampUp(-score, -RED_FLAG_SCORE_THRESHOLD);
+  const confidenceStrength = rampUp(confidence, RED_FLAG_CONFIDENCE_THRESHOLD);
+
+  return scoreStrength * confidenceStrength;
+}
+
 export interface VerdictResult {
   verdict: Verdict;
   confidence: number;
@@ -81,7 +113,8 @@ export function computeVerdict(
   }
 
   let evidenceSum = 0;
-  let redFlagCount = 0;
+  let confidenceSum = 0;
+  let flagStrengthTotal = 0;
 
   for (const factor of factors) {
     const score = typeof factor?.score === "number" ? factor.score : 0;
@@ -90,18 +123,22 @@ export function computeVerdict(
     const contribution = -score * confidence;
     evidenceSum +=
       contribution > 0 ? contribution * BOT_EVIDENCE_WEIGHT : contribution;
-
-    if (isRedFlag(factor)) {
-      redFlagCount += 1;
-    }
+    confidenceSum += confidence;
+    flagStrengthTotal += redFlagStrength(score, confidence);
   }
 
-  let botProbability = 1 / (1 + Math.exp(-2 * evidenceSum));
+  const normalizedEvidence =
+    evidenceSum / Math.sqrt(Math.max(1, confidenceSum));
+  let botProbability = 1 / (1 + Math.exp(-2 * normalizedEvidence));
 
-  if (redFlagCount >= RED_FLAG_LIKELY_BOT_COUNT) {
-    botProbability = Math.max(botProbability, 0.66);
-  } else if (redFlagCount >= 1) {
-    botProbability = Math.max(botProbability, 0.36);
+  if (flagStrengthTotal > 0) {
+    const flagFloor =
+      flagStrengthTotal >= 1
+        ? SINGLE_FLAG_FLOOR +
+          (DOUBLE_FLAG_FLOOR - SINGLE_FLAG_FLOOR) *
+            Math.min(1, flagStrengthTotal - 1)
+        : SINGLE_FLAG_FLOOR * flagStrengthTotal;
+    botProbability = Math.max(botProbability, flagFloor);
   }
 
   if (inRing) {

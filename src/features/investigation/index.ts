@@ -48,6 +48,7 @@ import {
   RedditFetchError,
 } from "./fetch.ts";
 import { mergeFactors } from "./merge_factors.ts";
+import { applyRegimeChangeGate } from "./regime_change.ts";
 import { extractSnoovatarUrl, summarizeProfile } from "./summarize.ts";
 
 // Factor keys the LLM is asked to score. The six factors in
@@ -241,7 +242,10 @@ export async function runOneDAnalysis(
   );
 
   const parsed = parseClaudeVerdict(rawText);
-  const factors = mergeFactors(parsed.factors, deterministicFactors);
+  const factors = applyRegimeChangeGate(
+    mergeFactors(parsed.factors, deterministicFactors),
+    profileSummary
+  );
   const derived = computeVerdict(factors);
 
   return {

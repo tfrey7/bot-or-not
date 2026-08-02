@@ -149,11 +149,13 @@ function scoreHiddenPostHistory(summary: ProfileSummary): Factor {
 
   if (!effectivelyHidden) {
     if (visibleItems > 5) {
+      // Not hiding is the default state of most accounts, bots included —
+      // absence of the signal earns no human credit.
       return {
         key: "hidden_post_history",
-        score: 0.2,
-        confidence: 0.5,
-        reasoning: "Visible history present; not hiding.",
+        score: 0.0,
+        confidence: 0.2,
+        reasoning: "Visible history present; not hiding — no signal.",
         evidence: [
           `posts_fetched: ${postsFetched}, comments_fetched: ${commentsFetched}`,
         ],
@@ -361,16 +363,9 @@ function scoreModeratorRemovalHistory(summary: ProfileSummary): Factor {
     };
   }
 
-  if (total === 0 && visibleItems >= 30) {
-    return {
-      key: "moderator_removal_history",
-      score: 0.3,
-      confidence: 0.5,
-      reasoning: "Zero removals across substantial visible history.",
-      evidence: evidenceParts,
-    };
-  }
-
+  // A clean record earns no human credit: it anti-predicts in the outcome
+  // data, and the own-sub farm playbook is specifically built to never get
+  // removed.
   return {
     key: "moderator_removal_history",
     score: 0.0,
@@ -402,8 +397,7 @@ function scorePostingVolume(summary: ProfileSummary): Factor {
   // Band on whichever window is hotter: the full-window average catches
   // sustained farmers (and is the higher one when the sample is capped),
   // the recent-window rate catches a ramp on an old account that years of
-  // quiet history would otherwise average away. Human credit for a low
-  // band thus requires BOTH windows to be quiet.
+  // quiet history would otherwise average away.
   const perDay = Math.max(fullWindowPerDay, recentPerDay);
   const recentDrove = recentPerDay > fullWindowPerDay;
 
@@ -427,12 +421,14 @@ function scorePostingVolume(summary: ProfileSummary): Factor {
     confidence = 0.4;
     band = "10–25/day";
   } else if (perDay >= 2) {
-    score = 0.3;
-    confidence = 0.5;
+    // Low volume is how most accounts — bots included — look; the quiet
+    // bands are informational, not human evidence.
+    score = 0.0;
+    confidence = 0.25;
     band = "<10/day";
   } else {
-    score = 0.5;
-    confidence = 0.6;
+    score = 0.0;
+    confidence = 0.3;
     band = "<2/day";
   }
 
