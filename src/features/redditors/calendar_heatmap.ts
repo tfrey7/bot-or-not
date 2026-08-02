@@ -32,6 +32,38 @@ function computeEarliestFullyVisible(
   return Math.max(...bounds);
 }
 
+// Pixel geometry of the calendar grid, exported so the subreddit
+// contributions chart can align its plot area column-for-column with the
+// heatmap: 30px day-label gutter + 6px gap, then 53 columns of 12px cells
+// on a 16px pitch (2px grid gap, no trailing gap). Must match
+// calendar_heatmap.css.
+export const CAL_GUTTER_PX = 36;
+export const CAL_GRID_WIDTH_PX = 53 * 14 + 52 * 2;
+
+export interface CalendarRange {
+  start: number;
+  end: number;
+  weeks: number;
+}
+
+// The 53-week window the calendar grid covers: first grid Sunday through
+// the (exclusive) Sunday after the current week, local midnights.
+export function redditorsCalendarRange(): CalendarRange {
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+  const currentWeekSunday = new Date(today);
+  currentWeekSunday.setDate(today.getDate() - today.getDay());
+
+  const startSunday = new Date(currentWeekSunday);
+  startSunday.setDate(currentWeekSunday.getDate() - 52 * 7);
+
+  const end = new Date(currentWeekSunday);
+  end.setDate(currentWeekSunday.getDate() + 7);
+
+  return { start: startSunday.getTime(), end: end.getTime(), weeks: 53 };
+}
+
 export function redditorsCalendarHeatmap(
   timestamps: number[],
   activityData: ActivityData
@@ -41,11 +73,7 @@ export function redditorsCalendarHeatmap(
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
-  const currentWeekSunday = new Date(today);
-  currentWeekSunday.setDate(today.getDate() - today.getDay());
-
-  const startSunday = new Date(currentWeekSunday);
-  startSunday.setDate(currentWeekSunday.getDate() - 52 * 7);
+  const startSunday = new Date(redditorsCalendarRange().start);
 
   const dayKey = (date: Date): string =>
     `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;

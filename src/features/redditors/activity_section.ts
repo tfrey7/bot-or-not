@@ -69,8 +69,10 @@ export function redditorsActivitySection(report: ReportRow): HTMLDivElement {
 
   wrap.appendChild(meta);
 
-  wrap.appendChild(redditorsCalendarHeatmap(timestamps, activityData));
+  // Hour chart first; the calendar heatmap and the subreddit chart share
+  // the same week-column geometry, so they sit adjacent with dates aligned.
   wrap.appendChild(redditorsHourSection(timestamps));
+  wrap.appendChild(redditorsCalendarHeatmap(timestamps, activityData));
   wrap.appendChild(
     redditorsSubredditChartStacked(activityData, report.createdAt)
   );

@@ -2,6 +2,11 @@ import uPlot from "uplot";
 import "uplot/dist/uPlot.min.css";
 
 import {
+  CAL_GRID_WIDTH_PX,
+  CAL_GUTTER_PX,
+  redditorsCalendarRange,
+} from "./calendar_heatmap.ts";
+import {
   redditorsBuildSubredditChartSeries,
   redditorsBuildSubredditTimelines,
   redditorsDetectRampWindows,
@@ -10,14 +15,15 @@ import {
 } from "./subreddit_chart_data.ts";
 import type { ActivityData } from "../../types.ts";
 
-const BUCKET_COUNT = 96;
 const TOP_N = 7;
 const CHART_HEIGHT = 240;
 const TEAR_TEETH = 8;
 const TEAR_DEPTH_PX = 4;
 const RAMP_SHADE_ALPHA = 0.09;
 const TRUNCATED_SHADE_ALPHA = 0.07;
-const BAR_WIDTH_RATIO = 0.85;
+
+// 12px bar on the calendar's 16px column pitch, mirroring the cell width.
+const BAR_WIDTH_RATIO = 0.75;
 const OTHER_BAR_ALPHA = 0.6;
 const BAR_ALPHA = 0.95;
 const DIMMED_BAR_ALPHA = 0.18;
@@ -106,16 +112,18 @@ export function redditorsSubredditChartStacked(
     return wrap;
   }
 
+  // Same 53-week window and pixel geometry as the calendar heatmap above,
+  // one bucket per week column, so dates line up between the two charts.
+  const calendarRange = redditorsCalendarRange();
+  const rangeStart = calendarRange.start;
+  const rangeEnd = calendarRange.end;
+  const bucketCount = calendarRange.weeks;
+
   const earliestEvent = Math.min(
     ...timelines.map((timeline) => timeline.firstSeen)
   );
-  const latestEvent = Math.max(
-    ...timelines.map((timeline) => timeline.lastSeen)
-  );
-  const rangeStart = earliestEvent;
-  const rangeEnd = Math.max(latestEvent, Date.now());
   const truncatedStart =
-    accountCreatedAt && accountCreatedAt < earliestEvent
+    accountCreatedAt && accountCreatedAt < Math.max(earliestEvent, rangeStart)
       ? accountCreatedAt
       : null;
 
@@ -131,7 +139,7 @@ export function redditorsSubredditChartStacked(
     timelines,
     rangeStart,
     rangeEnd,
-    BUCKET_COUNT,
+    bucketCount,
     TOP_N
   );
 
@@ -152,10 +160,10 @@ export function redditorsSubredditChartStacked(
     }
   }
 
-  const bucketWidth = (rangeEnd - rangeStart) / BUCKET_COUNT;
-  const xs: number[] = new Array(BUCKET_COUNT);
+  const bucketWidth = (rangeEnd - rangeStart) / bucketCount;
+  const xs: number[] = new Array(bucketCount);
 
-  for (let i = 0; i < BUCKET_COUNT; i++) {
+  for (let i = 0; i < bucketCount; i++) {
     xs[i] = Math.round((rangeStart + (i + 0.5) * bucketWidth) / 1000);
   }
 
@@ -166,12 +174,12 @@ export function redditorsSubredditChartStacked(
   // cursor index. The bars themselves are painted from the raw per-layer
   // counts in the draw hook below.
   const buildStackedData = (): uPlot.AlignedData => {
-    const cumulative = new Array<number>(BUCKET_COUNT).fill(0);
+    const cumulative = new Array<number>(bucketCount).fill(0);
     const rows: number[][] = [];
 
     for (const layer of stack) {
       if (!hidden.has(layer.entry.label)) {
-        for (let i = 0; i < BUCKET_COUNT; i++) {
+        for (let i = 0; i < bucketCount; i++) {
           cumulative[i] += layer.entry.bucketCounts[i];
         }
       }
@@ -211,8 +219,12 @@ export function redditorsSubredditChartStacked(
   host.appendChild(tooltip);
 
   const opts: uPlot.Options = {
-    width: host.clientWidth || 640,
+    // Fixed geometry: y-axis gutter matches the calendar's day-label
+    // gutter and the plot area matches its grid width, so week columns
+    // land at the same x positions in both charts.
+    width: CAL_GUTTER_PX + CAL_GRID_WIDTH_PX,
     height: CHART_HEIGHT,
+    padding: [8, 0, 0, 0],
     legend: { show: false },
     cursor: {
       y: false,
@@ -220,7 +232,10 @@ export function redditorsSubredditChartStacked(
     },
     series: uplotSeries,
     scales: {
-      x: { time: true },
+      x: {
+        time: true,
+        range: () => [rangeStart / 1000, rangeEnd / 1000],
+      },
       y: { range: (_u, _min, max) => [0, Math.max(1, max)] },
     },
     axes: [
@@ -241,7 +256,7 @@ export function redditorsSubredditChartStacked(
         },
         ticks: { show: true, stroke: borderColor, width: 1, size: 4 },
         border: { show: truncatedStart == null, stroke: borderColor, width: 1 },
-        size: 36,
+        size: CAL_GUTTER_PX,
         font: "10px ui-monospace, SFMono-Regular, Menlo, monospace",
       },
     ],
@@ -294,7 +309,7 @@ export function redditorsSubredditChartStacked(
         (u) => {
           const ctx = u.ctx;
           const colWidth =
-            BUCKET_COUNT > 1
+            bucketCount > 1
               ? Math.abs(
                   u.valToPos(xs[1], "x", true) - u.valToPos(xs[0], "x", true)
                 )
@@ -306,7 +321,7 @@ export function redditorsSubredditChartStacked(
           ctx.rect(u.bbox.left, u.bbox.top, u.bbox.width, u.bbox.height);
           ctx.clip();
 
-          for (let i = 0; i < BUCKET_COUNT; i++) {
+          for (let i = 0; i < bucketCount; i++) {
             const xCenter = u.valToPos(xs[i], "x", true);
             let stackBase = 0;
 
@@ -452,16 +467,6 @@ export function redditorsSubredditChartStacked(
   };
 
   const plot = new uPlot(opts, buildStackedData(), host);
-
-  const ro = new ResizeObserver((entries) => {
-    for (const entry of entries) {
-      const width = Math.floor(entry.contentRect.width);
-      if (width > 0 && width !== plot.width) {
-        plot.setSize({ width, height: CHART_HEIGHT });
-      }
-    }
-  });
-  ro.observe(host);
 
   if (truncatedStart != null) {
     host.title = formatTearTooltip(truncatedStart, earliestEvent);
