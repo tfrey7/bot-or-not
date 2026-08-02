@@ -4,16 +4,20 @@ import "uplot/dist/uPlot.min.css";
 import {
   redditorsBuildSubredditChartSeries,
   redditorsBuildSubredditTimelines,
+  redditorsDetectRampWindows,
+  type RampWindow,
   type SubredditChartSeries,
 } from "./subreddit_chart_data.ts";
 import type { ActivityData } from "../../types.ts";
 
 const BUCKET_COUNT = 96;
-const TOP_N = 5;
+const TOP_N = 7;
 const CHART_HEIGHT = 240;
 const GLOW_BLUR_PX = 7;
 const TEAR_TEETH = 8;
 const TEAR_DEPTH_PX = 4;
+const RAMP_SHADE_ALPHA = 0.09;
+const TRUNCATED_SHADE_ALPHA = 0.07;
 
 const SERIES_COLOR_VARS = [
   "--bon-stamp-red",
@@ -21,6 +25,8 @@ const SERIES_COLOR_VARS = [
   "--bon-stamp-forest",
   "--bon-stamp-amber",
   "--bon-stamp-rust",
+  "--bon-stamp-moss",
+  "--bon-stamp-slate",
 ];
 const OTHER_COLOR_VAR = "--bon-stamp-charcoal";
 
@@ -83,6 +89,14 @@ export function redditorsSubredditChartOverlaid(
       ? accountCreatedAt
       : null;
 
+  const rampWindows = redditorsDetectRampWindows(activityData);
+  const commentHorizon =
+    activityData.commentsLimited &&
+    activityData.earliestCommentAt != null &&
+    activityData.earliestCommentAt > rangeStart
+      ? activityData.earliestCommentAt
+      : null;
+
   const series = redditorsBuildSubredditChartSeries(
     timelines,
     rangeStart,
@@ -122,6 +136,8 @@ export function redditorsSubredditChartOverlaid(
 
   const mutedColor = readCssVar("--bon-muted");
   const borderColor = readCssVar("--bon-border");
+  const rampColor = readCssVar("--bon-stamp-red");
+  const truncatedColor = readCssVar(OTHER_COLOR_VAR);
 
   const uplotSeries: uPlot.Series[] = [
     {},
@@ -180,6 +196,50 @@ export function redditorsSubredditChartOverlaid(
       },
     ],
     hooks: {
+      drawClear: [
+        (u) => {
+          const ctx = u.ctx;
+
+          const shadeRange = (
+            fromMs: number,
+            toMs: number,
+            color: string,
+            alpha: number
+          ) => {
+            const left = Math.max(
+              u.valToPos(fromMs / 1000, "x", true),
+              u.bbox.left
+            );
+            const right = Math.min(
+              u.valToPos(toMs / 1000, "x", true),
+              u.bbox.left + u.bbox.width
+            );
+
+            if (right <= left) {
+              return;
+            }
+
+            ctx.save();
+            ctx.globalAlpha = alpha;
+            ctx.fillStyle = color;
+            ctx.fillRect(left, u.bbox.top, right - left, u.bbox.height);
+            ctx.restore();
+          };
+
+          if (commentHorizon != null) {
+            shadeRange(
+              rangeStart,
+              commentHorizon,
+              truncatedColor,
+              TRUNCATED_SHADE_ALPHA
+            );
+          }
+
+          for (const window of rampWindows) {
+            shadeRange(window.start, window.end, rampColor, RAMP_SHADE_ALPHA);
+          }
+        },
+      ],
       drawSeries: [
         (u, seriesIdx) => {
           if (seriesIdx === 0) {
@@ -339,7 +399,65 @@ export function redditorsSubredditChartOverlaid(
   }
 
   wrap.appendChild(buildLegend(ordered));
+
+  const notes = buildAnnotationNotes(
+    rampWindows,
+    commentHorizon,
+    rampColor,
+    truncatedColor
+  );
+
+  if (notes) {
+    wrap.appendChild(notes);
+  }
+
   return wrap;
+}
+
+function buildAnnotationNotes(
+  rampWindows: RampWindow[],
+  commentHorizon: number | null,
+  rampColor: string,
+  truncatedColor: string
+): HTMLUListElement | null {
+  if (rampWindows.length === 0 && commentHorizon == null) {
+    return null;
+  }
+
+  const notes = document.createElement("ul");
+  notes.className = "bon-sub-chart-notes";
+
+  const addNote = (color: string, text: string) => {
+    const item = document.createElement("li");
+    item.className = "bon-sub-chart-notes-item";
+
+    const swatch = document.createElement("span");
+    swatch.className = "bon-sub-chart-shade-swatch";
+    swatch.style.setProperty("--bon-series-color", color);
+    item.appendChild(swatch);
+
+    item.appendChild(document.createTextNode(text));
+    notes.appendChild(item);
+  };
+
+  for (const window of rampWindows) {
+    const start = new Date(window.start).toLocaleDateString();
+    const end = new Date(window.end).toLocaleDateString();
+    addNote(
+      rampColor,
+      `${start} – ${end}: posting volume ≥5× the account's baseline — possible conversion to bot duty`
+    );
+  }
+
+  if (commentHorizon != null) {
+    const horizon = new Date(commentHorizon).toLocaleDateString();
+    addNote(
+      truncatedColor,
+      `before ${horizon}: comments not visible (Reddit sample cap) — only posts are plotted there`
+    );
+  }
+
+  return notes;
 }
 
 function buildLegend(

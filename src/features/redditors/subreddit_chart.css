@@ -103,3 +103,26 @@
   color: var(--bon-muted);
   font-variant-numeric: tabular-nums;
 }
+.bon-sub-chart-notes {
+  list-style: none;
+  padding: 0;
+  margin: 0.4em 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25em;
+  font-size: 0.7rem;
+  color: var(--bon-muted);
+}
+.bon-sub-chart-notes-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35em;
+}
+.bon-sub-chart-shade-swatch {
+  display: inline-block;
+  width: 0.9em;
+  height: 0.9em;
+  border-radius: 2px;
+  background: var(--bon-series-color);
+  opacity: 0.35;
+}

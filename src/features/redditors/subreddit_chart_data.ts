@@ -1,8 +1,11 @@
 // Pure transforms feeding the per-subreddit overlaid chart. Buckets per-sub
-// posts/comments into a shared time grid and collapses the long tail into a
-// single "other" series.
+// posts/comments into a shared time grid, collapses the long tail into a
+// single "other" series, and detects posting-volume ramp windows for the
+// chart's conversion-period shading.
 
 import type { ActivityData } from "../../types.ts";
+
+const DAY_MS = 86_400_000;
 
 export interface SubredditTimeline {
   sub: string;
@@ -84,8 +87,41 @@ export function redditorsBuildSubredditTimelines(
     });
   }
 
-  timelines.sort((a, b) => b.total - a.total);
+  sortByRecency(timelines);
   return timelines;
+}
+
+// Rank by exponential-decay recency score rather than raw totals, so a sub
+// the account is active in NOW outranks one with a bigger pile of years-old
+// history. Half-life is anchored to the newest event across all timelines
+// (not the wall clock) so frozen snapshots rank the same way forever.
+const RECENCY_HALF_LIFE_MS = 90 * DAY_MS;
+
+function sortByRecency(timelines: SubredditTimeline[]): void {
+  const newestEvent = Math.max(
+    ...timelines.map((timeline) => timeline.lastSeen)
+  );
+
+  const scores = new Map<SubredditTimeline, number>();
+
+  for (const timeline of timelines) {
+    let score = 0;
+
+    for (const t of [...timeline.postEvents, ...timeline.commentEvents]) {
+      score += Math.pow(2, -(newestEvent - t) / RECENCY_HALF_LIFE_MS);
+    }
+
+    scores.set(timeline, score);
+  }
+
+  timelines.sort((a, b) => {
+    const scoreGap = scores.get(b)! - scores.get(a)!;
+    if (scoreGap !== 0) {
+      return scoreGap;
+    }
+
+    return b.total - a.total;
+  });
 }
 
 export interface SubredditChartSeries {
@@ -159,4 +195,83 @@ export function redditorsBuildSubredditChartSeries(
   }
 
   return series;
+}
+
+export interface RampWindow {
+  start: number;
+  end: number;
+}
+
+const RAMP_TRAILING_WINDOW_MS = 30 * DAY_MS;
+const RAMP_RATE_MULTIPLIER = 5;
+const RAMP_MIN_EVENTS_PER_DAY = 2;
+const RAMP_MIN_BASELINE_DAYS = 90;
+const RAMP_MIN_EVENTS = 20;
+
+// Time ranges where the trailing 30-day posting rate runs ≥5× the account's
+// lifetime baseline — the volume regime change that marks an account being
+// converted (sold, hijacked, activated) to bot duty. Mirrors the recent-vs-
+// lifetime rate comparison the investigation pipeline scores.
+//
+// When a sample is capped, events before the cap's visibility horizon are
+// excluded from both baseline and detection: the comment stream appearing
+// mid-axis would otherwise read as a rate jump and shade a fake ramp.
+export function redditorsDetectRampWindows(
+  activityData: ActivityData
+): RampWindow[] {
+  let horizon = -Infinity;
+
+  if (activityData.commentsLimited && activityData.earliestCommentAt != null) {
+    horizon = Math.max(horizon, activityData.earliestCommentAt);
+  }
+
+  if (activityData.postsLimited && activityData.earliestPostAt != null) {
+    horizon = Math.max(horizon, activityData.earliestPostAt);
+  }
+
+  const events = [
+    ...activityData.postTimestamps,
+    ...activityData.commentTimestamps,
+  ]
+    .filter((t) => t >= horizon)
+    .sort((a, b) => a - b);
+
+  if (events.length < RAMP_MIN_EVENTS) {
+    return [];
+  }
+
+  const spanDays = (events[events.length - 1] - events[0]) / DAY_MS;
+  if (spanDays < RAMP_MIN_BASELINE_DAYS) {
+    return [];
+  }
+
+  const baselinePerDay = events.length / spanDays;
+  const thresholdPerDay = Math.max(
+    baselinePerDay * RAMP_RATE_MULTIPLIER,
+    RAMP_MIN_EVENTS_PER_DAY
+  );
+
+  const windows: RampWindow[] = [];
+  let lo = 0;
+
+  for (let hi = 0; hi < events.length; hi++) {
+    while (events[hi] - events[lo] > RAMP_TRAILING_WINDOW_MS) {
+      lo++;
+    }
+
+    const windowRate = (hi - lo + 1) / (RAMP_TRAILING_WINDOW_MS / DAY_MS);
+
+    if (windowRate < thresholdPerDay) {
+      continue;
+    }
+
+    const last = windows[windows.length - 1];
+    if (last && events[lo] <= last.end + RAMP_TRAILING_WINDOW_MS) {
+      last.end = Math.max(last.end, events[hi]);
+    } else {
+      windows.push({ start: events[lo], end: events[hi] });
+    }
+  }
+
+  return windows;
 }
