@@ -2,6 +2,10 @@
 
 Notable changes to Bot or Not. Signed `.xpi` builds for each version are attached to the matching [GitHub Release](https://github.com/tfrey7/bot-or-not/releases).
 
+## [10.3.0] — 2026-08-02
+- Align the subreddit chart columns with the calendar heatmap
+- Give the subreddit-chart legend room to breathe
+
 ## [10.2.0] — 2026-08-02
 - Overhaul factor scoring: regime-change gate, absence credits, calibration
 - Split the investigation hour histogram into recent/prior UTC windows
