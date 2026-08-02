@@ -4,8 +4,6 @@
 const PAGE_TABS = [
   "redditors",
   "metrics",
-  "personas",
-  "fieldguide",
   "subreddits",
   "reported",
   "settings",

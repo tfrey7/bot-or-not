@@ -8,7 +8,6 @@
 
 import { clientSend, clientSubscribe } from "../../client.ts";
 import { renderAnalyticsLoading, renderAnalyticsTab } from "../analytics";
-import { renderFieldGuideTab, renderPersonasTab } from "../personas";
 import {
   renderReportedPostsTab,
   type ReportedHistorySlice,
@@ -36,12 +35,6 @@ export async function redditorsRenderReportsPage(): Promise<void> {
   const splitEl = document.getElementById("bon-split") as HTMLElement;
   const analyticsContainer = document.getElementById(
     "bon-analytics-container"
-  ) as HTMLElement | null;
-  const personasContainer = document.getElementById(
-    "bon-personas-container"
-  ) as HTMLElement | null;
-  const fieldGuideContainer = document.getElementById(
-    "bon-fieldguide-container"
   ) as HTMLElement | null;
   const subredditsSplitEl = document.getElementById(
     "bon-subreddits-split"
@@ -201,24 +194,6 @@ export async function redditorsRenderReportsPage(): Promise<void> {
 
       const reports = await ensureAnalyticsReports();
       renderAnalyticsTab(reports, analyticsContainer);
-      return;
-    }
-
-    if (target === "personas") {
-      const reports = await ensureFullReports();
-      renderPersonasTab(reports, personasContainer, {
-        onSelectUser: navigateToUser,
-      });
-
-      return;
-    }
-
-    if (target === "fieldguide") {
-      const reports = await ensureFullReports();
-      renderFieldGuideTab(reports, fieldGuideContainer, {
-        onSelectUser: navigateToUser,
-      });
-
       return;
     }
 
