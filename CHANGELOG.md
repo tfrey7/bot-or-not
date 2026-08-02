@@ -2,6 +2,13 @@
 
 Notable changes to Bot or Not. Signed `.xpi` builds for each version are attached to the matching [GitHub Release](https://github.com/tfrey7/bot-or-not/releases).
 
+## [10.2.0] — 2026-08-02
+- Overhaul factor scoring: regime-change gate, absence credits, calibration
+- Split the investigation hour histogram into recent/prior UTC windows
+- Bump deps: preact, vite, knip, playwright, tsx, @types/node
+- Convert subreddit contributions to stacked bars with interactive side legend
+- Prefix u/ in Google-search launcher queries to cut false positives
+
 ## [10.1.0] — 2026-08-02
 - Bar whole-account bot/human rulings from investigation prose
 - Track a hash-sampled control cohort in the status re-check sweep
