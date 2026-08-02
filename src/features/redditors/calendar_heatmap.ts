@@ -66,7 +66,8 @@ export function redditorsCalendarRange(): CalendarRange {
 
 export function redditorsCalendarHeatmap(
   timestamps: number[],
-  activityData: ActivityData
+  activityData: ActivityData,
+  accountCreatedAt: number | null
 ): HTMLDivElement {
   const earliestVisible = computeEarliestFullyVisible(activityData);
 
@@ -156,8 +157,19 @@ export function redditorsCalendarHeatmap(
       const cell = document.createElement("div");
       cell.className = "bon-cal-cell";
 
+      const nextMidnight = new Date(
+        date.getFullYear(),
+        date.getMonth(),
+        date.getDate() + 1
+      ).getTime();
+      const beforeCreation =
+        accountCreatedAt !== null && nextMidnight <= accountCreatedAt;
+
       if (date > today) {
         cell.classList.add("bon-cal-cell--future");
+      } else if (beforeCreation) {
+        cell.classList.add("bon-cal-cell--void");
+        cell.title = `${date.toLocaleDateString()} — account didn't exist yet`;
       } else {
         const count = counts.get(dayKey(date)) || 0;
         const level = bucketLevel(count);

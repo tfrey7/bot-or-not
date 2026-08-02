@@ -127,6 +127,14 @@ export function redditorsSubredditChartStacked(
       ? accountCreatedAt
       : null;
 
+  // Account born inside the chart window: everything left of the creation
+  // date is impossible, not merely quiet — hatch it so the empty months
+  // don't read as dormancy.
+  const preCreationEnd =
+    accountCreatedAt && accountCreatedAt > rangeStart
+      ? Math.min(accountCreatedAt, rangeEnd)
+      : null;
+
   const rampWindows = redditorsDetectRampWindows(activityData);
   const commentHorizon =
     activityData.commentsLimited &&
@@ -293,7 +301,7 @@ export function redditorsSubredditChartStacked(
 
           if (commentHorizon != null) {
             shadeRange(
-              rangeStart,
+              Math.max(rangeStart, preCreationEnd ?? rangeStart),
               commentHorizon,
               truncatedColor,
               TRUNCATED_SHADE_ALPHA
@@ -302,6 +310,45 @@ export function redditorsSubredditChartStacked(
 
           for (const window of rampWindows) {
             shadeRange(window.start, window.end, rampColor, RAMP_SHADE_ALPHA);
+          }
+
+          if (preCreationEnd != null) {
+            const pxr = uPlot.pxRatio;
+            const left = u.bbox.left;
+            const right = Math.min(
+              u.valToPos(preCreationEnd / 1000, "x", true),
+              u.bbox.left + u.bbox.width
+            );
+
+            if (right > left) {
+              ctx.save();
+              ctx.beginPath();
+              ctx.rect(left, u.bbox.top, right - left, u.bbox.height);
+              ctx.clip();
+              ctx.strokeStyle = borderColor;
+              ctx.lineWidth = 1 * pxr;
+              ctx.beginPath();
+
+              const step = 8 * pxr;
+
+              for (let x = left - u.bbox.height; x < right; x += step) {
+                ctx.moveTo(x, u.bbox.top + u.bbox.height);
+                ctx.lineTo(x + u.bbox.height, u.bbox.top);
+              }
+
+              ctx.stroke();
+              ctx.restore();
+
+              ctx.save();
+              ctx.strokeStyle = mutedColor;
+              ctx.lineWidth = 1 * pxr;
+              ctx.setLineDash([4 * pxr, 3 * pxr]);
+              ctx.beginPath();
+              ctx.moveTo(right, u.bbox.top);
+              ctx.lineTo(right, u.bbox.top + u.bbox.height);
+              ctx.stroke();
+              ctx.restore();
+            }
           }
         },
       ],
@@ -385,6 +432,13 @@ export function redditorsSubredditChartStacked(
           dateRow.className = "bon-sub-chart-tooltip__date";
           dateRow.textContent = new Date(xVal * 1000).toLocaleDateString();
           tooltip.appendChild(dateRow);
+
+          if (preCreationEnd != null && xVal * 1000 < preCreationEnd) {
+            const voidRow = document.createElement("div");
+            voidRow.className = "bon-sub-chart-tooltip__void";
+            voidRow.textContent = "account didn't exist yet";
+            tooltip.appendChild(voidRow);
+          }
 
           for (const { entry, color } of sortForDisplay(stack)) {
             if (hidden.has(entry.label)) {
@@ -504,8 +558,10 @@ export function redditorsSubredditChartStacked(
   const notes = buildAnnotationNotes(
     rampWindows,
     commentHorizon,
+    preCreationEnd,
     rampColor,
-    truncatedColor
+    truncatedColor,
+    borderColor
   );
 
   if (notes) {
@@ -518,10 +574,16 @@ export function redditorsSubredditChartStacked(
 function buildAnnotationNotes(
   rampWindows: RampWindow[],
   commentHorizon: number | null,
+  preCreationEnd: number | null,
   rampColor: string,
-  truncatedColor: string
+  truncatedColor: string,
+  voidColor: string
 ): HTMLUListElement | null {
-  if (rampWindows.length === 0 && commentHorizon == null) {
+  if (
+    rampWindows.length === 0 &&
+    commentHorizon == null &&
+    preCreationEnd == null
+  ) {
     return null;
   }
 
@@ -540,6 +602,14 @@ function buildAnnotationNotes(
     item.appendChild(document.createTextNode(text));
     notes.appendChild(item);
   };
+
+  if (preCreationEnd != null) {
+    const created = new Date(preCreationEnd).toLocaleDateString();
+    addNote(
+      voidColor,
+      `hatched span: account didn't exist yet — created ${created}`
+    );
+  }
 
   for (const window of rampWindows) {
     const start = new Date(window.start).toLocaleDateString();

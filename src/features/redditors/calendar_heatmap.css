@@ -110,6 +110,15 @@
 .bon-cal-cell--future {
   background: transparent;
 }
+/* Days before the account existed: no fill at all, just a faint centered
+   dot — reads as "structurally absent", unlike the zero-activity tint. */
+.bon-cal-cell--void {
+  background: radial-gradient(
+    circle,
+    var(--bon-border) 1.5px,
+    transparent 1.6px
+  );
+}
 .bon-cal-cell--unknown {
   background: repeating-linear-gradient(
     45deg,
