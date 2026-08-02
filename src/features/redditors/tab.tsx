@@ -83,6 +83,7 @@ function RedditorsTab({ handle, onStructuralChange }: RedditorsTabProps) {
     readSelectedUsernameFromUrl
   );
   const [botsOnly, setBotsOnly] = useState(false);
+  const [publicOnly, setPublicOnly] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
 
   // Set when the selection came from the URL (deep link) or another tab's
@@ -186,9 +187,13 @@ function RedditorsTab({ handle, onStructuralChange }: RedditorsTabProps) {
   const allDoneRows = allReports.filter(
     (report) => !redditorsIsActiveRow(report)
   );
-  const doneRows = botsOnly
+  let doneRows = botsOnly
     ? allDoneRows.filter(redditorsIsSuspectedBot)
     : allDoneRows;
+
+  if (publicOnly) {
+    doneRows = doneRows.filter((report) => !report.profileHidden);
+  }
 
   activeRows.sort(redditorsCompareActive);
   doneRows.sort(redditorsCompareBy("investigatedAt", "desc", REGION_LABELS));
@@ -322,6 +327,18 @@ function RedditorsTab({ handle, onStructuralChange }: RedditorsTabProps) {
             />
             Suspected bots only
           </label>
+          <label class="bon-list-filter-toggle">
+            <input
+              type="checkbox"
+              id="bon-public-only"
+              checked={publicOnly}
+              onChange={(event) => {
+                setPublicOnly(event.currentTarget.checked);
+                setCurrentPage(1);
+              }}
+            />
+            Has public profile
+          </label>
         </div>
         <div
           class="bon-table-wrap"
@@ -358,7 +375,7 @@ function RedditorsTab({ handle, onStructuralChange }: RedditorsTabProps) {
         {loadError ? (
           <LoadError message={loadError} />
         ) : (
-          isEmpty && <EmptyState botsOnly={botsOnly} />
+          isEmpty && <EmptyState filtered={botsOnly || publicOnly} />
         )}
       </div>
       <DetailHost
@@ -379,12 +396,12 @@ function RedditorsTab({ handle, onStructuralChange }: RedditorsTabProps) {
   );
 }
 
-function EmptyState({ botsOnly }: { botsOnly: boolean }) {
+function EmptyState({ filtered }: { filtered: boolean }) {
   let text =
     "No reports yet. Flag a Reddit user from their profile page to start tracking.";
 
-  if (botsOnly) {
-    text = "No suspected bots among your reports.";
+  if (filtered) {
+    text = "No reports match the current filters.";
   }
 
   return (

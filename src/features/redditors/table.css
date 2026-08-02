@@ -143,6 +143,9 @@ table.bon-table {
 
 .bon-list-filter {
   margin: 0 0 0.6em;
+  display: flex;
+  gap: 1.4em;
+  flex-wrap: wrap;
 }
 .bon-list-filter-toggle {
   display: inline-flex;
