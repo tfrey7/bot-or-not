@@ -2,6 +2,13 @@
 
 Notable changes to Bot or Not. Signed `.xpi` builds for each version are attached to the matching [GitHub Release](https://github.com/tfrey7/bot-or-not/releases).
 
+## [10.0.0] — 2026-08-02
+- Metrics: verdict-outcomes calibration card
+- Add ring detection: similar-accounts dossier section
+- Reported-posts takedown recheck sweep
+- Subreddit chart: recency-ranked series, conversion-window shading, honest sample-cap zone
+- Close the ramp blind spots: recent-window posting rate, dormancy-credit gate, Ukraine region exception
+
 ## [9.4.1] — 2026-08-01
 - Anchor the profile dossier under the status message on banned pages
 
