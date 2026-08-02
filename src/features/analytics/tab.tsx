@@ -193,7 +193,7 @@ function AnalyticsTab({
         {funnelData && (
           <UplotCard
             title="Requests by source"
-            subtitle="per hour · last 48h"
+            subtitle="per day · last 7 days"
             runs={funnelData.telemetry}
             build={analyticsRedditSourcesChart}
           />

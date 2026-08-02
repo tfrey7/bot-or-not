@@ -25,6 +25,8 @@ export function analyticsUplotPalette(): {
   forest: string;
   amber: string;
   red: string;
+  blue: string;
+  slate: string;
   muted: string;
   mutedSoft: string;
   border: string;
@@ -41,6 +43,8 @@ export function analyticsUplotPalette(): {
     forest: read("--bon-stamp-forest"),
     amber: read("--bon-stamp-amber"),
     red: read("--bon-stamp-red"),
+    blue: read("--bon-stamp-blue"),
+    slate: read("--bon-stamp-slate"),
     muted: read("--bon-muted"),
     mutedSoft: read("--bon-muted-soft"),
     border: read("--bon-border"),
@@ -97,6 +101,7 @@ export function analyticsAxes(
   overrides: {
     xValues?: uPlot.Axis.Values;
     xIncrs?: uPlot.Axis.Incrs;
+    xSplits?: uPlot.Axis.Splits;
     yValues?: uPlot.Axis.Values;
   } = {}
 ): uPlot.Axis[] {
@@ -109,6 +114,7 @@ export function analyticsAxes(
       font: "10px ui-monospace, SFMono-Regular, Menlo, monospace",
       ...(overrides.xValues ? { values: overrides.xValues } : {}),
       ...(overrides.xIncrs ? { incrs: overrides.xIncrs } : {}),
+      ...(overrides.xSplits ? { splits: overrides.xSplits } : {}),
     },
     {
       stroke: palette.muted,

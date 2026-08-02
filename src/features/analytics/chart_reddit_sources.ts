@@ -1,7 +1,7 @@
-// Reddit requests by source — stacked bars, one per hour over the last 48
-// hours, one color per feature that issued the traffic. This is the "what
-// is scanning and when" view: sweeps show up as background-colored spikes
-// even when no investigation ran.
+// Reddit requests by source — stacked bars, one per local day over the
+// telemetry retention window, one color per feature that issued the
+// traffic. This is the "what is scanning and when" view: sweeps show up as
+// background-colored spikes even when no investigation ran.
 
 import uPlot from "uplot";
 
@@ -20,7 +20,7 @@ import {
   type UplotChartOptions,
 } from "./uplot_helpers.ts";
 
-const WINDOW_HOURS = 48;
+const WINDOW_DAYS = 7;
 
 const SOURCE_ORDER: RedditSource[] = [
   "investigation",
@@ -44,45 +44,56 @@ function sourceColors(
   palette: ReturnType<typeof analyticsUplotPalette>
 ): Record<RedditSource, string> {
   return {
-    investigation: palette.accent,
+    investigation: palette.amber,
     subreddit: palette.forest,
-    attribution: palette.amber,
+    attribution: palette.blue,
     "status-recheck": palette.rust,
-    "post-recheck": palette.accentSoft,
+    "post-recheck": palette.slate,
     blocklist: palette.red,
   };
-}
-
-function formatHourTick(secondsEpoch: number): string {
-  const date = new Date(secondsEpoch * 1000);
-
-  if (date.getHours() === 0) {
-    return formatDayTick(secondsEpoch);
-  }
-
-  return `${date.getHours()}h`;
 }
 
 export function analyticsRedditSourcesChart(
   telemetry: RedditTelemetryState
 ): HTMLElement {
-  const nowHour = Math.floor(Date.now() / MS_PER_HOUR);
-  const firstHour = nowHour - (WINDOW_HOURS - 1);
+  const now = new Date();
+  const todayStart = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    now.getDate()
+  ).getTime();
+  const dayStarts: number[] = new Array(WINDOW_DAYS);
 
-  // Per-source counts per hour slot (ok + error — the chart shows load, the
+  for (let i = 0; i < WINDOW_DAYS; i++) {
+    const day = new Date(todayStart);
+    day.setDate(day.getDate() - (WINDOW_DAYS - 1 - i));
+    dayStarts[i] = day.getTime();
+  }
+
+  const slotForTimestamp = (timestamp: number): number => {
+    for (let i = WINDOW_DAYS - 1; i >= 0; i--) {
+      if (timestamp >= dayStarts[i]) {
+        return i;
+      }
+    }
+
+    return -1;
+  };
+
+  // Per-source counts per day slot (ok + error — the chart shows load, the
   // tooltip breaks out errors).
   const perSource = new Map<RedditSource, number[]>();
-  const errors: number[] = new Array<number>(WINDOW_HOURS).fill(0);
+  const errors: number[] = new Array<number>(WINDOW_DAYS).fill(0);
 
   for (const source of SOURCE_ORDER) {
-    perSource.set(source, new Array<number>(WINDOW_HOURS).fill(0));
+    perSource.set(source, new Array<number>(WINDOW_DAYS).fill(0));
   }
 
   let total = 0;
 
   for (const bucket of telemetry.hourly) {
-    const slot = bucket.hour - firstHour;
-    if (slot < 0 || slot >= WINDOW_HOURS) {
+    const slot = slotForTimestamp(bucket.hour * MS_PER_HOUR);
+    if (slot < 0) {
       continue;
     }
 
@@ -99,25 +110,25 @@ export function analyticsRedditSourcesChart(
   }
 
   if (total === 0) {
-    return analyticsEmptyPanel("No Reddit traffic in the last 48 hours.");
+    return analyticsEmptyPanel("No Reddit traffic in the last 7 days.");
   }
 
-  const xs: number[] = new Array(WINDOW_HOURS);
+  const xs: number[] = new Array(WINDOW_DAYS);
 
-  for (let i = 0; i < WINDOW_HOURS; i++) {
-    xs[i] = ((firstHour + i) * MS_PER_HOUR) / 1000;
+  for (let i = 0; i < WINDOW_DAYS; i++) {
+    xs[i] = (dayStarts[i] + 43_200_000) / 1000;
   }
 
   // Stacked bars via cumulative sums: draw the tallest cumulative first and
   // each shorter one on top, so the visible strip of each series is exactly
   // that source's share.
   const cumulative: Array<Array<number | null>> = [];
-  const running = new Array<number>(WINDOW_HOURS).fill(0);
+  const running = new Array<number>(WINDOW_DAYS).fill(0);
 
   for (const source of SOURCE_ORDER) {
     const counts = perSource.get(source)!;
 
-    for (let i = 0; i < WINDOW_HOURS; i++) {
+    for (let i = 0; i < WINDOW_DAYS; i++) {
       running[i] += counts[i];
     }
 
@@ -154,10 +165,10 @@ export function analyticsRedditSourcesChart(
       drag: { x: false, y: false, setScale: false },
     },
     scales: {
-      // Pad ½ hour on each side so the first/last bar isn't clipped.
+      // Pad ½ day on each side so the first/last bar isn't clipped.
       x: {
         time: true,
-        range: (_u, min, max) => [min - 1_800, max + 1_800],
+        range: (_u, min, max) => [min - 43_200, max + 43_200],
       },
       y: {
         range: (_u, _min, max) => [0, Math.max(1, Math.ceil(max))],
@@ -165,8 +176,10 @@ export function analyticsRedditSourcesChart(
     },
     series,
     axes: analyticsAxes(palette, {
-      xIncrs: [21_600, 43_200, 86_400],
-      xValues: (_u, splits) => splits.map(formatHourTick),
+      // One tick per bar, pinned to the bar centers — uPlot's own day
+      // splits land on UTC midnights, which drift a label off per timezone.
+      xSplits: () => xs,
+      xValues: (_u, splits) => splits.map(formatDayTick),
       yValues: (_u, splits) =>
         splits.map((value) =>
           Number.isInteger(value) ? String(value) : value.toFixed(0)
@@ -188,8 +201,7 @@ export function analyticsRedditSourcesChart(
 
           const head = document.createElement("div");
           head.className = "bon-analytics-uplot-tooltip__head";
-          const when = new Date(xs[idx] * 1000);
-          head.textContent = `${when.toLocaleDateString()} ${when.getHours()}:00`;
+          head.textContent = new Date(xs[idx] * 1000).toLocaleDateString();
           tooltip.appendChild(head);
 
           for (const source of SOURCE_ORDER) {
