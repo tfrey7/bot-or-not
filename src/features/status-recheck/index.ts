@@ -1,7 +1,9 @@
 // Weekly, lowest-priority background sweep that re-checks suspected-bot
-// accounts for suspension/deletion, so the reports table can mark dead ones
-// with a tombstone — the active counterpart to the passive content-script
-// detector in features/status-detection. Run once on background startup
+// accounts (plus a hash-sampled control cohort of human-side verdicts, for
+// calibration baselines) for suspension/deletion, so the reports table can
+// mark dead ones with a tombstone — the active counterpart to the passive
+// content-script detector in features/status-detection. Run once on
+// background startup
 // (after migrations). Two gates pace it: a pass-level gate (below) keeps
 // frequent background wakes from firing a probe batch each time, and the
 // per-account 7-day gating (logic.ts) bounds how often any given account is

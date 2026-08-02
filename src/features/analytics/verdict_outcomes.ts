@@ -4,8 +4,9 @@
 // fresh as the status re-check sweep instead of a stale backup export.
 
 import type { Report, Verdict } from "../../types.ts";
+import { isControlCohortMember } from "../../utils/control_cohort.ts";
 import { investigationResults } from "../../utils/history.ts";
-import { normalizeInvestigation } from "../../verdict.ts";
+import { isSuspectedBot, normalizeInvestigation } from "../../verdict.ts";
 
 const VERDICT_OUTCOME_ORDER: Verdict[] = [
   "bot",
@@ -30,10 +31,18 @@ interface LongestSurvivingBotVerdict {
   runAt: number;
 }
 
+interface ControlCohortOutcomes {
+  total: number;
+  known: number;
+  gone: number;
+  goneRate: number | null;
+}
+
 export interface VerdictOutcomes {
   investigated: number;
   rows: VerdictOutcomeRow[];
   botSideGoneRate: number | null;
+  controlCohort: ControlCohortOutcomes;
   longestSurviving: LongestSurvivingBotVerdict | null;
 }
 
@@ -92,6 +101,31 @@ export function analyticsVerdictOutcomes(
     0
   );
 
+  // The control cohort is the human-side accounts the re-check sweep actually
+  // tracks — its gone rate is the baseline the bot-side rate is measured
+  // against, since untracked human rows only update on incidental browsing.
+  const controlEntries = analyzed.filter(
+    (entry) =>
+      !isSuspectedBot(entry.verdict) && isControlCohortMember(entry.username)
+  );
+  const controlKnown = controlEntries.filter(
+    (entry) =>
+      entry.status === "suspended" ||
+      entry.status === "deleted" ||
+      entry.status === "active"
+  );
+  const controlGone = controlKnown.filter(
+    (entry) => entry.status === "suspended" || entry.status === "deleted"
+  ).length;
+
+  const controlCohort: ControlCohortOutcomes = {
+    total: controlEntries.length,
+    known: controlKnown.length,
+    gone: controlGone,
+    goneRate:
+      controlKnown.length === 0 ? null : controlGone / controlKnown.length,
+  };
+
   // The oldest bot-side verdict Reddit hasn't acted on — either our most
   // durable false positive or Reddit's most durable miss; worth a look
   // periodically either way.
@@ -115,6 +149,7 @@ export function analyticsVerdictOutcomes(
     investigated: analyzed.length,
     rows,
     botSideGoneRate: botKnown === 0 ? null : botGone / botKnown,
+    controlCohort,
     longestSurviving,
   };
 }

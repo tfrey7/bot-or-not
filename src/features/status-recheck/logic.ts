@@ -1,6 +1,7 @@
 // Pure selection logic for the weekly account-status re-check. No DOM, no I/O.
 
 import type { Report } from "../../types.ts";
+import { isControlCohortMember } from "../../utils/control_cohort.ts";
 import { investigationResults } from "../../utils/history.ts";
 import { isSuspectedBot } from "../../verdict.ts";
 
@@ -21,9 +22,35 @@ function isTerminalStatus(status: Report["userStatus"]): boolean {
   return status === "suspended" || status === "deleted";
 }
 
+// The sweep tracks two pools: every suspected bot, plus the control cohort —
+// a deterministic sample of the remaining completed verdicts whose measured
+// gone rate gives the bot-side rate a baseline. Returns which pool the
+// account belongs to, or null if it isn't tracked at all.
+function trackedPool(
+  username: string,
+  report: Report
+): "bot" | "control" | null {
+  const verdict = investigationResults(report.investigation)?.verdict;
+
+  if (!verdict) {
+    return null;
+  }
+
+  if (isSuspectedBot(verdict)) {
+    return "bot";
+  }
+
+  if (isControlCohortMember(username)) {
+    return "control";
+  }
+
+  return null;
+}
+
 // Rollup for the diagnostics card on the reports page's metrics tab.
 export interface StatusRecheckStats {
   tracked: number;
+  controlTracked: number;
   dueNow: number;
   checkedLastWeek: number;
   suspended: number;
@@ -32,11 +59,12 @@ export interface StatusRecheckStats {
 }
 
 export function statusRecheckStats(
-  reports: Report[],
+  reports: Array<Report & { username: string }>,
   now: number
 ): StatusRecheckStats {
   const stats: StatusRecheckStats = {
     tracked: 0,
+    controlTracked: 0,
     dueNow: 0,
     checkedLastWeek: 0,
     suspended: 0,
@@ -64,7 +92,9 @@ export function statusRecheckStats(
       );
     }
 
-    if (!isSuspectedBot(investigationResults(report.investigation)?.verdict)) {
+    const pool = trackedPool(report.username, report);
+
+    if (pool === null) {
       continue;
     }
 
@@ -72,7 +102,11 @@ export function statusRecheckStats(
       continue;
     }
 
-    stats.tracked++;
+    if (pool === "bot") {
+      stats.tracked++;
+    } else {
+      stats.controlTracked++;
+    }
 
     if (now - report.userStatusCheckedAt >= STATUS_RECHECK_INTERVAL_MS) {
       stats.dueNow++;
@@ -82,9 +116,10 @@ export function statusRecheckStats(
   return stats;
 }
 
-// Usernames of suspected bots whose liveness is stale (or never checked) and
-// not already known-gone, oldest check first, capped. `reports` is the full
-// per-user map straight from storage.
+// Usernames of tracked accounts (suspected bots + control cohort) whose
+// liveness is stale (or never checked) and not already known-gone, oldest
+// check first, capped. `reports` is the full per-user map straight from
+// storage.
 export function selectDueAccounts(
   reports: Record<string, Report>,
   now: number
@@ -92,7 +127,7 @@ export function selectDueAccounts(
   const due: Array<{ username: string; checkedAt: number }> = [];
 
   for (const [username, report] of Object.entries(reports)) {
-    if (!isSuspectedBot(investigationResults(report.investigation)?.verdict)) {
+    if (trackedPool(username, report) === null) {
       continue;
     }
 

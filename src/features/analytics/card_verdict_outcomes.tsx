@@ -56,6 +56,12 @@ export function VerdictOutcomesCard({
           ]),
           ["Bot-side gone rate", pct(outcomes.botSideGoneRate)],
           [
+            "Control-cohort gone rate",
+            outcomes.controlCohort.total === 0
+              ? "no cohort members yet"
+              : `${pct(outcomes.controlCohort.goneRate)} · ${outcomes.controlCohort.gone} of ${outcomes.controlCohort.known} with status (${outcomes.controlCohort.total} tracked)`,
+          ],
+          [
             "Longest-surviving bot call",
             outcomes.longestSurviving === null ? (
               "none — every bot call is gone"

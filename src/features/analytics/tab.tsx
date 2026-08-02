@@ -213,9 +213,10 @@ function AnalyticsTab({
       <header class="bon-analytics-subhead">
         <h2>Calibration</h2>
         <p class="bon-analytics-subtitle">
-          Verdicts vs. Reddit's own enforcement. Only suspected bots get the
-          weekly liveness re-check — human-side rows update on incidental
-          browsing, so their gone counts are undercounts.
+          Verdicts vs. Reddit's own enforcement. The weekly liveness re-check
+          covers suspected bots plus a ~10% control cohort of human-side
+          verdicts — the cohort's gone rate is the baseline; human rows outside
+          it update only on incidental browsing and undercount.
         </p>
       </header>
       <div class="bon-analytics-charts">

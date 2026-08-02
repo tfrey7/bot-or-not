@@ -13,7 +13,7 @@ export function SweepRecheckCard({
   reports,
   state,
 }: {
-  reports: Report[];
+  reports: Array<Report & { username: string }>;
   state: StatusRecheckState | null;
 }) {
   const stats = statusRecheckStats(reports, Date.now());
@@ -21,11 +21,12 @@ export function SweepRecheckCard({
   return (
     <ChartCard
       title="Status re-check"
-      subtitle="weekly per account, one pass every 6h · tombstones suspected bots Reddit has removed"
+      subtitle="weekly per account, one pass every 6h · tombstones tracked accounts Reddit has removed"
     >
       <StatRows
         rows={[
           ["Suspected bots tracked", String(stats.tracked)],
+          ["Control cohort tracked", String(stats.controlTracked)],
           ["Due for re-check", String(stats.dueNow)],
           ["Checked in last 7 days", String(stats.checkedLastWeek)],
           [
