@@ -23,6 +23,7 @@ import {
 import { redditorsProfileSection } from "./profile_section.ts";
 import { redditorsReportedPostsSection } from "./reported_posts_section.ts";
 import { redditorsUserNotesSection } from "./user_notes_section.ts";
+import { ringDetectionSimilarAccountsSection } from "../ring-detection";
 
 export interface DetailPaneOptions {
   expectedDurationMs: number | null;
@@ -130,6 +131,15 @@ export function redditorsDetailPane(
 
     if (!inFlight) {
       fragment.appendChild(redditorsActivitySection(report));
+    }
+
+    // Ring candidates need activity data on file for this user AND at
+    // least one other report to compare against — the section renders
+    // its own quiet empty state when the ranker comes back with nothing.
+    if (report.activityData) {
+      fragment.appendChild(
+        ringDetectionSimilarAccountsSection(username, ringId)
+      );
     }
 
     // Notes sit at the bottom so the AI signals + dossier + activity all

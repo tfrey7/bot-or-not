@@ -34,6 +34,11 @@ import {
   redditorsUpdateProfileStats,
 } from "./features/redditors";
 import {
+  reportedPostsGetHistory,
+  reportedPostsRecheckSweep,
+} from "./features/reported-posts";
+import { ringDetectionGetCandidates } from "./features/ring-detection";
+import {
   subredditAnalyze,
   subredditGetReport,
   subredditList,
@@ -111,6 +116,11 @@ void runMigrations().then(() => {
   // reports table can tombstone the dead ones. Self-paced (weekly per
   // account), runs behind everything else on the Reddit funnel.
   void statusRecheckSweep();
+
+  // Same tier: probe still-live reported posts for moderator takedowns so
+  // the Reported tab's stamps don't depend on the operator happening to
+  // browse past them again.
+  void reportedPostsRecheckSweep();
 
   // Same tier: unblock suspended/deleted accounts to free slots in the
   // operator's 1000-cap Reddit block list. Self-gated to one pass per day;
@@ -246,6 +256,10 @@ browser.runtime.onMessage.addListener((message: BaseMessage, sender) => {
     return redditorsGetTags();
   }
 
+  if (message.type === "get-ring-candidates") {
+    return ringDetectionGetCandidates(message.username as string);
+  }
+
   if (message.type === "get-all-reports") {
     return redditorsGetAll();
   }
@@ -256,6 +270,10 @@ browser.runtime.onMessage.addListener((message: BaseMessage, sender) => {
 
   if (message.type === "get-analytics-reports") {
     return analyticsGetReports();
+  }
+
+  if (message.type === "get-reported-history") {
+    return reportedPostsGetHistory();
   }
 
   if (message.type === "get-blocklist-cleanup-state") {
