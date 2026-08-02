@@ -18,6 +18,7 @@ import { RedditFunnelCard } from "./card_reddit_funnel.tsx";
 import type { RedditTelemetryPayload } from "./card_reddit_funnel.tsx";
 import { SweepBlocklistCard } from "./card_sweep_blocklist.tsx";
 import { SweepRecheckCard } from "./card_sweep_recheck.tsx";
+import { VerdictOutcomesCard } from "./card_verdict_outcomes.tsx";
 import { analyticsActivityChart } from "./chart_activity.ts";
 import { UplotCard } from "./chart_card.tsx";
 import { analyticsCostChart } from "./chart_cost.ts";
@@ -208,6 +209,17 @@ function AnalyticsTab({
       <div class="bon-analytics-charts">
         <SweepRecheckCard reports={reports} state={recheckState} />
         {blocklistState && <SweepBlocklistCard state={blocklistState} />}
+      </div>
+      <header class="bon-analytics-subhead">
+        <h2>Calibration</h2>
+        <p class="bon-analytics-subtitle">
+          Verdicts vs. Reddit's own enforcement. Only suspected bots get the
+          weekly liveness re-check — human-side rows update on incidental
+          browsing, so their gone counts are undercounts.
+        </p>
+      </header>
+      <div class="bon-analytics-charts">
+        <VerdictOutcomesCard reports={reports} />
       </div>
     </section>
   );
