@@ -2,6 +2,10 @@
 
 Notable changes to Bot or Not. Signed `.xpi` builds for each version are attached to the matching [GitHub Release](https://github.com/tfrey7/bot-or-not/releases).
 
+## [11.0.0] — 2026-08-02
+- Refresh the reports-page skin: oxblood brand, folder tabs, Night Shift dark
+- Keep the subreddit-chart tooltip inside the clipping chart body
+
 ## [10.3.0] — 2026-08-02
 - Align the subreddit chart columns with the calendar heatmap
 - Give the subreddit-chart legend room to breathe
