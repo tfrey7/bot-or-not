@@ -19,7 +19,7 @@
      Set here so child widgets inherit; only opt out for prose that needs sans. */
   font-family: var(--bon-font-mono);
   background: var(--bon-surface);
-  border: 1px solid var(--bon-border);
+  border: 1px solid var(--bon-card-edge);
   border-radius: 0.5em;
   box-shadow: var(--bon-shadow-md);
   min-width: 0;

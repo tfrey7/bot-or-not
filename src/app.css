@@ -18,43 +18,46 @@
     "Roboto Mono", monospace;
 
   /* Paper surface */
-  --bon-bg: #f1ece0;
-  --bon-bg-tint: #e8ddc6;
-  --bon-surface: #fbf7ec;
-  --bon-surface-soft: #f5efdf;
-  --bon-row-hover: #ede5d0;
+  --bon-bg: #f4f0e6;
+  --bon-bg-tint: #ebe1cb;
+  --bon-surface: #fdfaf1;
+  --bon-surface-soft: #f6f1e2;
+  --bon-row-hover: #ece4cd;
 
   /* Ink */
-  --bon-text: #1a1612;
-  --bon-text-soft: #3a332a;
+  --bon-text: #211c15;
+  --bon-text-soft: #453e31;
   --bon-muted: #6e6553;
   --bon-muted-soft: #a59c87;
 
   /* Borders */
-  --bon-border: #ddd1b3;
-  --bon-border-strong: #c1b08e;
-  --bon-rule: #1a1612;
+  --bon-border: #ddd2b6;
+  --bon-border-strong: #c2b190;
+  --bon-rule: #211c15;
+  --bon-card-edge: #4d4538;
 
-  /* Accent + stamp palette */
-  --bon-accent: #1f4673;
-  --bon-accent-soft: rgba(31, 70, 115, 0.12);
-  --bon-link: #1f4673;
-  --bon-link-hover: #132f4f;
-  --bon-stamp-red: #8b1e1e;
-  --bon-stamp-rust: #a85a1a;
+  /* Accent + stamp palette. Oxblood is the single brand color — it carries
+     links, selection, and focus; blue is reserved for the semantic
+     "running" stamp. */
+  --bon-accent: #7c1d1d;
+  --bon-accent-soft: rgba(124, 29, 29, 0.1);
+  --bon-link: #7c1d1d;
+  --bon-link-hover: #5a1414;
+  --bon-stamp-red: #7c1d1d;
+  --bon-stamp-rust: #a1541a;
   --bon-stamp-amber: #b8861a;
   --bon-stamp-moss: #4f6b3a;
   --bon-stamp-forest: #1f6644;
   --bon-stamp-charcoal: #4d4538;
-  --bon-stamp-blue: #1f4673;
+  --bon-stamp-blue: #31506e;
   --bon-stamp-slate: #3d4a5c;
-  --bon-danger: #8b1e1e;
+  --bon-danger: #7c1d1d;
 
-  /* Shadows */
+  /* Shadows — md is the letterpress offset that gives cards their printed,
+     pasted-down feel; lg stays soft for floating surfaces (modals, popovers). */
   --bon-shadow-xs: 0 1px 0 rgba(60, 40, 20, 0.04);
   --bon-shadow-sm: 0 1px 2px rgba(60, 40, 20, 0.06);
-  --bon-shadow-md:
-    0 1px 2px rgba(60, 40, 20, 0.04), 0 6px 18px -8px rgba(60, 40, 20, 0.16);
+  --bon-shadow-md: 2px 2px 0 rgba(60, 40, 20, 0.13);
   --bon-shadow-lg:
     0 2px 4px rgba(60, 40, 20, 0.05), 0 16px 36px -10px rgba(60, 40, 20, 0.22);
 
@@ -87,38 +90,39 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    /* Paper surface inverts to a warm near-black; tints stay subtle so cards
-       and rows still separate from the page without high-contrast slabs. */
-    --bon-bg: #181410;
-    --bon-bg-tint: #221d17;
-    --bon-surface: #221d17;
-    --bon-surface-soft: #1d1813;
-    --bon-row-hover: #2c251c;
+    /* Night Shift: dark mode is not an inversion of the paper theme but the
+       noir scene itself — a cool blue-black bureau after hours, lit by one
+       amber case lamp. Amber marks "where the investigator is looking"
+       (links, selection, active tab); stamps keep their semantic hues. */
+    --bon-bg: #101319;
+    --bon-bg-tint: #171c25;
+    --bon-surface: #171c25;
+    --bon-surface-soft: #131820;
+    --bon-row-hover: #1e2530;
 
-    --bon-text: #ede4d0;
-    --bon-text-soft: #d4c9b1;
-    --bon-muted: #948b78;
-    --bon-muted-soft: #6a6253;
+    --bon-text: #e6e1d3;
+    --bon-text-soft: #cfc9b8;
+    --bon-muted: #7d8494;
+    --bon-muted-soft: #565e6d;
 
-    --bon-border: #36302a;
-    --bon-border-strong: #4f463a;
-    --bon-rule: #ede4d0;
+    --bon-border: #2a3140;
+    --bon-border-strong: #3d465a;
+    --bon-rule: #e6e1d3;
+    --bon-card-edge: #333c4e;
 
-    /* Accents and stamps brightened so they still read as colored ink on
-       dark paper while keeping the original hue family. */
-    --bon-accent: #6da5e3;
-    --bon-accent-soft: rgba(109, 165, 227, 0.18);
-    --bon-link: #8fbdec;
-    --bon-link-hover: #b3d2f3;
-    --bon-stamp-red: #d05858;
+    --bon-accent: #e8c46a;
+    --bon-accent-soft: rgba(232, 196, 106, 0.16);
+    --bon-link: #e8c46a;
+    --bon-link-hover: #f2d68a;
+    --bon-stamp-red: #e06060;
     --bon-stamp-rust: #d68754;
     --bon-stamp-amber: #e0b557;
-    --bon-stamp-moss: #8aa86e;
-    --bon-stamp-forest: #6abd8a;
-    --bon-stamp-charcoal: #b0a896;
+    --bon-stamp-moss: #93b072;
+    --bon-stamp-forest: #63c08b;
+    --bon-stamp-charcoal: #9aa2b2;
     --bon-stamp-blue: #6da5e3;
     --bon-stamp-slate: #8a96aa;
-    --bon-danger: #d05858;
+    --bon-danger: #e06060;
 
     --bon-shadow-xs: 0 1px 0 rgba(0, 0, 0, 0.3);
     --bon-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35);
@@ -127,9 +131,9 @@
     --bon-shadow-lg:
       0 2px 4px rgba(0, 0, 0, 0.3), 0 16px 36px -10px rgba(0, 0, 0, 0.7);
 
-    --bon-stamp-bg: rgba(34, 29, 23, 0.6);
-    --bon-tz-match-bg: rgba(138, 168, 110, 0.18);
-    --bon-tz-match-border: rgba(138, 168, 110, 0.55);
+    --bon-stamp-bg: rgba(23, 28, 37, 0.6);
+    --bon-tz-match-bg: rgba(147, 176, 114, 0.18);
+    --bon-tz-match-border: rgba(147, 176, 114, 0.55);
     --bon-tz-mismatch-bg: rgba(224, 181, 87, 0.16);
     --bon-tz-mismatch-border: rgba(224, 181, 87, 0.5);
 
@@ -143,14 +147,14 @@
     --bon-warning-stripe-b: rgba(224, 181, 87, 0.55);
     --bon-warning-signal-border: rgba(224, 181, 87, 0.65);
 
-    --bon-dot-grid: rgba(237, 228, 208, 0.04);
+    --bon-dot-grid: rgba(230, 225, 211, 0.045);
     --bon-overlay: rgba(0, 0, 0, 0.65);
 
-    --bon-heat-1: #2c3826;
-    --bon-heat-2: #3e5535;
-    --bon-heat-3: #5a8050;
-    --bon-heat-4: #6abd8a;
-    --bon-heat-5: #9fdab4;
+    --bon-heat-1: #26302a;
+    --bon-heat-2: #38513f;
+    --bon-heat-3: #4f7d5e;
+    --bon-heat-4: #63c08b;
+    --bon-heat-5: #9fdec0;
   }
 }
 
@@ -226,6 +230,17 @@ body {
   background: var(--bon-bg);
   margin-bottom: 1.75em;
 }
+@media (prefers-color-scheme: dark) {
+  /* The case lamp: one amber pool of light spilling from the masthead
+     corner onto the mascot. */
+  .bon-sticky-shell {
+    background-image: radial-gradient(
+      ellipse 36em 14em at 8% -4em,
+      rgba(232, 196, 106, 0.12),
+      transparent 60%
+    );
+  }
+}
 
 .bon-header {
   display: flex;
@@ -268,11 +283,11 @@ body {
 }
 @media (prefers-color-scheme: dark) {
   /* Chromes is near-black ink on transparent — on dark paper he disappears.
-     Backlight him with a silhouette-following halo so the figure reads. */
+     Backlight him with the case lamp's amber halo so the figure reads. */
   .bon-header-mascot {
-    filter: brightness(1.18) contrast(1.05)
-      drop-shadow(0 0 0.5em rgba(237, 228, 208, 0.35))
-      drop-shadow(0 0 1.4em rgba(237, 228, 208, 0.18));
+    filter: brightness(1.22) contrast(1.05)
+      drop-shadow(0 0 0.5em rgba(232, 196, 106, 0.5))
+      drop-shadow(0 0 1.4em rgba(232, 196, 106, 0.22));
   }
 }
 .bon-header-titles {
@@ -294,6 +309,11 @@ body {
   font-style: italic;
   color: var(--bon-stamp-red);
   padding: 0 0.04em;
+}
+@media (prefers-color-scheme: dark) {
+  .bon-header h1 em {
+    color: var(--bon-accent);
+  }
 }
 .bon-header-tagline {
   font-family: var(--bon-font-mono);
@@ -319,16 +339,18 @@ body {
    Tabs
    ============================================================ */
 
+/* Folder tabs: the active tab is a manila tab fused onto the rule line —
+   it pulls down 1px so its background covers the bar's border below it. */
 .bon-tabs {
   display: flex;
-  gap: 0.25em;
+  gap: 0.3em;
   margin: 0;
-  border-bottom: 1px solid var(--bon-border);
+  align-items: flex-end;
+  border-bottom: 1px solid var(--bon-card-edge);
 }
 .bon-tab {
   appearance: none;
   background: none;
-  border: none;
   padding: 0.55em 1em 0.7em;
   margin-bottom: -1px;
   font-family: var(--bon-font-mono);
@@ -338,9 +360,12 @@ body {
   text-transform: uppercase;
   color: var(--bon-muted);
   cursor: pointer;
-  border-bottom: 2px solid transparent;
+  border: 1px solid transparent;
+  border-bottom: none;
+  border-radius: 0.45em 0.45em 0 0;
   transition:
     color 0.15s,
+    background 0.15s,
     border-color 0.15s;
 }
 .bon-tab:hover {
@@ -349,7 +374,15 @@ body {
 .bon-tab--active,
 .bon-tab--active:hover {
   color: var(--bon-text);
-  border-bottom-color: var(--bon-accent);
+  background: var(--bon-surface);
+  border-color: var(--bon-card-edge);
+}
+@media (prefers-color-scheme: dark) {
+  .bon-tab--active,
+  .bon-tab--active:hover {
+    color: var(--bon-accent);
+    text-shadow: 0 0 0.8em rgba(232, 196, 106, 0.55);
+  }
 }
 .bon-tab[data-tab="metrics"] {
   margin-left: auto;
@@ -391,7 +424,7 @@ body {
 }
 .bon-btn--danger {
   color: var(--bon-danger);
-  border-color: rgba(139, 30, 30, 0.4);
+  border-color: rgba(124, 29, 29, 0.4);
 }
 .bon-btn--danger:hover {
   background: var(--bon-danger);

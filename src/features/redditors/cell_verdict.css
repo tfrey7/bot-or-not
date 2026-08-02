@@ -10,14 +10,32 @@
   font-family: var(--bon-font-mono);
   font-size: 0.62rem;
   font-weight: 700;
-  padding: 0.3em 0.65em 0.28em;
+  padding: 0.36em 0.7em 0.34em;
   border-radius: 0.25em;
-  border: 1.5px solid currentColor;
+  border: 2px solid currentColor;
   line-height: 1.2;
   letter-spacing: 0.14em;
   text-transform: uppercase;
   background: var(--bon-stamp-bg);
   white-space: nowrap;
+  /* Double ring + a hair of rotation: the inset shadows draw a thin inner
+     ring 1px inside the border, and no two neighboring stamps land at the
+     same angle — the hand that stamped them wasn't a machine. */
+  box-shadow:
+    inset 0 0 0 1px var(--bon-stamp-bg),
+    inset 0 0 0 2.5px currentColor;
+  transform: rotate(-1deg);
+}
+.bon-table tbody tr:nth-child(even) .bon-verdict-badge {
+  transform: rotate(0.75deg);
+}
+@media (prefers-color-scheme: dark) {
+  .bon-verdict-badge {
+    box-shadow:
+      inset 0 0 0 1px var(--bon-stamp-bg),
+      inset 0 0 0 2.5px currentColor,
+      0 0 0.7em -0.15em currentColor;
+  }
 }
 .bon-verdict-badge--bot {
   color: var(--bon-stamp-red);

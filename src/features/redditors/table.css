@@ -4,7 +4,7 @@
 
 .bon-table-wrap {
   background: var(--bon-surface);
-  border: 1px solid var(--bon-border);
+  border: 1px solid var(--bon-card-edge);
   border-radius: 0.5em;
   /* Horizontal scroll is the safety net when a narrow viewport can't fit
      the factor-dot strip + tags side by side. Factor-card popovers use
