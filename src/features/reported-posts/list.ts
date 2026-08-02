@@ -6,6 +6,12 @@ import type { HistoryEntry } from "../../types.ts";
 import { formatDate } from "../../utils/format_time.ts";
 import type { ReportedPostRow } from "./logic.ts";
 
+// Painting thousands of rows in one shot is what made the tab slow, so the
+// list renders a chunk at a time: a sentinel below the list re-fills as it
+// scrolls into reach. The observer fires immediately when the sentinel is
+// already in view, so short lists self-prime without scrolling.
+const RENDER_CHUNK = 100;
+
 export function reportedPostsList(
   rows: ReportedPostRow[],
   onSelectUser: (username: string) => void
@@ -17,14 +23,41 @@ export function reportedPostsList(
     return empty;
   }
 
+  const host = document.createElement("div");
   const list = document.createElement("ul");
   list.className = "bon-reported-list";
+  host.appendChild(list);
 
-  for (const row of rows) {
-    list.appendChild(buildItem(row, onSelectUser));
-  }
+  const sentinel = document.createElement("div");
+  sentinel.className = "bon-reported-sentinel";
+  host.appendChild(sentinel);
 
-  return list;
+  let rendered = 0;
+  const observer = new IntersectionObserver(
+    (entries) => {
+      if (entries.some((entry) => entry.isIntersecting)) {
+        appendChunk();
+      }
+    },
+    { rootMargin: "600px" }
+  );
+
+  const appendChunk = (): void => {
+    for (const row of rows.slice(rendered, rendered + RENDER_CHUNK)) {
+      list.appendChild(buildItem(row, onSelectUser));
+    }
+
+    rendered = Math.min(rendered + RENDER_CHUNK, rows.length);
+    if (rendered >= rows.length) {
+      observer.disconnect();
+      sentinel.remove();
+    }
+  };
+
+  appendChunk();
+  observer.observe(sentinel);
+
+  return host;
 }
 
 function buildItem(
@@ -104,7 +137,10 @@ function buildStatusStamp(entry: HistoryEntry): HTMLSpanElement {
   if (!entry.status) {
     stamp.classList.add("bon-reported-status--live");
     stamp.textContent = "live";
-    stamp.title = "No removal observed yet";
+    stamp.title = entry.statusCheckedAt
+      ? `Verified live ${formatDate(entry.statusCheckedAt)}`
+      : "No removal observed yet";
+
     return stamp;
   }
 

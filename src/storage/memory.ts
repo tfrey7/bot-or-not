@@ -12,6 +12,7 @@ import type {
   ApiKeyMap,
   BlocklistCleanupState,
   LlmSelection,
+  PostRecheckState,
   ReportsMutator,
   ReportUpdater,
   StatusRecheckState,
@@ -44,6 +45,10 @@ export class InMemoryStorage implements StorageAdapter {
   private statusRecheck: StatusRecheckState = {
     lastSweepAt: null,
     lastProbed: 0,
+  };
+  private postRecheck: PostRecheckState = {
+    lastSweepAt: null,
+    lastChecked: 0,
   };
   private redditTelemetry: RedditTelemetryState = emptyRedditTelemetry();
   private maintenancePaused = false;
@@ -168,6 +173,14 @@ export class InMemoryStorage implements StorageAdapter {
 
   async writeStatusRecheckState(state: StatusRecheckState): Promise<void> {
     this.statusRecheck = { ...state };
+  }
+
+  async readPostRecheckState(): Promise<PostRecheckState> {
+    return { ...this.postRecheck };
+  }
+
+  async writePostRecheckState(state: PostRecheckState): Promise<void> {
+    this.postRecheck = { ...state };
   }
 
   async readRedditTelemetry(): Promise<RedditTelemetryState> {

@@ -9,7 +9,10 @@
 import { clientSend, clientSubscribe } from "../../client.ts";
 import { renderAnalyticsLoading, renderAnalyticsTab } from "../analytics";
 import { renderFieldGuideTab, renderPersonasTab } from "../personas";
-import { renderReportedPostsTab } from "../reported-posts";
+import {
+  renderReportedPostsTab,
+  type ReportedHistorySlice,
+} from "../reported-posts";
 import { subredditsMountTab } from "../subreddits";
 import { renderSync } from "../sync";
 import type { Report } from "../../types.ts";
@@ -77,10 +80,16 @@ export async function redditorsRenderReportsPage(): Promise<void> {
   let analyticsReports: ReportRow[] | null = null;
   let analyticsReportsDirty = true;
 
+  // The Reported tab reads only usernames + report history — its own slim
+  // fetch, like the metrics tab's, instead of the full records.
+  let reportedReports: ReportedHistorySlice[] | null = null;
+  let reportedReportsDirty = true;
+
   const tab = redditorsMountTab(splitEl, {
     onStructuralChange: () => {
       fullReportsDirty = true;
       analyticsReportsDirty = true;
+      reportedReportsDirty = true;
       void renderHeavyTab(tabs.current());
     },
   });
@@ -161,6 +170,25 @@ export async function redditorsRenderReportsPage(): Promise<void> {
     return analyticsReports;
   }
 
+  async function ensureReportedReports(): Promise<ReportedHistorySlice[]> {
+    if (fullReports && !fullReportsDirty) {
+      return fullReports;
+    }
+
+    if (reportedReports && !reportedReportsDirty) {
+      return reportedReports;
+    }
+
+    const { reports = [] } = await clientSend<{
+      reports?: ReportedHistorySlice[];
+    }>({ type: "get-reported-history" });
+
+    reportedReports = reports;
+    reportedReportsDirty = false;
+
+    return reportedReports;
+  }
+
   // Render one tab's content on demand. The Redditors component is always
   // live off the summary path; every other tab is painted only while it's
   // the one on screen, so hundreds of records don't get projected into
@@ -195,7 +223,7 @@ export async function redditorsRenderReportsPage(): Promise<void> {
     }
 
     if (target === "reported") {
-      const reports = await ensureFullReports();
+      const reports = await ensureReportedReports();
       renderReportedPostsTab(reports, reportedContainer, {
         onSelectUser: navigateToUser,
       });

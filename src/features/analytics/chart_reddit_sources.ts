@@ -27,6 +27,7 @@ const SOURCE_ORDER: RedditSource[] = [
   "subreddit",
   "attribution",
   "status-recheck",
+  "post-recheck",
   "blocklist",
 ];
 
@@ -35,6 +36,7 @@ const SOURCE_LABELS: Record<RedditSource, string> = {
   subreddit: "subreddit sweep",
   attribution: "attribution",
   "status-recheck": "status re-check",
+  "post-recheck": "post re-check",
   blocklist: "blocklist cleanup",
 };
 
@@ -46,6 +48,7 @@ function sourceColors(
     subreddit: palette.forest,
     attribution: palette.amber,
     "status-recheck": palette.rust,
+    "post-recheck": palette.accentSoft,
     blocklist: palette.red,
   };
 }

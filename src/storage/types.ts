@@ -91,6 +91,14 @@ export interface StatusRecheckState {
   lastProbed: number;
 }
 
+// Pass-level bookkeeping for the reported-post takedown re-check sweep.
+// Same gate pattern as StatusRecheckState: `lastSweepAt` keeps frequent
+// background wakes from firing a probe batch each time.
+export interface PostRecheckState {
+  lastSweepAt: number | null;
+  lastChecked: number;
+}
+
 // Updater for updateReport. Receives the current Report (or null if no
 // record exists for this username) and returns the next one. Return null to
 // delete the record; return the current value untouched to no-op the write.
@@ -161,6 +169,9 @@ export interface StorageAdapter {
 
   readStatusRecheckState(): Promise<StatusRecheckState>;
   writeStatusRecheckState(state: StatusRecheckState): Promise<void>;
+
+  readPostRecheckState(): Promise<PostRecheckState>;
+  writePostRecheckState(state: PostRecheckState): Promise<void>;
 
   readRedditTelemetry(): Promise<RedditTelemetryState>;
   writeRedditTelemetry(state: RedditTelemetryState): Promise<void>;

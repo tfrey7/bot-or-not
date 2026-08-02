@@ -20,6 +20,7 @@ import type {
   BlocklistSweepSummary,
   BlocklistWatchEntry,
   LlmSelection,
+  PostRecheckState,
   ReportsMutator,
   ReportUpdater,
   StatusRecheckState,
@@ -420,6 +421,29 @@ export class ExtensionStorage implements StorageAdapter {
 
   async writeStatusRecheckState(state: StatusRecheckState): Promise<void> {
     await browser.storage.local.set({ statusRecheck: state });
+  }
+
+  async readPostRecheckState(): Promise<PostRecheckState> {
+    const raw = (await browser.storage.local.get("postRecheck")) as {
+      postRecheck?: unknown;
+    };
+
+    const record = (
+      raw.postRecheck && typeof raw.postRecheck === "object"
+        ? raw.postRecheck
+        : {}
+    ) as Record<string, unknown>;
+
+    return {
+      lastSweepAt:
+        typeof record.lastSweepAt === "number" ? record.lastSweepAt : null,
+      lastChecked:
+        typeof record.lastChecked === "number" ? record.lastChecked : 0,
+    };
+  }
+
+  async writePostRecheckState(state: PostRecheckState): Promise<void> {
+    await browser.storage.local.set({ postRecheck: state });
   }
 
   async readRedditTelemetry(): Promise<RedditTelemetryState> {

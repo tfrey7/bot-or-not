@@ -9,6 +9,7 @@ export type RedditSource =
   | "subreddit"
   | "attribution"
   | "status-recheck"
+  | "post-recheck"
   | "blocklist";
 
 export interface RedditSourceTally {

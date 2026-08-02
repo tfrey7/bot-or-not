@@ -150,3 +150,9 @@ a.bon-reported-item-title:hover {
   font-size: 0.85rem;
   color: var(--bon-muted);
 }
+
+/* Zero-height boxes never intersect, so the infinite-scroll sentinel needs
+   real height to trip the observer. */
+.bon-reported-sentinel {
+  height: 1px;
+}

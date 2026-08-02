@@ -3,9 +3,16 @@
 // "Taken down" means status-detection has observed any removal status;
 // "live" means no removal has been observed yet.
 
-import type { HistoryEntry, Report } from "../../types.ts";
+import type { HistoryEntry } from "../../types.ts";
 
 export type ReportedPostsFilter = "all" | "taken-down" | "live";
+
+// The projection the tab runs on — full Report records satisfy it too, so a
+// cached get-all-reports payload can stand in for the slim fetch.
+export interface ReportedHistorySlice {
+  username: string;
+  history: HistoryEntry[];
+}
 
 export interface ReportedPostRow {
   username: string;
@@ -19,7 +26,7 @@ export interface ReportedPostsCounts {
 }
 
 export function reportedPostsCollect(
-  reports: Array<Report & { username: string }>
+  reports: ReportedHistorySlice[]
 ): ReportedPostRow[] {
   return reports
     .flatMap((report) =>

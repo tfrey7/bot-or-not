@@ -16,6 +16,7 @@ import type {
   BlocklistSweepSummary,
   BlocklistWatchEntry,
   LlmSelection,
+  PostRecheckState,
   ReportsMutator,
   ReportUpdater,
   StatusRecheckState,
@@ -30,6 +31,7 @@ export type {
   BlocklistSweepSummary,
   BlocklistWatchEntry,
   LlmSelection,
+  PostRecheckState,
   ReportsMutator,
   ReportUpdater,
   StatusRecheckState,
@@ -145,6 +147,14 @@ export function writeBlocklistCleanupState(
 
 export function readStatusRecheckState(): Promise<StatusRecheckState> {
   return storage.readStatusRecheckState();
+}
+
+export function readPostRecheckState(): Promise<PostRecheckState> {
+  return storage.readPostRecheckState();
+}
+
+export function writePostRecheckState(state: PostRecheckState): Promise<void> {
+  return storage.writePostRecheckState(state);
 }
 
 export function writeStatusRecheckState(

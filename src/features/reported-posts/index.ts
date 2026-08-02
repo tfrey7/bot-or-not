@@ -1,24 +1,29 @@
 // Reported tab — every post/comment the operator has reported, across all
-// users, newest first. Takedown stamps are back-filled by status-detection
-// as the operator browses past the reported posts again, so "live" means
-// no removal has been observed yet — not that the post was verified up.
+// users, newest first. Takedown stamps come from two directions: the passive
+// status-detection scanner as the operator browses past reported posts, and
+// the background re-check sweep (recheck.ts) that probes still-live
+// permalinks for moderator takedowns.
 
-import type { Report } from "../../types.ts";
 import { reportedPostsList } from "./list.ts";
 import {
   reportedPostsApplyFilter,
   reportedPostsCollect,
   reportedPostsCounts,
+  type ReportedHistorySlice,
   type ReportedPostsCounts,
   type ReportedPostsFilter,
 } from "./logic.ts";
+
+export { reportedPostsGetHistory } from "./handlers.ts";
+export { reportedPostsRecheckSweep } from "./recheck.ts";
+export type { ReportedHistorySlice } from "./logic.ts";
 
 export interface RenderReportedPostsOptions {
   onSelectUser: (username: string) => void;
 }
 
 export function renderReportedPostsTab(
-  reports: Array<Report & { username: string }>,
+  reports: ReportedHistorySlice[],
   container: HTMLElement | null,
   options: RenderReportedPostsOptions
 ): void {
@@ -70,7 +75,7 @@ function buildHeader(counts: ReportedPostsCounts): HTMLElement {
   subtitle.textContent =
     counts.total === 0
       ? "Nothing reported yet — hit report on a post or comment on Reddit and it lands here."
-      : "Every report you've filed, newest first. Takedown stamps appear as you browse past the reported posts again — a post marked live may just not have been re-seen.";
+      : "Every report you've filed, newest first. Still-live posts are re-checked in the background every few days; takedown stamps also appear as you browse past reported posts again.";
   header.appendChild(subtitle);
 
   return header;
